@@ -1,0 +1,10 @@
+node_modules/
+.next/
+out/
+.env*
+raw/
+_to_delete/
+.DS_Store
+web/public/files/
+web/.source/
+web/public/pagefind/
