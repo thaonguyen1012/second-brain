@@ -1,0 +1,269 @@
+// Shared import logic: GitBook-style markdown (pages + SUMMARY.md) -> web/content/docs/<track>/<slug>/.
+// Converts structure and syntax only; page text is never rewritten.
+import fs from 'node:fs';
+import path from 'node:path';
+import AdmZip from 'adm-zip';
+
+export const WEB_DIR = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
+export const CONTENT_DIR = path.join(WEB_DIR, 'content/docs');
+
+/** Read a GitBook export zip: returns { pages: Map<srcPath, markdown>, summary, assets: string[] }. */
+export function readGitbookZip(zipPath) {
+  const zip = new AdmZip(zipPath);
+  const entries = zip.getEntries().filter((e) => !e.isDirectory);
+  const summaryEntry = entries
+    .filter((e) => e.entryName.endsWith('SUMMARY.md'))
+    .sort((a, b) => a.entryName.length - b.entryName.length)[0];
+  if (!summaryEntry) throw new Error(`No SUMMARY.md in ${zipPath}`);
+  const root = summaryEntry.entryName.slice(0, -'SUMMARY.md'.length);
+  const pages = new Map();
+  const assets = [];
+  for (const e of entries) {
+    if (!e.entryName.startsWith(root)) continue;
+    const rel = e.entryName.slice(root.length);
+    if (rel.startsWith('.gitbook/assets/')) assets.push(rel);
+    else if (rel.endsWith('.md') && rel !== 'SUMMARY.md') pages.set(rel, e.getData().toString('utf8'));
+  }
+  return { pages, summary: summaryEntry.getData().toString('utf8'), assets };
+}
+
+/**
+ * Parse SUMMARY.md into a tree. Nodes: { title, src, children, separator? }.
+ * `## Heading` lines become separator nodes at the top level.
+ */
+export function parseSummary(summary) {
+  const root = { children: [] };
+  const stack = [{ indent: -1, node: root }];
+  for (const raw of summary.replace(/\r\n/g, '\n').split('\n')) {
+    const sep = raw.match(/^##\s+(.+?)\s*$/);
+    if (sep) {
+      root.children.push({ separator: sep[1] });
+      stack.length = 1;
+      continue;
+    }
+    const m = raw.match(/^(\s*)[*-]\s+\[(.*)\]\(([^)]+)\)\s*$/);
+    if (!m) continue;
+    const indent = m[1].replace(/\t/g, '  ').length;
+    const node = { title: m[2].trim(), src: decodeURI(m[3].trim()), children: [] };
+    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
+    stack[stack.length - 1].node.children.push(node);
+    stack.push({ indent, node });
+  }
+  return root;
+}
+
+const isIndex = (src) => path.posix.basename(src).toLowerCase() === 'readme.md';
+
+/**
+ * Decide output paths. A node with children or a README source becomes a folder (index.md),
+ * named after its source directory; a leaf page keeps its file name. The SUMMARY nesting
+ * defines the output nesting, so the sidebar order equals the SUMMARY order.
+ * Returns { files: [{src, out, title}], folders: Map<outDir, {title, pages}> }.
+ */
+export function planLayout(tree) {
+  const files = [];
+  const folders = new Map();
+  const used = new Set();
+
+  function claim(p) {
+    if (used.has(p)) throw new Error(`Output path collision: ${p}`);
+    used.add(p);
+    return p;
+  }
+
+  function visit(nodes, outDir, folderMeta) {
+    for (const n of nodes) {
+      if (n.separator) {
+        folderMeta.pages.push(`---${n.separator}---`);
+        continue;
+      }
+      const isFolder = n.children.length > 0 || (isIndex(n.src) && outDir !== null);
+      if (outDir === null && isIndex(n.src) && path.posix.dirname(n.src) === '.') {
+        // the book's own README
+        files.push({ src: n.src, out: claim('index.md'), title: n.title });
+        folderMeta.pages.push('index');
+        continue;
+      }
+      const base = outDir ?? '';
+      if (isFolder) {
+        const name = isIndex(n.src)
+          ? path.posix.basename(path.posix.dirname(n.src))
+          : path.posix.basename(n.src, '.md');
+        const dir = base ? `${base}/${name}` : name;
+        const meta = { title: n.title, pages: [] };
+        folders.set(dir, meta);
+        folderMeta.pages.push(name);
+        if (isIndex(n.src)) files.push({ src: n.src, out: claim(`${dir}/index.md`), title: n.title });
+        else {
+          // a non-README page that has children: keep it as the folder's index
+          files.push({ src: n.src, out: claim(`${dir}/index.md`), title: n.title });
+        }
+        visit(n.children, dir, meta);
+      } else {
+        const name = path.posix.basename(n.src, '.md');
+        files.push({ src: n.src, out: claim(base ? `${base}/${name}.md` : `${name}.md`), title: n.title });
+        folderMeta.pages.push(name);
+      }
+    }
+  }
+
+  const rootMeta = { pages: [] };
+  folders.set('', rootMeta);
+  visit(tree.children, null, rootMeta);
+  return { files, folders };
+}
+
+/** Split markdown into segments outside/inside fenced code blocks. */
+function mapOutsideFences(md, fn) {
+  const lines = md.split('\n');
+  const out = [];
+  let buf = [];
+  let fence = null;
+  const flush = () => {
+    if (buf.length) out.push(fn(buf.join('\n')));
+    buf = [];
+  };
+  for (const line of lines) {
+    const m = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+    if (fence) {
+      out.push(line);
+      if (m && m[1][0] === fence[0] && m[1].length >= fence.length && line.trim() === m[1]) fence = null;
+      continue;
+    }
+    if (m) {
+      flush();
+      fence = m[1];
+      out.push(line);
+      continue;
+    }
+    buf.push(line);
+  }
+  flush();
+  return out.join('\n');
+}
+
+const HINT_TYPES = { info: 'info', success: 'success', warning: 'warning', danger: 'danger', tip: 'info' };
+
+/**
+ * Normalize one page. ctx: { srcPath, urlOf(srcPath) -> url|null, fileUrl(assetName) -> url|null, stats }.
+ * Returns { title, body }.
+ */
+export function normalizePage(md, ctx) {
+  let text = md.replace(/\r\n?/g, '\n').replace(/^﻿/, '');
+
+  // Title: the leading H1 (removed from the body because the layout renders it).
+  let title = null;
+  const h1 = text.match(/^\s*#\s+(.+?)\s*#*\s*\n/);
+  if (h1) {
+    title = h1[1].trim();
+    text = text.slice(h1[0].length);
+  }
+
+  text = mapOutsideFences(text, (seg) => {
+    // {% hint style="x" %} ... {% endhint %} -> :::x ... ::: (rendered as Fumadocs Callout)
+    seg = seg.replace(/^[ \t]*\{%\s*hint\s+style=["']?(\w+)["']?\s*%\}[ \t]*$/gm, (_, t) => {
+      ctx.stats.hints = (ctx.stats.hints ?? 0) + 1;
+      return `\n:::${HINT_TYPES[t] ?? 'info'}\n`;
+    });
+    seg = seg.replace(/^[ \t]*\{%\s*endhint\s*%\}[ \t]*$/gm, '\n:::\n');
+
+    // {% file src="..." %}caption{% endfile %} -> attachment link
+    seg = seg.replace(
+      /\{%\s*file\s+src=["']([^"']+)["']\s*%\}([\s\S]*?)\{%\s*endfile\s*%\}/g,
+      (_, src, caption) => {
+        ctx.stats.files = (ctx.stats.files ?? 0) + 1;
+        const name = decodeURI(path.posix.basename(src));
+        const label = caption.trim() || name;
+        const url = ctx.fileUrl(name);
+        return url ? `📎 [${label}](${encodeURI(url)})` : `📎 ${label}`;
+      },
+    );
+
+    // relative links to other pages: [x](../a/b.md#h) and href="a.md"
+    const fix = (target) => {
+      if (/^[a-z]+:|^#|^\//i.test(target)) return null;
+      const [p, hash] = target.split('#');
+      if (!p.endsWith('.md')) return null;
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(ctx.srcPath), decodeURI(p)));
+      const url = ctx.urlOf(resolved);
+      if (!url) {
+        ctx.stats.unresolvedLinks = [...(ctx.stats.unresolvedLinks ?? []), `${ctx.srcPath} -> ${target}`];
+        return null;
+      }
+      ctx.stats.links = (ctx.stats.links ?? 0) + 1;
+      return hash ? `${url}#${hash}` : url;
+    };
+    seg = seg.replace(/(\]\()(<?)([^)\s>]+)(>?)((?:\s+"[^"]*")?\))/g, (all, a, lt, target, gt, rest) => {
+      const url = fix(target);
+      return url ? `${a}${lt}${url}${gt}${rest}` : all;
+    });
+    seg = seg.replace(/(href=["'])([^"']+)(["'])/g, (all, a, target, b) => {
+      const url = fix(target);
+      return url ? `${a}${url}${b}` : all;
+    });
+    return seg;
+  });
+
+  return { title, body: text.replace(/\n{3,}/g, '\n\n').trim() + '\n' };
+}
+
+const yamlString = (s) => JSON.stringify(String(s ?? ''));
+
+export function frontmatter(data) {
+  const lines = ['---'];
+  for (const [k, v] of Object.entries(data)) {
+    if (v === undefined) continue;
+    lines.push(`${k}: ${typeof v === 'string' ? yamlString(v) : JSON.stringify(v)}`);
+  }
+  lines.push('---', '');
+  return lines.join('\n');
+}
+
+/**
+ * Write a whole book. opts: { pages: Map, tree, track, slug, title, bookFrontmatter, fileUrl }.
+ * Returns stats.
+ */
+export function writeBook({ pages, tree, track, slug, title, bookFrontmatter = {}, fileUrl = () => null }) {
+  const { files, folders } = planLayout(tree);
+  const bookDir = path.join(CONTENT_DIR, track, slug);
+  if (fs.existsSync(bookDir)) throw new Error(`${bookDir} already exists, remove it first`);
+
+  const base = `/docs/${track}/${slug}`;
+  const urlBySrc = new Map(
+    files.map((f) => [f.src, `${base}/${f.out.replace(/(^|\/)index\.md$/, '').replace(/\.md$/, '')}`.replace(/\/$/, '') + '/']),
+  );
+  const stats = { pages: 0, missingSrc: [], unlisted: [] };
+
+  for (const f of files) {
+    const md = pages.get(f.src);
+    if (md === undefined) {
+      stats.missingSrc.push(f.src);
+      continue;
+    }
+    const { title: h1, body } = normalizePage(md, {
+      srcPath: f.src,
+      urlOf: (p) => urlBySrc.get(p) ?? null,
+      fileUrl,
+      stats,
+    });
+    const fm =
+      f.out === 'index.md'
+        ? { title: title ?? h1 ?? f.title, ...bookFrontmatter }
+        : { title: h1 ?? f.title };
+    const outPath = path.join(bookDir, f.out);
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    fs.writeFileSync(outPath, frontmatter(fm) + body);
+    stats.pages++;
+  }
+
+  const listed = new Set(files.map((f) => f.src));
+  stats.unlisted = [...pages.keys()].filter((p) => !listed.has(p));
+
+  for (const [dir, meta] of folders) {
+    const data = dir === '' ? { title, root: true, pages: meta.pages } : { title: meta.title, pages: meta.pages };
+    fs.mkdirSync(path.join(bookDir, dir), { recursive: true });
+    fs.writeFileSync(path.join(bookDir, dir, 'meta.json'), JSON.stringify(data, null, 2) + '\n');
+  }
+  stats.folders = folders.size;
+  return stats;
+}

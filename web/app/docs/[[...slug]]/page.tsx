@@ -1,25 +1,29 @@
 import { source } from '@/lib/source';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
+import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import { DocsBody, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
+import { baseOptions } from '@/lib/layout.shared';
+import { getNeighbours, getPrunedTree } from '@/lib/page-tree';
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  const MDX = page.data.body;
+  const { body: MDX, toc } = await page.data.load();
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
-      <DocsBody>
-        <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
-      </DocsBody>
-    </DocsPage>
+    <DocsLayout tree={getPrunedTree(page.url)} {...baseOptions()}>
+      <DocsPage toc={toc} full={page.data.full} footer={{ items: getNeighbours(page.url) }}>
+        <DocsTitle>{page.data.title}</DocsTitle>
+        <DocsBody data-pagefind-body>
+          <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
+        </DocsBody>
+      </DocsPage>
+    </DocsLayout>
   );
 }
 
