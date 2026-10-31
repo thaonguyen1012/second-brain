@@ -136,18 +136,26 @@ export function mergeBook({ tree, pages, mode, sections = null }) {
       const dir = path.posix.dirname(mod.src);
       const { body: readmeBody } = splitTitle(pages.get(mod.src) ?? '');
       const lessons = mod.children;
-      // greedy split at lesson boundaries
-      const parts = [[]];
-      let size = Buffer.byteLength(readmeBody);
-      for (const l of lessons) {
-        const s = Buffer.byteLength(pages.get(l.src) ?? '');
-        const cur = parts[parts.length - 1];
-        if (cur.length && (cur.length >= MODULE_MAX_LESSONS || size + s > MODULE_MAX_BYTES)) {
-          parts.push([]);
-          size = 0;
+      // split at lesson boundaries: first count the parts needed, then spread lessons evenly
+      const split = (maxLessons) => {
+        const parts = [[]];
+        let size = Buffer.byteLength(readmeBody);
+        for (const l of lessons) {
+          const s = Buffer.byteLength(pages.get(l.src) ?? '');
+          const cur = parts[parts.length - 1];
+          if (cur.length && (cur.length >= maxLessons || size + s > MODULE_MAX_BYTES)) {
+            parts.push([]);
+            size = 0;
+          }
+          parts[parts.length - 1].push(l);
+          size += s;
         }
-        parts[parts.length - 1].push(l);
-        size += s;
+        return parts;
+      };
+      let parts = split(MODULE_MAX_LESSONS);
+      if (parts.length > 1) {
+        const even = split(Math.ceil(lessons.length / parts.length));
+        if (even.length === parts.length) parts = even;
       }
       const base = path.posix.basename(dir);
       const nodes = parts.map((members, i) => {

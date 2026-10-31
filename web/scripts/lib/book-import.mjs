@@ -77,7 +77,7 @@ export function planLayout(tree) {
         folderMeta.pages.push(`---${n.separator}---`);
         continue;
       }
-      const isFolder = n.children.length > 0 || (isIndex(n.src) && outDir !== null);
+      const isFolder = n.children.length > 0 || isIndex(n.src);
       if (outDir === null && isIndex(n.src) && path.posix.dirname(n.src) === '.') {
         // the book's own README
         files.push({ src: n.src, out: claim('index.md'), title: n.title });

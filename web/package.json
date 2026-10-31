@@ -11,7 +11,8 @@
     "export:static": "STATIC_EXPORT=1 next build",
     "predev": "node scripts/prepare-vendor.mjs",
     "prebuild": "node scripts/prepare-vendor.mjs",
-    "search:rebuild": "node scripts/build-search.mjs"
+    "search:rebuild": "node scripts/build-search.mjs",
+    "assets:prepare": "node scripts/prepare-assets.mjs"
   },
   "dependencies": {
     "@fumadocs/mdx-remote": "^1.5.3",

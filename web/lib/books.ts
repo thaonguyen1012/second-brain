@@ -42,6 +42,16 @@ export const books: Book[] = [
     "lessonCount": 630,
     "courseraUrls": [],
     "originalHtml": "/original/handbook-08.html"
+  },
+  {
+    "slug": "handbook-05",
+    "title": "Sổ tay 5 – Kế toán & tài chính",
+    "description": "",
+    "track": "kinh-doanh",
+    "order": 1,
+    "lessonCount": 65,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-05.html"
   }
 ];
 // BOOKS:END
