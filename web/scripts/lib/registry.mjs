@@ -1,7 +1,7 @@
 // Read/write the book registry block in web/lib/books.ts and compute counts from content.
 import fs from 'node:fs';
 import path from 'node:path';
-import { WEB_DIR, CONTENT_DIR } from './book-import.mjs';
+import { WEB_DIR, CONTENT_DIR, frontmatter } from './book-import.mjs';
 
 const BOOKS_TS = path.join(WEB_DIR, 'lib/books.ts');
 const START = '// BOOKS:START';
@@ -13,7 +13,19 @@ export function readRegistry() {
   return JSON.parse(block.replace(/^\s*export const books: Book\[\] =/, '').replace(/;\s*$/, '').trim());
 }
 
+/** Keep each book's index.md frontmatter in sync with its registry entry (text below untouched). */
+function syncFrontmatter(book) {
+  const file = path.join(CONTENT_DIR, book.track, book.slug, 'index.md');
+  if (!fs.existsSync(file)) return;
+  const text = fs.readFileSync(file, 'utf8');
+  const end = text.startsWith('---\n') ? text.indexOf('\n---\n', 4) : -1;
+  const body = end === -1 ? text : text.slice(end + 5);
+  const { title, description, track, order, courseraUrls, originalHtml } = book;
+  fs.writeFileSync(file, frontmatter({ title, description, track, order, courseraUrls, originalHtml }) + body);
+}
+
 export function writeRegistry(books) {
+  for (const b of books) syncFrontmatter(b);
   const src = fs.readFileSync(BOOKS_TS, 'utf8');
   const before = src.slice(0, src.indexOf(START) + START.length);
   const after = src.slice(src.indexOf(END));

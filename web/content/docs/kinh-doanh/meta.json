@@ -1,3 +1,10 @@
 {
-  "title": "Kinh doanh"
+  "title": "Kinh doanh",
+  "pages": [
+    "handbook-01",
+    "handbook-02",
+    "handbook-03",
+    "handbook-04",
+    "handbook-05"
+  ]
 }
