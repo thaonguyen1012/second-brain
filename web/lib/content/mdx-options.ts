@@ -1,5 +1,5 @@
 import type { CompilerOptions } from '@fumadocs/mdx-remote';
-import { remarkAdmonition, remarkMdxMermaid } from 'fumadocs-core/mdx-plugins';
+import { rehypeCodeDefaultOptions, remarkAdmonition, remarkMdxMermaid } from 'fumadocs-core/mdx-plugins';
 import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -10,6 +10,8 @@ export const mdxOptions: CompilerOptions = {
   format: 'md',
   // images are replaced by placeholders, never measured or fetched
   remarkImageOptions: false,
+  // unknown fence languages in the sources (e.g. ```excel) render as plain text instead of failing
+  rehypeCodeOptions: { ...rehypeCodeDefaultOptions, fallbackLanguage: 'text' },
   remarkPlugins: (v) => [
     [remarkMath, { singleDollarTextMath: false }],
     [

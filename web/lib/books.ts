@@ -132,6 +132,36 @@ export const books: Book[] = [
     "lessonCount": 134,
     "courseraUrls": [],
     "originalHtml": "/original/handbook-12.html"
+  },
+  {
+    "slug": "handbook-13",
+    "title": "Sổ tay Meta Full-Stack",
+    "description": "",
+    "track": "it",
+    "order": 8,
+    "lessonCount": 251,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-13.html"
+  },
+  {
+    "slug": "handbook-01",
+    "title": "Sổ tay 1 – Nền tảng kinh doanh",
+    "description": "",
+    "track": "kinh-doanh",
+    "order": 2,
+    "lessonCount": 176,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-01.html"
+  },
+  {
+    "slug": "handbook-02",
+    "title": "Sổ tay 2 – Tiếng Anh thương mại",
+    "description": "",
+    "track": "kinh-doanh",
+    "order": 3,
+    "lessonCount": 167,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-02.html"
   }
 ];
 // BOOKS:END
