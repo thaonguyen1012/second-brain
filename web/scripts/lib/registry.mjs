@@ -20,19 +20,17 @@ export function writeRegistry(books) {
   fs.writeFileSync(BOOKS_TS, `${before}\nexport const books: Book[] = ${JSON.stringify(books, null, 2)};\n${after}`);
 }
 
-/** chapters = leaf folders (modules); pages = all .md files. */
+/** lessonCount = learning pages of the book (each has its own "Đã học xong" checkbox). */
 export function countBook(track, slug) {
   const dir = path.join(CONTENT_DIR, track, slug);
-  let chapters = 0;
-  let pages = 0;
-  (function walk(d, depth) {
-    const entries = fs.readdirSync(d, { withFileTypes: true });
-    const sub = entries.filter((e) => e.isDirectory());
-    pages += entries.filter((e) => e.isFile() && e.name.endsWith('.md')).length;
-    if (depth > 0 && sub.length === 0) chapters++;
-    for (const s of sub) walk(path.join(d, s.name), depth + 1);
-  })(dir, 0);
-  return { chapterCount: chapters, pageCount: pages };
+  let lessons = 0;
+  (function walk(d) {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      if (e.isDirectory()) walk(path.join(d, e.name));
+      else if (e.name.endsWith('.md')) lessons++;
+    }
+  })(dir);
+  return { lessonCount: lessons };
 }
 
 export function registerBook({ slug, title, description = '', track, originalHtml = null, courseraUrls = [], order }) {

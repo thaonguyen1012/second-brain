@@ -185,7 +185,7 @@ export function normalizePage(md, ctx) {
       const [p, hash] = target.split('#');
       if (!p.endsWith('.md')) return null;
       const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(ctx.srcPath), decodeURI(p)));
-      const url = ctx.urlOf(resolved);
+      const url = hash ? ctx.urlOf(resolved)?.replace(/#.*$/, '') : ctx.urlOf(resolved);
       if (!url) {
         ctx.stats.unresolvedLinks = [...(ctx.stats.unresolvedLinks ?? []), `${ctx.srcPath} -> ${target}`];
         return null;
@@ -223,7 +223,7 @@ export function frontmatter(data) {
  * Write a whole book. opts: { pages: Map, tree, track, slug, title, bookFrontmatter, fileUrl }.
  * Returns stats.
  */
-export function writeBook({ pages, tree, track, slug, title, bookFrontmatter = {}, fileUrl = () => null }) {
+export function writeBook({ pages, tree, track, slug, title, bookFrontmatter = {}, fileUrl = () => null, aliases = new Map() }) {
   const { files, folders } = planLayout(tree);
   const bookDir = path.join(CONTENT_DIR, track, slug);
   if (fs.existsSync(bookDir)) throw new Error(`${bookDir} already exists, remove it first`);
@@ -232,6 +232,13 @@ export function writeBook({ pages, tree, track, slug, title, bookFrontmatter = {
   const urlBySrc = new Map(
     files.map((f) => [f.src, `${base}/${f.out.replace(/(^|\/)index\.md$/, '').replace(/\.md$/, '')}`.replace(/\/$/, '') + '/']),
   );
+  // items merged into another page resolve to <merged page url>#<item anchor>
+  const urlOf = (p) => {
+    const alias = aliases.get(p);
+    if (!alias) return urlBySrc.get(p) ?? null;
+    const url = urlBySrc.get(alias.src);
+    return url ? (alias.anchor ? `${url}#${alias.anchor}` : url) : null;
+  };
   const stats = { pages: 0, missingSrc: [], unlisted: [] };
 
   for (const f of files) {
@@ -242,7 +249,7 @@ export function writeBook({ pages, tree, track, slug, title, bookFrontmatter = {
     }
     const { title: h1, body } = normalizePage(md, {
       srcPath: f.src,
-      urlOf: (p) => urlBySrc.get(p) ?? null,
+      urlOf,
       fileUrl,
       stats,
     });
@@ -257,7 +264,7 @@ export function writeBook({ pages, tree, track, slug, title, bookFrontmatter = {
   }
 
   const listed = new Set(files.map((f) => f.src));
-  stats.unlisted = [...pages.keys()].filter((p) => !listed.has(p));
+  stats.unlisted = [...pages.keys()].filter((p) => !listed.has(p) && !aliases.has(p));
 
   for (const [dir, meta] of folders) {
     const data = dir === '' ? { title, root: true, pages: meta.pages } : { title: meta.title, pages: meta.pages };
@@ -266,4 +273,47 @@ export function writeBook({ pages, tree, track, slug, title, bookFrontmatter = {
   }
   stats.folders = folders.size;
   return stats;
+}
+
+/**
+ * Read a single-file HTML handbook that embeds its markdown in <script id="book-data">.
+ * Returns { pages, tree, sections } where tree mirrors a SUMMARY.md and sections maps
+ * item path -> lesson group label (from book-data, authoritative).
+ */
+export function readHtmlBook(htmlPath) {
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const marker = '<script id="book-data" type="application/json">';
+  const start = html.indexOf(marker);
+  if (start < 0) throw new Error(`${htmlPath} has no book-data block`);
+  const end = html.indexOf('</script>', start);
+  const data = JSON.parse(html.slice(start + marker.length, end));
+  const pages = new Map(Object.entries(data.pages));
+  const sections = new Map();
+  const root = { children: [] };
+
+  const inChapter = new Set((data.chapters ?? []).map((c) => c.dir).filter(Boolean));
+  for (const p of data.order ?? []) {
+    if (!p.includes('/') && !inChapter.has(p.replace(/\.md$/, ''))) {
+      const md = pages.get(p) ?? '';
+      const h1 = md.match(/^\s*#\s+(.+?)\s*\n/);
+      root.children.push({ title: h1 ? h1[1].trim() : p, src: p, children: [] });
+    }
+  }
+  let course = null;
+  let courseNo = 0;
+  for (const ch of data.chapters ?? []) {
+    if (ch.course && ch.course !== course) {
+      course = ch.course;
+      courseNo++;
+      root.children.push({ separator: `Khóa ${courseNo}. ${course}` });
+    }
+    const title = ch.code ? `⭐ ${ch.code} ${ch.title}` : `${ch.tp}. ${ch.title}`;
+    const node = { title, src: `${ch.dir}/README.md`, children: [] };
+    for (const l of ch.lessons ?? []) {
+      node.children.push({ title: l.code ? `${l.code} ${l.title}` : l.title, src: l.file, children: [] });
+      if (l.section) sections.set(l.file, l.section);
+    }
+    root.children.push(node);
+  }
+  return { pages, tree: root, sections };
 }

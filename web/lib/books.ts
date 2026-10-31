@@ -1,5 +1,5 @@
 // Handbook registry. The block between the BOOKS markers is maintained by
-// scripts/import-gitbook.mjs (registerBook); edit titles/descriptions/links by hand if needed.
+// scripts/import-gitbook.mjs (registerBook); titles, descriptions and links may be edited by hand.
 
 export type TrackSlug = 'kinh-doanh' | 'it' | 'ky-nang';
 
@@ -18,10 +18,8 @@ export interface Book {
   description: string;
   track: TrackSlug;
   order: number;
-  /** Number of chapters (modules). */
-  chapterCount: number;
-  /** Number of pages, used as the denominator for progress. */
-  pageCount: number;
+  /** Number of learning pages (lessons / lesson groups), the denominator for progress. */
+  lessonCount: number;
   courseraUrls: CourseLink[];
   /** Path of the original single-file HTML under public/, or null. */
   originalHtml: string | null;
@@ -41,8 +39,7 @@ export const books: Book[] = [
     "description": "",
     "track": "it",
     "order": 1,
-    "chapterCount": 141,
-    "pageCount": 2433,
+    "lessonCount": 630,
     "courseraUrls": [],
     "originalHtml": "/original/handbook-08.html"
   }
