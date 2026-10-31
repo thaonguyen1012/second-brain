@@ -2,7 +2,8 @@
 import { useEffect, useId, useState } from 'react';
 import { useTheme } from 'next-themes';
 
-// mermaid is loaded with a dynamic import, so its chunk is only fetched on pages that contain a diagram.
+// mermaid is loaded at runtime from public/vendor (local copy of the npm bundle, see scripts/prepare-vendor.mjs),
+// only on pages that contain a diagram.
 export function Mermaid({ chart }: { chart: string }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const { resolvedTheme } = useTheme();
@@ -13,7 +14,8 @@ export function Mermaid({ chart }: { chart: string }) {
     let cancelled = false;
     (async () => {
       try {
-        const { default: mermaid } = await import('mermaid');
+        const url = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/vendor/mermaid/mermaid.esm.min.mjs`;
+        const { default: mermaid } = await import(/* webpackIgnore: true */ /* turbopackIgnore: true */ url);
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: 'strict',

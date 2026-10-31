@@ -1,2 +1,2 @@
-export const appName = 'Sổ tay học tập';
+export const appName = "Alex's Brain";
 export const docsRoute = '/docs';

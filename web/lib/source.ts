@@ -1,51 +1,11 @@
 import { loader } from 'fumadocs-core/source';
 import { docsRoute } from './shared';
-import { defineDocs } from 'fumadocs-mdx/macro';
-import { applyMdxPreset } from 'fumadocs-mdx/config';
-import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
-import { remarkAdmonition, remarkMdxMermaid } from 'fumadocs-core/mdx-plugins';
-import rehypeRaw from 'rehype-raw';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import { rehypeSafeHtml } from './mdx/rehype-safe-html';
+import { scanContent, type DocPageData } from './content/scan';
 
-const docs = defineDocs({
-  dir: 'content/docs',
-  docs: {
-    schema: pageSchema,
-    async: true,
-    mdxOptions: applyMdxPreset({
-      // images are replaced at build time, never measured or fetched
-      remarkImageOptions: false,
-      // search is done by Pagefind over the built HTML
-      remarkStructureOptions: false,
-      remarkPlugins: (v) => [
-        [remarkMath, { singleDollarTextMath: false }],
-        [
-          remarkAdmonition,
-          { typeMap: { info: 'info', note: 'info', tip: 'info', success: 'success', warning: 'warn', danger: 'error' } },
-        ],
-        remarkMdxMermaid,
-        ...v,
-      ],
-      rehypePlugins: (v) => [
-        [
-          rehypeRaw,
-          { passThrough: ['mdxjsEsm', 'mdxFlowExpression', 'mdxJsxFlowElement', 'mdxJsxTextElement', 'mdxTextExpression'] },
-        ],
-        rehypeSafeHtml,
-        rehypeKatex,
-        ...v,
-      ],
-    }),
-  },
-  meta: {
-    schema: metaSchema,
-  },
-});
-
+// Built once per server process from the files on disk (frontmatter only, bodies load on demand).
 export const source = loader({
   baseUrl: docsRoute,
-  source: docs.toFumadocsSource(),
-  plugins: [],
+  source: { files: scanContent() } as { files: ReturnType<typeof scanContent> } & {
+    files: { data: DocPageData }[];
+  },
 });

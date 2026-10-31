@@ -3,16 +3,21 @@
   "version": "0.0.52",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "next build && node scripts/postbuild-standalone.mjs",
     "dev": "next dev",
-    "start": "serve out",
+    "start": "CONTENT_DIR=${CONTENT_DIR:-$PWD/content/docs} PORT=${PORT:-3000} node .next/standalone/server.js",
     "types:check": "next typegen && tsc --noEmit",
-    "lint": "eslint"
+    "lint": "eslint",
+    "export:static": "STATIC_EXPORT=1 next build",
+    "predev": "node scripts/prepare-vendor.mjs",
+    "prebuild": "node scripts/prepare-vendor.mjs"
   },
   "dependencies": {
+    "@fumadocs/mdx-remote": "^1.5.3",
+    "@orama/orama": "^3.1.18",
+    "@shikijs/transformers": "^4.5.0",
     "cn": "^0.5.0",
     "fumadocs-core": "16.17.9",
-    "fumadocs-mdx": "15.4.10",
     "fumadocs-ui": "npm:@fumadocs/base-ui@16.17.9",
     "katex": "^0.19.1",
     "lucide-react": "^1.61.0",
@@ -34,7 +39,6 @@
     "adm-zip": "^0.6.1",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.4.2",
-    "pagefind": "^1.5.2",
     "postcss": "^8.5.31",
     "serve": "^14.2.6",
     "tailwindcss": "^4.3.3",

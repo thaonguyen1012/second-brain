@@ -8,3 +8,4 @@ _to_delete/
 web/public/files/
 web/.source/
 web/public/pagefind/
+web/public/vendor/
