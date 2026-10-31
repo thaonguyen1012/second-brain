@@ -92,6 +92,46 @@ export const books: Book[] = [
     "lessonCount": 30,
     "courseraUrls": [],
     "originalHtml": "/original/handbook-14.html"
+  },
+  {
+    "slug": "handbook-10",
+    "title": "Sổ tay DevOps, Cloud & IT",
+    "description": "",
+    "track": "it",
+    "order": 5,
+    "lessonCount": 530,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-10.html"
+  },
+  {
+    "slug": "handbook-11",
+    "title": "Sổ tay Fullstack Web (F8)",
+    "description": "",
+    "track": "it",
+    "order": 6,
+    "lessonCount": 808,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-11.html"
+  },
+  {
+    "slug": "handbook-15",
+    "title": "Sổ tay Google Project Management",
+    "description": "",
+    "track": "ky-nang",
+    "order": 2,
+    "lessonCount": 151,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-15.html"
+  },
+  {
+    "slug": "handbook-12",
+    "title": "Sổ tay Meta Front-End",
+    "description": "",
+    "track": "it",
+    "order": 7,
+    "lessonCount": 134,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-12.html"
   }
 ];
 // BOOKS:END
