@@ -162,6 +162,26 @@ export const books: Book[] = [
     "lessonCount": 167,
     "courseraUrls": [],
     "originalHtml": "/original/handbook-02.html"
+  },
+  {
+    "slug": "handbook-03",
+    "title": "Sổ tay 3 – Phân tích dữ liệu",
+    "description": "",
+    "track": "kinh-doanh",
+    "order": 4,
+    "lessonCount": 299,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-03.html"
+  },
+  {
+    "slug": "handbook-04",
+    "title": "Sổ tay 4 – Marketing & bán hàng",
+    "description": "",
+    "track": "kinh-doanh",
+    "order": 5,
+    "lessonCount": 190,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-04.html"
   }
 ];
 // BOOKS:END
