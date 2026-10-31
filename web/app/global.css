@@ -1,6 +1,47 @@
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
+@import 'katex/dist/katex.css';
+
+/* Alex's Brain theme: warm neutrals, deep teal accent. Spacing follows Tailwind's 4px scale
+   (1, 2, 3, 4, 6, 8, 12 → 4/8/12/16/24/32/48 px). */
+@theme {
+  --color-fd-background: hsl(40, 20%, 98%);
+  --color-fd-foreground: hsl(200, 15%, 10%);
+  --color-fd-muted: hsl(40, 14%, 94%);
+  --color-fd-muted-foreground: hsl(200, 8%, 40%);
+  --color-fd-popover: hsl(40, 20%, 99%);
+  --color-fd-popover-foreground: hsl(200, 15%, 12%);
+  --color-fd-card: hsl(40, 18%, 96.5%);
+  --color-fd-card-foreground: hsl(200, 15%, 10%);
+  --color-fd-border: hsla(200, 10%, 60%, 28%);
+  --color-fd-primary: hsl(178, 64%, 28%);
+  --color-fd-primary-foreground: hsl(40, 30%, 98%);
+  --color-fd-secondary: hsl(40, 14%, 92%);
+  --color-fd-secondary-foreground: hsl(200, 15%, 12%);
+  --color-fd-accent: hsla(178, 40%, 40%, 12%);
+  --color-fd-accent-foreground: hsl(178, 64%, 22%);
+  --color-fd-ring: hsl(178, 50%, 40%);
+}
+
+.dark {
+  --color-fd-background: hsl(200, 14%, 7%);
+  --color-fd-foreground: hsl(40, 15%, 90%);
+  --color-fd-muted: hsl(200, 12%, 12%);
+  --color-fd-muted-foreground: hsla(40, 10%, 72%, 0.85);
+  --color-fd-popover: hsl(200, 13%, 10%);
+  --color-fd-popover-foreground: hsl(40, 15%, 88%);
+  --color-fd-card: hsl(200, 13%, 9.5%);
+  --color-fd-card-foreground: hsl(40, 15%, 92%);
+  --color-fd-border: hsla(200, 10%, 50%, 20%);
+  --color-fd-primary: hsl(172, 52%, 56%);
+  --color-fd-primary-foreground: hsl(200, 20%, 8%);
+  --color-fd-secondary: hsl(200, 12%, 13%);
+  --color-fd-secondary-foreground: hsl(40, 15%, 90%);
+  --color-fd-accent: hsla(172, 45%, 50%, 14%);
+  --color-fd-accent-foreground: hsl(172, 52%, 70%);
+  --color-fd-ring: hsl(172, 45%, 50%);
+}
 
 html {
   scrollbar-gutter: stable;
@@ -10,4 +51,88 @@ html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;
 }
-@import 'katex/dist/katex.css';
+
+/* Comfortable long reading: ~70 characters per line, line-height 1.7. */
+#nd-page .prose {
+  max-width: 70ch;
+  line-height: 1.7;
+}
+#nd-page .prose :where(h2) {
+  scroll-margin-top: 5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-fd-border);
+}
+#nd-page .prose :where(h2:first-child) {
+  border-top: 0;
+}
+
+/* Transcripts and answers stay collapsed in <details>. */
+.prose details {
+  margin: 1rem 0;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.75rem;
+  background: var(--color-fd-card);
+  padding: 0.5rem 1rem;
+}
+.prose details > summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--color-fd-muted-foreground);
+}
+.prose details[open] > summary {
+  margin-bottom: 0.5rem;
+  color: var(--color-fd-foreground);
+}
+
+/* Build-time image placeholder (original Coursera images are not available offline). */
+.img-missing {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--color-fd-border);
+  border-radius: 0.75rem;
+  background: var(--color-fd-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-fd-muted-foreground);
+}
+.img-missing-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.img-missing-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.img-missing-alt {
+  color: var(--color-fd-foreground);
+}
+.img-missing-note a,
+.embed-missing a {
+  color: var(--color-fd-primary);
+}
+.embed-missing {
+  display: block;
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--color-fd-border);
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.mermaid-diagram {
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  display: flex;
+  justify-content: center;
+}
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+.mermaid-source[data-state='loading'] {
+  opacity: 0.6;
+}

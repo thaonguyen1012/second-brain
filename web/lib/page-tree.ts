@@ -64,6 +64,17 @@ export function getShellTree(url: string): { tree: PageTree.Root; book: string |
   return { tree: { ...full, children: shrink(full.children) }, book };
 }
 
+/** Breadcrumb: the book and the folders down to the current page (track folders skipped). */
+export function getCrumbs(url: string): { name: string; url?: string }[] {
+  const chain = pathTo(source.getPageTree().children, url) ?? [];
+  const start = chain.findIndex((n) => n.type === 'folder' && n.root);
+  return chain.slice(start < 0 ? 0 : start, -1).map((n) => {
+    const target =
+      n.type === 'folder' ? (n.index?.url ?? (n.root ? flattenTree([n])[0]?.url : undefined)) : n.type === 'page' ? n.url : undefined;
+    return { name: String(n.name), url: target };
+  });
+}
+
 let neighbours: Map<string, { previous?: PageTree.Item; next?: PageTree.Item }> | null = null;
 
 /** Previous/next page in source order, never crossing into another book. */
