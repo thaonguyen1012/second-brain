@@ -114,6 +114,11 @@ export function rehypeSafeHtml() {
     const visit = (parent: Root | Element) => {
       parent.children = parent.children.map((child) => {
         if (child.type !== 'element') return child;
+        // local images (backfilled into public/img/) are kept, everything else becomes a placeholder
+        if (child.tagName === 'img' && String(child.properties?.src ?? '').startsWith('/img/')) {
+          child.properties = { src: child.properties.src, alt: child.properties.alt ?? '', loading: 'lazy' };
+          return child;
+        }
         if (child.tagName === 'img') return imagePlaceholder(child, file);
         if (EMBEDS.has(child.tagName)) return embedPlaceholder(child);
         // <pre>/<code> come from markdown code blocks too; never touch their content

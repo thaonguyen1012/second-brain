@@ -1,0 +1,80 @@
+# Alex's Brain
+
+Personal study site built from 15 Coursera/F8 handbooks (Vietnamese "sổ tay"), later a personal second
+brain. Phase 1 (this repo today) is the Fumadocs app in `web/`; phase 2 adds a Django backend in `backend/`.
+
+* 15 handbooks, 18,780 source items merged into 4,746 learning pages, 3 tracks (Kinh doanh, IT, Kỹ năng)
+* Full-text search (SQLite FTS5), study roadmap from the PDF, progress per lesson (browser storage for now)
+* Next.js server mode: markdown on disk is compiled on request and cached; build time does not depend on page count
+
+## Run locally
+
+Requirements: Node 22+ (uses `node:sqlite`), macOS/Linux. Optional: `pdftohtml` (poppler) for `extract-courses.mjs`.
+
+```bash
+cd web
+npm install
+npm run search:rebuild          # builds web/data/search.sqlite from web/content (≈15 s)
+npm run assets:prepare          # clones attachments from raw/tai-lieu-so-tay-N into public/files (APFS clone)
+BUILD_SUBSET=handbook-08,handbook-05 npm run dev   # only these books, fast first page
+npm run dev                     # all 15 books
+```
+
+* `BUILD_SUBSET` takes book slugs, comma separated. Home cards always list all books.
+* Stop the dev server with **Ctrl-C**. Turbopack writes its cache (`.next/dev/cache`) on a clean shutdown;
+  killing the process (`kill -9`, `pkill`) loses it and the next first page takes ~7 s instead of ~3 s.
+* The search index and attachments are local files (gitignored); the site works without them
+  (search logs a warning and returns nothing, attachment links 404).
+
+## Build and run the production server
+
+```bash
+cd web
+npm run build                   # next build (standalone) + copies static assets next to the server
+npm start                       # node .next/standalone/server.js on PORT (default 3000)
+```
+
+`npm start` sets `CONTENT_DIR` (default `web/content/docs`) and `SEARCH_DB` (default `web/data/search.sqlite`);
+override them when the content lives elsewhere. Pages render on first request and are cached until the next build.
+
+Optional static export (not the deploy target, use with a subset): `BUILD_SUBSET=... npm run export:static`.
+
+## Add a handbook
+
+```bash
+node web/scripts/import-gitbook.mjs <export.zip | handbook.html> --track <kinh-doanh|it|ky-nang> \
+  --slug <ascii-slug> --title "<Vietnamese title>" [--description "..."] [--merge auto|m2|module|m1|none]
+```
+
+One command: reads the GitBook zip (SUMMARY.md) or a single-file HTML handbook (embedded `book-data`),
+merges items into learning pages, normalizes GitBook syntax, writes `web/content/docs/<track>/<slug>/`,
+registers the book in `web/lib/books.ts` and re-indexes search. Then:
+
+1. add the slug to `web/content/docs/<track>/meta.json` (`pages`) to set its position,
+2. add its programs to `PROGRAMS` in `web/scripts/extract-courses.mjs` and run it (course links),
+3. `npm run assets:prepare` if it has attachments, then edit the description in `web/lib/books.ts` if needed.
+
+Images whose URLs expired render as placeholders. When fresh URLs exist, put them in a file in the same
+order as `raw/missing-images.json` and run `node web/scripts/backfill-images.mjs <file>`.
+
+## Repository layout
+
+```
+web/            Fumadocs app (server mode) — see CLAUDE.md for details
+archive/        original HTML handbooks (archive/html/, untouched), small markdown zips, roadmap PDF
+raw/            large zips, attachments (tai-lieu-so-tay-*), materials json — gitignored
+_to_delete/     untouched, gitignored
+```
+
+## Planned deployment (not done yet)
+
+The Node server runs on a VPS next to Django, reachable only through a **Cloudflare Tunnel**
+(`cloudflared`, no open ports), with **Cloudflare Access** in front of **brain.example.com** (email OTP or
+Google login). Django serves the progress API and later the second-brain features; nginx serves `/files/`
+from a separate directory behind the same login. See ARCHITECTURE.md.
+
+## What phase 2 adds
+
+Django in `backend/`: users (or trust the Cloudflare Access JWT), the progress API in API_CONTRACT.md
+(the UI swaps `LocalStorageProgressStore` for an API store), then Item / Note / Collection / Inbox /
+DailyBrief models for the second brain, and Postgres full-text search if it outgrows SQLite.
