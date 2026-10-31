@@ -14,7 +14,7 @@ const config = {
   // markdown is compiled at request time by the server, keep these packages out of the bundle
   // content/ is read from CONTENT_DIR at runtime, never copied into the standalone bundle
   outputFileTracingExcludes: { '*': ['./content/docs/**'] },
-  serverExternalPackages: ['@fumadocs/mdx-remote', 'shiki', '@orama/orama'],
+  serverExternalPackages: ['@fumadocs/mdx-remote', 'shiki'],
 };
 
 export default config;

@@ -1,6 +1,9 @@
-import { createSearchAPI } from 'fumadocs-core/search/server';
-import { buildIndexes } from '@/lib/content/search-index';
+import { searchIndex } from '@/lib/search/fts';
 
-export const { GET } = createSearchAPI('advanced', {
-  indexes: () => buildIndexes(),
-});
+// Full-text search over the SQLite FTS5 index built by `npm run search:rebuild` (and by the importer).
+export function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
+  const query = params.get('query') ?? '';
+  const tag = params.get('tag');
+  return Response.json(searchIndex(query, tag ? tag.split(',').filter(Boolean) : []));
+}
