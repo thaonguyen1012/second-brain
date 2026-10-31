@@ -52,6 +52,46 @@ export const books: Book[] = [
     "lessonCount": 65,
     "courseraUrls": [],
     "originalHtml": "/original/handbook-05.html"
+  },
+  {
+    "slug": "handbook-06",
+    "title": "Sổ tay AI Engineering",
+    "description": "",
+    "track": "it",
+    "order": 2,
+    "lessonCount": 587,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-06.html"
+  },
+  {
+    "slug": "handbook-07",
+    "title": "Sổ tay AI & tự động hóa",
+    "description": "",
+    "track": "it",
+    "order": 3,
+    "lessonCount": 488,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-07.html"
+  },
+  {
+    "slug": "handbook-09",
+    "title": "Sổ tay Data Engineering & Robotics",
+    "description": "",
+    "track": "it",
+    "order": 4,
+    "lessonCount": 240,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-09.html"
+  },
+  {
+    "slug": "handbook-14",
+    "title": "Sổ tay Learning How to Learn",
+    "description": "",
+    "track": "ky-nang",
+    "order": 1,
+    "lessonCount": 30,
+    "courseraUrls": [],
+    "originalHtml": "/original/handbook-14.html"
   }
 ];
 // BOOKS:END
