@@ -4,6 +4,7 @@ import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { rehypeSafeHtml } from '../mdx/rehype-safe-html';
+import { rehypeCodeClasses } from '../mdx/rehype-code-classes';
 
 export const mdxOptions: CompilerOptions = {
   format: 'md',
@@ -26,5 +27,6 @@ export const mdxOptions: CompilerOptions = {
     rehypeSafeHtml,
     rehypeKatex,
     ...v,
+    rehypeCodeClasses,
   ],
 };
