@@ -13,7 +13,7 @@ Read DECISIONS.md (owner's decisions), PLAN.md (v2), ARCHITECTURE.md and API_CON
 * Content fidelity: never rewrite, shorten or summarize handbook text. Structure/format changes only
   (merging items into pages, heading levels, GitBook syntax). Fix only broken markup.
 * Never read whole HTML/JSON/markdown dumps into the conversation; use head/grep/scripts that print summaries.
-* `backend/` is reserved for Django (phase 2). No auth code, no Django in phase 1.
+* `backend/` is Django (phase 2). Auth lives only there; Next has no auth code. `make check` must pass before a commit.
 
 ## Layout
 
@@ -38,6 +38,13 @@ web/
                                  backfill-images, smoke-test, prepare-vendor, postbuild-standalone
   data/search.sqlite             search index (gitignored, rebuild with npm run search:rebuild)
   public/original/, lo-trinh.pdf, files/ (gitignored attachments), vendor/ (gitignored mermaid copy)
+backend/                         Django 5.2 + DRF + Postgres, managed with uv (pyproject.toml, uv.lock)
+  config/                        settings (all from backend/.env, example: .env.example), urls, JSON logging
+  core/                          /healthz, /api/me, single-owner auth middleware (AUTH_MODE dev|cf_access)
+  progress/                      progress API (API_CONTRACT.md); logic in services.py, thin views
+  docker-compose.yml             dev Postgres (the laptop uses Homebrew Postgres 16 instead)
+Makefile                         make check = web types+lint, backend ruff+mypy+migrations+pytest, smoke test
+                                 (needs a web server at SMOKE_BASE, default :3000); make api-types, backend-dev
 ```
 
 ## Server mode rules

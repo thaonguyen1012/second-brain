@@ -1,0 +1,14 @@
+# Dev Postgres. The owner's laptop runs Homebrew Postgres 16 instead (no Docker); both match backend/.env.example.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: alex_brain
+      POSTGRES_PASSWORD: alex_brain
+      POSTGRES_DB: alex_brain
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:

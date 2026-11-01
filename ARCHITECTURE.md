@@ -23,6 +23,13 @@ browser ──> Next.js (standalone, Node)          web/
 
 ## Phase 2: Django + deployment
 
+Status: `backend/` scaffolded (Django 5.2, DRF, drf-spectacular, psycopg 3, django-environ; uv). Dev: Postgres 16
+on localhost:5432 (Homebrew or `backend/docker-compose.yml`), `make backend-dev` on :8000. `/healthz` checks the
+database; logs are one JSON object per line on stdout. Auth: `core.middleware.AccessAuthMiddleware` maps every
+request to the single owner and keeps a Django session; `AUTH_MODE=dev` (refused unless `DEBUG=true`) trusts
+`DEV_USER_EMAIL`, `AUTH_MODE=cf_access` verifies `Cf-Access-Jwt-Assertion`. DRF answers 401 when anonymous and
+enforces CSRF (`X-CSRFToken`) on unsafe methods.
+
 ```
                 Cloudflare Access (login: email OTP / Google, JWT on every request)
                          │
