@@ -68,7 +68,7 @@ export function ContinueReading({ books }: { books: BookLink[] }) {
   return (
     <Link
       href={href}
-      className="group mt-4 flex flex-col gap-1 rounded-[24px] border bg-fd-card p-2 shadow-depth-1 transition-shadow hover:shadow-popover sm:flex-row sm:items-center sm:gap-4"
+      className="group mt-4 flex max-w-4xl flex-col gap-1 rounded-[24px] border bg-fd-card p-2 shadow-depth-1 transition-shadow hover:shadow-popover sm:flex-row sm:items-center sm:gap-4"
     >
       <span className="flex items-center gap-2 rounded-2xl bg-fd-secondary px-4 py-3 text-xs font-semibold">
         <span className="size-1.5 rounded-full bg-bw-red" aria-hidden />

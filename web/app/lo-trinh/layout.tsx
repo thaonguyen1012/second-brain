@@ -1,6 +1,5 @@
-import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { baseOptions } from '@/lib/layout.shared';
+import { AppShell } from '@/components/app-shell';
 
 export default function Layout({ children }: LayoutProps<'/lo-trinh'>) {
-  return <HomeLayout {...baseOptions()}>{children}</HomeLayout>;
+  return <AppShell>{children}</AppShell>;
 }

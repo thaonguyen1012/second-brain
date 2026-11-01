@@ -30,6 +30,7 @@ web/
   lib/mdx/                       rehype-safe-html (placeholders, safe raw HTML), rehype-code-classes (R4)
   lib/progress/                  ProgressStore interface + localStorage store; UI only uses the interface
   lib/page-tree.ts               shell tree, crumbs, prev/next
+  components/app-shell.tsx       Brainwave sidebar + top bar for home and roadmap (menu: lib/app-nav.ts)
   scripts/                       import-gitbook, build-search, prepare-assets, extract-courses,
                                  backfill-images, smoke-test, prepare-vendor, postbuild-standalone
   data/search.sqlite             search index (gitignored, rebuild with npm run search:rebuild)
