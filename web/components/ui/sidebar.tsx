@@ -574,8 +574,9 @@ export function SidebarMenuSkeleton({
 }: React.ComponentProps<'div'> & {
   showIcon?: boolean
 }): React.ReactElement {
-  // Random width between 50 to 90%.
+  // Random width between 50 to 90% (upstream Space UI code; the value is memoised once per mount).
   const width = React.useMemo(() => {
+    // eslint-disable-next-line react-hooks/purity
     return `${Math.floor(Math.random() * 40) + 50}%`
   }, [])
 

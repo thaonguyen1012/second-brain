@@ -76,7 +76,9 @@ is already done by the importer for that book. Check with `node web/scripts/smok
 
 ## Phase 2 plan (summary)
 
-Django in `backend/` behind nginx on the same origin, Cloudflare Tunnel + Access on brain.example.com.
+Engineering standards for phase 2 are DECISIONS.md section 10 (Postgres, Hermes as conversation layer only,
+API budget 5 USD/month, `make check`, AI harness with golden sets, security rules). Read it before writing backend code.
+Django + Postgres in `backend/` behind nginx on the same origin, Cloudflare Tunnel + Access on brain.example.com.
 Implement API_CONTRACT.md, swap `getProgressStore()` to an API store, serve `/files/` via nginx
 auth_request + X-Accel-Redirect, then second-brain models (Item, Note, Collection, Inbox, DailyBrief).
 Then the DECISIONS.md §9 objects in this order: Inbox + Item, Week, Project + TimeEntry, Opportunity, Skill + Market,
