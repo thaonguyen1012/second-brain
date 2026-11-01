@@ -79,3 +79,5 @@ is already done by the importer for that book. Check with `node web/scripts/smok
 Django in `backend/` behind nginx on the same origin, Cloudflare Tunnel + Access on brain.example.com.
 Implement API_CONTRACT.md, swap `getProgressStore()` to an API store, serve `/files/` via nginx
 auth_request + X-Accel-Redirect, then second-brain models (Item, Note, Collection, Inbox, DailyBrief).
+Then the 01/11/2026 brainstorm objects in DECISIONS.md §9: Week, Project + TimeEntry, Opportunity, Skill, Market
+(order not final).
