@@ -10,6 +10,7 @@ dependencies = [
   "django-environ>=0.12",
   "gunicorn>=23",
   "pyjwt[crypto]>=2.10",
+  "django-stubs-ext>=6.1.2",
 ]
 
 [dependency-groups]
@@ -32,7 +33,7 @@ extend-exclude = ["*/migrations/*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "DJ", "SIM", "RUF"]
-ignore = ["S101"]
+ignore = ["S101", "RUF012"]  # RUF012: Django Meta and DRF class attributes
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/*" = ["S105", "S106"]

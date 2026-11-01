@@ -2,8 +2,11 @@
 
 from pathlib import Path
 
+import django_stubs_ext
 import environ
 from django.core.exceptions import ImproperlyConfigured
+
+django_stubs_ext.monkeypatch()  # allows ModelAdmin[Model] etc. at runtime
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_DIR = BASE_DIR.parent

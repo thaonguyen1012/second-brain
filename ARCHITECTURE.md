@@ -30,6 +30,14 @@ request to the single owner and keeps a Django session; `AUTH_MODE=dev` (refused
 `DEV_USER_EMAIL`, `AUTH_MODE=cf_access` verifies `Cf-Access-Jwt-Assertion`. DRF answers 401 when anonymous and
 enforces CSRF (`X-CSRFToken`) on unsafe methods.
 
+Progress API (API_CONTRACT.md) is implemented in `backend/progress/` (models `PageProgress`, `LastVisited`;
+unknown books = not a directory under `CONTENT_DIR/<track>/`). drf-spectacular serves OpenAPI at `/api/schema/`;
+`make api-types` writes `web/lib/api/openapi.yaml` and `schema.ts`. Build the web app with
+`NEXT_PUBLIC_PROGRESS_STORE=api` to use `ApiProgressStore` (optimistic writes, last-visited debounced 1.5 s,
+reload on tab focus; on first load against an empty account it copies this browser's localStorage progress once).
+Local end to end: `make backend-dev`, a web server (e.g. `npm start` with `PORT=3100`), then
+`node web/scripts/dev-proxy.mjs --web http://127.0.0.1:3100` and open http://localhost:8080.
+
 ```
                 Cloudflare Access (login: email OTP / Google, JWT on every request)
                          │

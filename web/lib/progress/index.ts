@@ -2,14 +2,15 @@
 import { useSyncExternalStore } from 'react';
 import type { ProgressSnapshot, ProgressStore } from './store';
 import { LocalStorageProgressStore } from './local-storage-store';
+import { ApiProgressStore } from './api-store';
 
 export type { LastVisited, ProgressSnapshot, ProgressStore } from './store';
 
 let store: ProgressStore | null = null;
 
-/** The single place that picks the implementation (phase 2: return an API-backed store here). */
+/** The single place that picks the implementation: NEXT_PUBLIC_PROGRESS_STORE=api uses Django (build time). */
 export function getProgressStore(): ProgressStore {
-  store ??= new LocalStorageProgressStore();
+  store ??= process.env.NEXT_PUBLIC_PROGRESS_STORE === 'api' ? new ApiProgressStore() : new LocalStorageProgressStore();
   return store;
 }
 

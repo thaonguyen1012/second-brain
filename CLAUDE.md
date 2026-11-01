@@ -28,14 +28,17 @@ web/
   lib/books.ts                   registry (block between BOOKS markers is written by scripts)
   lib/content/                   CONTENT_DIR scan, on-demand MDX compile, MDX plugin chain
   lib/mdx/                       rehype-safe-html (placeholders, safe raw HTML), rehype-code-classes (R4)
-  lib/progress/                  ProgressStore interface + localStorage store; UI only uses the interface
+  lib/progress/                  ProgressStore interface; localStorage store (default) or ApiProgressStore when
+                                 NEXT_PUBLIC_PROGRESS_STORE=api at build time; UI only uses the interface
+  lib/api/                       the only backend caller: client.ts + schema.ts/openapi.yaml (make api-types)
   lib/page-tree.ts               shell tree, crumbs, prev/next
   components/ui/, components/spaceui/  Space UI components (shadcn registry on Base UI). Add with
                                  `npx shadcn@latest add @spaceui/<name>` (config: components.json); do not hand-write what can be added
   components/app-shell.tsx       app frame for home and roadmap: Space UI Sidebar + top bar (menu: lib/app-nav.ts)
   lib/utils.ts                   cn()
   scripts/                       import-gitbook, build-search, prepare-assets, extract-courses,
-                                 backfill-images, smoke-test, prepare-vendor, postbuild-standalone
+                                 backfill-images, smoke-test, prepare-vendor, postbuild-standalone,
+                                 dev-proxy (:8080, routes like nginx: Django paths -> :8000, rest -> Next)
   data/search.sqlite             search index (gitignored, rebuild with npm run search:rebuild)
   public/original/, lo-trinh.pdf, files/ (gitignored attachments), vendor/ (gitignored mermaid copy)
 backend/                         Django 5.2 + DRF + Postgres, managed with uv (pyproject.toml, uv.lock)

@@ -1,0 +1,165 @@
+openapi: 3.0.3
+info:
+  title: Alex's Brain API
+  version: 0.1.0
+paths:
+  /api/me:
+    get:
+      operationId: getMe
+      tags:
+      - me
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+  /api/progress:
+    get:
+      operationId: getProgress
+      tags:
+      - progress
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressSnapshot'
+          description: ''
+  /api/progress/{book}/{page}:
+    put:
+      operationId: setPageDone
+      parameters:
+      - in: path
+        name: book
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: page
+        schema:
+          type: string
+        description: Page path, '/' as %2F; '_index'.
+        required: true
+      tags:
+      - progress
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetDoneRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetDoneResponse'
+          description: ''
+  /api/progress/last-visited:
+    put:
+      operationId: setLastVisited
+      tags:
+      - progress
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetLastVisitedRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LastVisited'
+          description: ''
+components:
+  schemas:
+    LastVisited:
+      type: object
+      properties:
+        bookSlug:
+          type: string
+        pageSlug:
+          type: string
+        title:
+          type: string
+        at:
+          type: string
+          format: date-time
+      required:
+      - at
+      - bookSlug
+      - pageSlug
+    Me:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+      required:
+      - email
+      - id
+      - name
+    ProgressSnapshot:
+      type: object
+      properties:
+        done:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: boolean
+        lastVisited:
+          allOf:
+          - $ref: '#/components/schemas/LastVisited'
+          nullable: true
+      required:
+      - done
+      - lastVisited
+    SetDoneRequest:
+      type: object
+      properties:
+        done:
+          type: boolean
+      required:
+      - done
+    SetDoneResponse:
+      type: object
+      properties:
+        book:
+          type: string
+        page:
+          type: string
+        done:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - book
+      - done
+      - page
+      - updatedAt
+    SetLastVisitedRequest:
+      type: object
+      properties:
+        book:
+          type: string
+          minLength: 1
+          maxLength: 100
+        page:
+          type: string
+          maxLength: 500
+        title:
+          type: string
+          maxLength: 300
+      required:
+      - book
+      - page
