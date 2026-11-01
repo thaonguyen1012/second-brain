@@ -6,36 +6,35 @@ import { ContinueReading } from '@/components/progress';
 export default function HomePage() {
   const lessons = books.reduce((n, b) => n + b.lessonCount, 0);
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-10 sm:px-6 md:py-16">
-      <section className="flex flex-col gap-4">
-        <p className="text-sm font-semibold uppercase tracking-wider text-fd-primary">Sổ tay học tập</p>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Học tiếp từ chỗ đã dừng.</h1>
-        <p className="max-w-2xl text-base leading-relaxed text-fd-muted-foreground">
+    <main className="mx-auto flex w-full max-w-6xl flex-col">
+      <section className="flex flex-col gap-4 px-4 py-10 sm:px-12 md:py-12">
+        <span className="bw-label self-start">Sổ tay học tập</span>
+        <h1 className="text-[32px] font-normal leading-10 tracking-[-0.03em]">Học tiếp từ chỗ đã dừng.</h1>
+        <p className="max-w-2xl text-sm leading-relaxed text-fd-muted-foreground">
           {books.length} sổ tay từ các khóa Coursera và F8, {lessons.toLocaleString('vi-VN')} bài học, chia theo
-          ba nhóm. Tìm nhanh với <kbd className="rounded border bg-fd-muted px-1.5 text-xs">/</kbd> hoặc{' '}
-          <kbd className="rounded border bg-fd-muted px-1.5 text-xs">⌘K</kbd>.
+          ba nhóm. Tìm nhanh với <kbd className="bw-kbd">/</kbd> hoặc <kbd className="bw-kbd">⌘ K</kbd>.
         </p>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/lo-trinh/"
-            className="rounded-lg bg-fd-primary px-4 py-2 text-sm font-medium text-fd-primary-foreground transition hover:opacity-90"
-          >
+        <div className="flex flex-wrap gap-3 pt-1">
+          <Link href="/lo-trinh/" className="bw-btn bw-btn-dark">
             Xem lộ trình học
           </Link>
         </div>
+        <ContinueReading books={books.map(({ slug, title, track }) => ({ slug, title, track }))} />
       </section>
 
-      <ContinueReading books={books.map(({ slug, title, track }) => ({ slug, title, track }))} />
-
       {tracks.map((track) => (
-        <section key={track.slug} className="flex flex-col gap-5" aria-labelledby={`track-${track.slug}`}>
-          <div className="flex flex-col gap-1 border-b pb-3">
-            <h2 id={`track-${track.slug}`} className="text-xl font-semibold tracking-tight">
+        <section
+          key={track.slug}
+          className="flex flex-col gap-6 border-t px-4 py-10 sm:px-12 md:py-12"
+          aria-labelledby={`track-${track.slug}`}
+        >
+          <div className="flex flex-col gap-1">
+            <h2 id={`track-${track.slug}`} className="text-xl font-medium leading-7 tracking-[-0.03em]">
               {track.title}
             </h2>
             <p className="text-sm text-fd-muted-foreground">{track.description}</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {booksByTrack(track.slug).map((book) => (
               <BookCard key={book.slug} book={book} />
             ))}

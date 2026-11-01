@@ -8,7 +8,7 @@ export function DoneCheckbox({ url }: { url: string }) {
   const { bookSlug, pageSlug } = pageIdentity(url);
   const done = useProgress().done[bookSlug]?.[pageSlug] === true;
   return (
-    <label className="mt-10 flex cursor-pointer items-center gap-3 rounded-xl border bg-fd-card px-4 py-3 text-sm font-medium transition-colors hover:border-fd-primary/50 has-[:checked]:border-fd-primary/60 has-[:checked]:bg-fd-accent">
+    <label className="mt-10 flex cursor-pointer items-center gap-3 rounded-2xl border bg-fd-card px-4 py-3 shadow-depth-1 text-sm font-medium transition-colors hover:border-fd-primary/50 has-[:checked]:border-fd-primary/60 has-[:checked]:bg-fd-accent">
       <input
         type="checkbox"
         className="size-4 accent-[var(--color-fd-primary)]"
@@ -44,9 +44,9 @@ export function BookProgress({ book, total }: { book: string; total: number }) {
         aria-valuemax={100}
         aria-label="Tiến độ"
       >
-        <div className="h-full rounded-full bg-fd-primary transition-[width]" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-bw-red transition-[width]" style={{ width: `${pct}%` }} />
       </div>
-      <p className="text-xs text-fd-muted-foreground">
+      <p className="text-[11px] font-medium leading-4 text-fd-muted-foreground">
         {done > 0 ? `${done}/${total} bài · ${pct}%` : `${total} bài · chưa bắt đầu`}
       </p>
     </div>
@@ -68,14 +68,17 @@ export function ContinueReading({ books }: { books: BookLink[] }) {
   return (
     <Link
       href={href}
-      className="group flex flex-col gap-1 rounded-2xl border bg-fd-card p-5 transition hover:-translate-y-0.5 hover:border-fd-primary/50 hover:shadow-md sm:flex-row sm:items-center sm:gap-6"
+      className="group mt-4 flex flex-col gap-1 rounded-[24px] border bg-fd-card p-2 shadow-depth-1 transition-shadow hover:shadow-popover sm:flex-row sm:items-center sm:gap-4"
     >
-      <span className="text-xs font-semibold uppercase tracking-wide text-fd-primary">Tiếp tục học</span>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate font-medium">{last.title ?? book.title}</span>
-        <span className="truncate text-sm text-fd-muted-foreground">{book.title}</span>
+      <span className="flex items-center gap-2 rounded-2xl bg-fd-secondary px-4 py-3 text-xs font-semibold">
+        <span className="size-1.5 rounded-full bg-bw-red" aria-hidden />
+        Tiếp tục học
       </span>
-      <span className="text-sm font-medium text-fd-primary transition group-hover:translate-x-0.5">Học tiếp →</span>
+      <span className="flex min-w-0 flex-1 flex-col px-3 py-2 sm:px-0">
+        <span className="truncate text-sm font-semibold tracking-[-0.02em]">{last.title ?? book.title}</span>
+        <span className="truncate text-xs text-fd-muted-foreground">{book.title}</span>
+      </span>
+      <span className="bw-btn bw-btn-sm bw-btn-dark m-1 self-start sm:self-auto">Học tiếp →</span>
     </Link>
   );
 }

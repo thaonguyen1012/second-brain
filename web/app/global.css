@@ -3,44 +3,161 @@
 @import 'fumadocs-ui/css/preset.css';
 @import 'katex/dist/katex.css';
 
-/* Alex's Brain theme: warm neutrals, deep teal accent. Spacing follows Tailwind's 4px scale
-   (1, 2, 3, 4, 6, 8, 12 → 4/8/12/16/24/32/48 px). */
+/* Alex's Brain theme, after the Brainwave 2.0 design system (Figma): neutral shades 1-9, black primary,
+   red-orange accent, Inter, layered soft shadows. Brainwave is light only; dark mode is derived from shades 7-9.
+   Spacing follows Tailwind's 4px scale (1, 2, 3, 4, 6, 8, 12 → 4/8/12/16/24/32/48 px). */
 @theme {
-  --color-fd-background: hsl(40, 20%, 98%);
-  --color-fd-foreground: hsl(200, 15%, 10%);
-  --color-fd-muted: hsl(40, 14%, 94%);
-  --color-fd-muted-foreground: hsl(200, 8%, 40%);
-  --color-fd-popover: hsl(40, 20%, 99%);
-  --color-fd-popover-foreground: hsl(200, 15%, 12%);
-  --color-fd-card: hsl(40, 18%, 96.5%);
-  --color-fd-card-foreground: hsl(200, 15%, 10%);
-  --color-fd-border: hsla(200, 10%, 60%, 28%);
-  --color-fd-primary: hsl(178, 64%, 28%);
-  --color-fd-primary-foreground: hsl(40, 30%, 98%);
-  --color-fd-secondary: hsl(40, 14%, 92%);
-  --color-fd-secondary-foreground: hsl(200, 15%, 12%);
-  --color-fd-accent: hsla(178, 40%, 40%, 12%);
-  --color-fd-accent-foreground: hsl(178, 64%, 22%);
-  --color-fd-ring: hsl(178, 50%, 40%);
+  --color-fd-background: #fcfcfc;
+  --color-fd-foreground: #121212;
+  --color-fd-muted: #f1f1f1;
+  --color-fd-muted-foreground: #7b7b7b;
+  --color-fd-popover: #fcfcfc;
+  --color-fd-popover-foreground: #121212;
+  --color-fd-card: #fcfcfc;
+  --color-fd-card-foreground: #121212;
+  --color-fd-border: #ececec;
+  --color-fd-primary: #121212;
+  --color-fd-primary-foreground: #fcfcfc;
+  --color-fd-secondary: #f8f7f7;
+  --color-fd-secondary-foreground: #121212;
+  --color-fd-accent: #f1f1f1;
+  --color-fd-accent-foreground: #121212;
+  --color-fd-ring: #7b7b7b;
+
+  /* Brainwave colors: highlight (progress, "continue" marker) and status colors. */
+  --color-bw-red: #fe5938;
+  --color-bw-orange: #e36323;
+  --color-bw-green: #49ba61;
+  --color-bw-blue: #3582ff;
+  --color-bw-yellow: #ffb73a;
+  --color-bw-purple: #8755e9;
+
+  /* Brainwave depths. */
+  --shadow-depth-1: 0 1px 1px #00000005, 0 3px 3px #00000005, 0 6px 3px #00000003;
+  --shadow-popover: 0 10px 21px #00000012, 0 38px 38px #0000000f, 0 86px 52px #0000000a, 0 153px 61px #00000003;
 }
 
 .dark {
-  --color-fd-background: hsl(200, 14%, 7%);
-  --color-fd-foreground: hsl(40, 15%, 90%);
-  --color-fd-muted: hsl(200, 12%, 12%);
-  --color-fd-muted-foreground: hsla(40, 10%, 72%, 0.85);
-  --color-fd-popover: hsl(200, 13%, 10%);
-  --color-fd-popover-foreground: hsl(40, 15%, 88%);
-  --color-fd-card: hsl(200, 13%, 9.5%);
-  --color-fd-card-foreground: hsl(40, 15%, 92%);
-  --color-fd-border: hsla(200, 10%, 50%, 20%);
-  --color-fd-primary: hsl(172, 52%, 56%);
-  --color-fd-primary-foreground: hsl(200, 20%, 8%);
-  --color-fd-secondary: hsl(200, 12%, 13%);
-  --color-fd-secondary-foreground: hsl(40, 15%, 90%);
-  --color-fd-accent: hsla(172, 45%, 50%, 14%);
-  --color-fd-accent-foreground: hsl(172, 52%, 70%);
-  --color-fd-ring: hsl(172, 45%, 50%);
+  --color-fd-background: #121212;
+  --color-fd-foreground: #fcfcfc;
+  --color-fd-muted: #222222;
+  --color-fd-muted-foreground: #a3a3a3;
+  --color-fd-popover: #1a1a1a;
+  --color-fd-popover-foreground: #fcfcfc;
+  --color-fd-card: #181818;
+  --color-fd-card-foreground: #fcfcfc;
+  --color-fd-border: #2c2c2c;
+  --color-fd-primary: #fcfcfc;
+  --color-fd-primary-foreground: #121212;
+  --color-fd-secondary: #222222;
+  --color-fd-secondary-foreground: #fcfcfc;
+  --color-fd-accent: #2a2a2a;
+  --color-fd-accent-foreground: #fcfcfc;
+  --color-fd-ring: #a3a3a3;
+  --shadow-depth-1: 0 1px 2px #00000040;
+  --shadow-popover: 0 10px 21px #00000040, 0 38px 38px #00000030;
+}
+
+/* Brainwave buttons: light (default) and dark (primary), with gradient, 1px ring and inner highlight.
+   In dark mode the two swap so the primary button stays the high-contrast one. */
+@layer components {
+  .bw-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border-radius: 10px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    color: #121212;
+    background: linear-gradient(#e5e5e5, #e2e2e2);
+    box-shadow:
+      0 3px 4px -1px rgb(0 0 0 / 0.15),
+      0 0 0 1px #d4d4d4,
+      inset 0 1px 0 rgb(255 255 255 / 0.33);
+    transition: filter 150ms;
+  }
+  .bw-btn:hover {
+    filter: brightness(0.97);
+  }
+  .bw-btn-dark {
+    color: #fcfcfc;
+    background: linear-gradient(#323232, #222222);
+    box-shadow:
+      0 2px 4px -1px rgb(13 13 13 / 0.5),
+      0 0 0 1px #333333,
+      inset 0 0.5px 1px rgb(255 255 255 / 0.15),
+      inset 0 -1px 1.2px 0.35px #121212;
+  }
+  .bw-btn-dark:hover {
+    filter: brightness(1.25);
+  }
+  .bw-btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+  .dark .bw-btn {
+    color: #fcfcfc;
+    background: linear-gradient(#323232, #2a2a2a);
+    box-shadow:
+      0 2px 4px -1px rgb(0 0 0 / 0.5),
+      0 0 0 1px #3a3a3a,
+      inset 0 1px 0 rgb(255 255 255 / 0.08);
+  }
+  .dark .bw-btn:hover {
+    filter: brightness(1.2);
+  }
+  .dark .bw-btn-dark {
+    color: #121212;
+    background: linear-gradient(#fcfcfc, #e5e5e5);
+    box-shadow:
+      0 2px 4px -1px rgb(0 0 0 / 0.5),
+      0 0 0 1px #d4d4d4,
+      inset 0 1px 0 rgb(255 255 255 / 0.5);
+  }
+  .dark .bw-btn-dark:hover {
+    filter: brightness(0.94);
+  }
+
+  /* Small grey pill (Brainwave "Label"). */
+  .bw-label {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 12px;
+    background: var(--color-fd-muted);
+    padding: 0.25rem 0.75rem;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1rem;
+    letter-spacing: -0.01em;
+    color: var(--color-fd-foreground);
+  }
+
+  /* Keyboard shortcut chip (Brainwave "Shortcut"). */
+  .bw-kbd {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 6px;
+    background: var(--color-fd-muted);
+    padding: 0.125rem 0.375rem;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1rem;
+    color: var(--color-fd-muted-foreground);
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 0.11),
+      0 1px 4.2px -1px rgb(0 0 0 / 0.25),
+      inset 0 2px 0.8px rgb(255 255 255 / 0.27),
+      inset 0 -1px 0.6px rgb(0 0 0 / 0.2);
+  }
+  .dark .bw-kbd {
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.12);
+  }
 }
 
 html {
