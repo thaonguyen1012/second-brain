@@ -2,9 +2,9 @@ from django.urls import path
 
 from progress.api import LastVisitedView, PageProgressView, ProgressView
 
-# Mounted at "api/progress" (no trailing slash, as in API_CONTRACT.md).
+# Paths have no trailing slash, as in API_CONTRACT.md.
 urlpatterns = [
-    path("", ProgressView.as_view()),
-    path("/last-visited", LastVisitedView.as_view()),
-    path("/<slug:book>/<path:page>", PageProgressView.as_view()),
+    path("api/progress", ProgressView.as_view()),
+    path("api/progress/last-visited", LastVisitedView.as_view()),
+    path("api/progress/<slug:book>/<path:page>", PageProgressView.as_view()),
 ]

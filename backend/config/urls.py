@@ -6,8 +6,9 @@ from core import views as core_views
 
 urlpatterns = [
     path("healthz", core_views.healthz),
+    path("files/<path:path>", core_views.attachment),
     path("admin/", admin.site.urls),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/me", core_views.MeView.as_view()),
-    path("api/progress", include("progress.urls")),
+    path("", include("progress.urls")),
 ]

@@ -35,6 +35,11 @@ unknown books = not a directory under `CONTENT_DIR/<track>/`). drf-spectacular s
 `make api-types` writes `web/lib/api/openapi.yaml` and `schema.ts`. Build the web app with
 `NEXT_PUBLIC_PROGRESS_STORE=api` to use `ApiProgressStore` (optimistic writes, last-visited debounced 1.5 s,
 reload on tab focus; on first load against an empty account it copies this browser's localStorage progress once).
+Deployment config is in `deploy/` (see deploy/README.md): nginx routes `/api/` (except `/api/search`), `/admin/`,
+`/healthz` and `/files/` to Django and everything else to Next; `/files/` passes `auth_request` (Django `/api/me`)
+and Django's `X-Accel-Redirect` to the internal `/internal/files/` alias; CSP is report-only. With
+`AUTH_MODE=cf_access` every request needs a valid Access JWT for `OWNER_EMAIL`; a session alone is not enough.
+
 Local end to end: `make backend-dev`, a web server (e.g. `npm start` with `PORT=3100`), then
 `node web/scripts/dev-proxy.mjs --web http://127.0.0.1:3100` and open http://localhost:8080.
 

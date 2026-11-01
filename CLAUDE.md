@@ -43,9 +43,12 @@ web/
   public/original/, lo-trinh.pdf, files/ (gitignored attachments), vendor/ (gitignored mermaid copy)
 backend/                         Django 5.2 + DRF + Postgres, managed with uv (pyproject.toml, uv.lock)
   config/                        settings (all from backend/.env, example: .env.example), urls, JSON logging
-  core/                          /healthz, /api/me, single-owner auth middleware (AUTH_MODE dev|cf_access)
+  core/                          /healthz, /api/me, /files/ (X-Accel-Redirect), single-owner auth middleware
+                                 (AUTH_MODE dev|cf_access; cf_access verifies Cf-Access-Jwt-Assertion)
   progress/                      progress API (API_CONTRACT.md); logic in services.py, thin views
   docker-compose.yml             dev Postgres (the laptop uses Homebrew Postgres 16 instead)
+deploy/                          nginx/ (site.conf + header snippets), docker-compose.prod.yml, .env.example, README (Cloudflare Tunnel +
+                                 Access setup); config only, not deployed
 Makefile                         make check = web types+lint, backend ruff+mypy+migrations+pytest, smoke test
                                  (needs a web server at SMOKE_BASE, default :3000); make api-types, backend-dev
 ```

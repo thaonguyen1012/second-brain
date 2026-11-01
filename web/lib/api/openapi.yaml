@@ -8,6 +8,8 @@ paths:
       operationId: getMe
       tags:
       - me
+      security:
+      - sessionAuth: []
       responses:
         '200':
           content:
@@ -20,6 +22,8 @@ paths:
       operationId: getProgress
       tags:
       - progress
+      security:
+      - sessionAuth: []
       responses:
         '200':
           content:
@@ -50,6 +54,8 @@ paths:
             schema:
               $ref: '#/components/schemas/SetDoneRequest'
         required: true
+      security:
+      - sessionAuth: []
       responses:
         '200':
           content:
@@ -68,6 +74,8 @@ paths:
             schema:
               $ref: '#/components/schemas/SetLastVisitedRequest'
         required: true
+      security:
+      - sessionAuth: []
       responses:
         '200':
           content:
@@ -163,3 +171,8 @@ components:
       required:
       - book
       - page
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

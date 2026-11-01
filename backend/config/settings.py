@@ -29,9 +29,15 @@ if AUTH_MODE not in ("dev", "cf_access"):
     raise ImproperlyConfigured("AUTH_MODE must be 'dev' or 'cf_access'")
 if AUTH_MODE == "dev" and not DEBUG:
     raise ImproperlyConfigured("AUTH_MODE=dev is only allowed with DEBUG=True")
+if AUTH_MODE == "cf_access" and not DEBUG and not (OWNER_EMAIL and CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD):
+    raise ImproperlyConfigured(
+        "AUTH_MODE=cf_access needs OWNER_EMAIL, CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD"
+    )
 
 # Handbook content on disk; the book slugs are the directories <CONTENT_DIR>/<track>/<book>/.
 CONTENT_DIR = Path(env.str("CONTENT_DIR", default=str(REPO_DIR / "web" / "content" / "docs")))
+# Attachments: Django authorises /files/<path>, nginx serves it from /internal/files/ (X-Accel-Redirect).
+FILES_DIR = Path(env.str("FILES_DIR", default=str(REPO_DIR / "web" / "public" / "files")))
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -86,7 +92,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "/admin-static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = Path(env.str("STATIC_ROOT", default=str(BASE_DIR / "staticfiles")))
 
 # Cookies and transport security (production runs behind nginx + Cloudflare, always HTTPS).
 SESSION_COOKIE_HTTPONLY = True
@@ -101,6 +107,9 @@ SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
+# HTTPS is enforced at the Cloudflare edge; nginx only sees tunnel traffic. HSTS for subdomains and
+# preload are not ours to decide for all of example.com.
+SILENCED_SYSTEM_CHECKS = ["security.W008", "security.W005", "security.W021"]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["core.authentication.SessionAuthentication401"],
