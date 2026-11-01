@@ -2,29 +2,203 @@
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
 @import 'katex/dist/katex.css';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
-/* Alex's Brain theme, after the Brainwave 2.0 design system (Figma): neutral shades 1-9, Brainwave blue primary
-   (darkened to #1f6ae0 for 4.5:1 text contrast), red-orange accent, Inter, layered soft shadows. Brainwave is light only; dark mode is derived from shades 7-9.
-   Spacing follows Tailwind's 4px scale (1, 2, 3, 4, 6, 8, 12 → 4/8/12/16/24/32/48 px). */
+@custom-variant dark (&:is(.dark *));
+
+/* Alex's Brain theme.
+   Code foundation: Space UI (spaceui.one) tokens, installed by `shadcn init` with their preset; components live in
+   components/ui and components/spaceui. Layout reference: Brainwave 2.0 (Figma): sidebar + topbar, soft cards,
+   blue primary (#1f6ae0, 4.5:1 on white) and red-orange highlight. Light is the default; dark follows Space UI.
+   Fumadocs reads --color-fd-*; those are mapped onto the same tokens below so lesson pages match. */
+
+:root {
+  --radius: 0.625rem;
+  --background: var(--color-white);
+  --foreground: var(--color-zinc-950);
+  --card: var(--color-white);
+  --card-foreground: var(--color-zinc-950);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-zinc-950);
+  --primary: #1f6ae0;
+  --primary-foreground: var(--color-white);
+  --secondary: var(--color-zinc-100);
+  --secondary-foreground: var(--color-zinc-700);
+  --muted: var(--color-zinc-100);
+  --muted-foreground: var(--color-zinc-600);
+  --accent: var(--color-zinc-100);
+  --accent-foreground: var(--color-zinc-950);
+  --destructive: var(--color-red-500);
+  --destructive-foreground: var(--color-red-500);
+  --border: --alpha(var(--color-black) / 8%);
+  --input: --alpha(var(--color-black) / 8%);
+  --ring: --alpha(#3582ff / 60%);
+  --chart-1: var(--color-orange-600);
+  --chart-2: var(--color-teal-600);
+  --chart-3: var(--color-cyan-900);
+  --chart-4: var(--color-amber-400);
+  --chart-5: var(--color-amber-500);
+  --sidebar: var(--color-zinc-50);
+  --sidebar-foreground: var(--color-zinc-950);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--color-white);
+  --sidebar-accent: var(--color-zinc-200);
+  --sidebar-accent-foreground: var(--color-zinc-950);
+  --sidebar-border: --alpha(var(--color-black) / 8%);
+  --sidebar-ring: var(--ring);
+  --pill-active-bg: --alpha(var(--color-black) / 10%);
+  --info: var(--color-blue-100);
+  --info-foreground: var(--color-blue-900);
+  --success: var(--color-emerald-100);
+  --success-foreground: var(--color-emerald-900);
+  --warning: var(--color-amber-100);
+  --warning-foreground: var(--color-amber-900);
+  --error: var(--color-red-100);
+  --error-foreground: var(--color-red-900);
+}
+
+.dark {
+  --background: var(--color-zinc-950);
+  --foreground: var(--color-white);
+  --card: var(--color-zinc-950);
+  --card-foreground: var(--color-zinc-50);
+  --popover: var(--color-zinc-950);
+  --popover-foreground: var(--color-zinc-50);
+  --primary: #6aa5ff;
+  --primary-foreground: var(--color-zinc-950);
+  --secondary: var(--color-zinc-800);
+  --secondary-foreground: var(--color-zinc-50);
+  --muted: hsl(0deg 0% 10.2%);
+  --muted-foreground: var(--color-zinc-400);
+  --accent: hsl(0deg 2.2% 8.47%);
+  --accent-foreground: var(--color-zinc-50);
+  --destructive: var(--color-red-800);
+  --destructive-foreground: var(--color-red-400);
+  --border: --alpha(var(--color-white) / 8%);
+  --input: --alpha(var(--color-white) / 10%);
+  --ring: --alpha(#6aa5ff / 60%);
+  --chart-1: var(--color-blue-700);
+  --chart-2: var(--color-emerald-500);
+  --chart-3: var(--color-amber-500);
+  --chart-4: var(--color-purple-500);
+  --chart-5: var(--color-rose-500);
+  --sidebar: hsl(0deg 0% 7%);
+  --sidebar-foreground: var(--color-zinc-50);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--color-zinc-950);
+  --sidebar-accent: var(--color-zinc-800);
+  --sidebar-accent-foreground: var(--color-zinc-50);
+  --sidebar-border: --alpha(var(--color-white) / 8%);
+  --sidebar-ring: var(--ring);
+  --pill-active-bg: --alpha(var(--color-white) / 14%);
+  --info: var(--color-blue-100);
+  --info-foreground: var(--color-blue-800);
+  --success: var(--color-emerald-100);
+  --success-foreground: var(--color-emerald-800);
+  --warning: var(--color-amber-100);
+  --warning-foreground: var(--color-amber-800);
+  --error: var(--color-red-100);
+  --error-foreground: var(--color-red-800);
+}
+
+/* Fumadocs tokens follow the same variables (declared after the fumadocs imports so both :root and .dark win). */
+:root,
+.dark {
+  --color-fd-background: var(--background);
+  --color-fd-foreground: var(--foreground);
+  --color-fd-muted: var(--muted);
+  --color-fd-muted-foreground: var(--muted-foreground);
+  --color-fd-popover: var(--popover);
+  --color-fd-popover-foreground: var(--popover-foreground);
+  --color-fd-card: var(--card);
+  --color-fd-card-foreground: var(--card-foreground);
+  --color-fd-border: var(--border);
+  --color-fd-primary: var(--primary);
+  --color-fd-primary-foreground: var(--primary-foreground);
+  --color-fd-secondary: var(--secondary);
+  --color-fd-secondary-foreground: var(--secondary-foreground);
+  --color-fd-accent: var(--accent);
+  --color-fd-accent-foreground: var(--accent-foreground);
+  --color-fd-ring: var(--ring);
+}
+
+@theme inline {
+  /* Fonts come from next/font in app/layout.tsx (self-hosted, no runtime request). */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-geist), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-pill-active-bg: var(--pill-active-bg);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+
+  --color-fd-background: var(--background);
+  --color-fd-foreground: var(--foreground);
+  --color-fd-muted: var(--muted);
+  --color-fd-muted-foreground: var(--muted-foreground);
+  --color-fd-popover: var(--popover);
+  --color-fd-popover-foreground: var(--popover-foreground);
+  --color-fd-card: var(--card);
+  --color-fd-card-foreground: var(--card-foreground);
+  --color-fd-border: var(--border);
+  --color-fd-primary: var(--primary);
+  --color-fd-primary-foreground: var(--primary-foreground);
+  --color-fd-secondary: var(--secondary);
+  --color-fd-secondary-foreground: var(--secondary-foreground);
+  --color-fd-accent: var(--accent);
+  --color-fd-accent-foreground: var(--accent-foreground);
+  --color-fd-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
 @theme {
-  --color-fd-background: #fcfcfc;
-  --color-fd-foreground: #121212;
-  --color-fd-muted: #f1f1f1;
-  --color-fd-muted-foreground: #7b7b7b;
-  --color-fd-popover: #fcfcfc;
-  --color-fd-popover-foreground: #121212;
-  --color-fd-card: #fcfcfc;
-  --color-fd-card-foreground: #121212;
-  --color-fd-border: #ececec;
-  --color-fd-primary: #1f6ae0;
-  --color-fd-primary-foreground: #fcfcfc;
-  --color-fd-secondary: #f8f7f7;
-  --color-fd-secondary-foreground: #121212;
-  --color-fd-accent: #f1f1f1;
-  --color-fd-accent-foreground: #121212;
-  --color-fd-ring: #3582ff;
-
-  /* Brainwave colors: highlight (progress, "continue" marker) and status colors. */
+  /* Brainwave highlight and status colors (progress bar, "continue" marker, roadmap months). */
   --color-bw-red: #fe5938;
   --color-bw-orange: #e36323;
   --color-bw-green: #49ba61;
@@ -38,124 +212,16 @@
 }
 
 .dark {
-  --color-fd-background: #121212;
-  --color-fd-foreground: #fcfcfc;
-  --color-fd-muted: #222222;
-  --color-fd-muted-foreground: #a3a3a3;
-  --color-fd-popover: #1a1a1a;
-  --color-fd-popover-foreground: #fcfcfc;
-  --color-fd-card: #181818;
-  --color-fd-card-foreground: #fcfcfc;
-  --color-fd-border: #2c2c2c;
-  --color-fd-primary: #6aa5ff;
-  --color-fd-primary-foreground: #121212;
-  --color-fd-secondary: #222222;
-  --color-fd-secondary-foreground: #fcfcfc;
-  --color-fd-accent: #2a2a2a;
-  --color-fd-accent-foreground: #fcfcfc;
-  --color-fd-ring: #6aa5ff;
   --shadow-depth-1: 0 1px 2px #00000040;
   --shadow-popover: 0 10px 21px #00000040, 0 38px 38px #00000030;
 }
 
-/* Brainwave buttons: light (default) and blue (primary), with gradient, 1px ring and inner highlight. */
-@layer components {
-  .bw-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.375rem;
-    border-radius: 10px;
-    padding: 0.5rem 1.25rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    line-height: 1.25rem;
-    letter-spacing: -0.02em;
-    white-space: nowrap;
-    color: #121212;
-    background: linear-gradient(#e5e5e5, #e2e2e2);
-    box-shadow:
-      0 3px 4px -1px rgb(0 0 0 / 0.15),
-      0 0 0 1px #d4d4d4,
-      inset 0 1px 0 rgb(255 255 255 / 0.33);
-    transition: filter 150ms;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-  .bw-btn:hover {
-    filter: brightness(0.97);
-  }
-  .bw-btn-primary {
-    color: #fcfcfc;
-    background: linear-gradient(#2a74f0, #1f6ae0);
-    box-shadow:
-      0 2px 4px -1px rgb(31 106 224 / 0.45),
-      0 0 0 1px #1a5fcc,
-      inset 0 1px 0 rgb(255 255 255 / 0.22),
-      inset 0 -1px 1.2px 0.35px rgb(0 0 0 / 0.15);
-  }
-  .bw-btn-primary:hover {
-    filter: brightness(1.08);
-  }
-  .bw-btn-sm {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
-  }
-  .dark .bw-btn {
-    color: #fcfcfc;
-    background: linear-gradient(#323232, #2a2a2a);
-    box-shadow:
-      0 2px 4px -1px rgb(0 0 0 / 0.5),
-      0 0 0 1px #3a3a3a,
-      inset 0 1px 0 rgb(255 255 255 / 0.08);
-  }
-  .dark .bw-btn:hover {
-    filter: brightness(1.2);
-  }
-  .dark .bw-btn-primary {
-    color: #fcfcfc;
-    background: linear-gradient(#3582ff, #2a74f0);
-    box-shadow:
-      0 2px 4px -1px rgb(0 0 0 / 0.5),
-      0 0 0 1px #3582ff,
-      inset 0 1px 0 rgb(255 255 255 / 0.2);
-  }
-  .dark .bw-btn-primary:hover {
-    filter: brightness(1.1);
-  }
-
-  /* Small grey pill (Brainwave "Label"). */
-  .bw-label {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 12px;
-    background: var(--color-fd-muted);
-    padding: 0.25rem 0.75rem;
-    font-size: 11px;
-    font-weight: 500;
-    line-height: 1rem;
-    letter-spacing: -0.01em;
-    color: var(--color-fd-foreground);
-  }
-
-  /* Keyboard shortcut chip (Brainwave "Shortcut"). */
-  .bw-kbd {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 6px;
-    background: var(--color-fd-muted);
-    padding: 0.125rem 0.375rem;
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 500;
-    line-height: 1rem;
-    color: var(--color-fd-muted-foreground);
-    box-shadow:
-      0 0 0 1px rgb(0 0 0 / 0.11),
-      0 1px 4.2px -1px rgb(0 0 0 / 0.25),
-      inset 0 2px 0.8px rgb(255 255 255 / 0.27),
-      inset 0 -1px 0.6px rgb(0 0 0 / 0.2);
-  }
-  .dark .bw-kbd {
-    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.12);
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
@@ -168,10 +234,14 @@ html > body[data-scroll-locked] {
   --removed-body-scroll-bar-size: 0px !important;
 }
 
-/* Comfortable long reading: ~70 characters per line, line-height 1.7. */
+/* Comfortable long reading: ~70 characters per line, line-height 1.7. Headings use the heading font. */
 #nd-page .prose {
   max-width: 70ch;
   line-height: 1.7;
+}
+#nd-page .prose :where(h1, h2, h3) {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
 }
 #nd-page .prose :where(h2) {
   scroll-margin-top: 5rem;

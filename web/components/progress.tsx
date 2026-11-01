@@ -2,21 +2,24 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { getProgressStore, pageIdentity, useProgress } from '@/lib/progress';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress';
 
 /** "Đã học xong" checkbox at the bottom of every lesson page. */
 export function DoneCheckbox({ url }: { url: string }) {
   const { bookSlug, pageSlug } = pageIdentity(url);
   const done = useProgress().done[bookSlug]?.[pageSlug] === true;
   return (
-    <label className="mt-10 flex cursor-pointer items-center gap-3 rounded-2xl border bg-fd-card px-4 py-3 shadow-depth-1 text-sm font-medium transition-colors hover:border-fd-primary/50 has-[:checked]:border-fd-primary/60 has-[:checked]:bg-fd-accent">
+    <label className="mt-10 flex cursor-pointer items-center gap-3 rounded-2xl border bg-card px-4 py-3 text-sm font-medium shadow-depth-1 transition-colors hover:border-primary/50 has-[:checked]:border-primary/60 has-[:checked]:bg-accent">
       <input
         type="checkbox"
-        className="size-4 accent-[var(--color-fd-primary)]"
+        className="size-4 accent-primary"
         checked={done}
         onChange={(e) => getProgressStore().setDone(bookSlug, pageSlug, e.target.checked)}
       />
       Đã học xong
-      {done && <span className="ms-auto text-xs font-normal text-fd-muted-foreground">Đã lưu trên trình duyệt này</span>}
+      {done && <span className="ms-auto text-xs font-normal text-muted-foreground">Đã lưu trên trình duyệt này</span>}
     </label>
   );
 }
@@ -36,17 +39,12 @@ export function BookProgress({ book, total }: { book: string; total: number }) {
   const pct = total ? Math.min(100, Math.round((done / total) * 100)) : 0;
   return (
     <div className="flex flex-col gap-1.5">
-      <div
-        className="h-1.5 overflow-hidden rounded-full bg-fd-muted"
-        role="progressbar"
-        aria-valuenow={pct}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="Tiến độ"
-      >
-        <div className="h-full rounded-full bg-bw-red transition-[width]" style={{ width: `${pct}%` }} />
-      </div>
-      <p className="text-[11px] font-medium leading-4 text-fd-muted-foreground">
+      <Progress value={pct} aria-label="Tiến độ">
+        <ProgressTrack className="h-1.5">
+          <ProgressIndicator className="bg-bw-red" />
+        </ProgressTrack>
+      </Progress>
+      <p className="text-[11px] font-medium leading-4 text-muted-foreground">
         {done > 0 ? `${done}/${total} bài · ${pct}%` : `${total} bài · chưa bắt đầu`}
       </p>
     </div>
@@ -66,19 +64,21 @@ export function ContinueReading({ books }: { books: BookLink[] }) {
   if (!last || !book) return null;
   const href = `/docs/${book.track}/${book.slug}/${last.pageSlug ? `${last.pageSlug}/` : ''}`;
   return (
-    <Link
-      href={href}
-      className="group mt-4 flex max-w-4xl flex-col gap-1 rounded-[24px] border bg-fd-card p-2 shadow-depth-1 transition-shadow hover:shadow-popover sm:flex-row sm:items-center sm:gap-4"
+    <Card
+      render={<Link href={href} />}
+      className="group mt-4 flex max-w-4xl flex-col gap-2 rounded-3xl border p-2 shadow-depth-1 transition-shadow hover:shadow-popover sm:flex-row sm:items-center sm:gap-4"
     >
-      <span className="flex items-center gap-2 rounded-2xl bg-fd-secondary px-4 py-3 text-xs font-semibold">
+      <span className="flex items-center gap-2 rounded-2xl bg-secondary px-4 py-3 text-xs font-semibold">
         <span className="size-1.5 rounded-full bg-bw-red" aria-hidden />
         Tiếp tục học
       </span>
       <span className="flex min-w-0 flex-1 flex-col px-3 py-2 sm:px-0">
-        <span className="truncate text-sm font-semibold tracking-[-0.02em]">{last.title ?? book.title}</span>
-        <span className="truncate text-xs text-fd-muted-foreground">{book.title}</span>
+        <span className="truncate text-sm font-semibold tracking-tight">{last.title ?? book.title}</span>
+        <span className="truncate text-xs text-muted-foreground">{book.title}</span>
       </span>
-      <span className="bw-btn bw-btn-sm bw-btn-primary m-1 self-start sm:self-auto">Học tiếp →</span>
-    </Link>
+      <Button size="sm" render={<span />} className="m-1 self-start sm:self-auto">
+        Học tiếp →
+      </Button>
+    </Card>
   );
 }
