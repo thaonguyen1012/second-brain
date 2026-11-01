@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
 from core.admin import OwnedAdmin
 from inbox.models import InboxEntry
@@ -16,9 +17,15 @@ class InboxEntryAdmin(OwnedAdmin[InboxEntry]):
         "og_title",
         "og_description",
         "og_site_name",
-        "og_image_path",
+        "thumbnail",
         "unfurled_at",
         "suggested_tags",
         "summary",
         "suggested_destination",
     )
+
+    @admin.display(description="thumbnail")
+    def thumbnail(self, entry: InboxEntry) -> str:
+        if not entry.og_image_path:
+            return "-"
+        return format_html('<img src="/api/inbox/{}/thumbnail" alt="" style="max-width:320px">', entry.pk)

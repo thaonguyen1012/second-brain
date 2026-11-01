@@ -49,6 +49,10 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
   library/                       Item (type, status, tags ArrayField, rating) + Note (admin only); /api/items
   inbox/                         InboxEntry (url|text, triage status, OG unfurl fields, LLM suggestions); /api/inbox
   core/pagination.py, admin.py   NewestFirstCursor (cursor pagination for lists), OwnedAdmin (sets user on create)
+  core/services/jobs.py          Job table queue: enqueue (idempotency key), @handler(kind), RetryLater (429);
+                                 `manage.py run_jobs` (cron) is the only place that makes outbound requests
+  core/services/safe_fetch.py    SSRF-guarded GET (public IPs only, pinned IP, 3 redirects, 10 s, 2 MB);
+                                 unfurl.py (OG card, nh3), thumbnails.py (webp <= 200 KB in THUMBS_DIR, X-Accel)
   docker-compose.yml             dev Postgres (the laptop uses Homebrew Postgres 16 instead)
 deploy/                          nginx/ (site.conf + header snippets), docker-compose.prod.yml, .env.example, README (Cloudflare Tunnel +
                                  Access setup); config only, not deployed

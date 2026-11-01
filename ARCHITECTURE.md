@@ -40,6 +40,10 @@ planned/active/done/dropped, tags as a Postgres array, rating 1-10) and `Note` (
 `backend/inbox/` has `InboxEntry` (url or text, triage status inbox/later/archived, optional linked Item, OG unfurl
 fields, LLM suggestions, `processed` + `error`). Endpoints `GET/POST /api/items`, `PATCH /api/items/{id}`,
 `GET/POST /api/inbox`, `PATCH /api/inbox/{id}` (cursor pagination, newest first). Django admin is the first UI.
+Ingest returns at once; `POST /api/inbox` with a URL enqueues an `unfurl` Job. `manage.py run_jobs` (cron; the
+`jobs` service in deploy/) fetches the page through `core/services/safe_fetch.py` (SSRF guard), stores the OG
+card as plain text and the og:image as a re-encoded webp in `THUMBS_DIR`, served by
+`/api/inbox/{id}/thumbnail` through X-Accel-Redirect to nginx `/internal/thumbs/` (Django streams it in DEBUG).
 Deployment config is in `deploy/` (see deploy/README.md): nginx routes `/api/` (except `/api/search`), `/admin/`,
 `/healthz` and `/files/` to Django and everything else to Next; `/files/` passes `auth_request` (Django `/api/me`)
 and Django's `X-Accel-Redirect` to the internal `/internal/files/` alias; CSP is report-only. With

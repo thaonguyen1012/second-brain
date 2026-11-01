@@ -1,5 +1,7 @@
 from django.contrib.auth.models import User
+from django.db import transaction
 
+from core.services import jobs
 from inbox.models import InboxEntry
 
 TRIAGE_FIELDS = ("status", "item")
@@ -7,7 +9,11 @@ TRIAGE_FIELDS = ("status", "item")
 
 def add_entry(user: User, url: str, text: str) -> InboxEntry:
     """Store the capture and return at once; unfurl and tagging run later in `run_jobs`."""
-    return InboxEntry.objects.create(user=user, url=url, text=text)
+    with transaction.atomic():
+        entry = InboxEntry.objects.create(user=user, url=url, text=text)
+        if url:
+            jobs.enqueue("unfurl", f"unfurl:{entry.pk}", {"entry_id": entry.pk})
+    return entry
 
 
 def triage_entry(entry: InboxEntry, changes: dict[str, object]) -> InboxEntry:

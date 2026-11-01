@@ -5,6 +5,8 @@ from django.db import models
 from django.forms import ModelForm
 from django.http import HttpRequest
 
+from core.models import Job
+
 
 class OwnedAdmin[M: models.Model](admin.ModelAdmin[M]):
     """Admin for rows with a `user` FK: hidden in the form, set to the logged-in owner on create."""
@@ -15,3 +17,10 @@ class OwnedAdmin[M: models.Model](admin.ModelAdmin[M]):
         if not change:
             obj.user = request.user  # type: ignore[attr-defined]
         super().save_model(request, obj, form, change)
+
+
+@admin.register(Job)
+class JobAdmin(admin.ModelAdmin[Job]):
+    list_display = ("key", "kind", "status", "attempts", "run_after", "updated_at")
+    list_filter = ("status", "kind")
+    search_fields = ("key",)

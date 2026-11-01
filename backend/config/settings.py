@@ -38,6 +38,8 @@ if AUTH_MODE == "cf_access" and not DEBUG and not (OWNER_EMAIL and CF_ACCESS_TEA
 CONTENT_DIR = Path(env.str("CONTENT_DIR", default=str(REPO_DIR / "web" / "content" / "docs")))
 # Attachments: Django authorises /files/<path>, nginx serves it from /internal/files/ (X-Accel-Redirect).
 FILES_DIR = Path(env.str("FILES_DIR", default=str(REPO_DIR / "web" / "public" / "files")))
+# Inbox link thumbnails (webp written by run_jobs); nginx serves them from /internal/thumbs/.
+THUMBS_DIR = Path(env.str("THUMBS_DIR", default=str(BASE_DIR / "media" / "thumbs")))
 
 INSTALLED_APPS = [
     "django.contrib.admin",
