@@ -51,7 +51,7 @@ export function BookCard({ book }: { book: Book }) {
         <span className="bw-label self-start bg-fd-card">{book.lessonCount} bài</span>
         <div className="flex flex-col gap-1.5">
           <h3 className="text-sm font-semibold leading-5 tracking-[-0.02em]">
-            <Link href={bookUrl(book)} className="hover:underline">
+            <Link href={bookUrl(book)} className="hover:text-fd-primary">
               {book.title}
             </Link>
           </h3>
@@ -61,7 +61,7 @@ export function BookCard({ book }: { book: Book }) {
       <div className="flex flex-1 flex-col gap-4 p-3">
         <BookProgress book={book.slug} total={book.lessonCount} />
         <div className="mt-auto flex flex-wrap gap-2">
-          <Link href={bookUrl(book)} className="bw-btn bw-btn-sm bw-btn-dark">
+          <Link href={bookUrl(book)} className="bw-btn bw-btn-sm bw-btn-primary">
             Học ngay
           </Link>
           <SourceCourses book={book} />

@@ -15,7 +15,7 @@ export default function HomePage() {
           ba nhóm. Tìm nhanh với <kbd className="bw-kbd">/</kbd> hoặc <kbd className="bw-kbd">⌘ K</kbd>.
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
-          <Link href="/lo-trinh/" className="bw-btn bw-btn-dark">
+          <Link href="/lo-trinh/" className="bw-btn bw-btn-primary">
             Xem lộ trình học
           </Link>
         </div>

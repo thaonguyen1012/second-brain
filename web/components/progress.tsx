@@ -78,7 +78,7 @@ export function ContinueReading({ books }: { books: BookLink[] }) {
         <span className="truncate text-sm font-semibold tracking-[-0.02em]">{last.title ?? book.title}</span>
         <span className="truncate text-xs text-fd-muted-foreground">{book.title}</span>
       </span>
-      <span className="bw-btn bw-btn-sm bw-btn-dark m-1 self-start sm:self-auto">Học tiếp →</span>
+      <span className="bw-btn bw-btn-sm bw-btn-primary m-1 self-start sm:self-auto">Học tiếp →</span>
     </Link>
   );
 }

@@ -3,8 +3,8 @@
 @import 'fumadocs-ui/css/preset.css';
 @import 'katex/dist/katex.css';
 
-/* Alex's Brain theme, after the Brainwave 2.0 design system (Figma): neutral shades 1-9, black primary,
-   red-orange accent, Inter, layered soft shadows. Brainwave is light only; dark mode is derived from shades 7-9.
+/* Alex's Brain theme, after the Brainwave 2.0 design system (Figma): neutral shades 1-9, Brainwave blue primary
+   (darkened to #1f6ae0 for 4.5:1 text contrast), red-orange accent, Inter, layered soft shadows. Brainwave is light only; dark mode is derived from shades 7-9.
    Spacing follows Tailwind's 4px scale (1, 2, 3, 4, 6, 8, 12 → 4/8/12/16/24/32/48 px). */
 @theme {
   --color-fd-background: #fcfcfc;
@@ -16,13 +16,13 @@
   --color-fd-card: #fcfcfc;
   --color-fd-card-foreground: #121212;
   --color-fd-border: #ececec;
-  --color-fd-primary: #121212;
+  --color-fd-primary: #1f6ae0;
   --color-fd-primary-foreground: #fcfcfc;
   --color-fd-secondary: #f8f7f7;
   --color-fd-secondary-foreground: #121212;
   --color-fd-accent: #f1f1f1;
   --color-fd-accent-foreground: #121212;
-  --color-fd-ring: #7b7b7b;
+  --color-fd-ring: #3582ff;
 
   /* Brainwave colors: highlight (progress, "continue" marker) and status colors. */
   --color-bw-red: #fe5938;
@@ -47,19 +47,18 @@
   --color-fd-card: #181818;
   --color-fd-card-foreground: #fcfcfc;
   --color-fd-border: #2c2c2c;
-  --color-fd-primary: #fcfcfc;
+  --color-fd-primary: #6aa5ff;
   --color-fd-primary-foreground: #121212;
   --color-fd-secondary: #222222;
   --color-fd-secondary-foreground: #fcfcfc;
   --color-fd-accent: #2a2a2a;
   --color-fd-accent-foreground: #fcfcfc;
-  --color-fd-ring: #a3a3a3;
+  --color-fd-ring: #6aa5ff;
   --shadow-depth-1: 0 1px 2px #00000040;
   --shadow-popover: 0 10px 21px #00000040, 0 38px 38px #00000030;
 }
 
-/* Brainwave buttons: light (default) and dark (primary), with gradient, 1px ring and inner highlight.
-   In dark mode the two swap so the primary button stays the high-contrast one. */
+/* Brainwave buttons: light (default) and blue (primary), with gradient, 1px ring and inner highlight. */
 @layer components {
   .bw-btn {
     display: inline-flex;
@@ -84,17 +83,17 @@
   .bw-btn:hover {
     filter: brightness(0.97);
   }
-  .bw-btn-dark {
+  .bw-btn-primary {
     color: #fcfcfc;
-    background: linear-gradient(#323232, #222222);
+    background: linear-gradient(#2a74f0, #1f6ae0);
     box-shadow:
-      0 2px 4px -1px rgb(13 13 13 / 0.5),
-      0 0 0 1px #333333,
-      inset 0 0.5px 1px rgb(255 255 255 / 0.15),
-      inset 0 -1px 1.2px 0.35px #121212;
+      0 2px 4px -1px rgb(31 106 224 / 0.45),
+      0 0 0 1px #1a5fcc,
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      inset 0 -1px 1.2px 0.35px rgb(0 0 0 / 0.15);
   }
-  .bw-btn-dark:hover {
-    filter: brightness(1.25);
+  .bw-btn-primary:hover {
+    filter: brightness(1.08);
   }
   .bw-btn-sm {
     padding: 0.375rem 0.75rem;
@@ -111,16 +110,16 @@
   .dark .bw-btn:hover {
     filter: brightness(1.2);
   }
-  .dark .bw-btn-dark {
-    color: #121212;
-    background: linear-gradient(#fcfcfc, #e5e5e5);
+  .dark .bw-btn-primary {
+    color: #fcfcfc;
+    background: linear-gradient(#3582ff, #2a74f0);
     box-shadow:
       0 2px 4px -1px rgb(0 0 0 / 0.5),
-      0 0 0 1px #d4d4d4,
-      inset 0 1px 0 rgb(255 255 255 / 0.5);
+      0 0 0 1px #3582ff,
+      inset 0 1px 0 rgb(255 255 255 / 0.2);
   }
-  .dark .bw-btn-dark:hover {
-    filter: brightness(0.94);
+  .dark .bw-btn-primary:hover {
+    filter: brightness(1.1);
   }
 
   /* Small grey pill (Brainwave "Label"). */
