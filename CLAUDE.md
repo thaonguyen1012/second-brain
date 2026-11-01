@@ -46,6 +46,9 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
   core/                          /healthz, /api/me, /files/ (X-Accel-Redirect), single-owner auth middleware
                                  (AUTH_MODE dev|cf_access; cf_access verifies Cf-Access-Jwt-Assertion)
   progress/                      progress API (API_CONTRACT.md); logic in services.py, thin views
+  library/                       Item (type, status, tags ArrayField, rating) + Note (admin only); /api/items
+  inbox/                         InboxEntry (url|text, triage status, OG unfurl fields, LLM suggestions); /api/inbox
+  core/pagination.py, admin.py   NewestFirstCursor (cursor pagination for lists), OwnedAdmin (sets user on create)
   docker-compose.yml             dev Postgres (the laptop uses Homebrew Postgres 16 instead)
 deploy/                          nginx/ (site.conf + header snippets), docker-compose.prod.yml, .env.example, README (Cloudflare Tunnel +
                                  Access setup); config only, not deployed

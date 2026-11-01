@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.request import Request
@@ -16,3 +17,9 @@ class SessionAuthentication401Scheme(OpenApiAuthenticationExtension):  # type: i
 
     def get_security_definition(self, auto_schema: object) -> dict[str, str]:
         return {"type": "apiKey", "in": "cookie", "name": "sessionid"}
+
+
+def request_user(request: Request) -> User:
+    """The owner behind an API request; only call after IsAuthenticated ran."""
+    assert isinstance(request.user, User)
+    return request.user

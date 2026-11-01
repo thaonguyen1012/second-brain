@@ -3,6 +3,174 @@ info:
   title: Alex's Brain API
   version: 0.1.0
 paths:
+  /api/inbox:
+    get:
+      operationId: listInbox
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - archived
+          - inbox
+          - later
+      tags:
+      - inbox
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInboxEntryList'
+          description: ''
+    post:
+      operationId: createInboxEntry
+      tags:
+      - inbox
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InboxEntryRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxEntry'
+          description: ''
+  /api/inbox/{id}:
+    patch:
+      operationId: updateInboxEntry
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - inbox
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInboxTriageRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxEntry'
+          description: ''
+  /api/items:
+    get:
+      operationId: listItems
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - done
+          - dropped
+          - planned
+      - in: query
+        name: type
+        schema:
+          type: string
+          enum:
+          - article
+          - book
+          - course
+          - film
+          - project
+      tags:
+      - items
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedItemList'
+          description: ''
+    post:
+      operationId: createItem
+      tags:
+      - items
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: ''
+  /api/items/{id}:
+    patch:
+      operationId: updateItem
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - items
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedItemRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: ''
   /api/me:
     get:
       operationId: getMe
@@ -85,6 +253,205 @@ paths:
           description: ''
 components:
   schemas:
+    InboxEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2000
+          - type: string
+            maxLength: 0
+        text:
+          type: string
+          maxLength: 20000
+        status:
+          allOf:
+          - $ref: '#/components/schemas/InboxStatusEnum'
+          readOnly: true
+        item:
+          type: integer
+          readOnly: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        processed:
+          type: boolean
+          readOnly: true
+        processedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        error:
+          type: string
+          readOnly: true
+        ogTitle:
+          type: string
+          readOnly: true
+        ogDescription:
+          type: string
+          readOnly: true
+        ogSiteName:
+          type: string
+          readOnly: true
+        thumbnailUrl:
+          type: string
+          nullable: true
+          readOnly: true
+        suggestedTags:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        summary:
+          type: string
+          readOnly: true
+        suggestedDestination:
+          type: string
+          readOnly: true
+      required:
+      - createdAt
+      - error
+      - id
+      - item
+      - ogDescription
+      - ogSiteName
+      - ogTitle
+      - processed
+      - processedAt
+      - status
+      - suggestedDestination
+      - suggestedTags
+      - summary
+      - thumbnailUrl
+    InboxEntryRequest:
+      type: object
+      properties:
+        url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2000
+          - type: string
+            maxLength: 0
+        text:
+          type: string
+          maxLength: 20000
+    InboxStatusEnum:
+      enum:
+      - inbox
+      - later
+      - archived
+      type: string
+      description: |-
+        * `inbox` - Inbox
+        * `later` - Later
+        * `archived` - Archived
+    Item:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        status:
+          $ref: '#/components/schemas/ItemStatusEnum'
+        title:
+          type: string
+          maxLength: 300
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 30
+        source:
+          type: string
+          maxLength: 2000
+        rating:
+          type: integer
+          maximum: 10
+          minimum: 1
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - createdAt
+      - id
+      - title
+      - type
+      - updatedAt
+    ItemRequest:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        status:
+          $ref: '#/components/schemas/ItemStatusEnum'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        tags:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+          maxItems: 30
+        source:
+          type: string
+          maxLength: 2000
+        rating:
+          type: integer
+          maximum: 10
+          minimum: 1
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - title
+      - type
+    ItemStatusEnum:
+      enum:
+      - planned
+      - active
+      - done
+      - dropped
+      type: string
+      description: |-
+        * `planned` - Planned
+        * `active` - Active
+        * `done` - Done
+        * `dropped` - Dropped
     LastVisited:
       type: object
       properties:
@@ -115,6 +482,86 @@ components:
       - email
       - id
       - name
+    PaginatedInboxEntryList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/InboxEntry'
+    PaginatedItemList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Item'
+    PatchedInboxTriageRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/InboxStatusEnum'
+        item:
+          type: integer
+          nullable: true
+    PatchedItemRequest:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        status:
+          $ref: '#/components/schemas/ItemStatusEnum'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        tags:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+          maxItems: 30
+        source:
+          type: string
+          maxLength: 2000
+        rating:
+          type: integer
+          maximum: 10
+          minimum: 1
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
     ProgressSnapshot:
       type: object
       properties:
@@ -171,6 +618,20 @@ components:
       required:
       - book
       - page
+    TypeEnum:
+      enum:
+      - course
+      - book
+      - film
+      - article
+      - project
+      type: string
+      description: |-
+        * `course` - Course
+        * `book` - Book
+        * `film` - Film
+        * `article` - Article
+        * `project` - Project
   securitySchemes:
     sessionAuth:
       type: apiKey

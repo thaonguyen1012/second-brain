@@ -4,6 +4,70 @@
  */
 
 export interface paths {
+    "/api/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listInbox"];
+        put?: never;
+        post: operations["createInboxEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inbox/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateInboxEntry"];
+        trace?: never;
+    };
+    "/api/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listItems"];
+        put?: never;
+        post: operations["createItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/items/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateItem"];
+        trace?: never;
+    };
     "/api/me": {
         parameters: {
             query?: never;
@@ -72,6 +136,74 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        InboxEntry: {
+            readonly id: number;
+            url?: string;
+            text?: string;
+            readonly status: components["schemas"]["InboxStatusEnum"];
+            readonly item: number | null;
+            /** Format: date-time */
+            readonly createdAt: string;
+            readonly processed: boolean;
+            /** Format: date-time */
+            readonly processedAt: string | null;
+            readonly error: string;
+            readonly ogTitle: string;
+            readonly ogDescription: string;
+            readonly ogSiteName: string;
+            readonly thumbnailUrl: string | null;
+            readonly suggestedTags: string[];
+            readonly summary: string;
+            readonly suggestedDestination: string;
+        };
+        InboxEntryRequest: {
+            url?: string;
+            text?: string;
+        };
+        /**
+         * @description * `inbox` - Inbox
+         *     * `later` - Later
+         *     * `archived` - Archived
+         * @enum {string}
+         */
+        InboxStatusEnum: "inbox" | "later" | "archived";
+        Item: {
+            readonly id: number;
+            type: components["schemas"]["TypeEnum"];
+            status?: components["schemas"]["ItemStatusEnum"];
+            title: string;
+            tags?: string[];
+            source?: string;
+            rating?: number | null;
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+            /** Format: date-time */
+            startedAt?: string | null;
+            /** Format: date-time */
+            finishedAt?: string | null;
+        };
+        ItemRequest: {
+            type: components["schemas"]["TypeEnum"];
+            status?: components["schemas"]["ItemStatusEnum"];
+            title: string;
+            tags?: string[];
+            source?: string;
+            rating?: number | null;
+            /** Format: date-time */
+            startedAt?: string | null;
+            /** Format: date-time */
+            finishedAt?: string | null;
+        };
+        /**
+         * @description * `planned` - Planned
+         *     * `active` - Active
+         *     * `done` - Done
+         *     * `dropped` - Dropped
+         * @enum {string}
+         */
+        ItemStatusEnum: "planned" | "active" | "done" | "dropped";
         LastVisited: {
             bookSlug: string;
             pageSlug: string;
@@ -84,6 +216,48 @@ export interface components {
             /** Format: email */
             email: string;
             name: string;
+        };
+        PaginatedInboxEntryList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["InboxEntry"][];
+        };
+        PaginatedItemList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["Item"][];
+        };
+        PatchedInboxTriageRequest: {
+            status?: components["schemas"]["InboxStatusEnum"];
+            item?: number | null;
+        };
+        PatchedItemRequest: {
+            type?: components["schemas"]["TypeEnum"];
+            status?: components["schemas"]["ItemStatusEnum"];
+            title?: string;
+            tags?: string[];
+            source?: string;
+            rating?: number | null;
+            /** Format: date-time */
+            startedAt?: string | null;
+            /** Format: date-time */
+            finishedAt?: string | null;
         };
         ProgressSnapshot: {
             done: {
@@ -108,6 +282,15 @@ export interface components {
             page: string;
             title?: string;
         };
+        /**
+         * @description * `course` - Course
+         *     * `book` - Book
+         *     * `film` - Film
+         *     * `article` - Article
+         *     * `project` - Project
+         * @enum {string}
+         */
+        TypeEnum: "course" | "book" | "film" | "article" | "project";
     };
     responses: never;
     parameters: never;
@@ -117,6 +300,153 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listInbox: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                status?: "archived" | "inbox" | "later";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedInboxEntryList"];
+                };
+            };
+        };
+    };
+    createInboxEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["InboxEntryRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxEntry"];
+                };
+            };
+        };
+    };
+    updateInboxEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedInboxTriageRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxEntry"];
+                };
+            };
+        };
+    };
+    listItems: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                status?: "active" | "done" | "dropped" | "planned";
+                type?: "article" | "book" | "course" | "film" | "project";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedItemList"];
+                };
+            };
+        };
+    };
+    createItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+        };
+    };
+    updateItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedItemRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+        };
+    };
     getMe: {
         parameters: {
             query?: never;

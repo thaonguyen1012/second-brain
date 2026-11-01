@@ -57,6 +57,48 @@ response 200 { "bookSlug": "handbook-08", "pageSlug": "c5-m3-...", "title": "Nav
 
 `title` is optional and for display only.
 
+## Lists: cursor pagination
+
+List endpoints return the newest rows first, 50 per page (`?limit=` up to 200):
+
+```json
+200 { "next": "http://.../api/items?cursor=cD0y...", "previous": null, "results": [ ... ] }
+```
+
+Follow `next` until it is `null`. Unknown ids answer `404`; validation errors answer `400` with field messages.
+
+## Items (`/api/items`)
+
+`GET /api/items?type=book&status=active` lists items (both filters optional). `POST /api/items` creates one,
+`PATCH /api/items/{id}` changes any writable field.
+
+```json
+request  { "type": "book", "title": "Deep Work", "tags": ["Focus"], "source": "Cal Newport", "rating": 9 }
+response 201 { "id": 1, "type": "book", "status": "planned", "title": "Deep Work", "tags": ["focus"],
+               "source": "Cal Newport", "rating": 9, "createdAt": "...", "updatedAt": "...",
+               "startedAt": null, "finishedAt": null }
+```
+
+`type`: course, book, film, article, project. `status`: planned, active, done, dropped. Tags are lowercased and
+deduplicated; `rating` is 1-10 or null.
+
+## Inbox (`/api/inbox`)
+
+`POST /api/inbox` stores a capture and answers at once with `processed: false`; unfurl and AI tagging run later
+in a background job, never inside the request.
+
+```json
+request  { "url": "https://example.com/post" }          (or { "text": "an idea" }; at least one is required)
+response 201 { "id": 7, "url": "https://example.com/post", "text": "", "status": "inbox", "item": null,
+               "createdAt": "...", "processed": false, "processedAt": null, "error": "",
+               "ogTitle": "", "ogDescription": "", "ogSiteName": "", "thumbnailUrl": null,
+               "suggestedTags": [], "summary": "", "suggestedDestination": "" }
+```
+
+Only `http` and `https` URLs are accepted. `GET /api/inbox?status=inbox` lists entries. `PATCH /api/inbox/{id}`
+records the weekly triage and accepts only `{ "status": "inbox|later|archived", "item": <item id>|null }`.
+`suggestedDestination` is one of read_later, book, opportunity, note (or empty until processed).
+
 ## Mapping to ProgressStore
 
 | ProgressStore method | HTTP |

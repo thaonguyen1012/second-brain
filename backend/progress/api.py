@@ -1,4 +1,3 @@
-from django.contrib.auth.models import User
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -7,6 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.authentication import request_user as _user
 from progress import services
 from progress.serializers import (
     LastVisitedSerializer,
@@ -15,11 +15,6 @@ from progress.serializers import (
     SetDoneSerializer,
     SetLastVisitedSerializer,
 )
-
-
-def _user(request: Request) -> User:
-    assert isinstance(request.user, User)  # IsAuthenticated ran
-    return request.user
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")

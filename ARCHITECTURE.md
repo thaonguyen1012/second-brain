@@ -35,6 +35,11 @@ unknown books = not a directory under `CONTENT_DIR/<track>/`). drf-spectacular s
 `make api-types` writes `web/lib/api/openapi.yaml` and `schema.ts`. Build the web app with
 `NEXT_PUBLIC_PROGRESS_STORE=api` to use `ApiProgressStore` (optimistic writes, last-visited debounced 1.5 s,
 reload on tab focus; on first load against an empty account it copies this browser's localStorage progress once).
+Second brain, step 1 (DECISIONS 9.4): `backend/library/` has `Item` (course/book/film/article/project, status
+planned/active/done/dropped, tags as a Postgres array, rating 1-10) and `Note` (markdown, M2M to Item, admin only);
+`backend/inbox/` has `InboxEntry` (url or text, triage status inbox/later/archived, optional linked Item, OG unfurl
+fields, LLM suggestions, `processed` + `error`). Endpoints `GET/POST /api/items`, `PATCH /api/items/{id}`,
+`GET/POST /api/inbox`, `PATCH /api/inbox/{id}` (cursor pagination, newest first). Django admin is the first UI.
 Deployment config is in `deploy/` (see deploy/README.md): nginx routes `/api/` (except `/api/search`), `/admin/`,
 `/healthz` and `/files/` to Django and everything else to Next; `/files/` passes `auth_request` (Django `/api/me`)
 and Django's `X-Accel-Redirect` to the internal `/internal/files/` alias; CSP is report-only. With
