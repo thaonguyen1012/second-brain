@@ -132,6 +132,140 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listProjects"];
+        put?: never;
+        /** @description An Item with type=project plus its client and price, in one write. */
+        post: operations["createProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getProject"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateProject"];
+        trace?: never;
+    };
+    "/api/time-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listTimeEntries"];
+        put?: never;
+        /** @description Time typed in by hand. */
+        post: operations["createTimeEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/time-entries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateTimeEntry"];
+        trace?: never;
+    };
+    "/api/time-entries/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Billable and non-billable minutes of one week, in total and per project. */
+        get: operations["getTimeSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/time-entries/timer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The running timer entry, or null. */
+        get: operations["getTimer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/time-entries/timer/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Start a timer; a timer already running is stopped first. */
+        post: operations["startTimer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/time-entries/timer/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Stop the running timer; 404 when nothing runs. */
+        post: operations["stopTimer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/weeks": {
         parameters: {
             query?: never;
@@ -235,6 +369,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `fixed` - Fixed
+         *     * `hourly` - Hourly
+         * @enum {string}
+         */
+        BillingEnum: "fixed" | "hourly";
         CarryCandidate: {
             id: number;
             title: string;
@@ -248,6 +388,8 @@ export interface components {
             inboxArchived: components["schemas"]["InboxWork"][];
             itemsFinished: components["schemas"]["ItemWork"][];
             pagesDone: components["schemas"]["PageWork"][];
+            minutesForObjectives: number;
+            minutesOther: number;
         };
         InboxEntry: {
             readonly id: number;
@@ -365,6 +507,11 @@ export interface components {
          * @enum {string}
          */
         ObjectiveStatusEnum: "open" | "done" | "dropped";
+        ObjectiveTime: {
+            id: number;
+            title: string;
+            minutes: number;
+        };
         PageWork: {
             book: string;
             page: string;
@@ -394,6 +541,32 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Item"][];
+        };
+        PaginatedProjectList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["Project"][];
+        };
+        PaginatedTimeEntryList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["TimeEntry"][];
         };
         PaginatedWeekList: {
             /**
@@ -429,6 +602,24 @@ export interface components {
             status?: components["schemas"]["ObjectiveStatusEnum"];
             position?: number;
         };
+        /** @description Create (title required) or partial update; context["details"] is the current details on update. */
+        PatchedProjectWriteRequest: {
+            title?: string;
+            status?: components["schemas"]["ItemStatusEnum"];
+            tags?: string[];
+            source?: string;
+            /** Format: date-time */
+            startedAt?: string | null;
+            /** Format: date-time */
+            finishedAt?: string | null;
+            client?: string;
+            billing?: components["schemas"]["BillingEnum"];
+            /** Format: decimal */
+            price?: string | null;
+            /** Format: decimal */
+            hourlyRate?: string | null;
+            currency?: string;
+        };
         PatchedReviewUpdateRequest: {
             reviewWin?: string;
             reviewDistraction?: string;
@@ -436,6 +627,16 @@ export interface components {
             reviewSatisfied?: string;
             reviewChangedMind?: string;
             reviewOpportunityEvidence?: string;
+        };
+        /** @description Used with partial=True: every field is optional. */
+        PatchedTimeEntryUpdateRequest: {
+            project?: number;
+            objective?: number | null;
+            /** Format: date */
+            date?: string;
+            minutes?: number;
+            note?: string;
+            billable?: boolean;
         };
         PlanRequest: {
             carry?: number[];
@@ -453,10 +654,67 @@ export interface components {
             };
             lastVisited: components["schemas"]["LastVisited"] | null;
         };
+        /** @description A project Item with its details and computed totals (minutes of finished entries only). */
+        Project: {
+            id: number;
+            title: string;
+            status: components["schemas"]["ItemStatusEnum"];
+            tags: string[];
+            source: string;
+            client: string;
+            billing: components["schemas"]["BillingEnum"];
+            /** Format: decimal */
+            price: string | null;
+            /** Format: decimal */
+            hourlyRate: string | null;
+            currency: string;
+            minutesTotal: number;
+            minutesBillable: number;
+            minutesNonBillable: number;
+            /** Format: decimal */
+            earned: string | null;
+            /** Format: decimal */
+            effectiveRate: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+        };
+        ProjectWeek: {
+            id: number;
+            title: string;
+            client: string;
+            minutesTotal: number;
+            minutesBillable: number;
+            minutesNonBillable: number;
+        };
+        /** @description Create (title required) or partial update; context["details"] is the current details on update. */
+        ProjectWriteRequest: {
+            title: string;
+            status?: components["schemas"]["ItemStatusEnum"];
+            tags?: string[];
+            source?: string;
+            /** Format: date-time */
+            startedAt?: string | null;
+            /** Format: date-time */
+            finishedAt?: string | null;
+            client?: string;
+            billing?: components["schemas"]["BillingEnum"];
+            /** Format: decimal */
+            price?: string | null;
+            /** Format: decimal */
+            hourlyRate?: string | null;
+            currency?: string;
+        };
         ReviewView: {
             week: components["schemas"]["Week"];
             objectiveCounts: components["schemas"]["ObjectiveCounts"];
             days: components["schemas"]["DayWork"][];
+            time: components["schemas"]["WeekTime"];
         };
         SetDoneRequest: {
             done: boolean;
@@ -472,6 +730,44 @@ export interface components {
             book: string;
             page: string;
             title?: string;
+        };
+        TimeEntry: {
+            readonly id: number;
+            readonly project: number;
+            readonly projectTitle: string;
+            readonly objective: number | null;
+            /** Format: date */
+            readonly date: string;
+            readonly minutes: number | null;
+            /** Format: date-time */
+            readonly startedAt: string | null;
+            readonly running: boolean;
+            readonly note: string;
+            readonly billable: boolean;
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+        };
+        /** @description Project and objective ids, checked against the owner in context["user"]. */
+        TimeEntryCreateRequest: {
+            project: number;
+            objective?: number | null;
+            /** Format: date */
+            date: string;
+            minutes: number;
+            note?: string;
+            billable?: boolean;
+        };
+        Timer: {
+            running: components["schemas"]["TimeEntry"] | null;
+        };
+        /** @description Project and objective ids, checked against the owner in context["user"]. */
+        TimerStartRequest: {
+            project: number;
+            objective?: number | null;
+            note?: string;
+            billable?: boolean;
         };
         /**
          * @description * `course` - Course
@@ -502,6 +798,19 @@ export interface components {
             readonly createdAt: string;
             /** Format: date-time */
             readonly updatedAt: string;
+        };
+        WeekSummary: {
+            /** Format: date */
+            weekStart: string;
+            minutesTotal: number;
+            minutesBillable: number;
+            minutesNonBillable: number;
+            projects: components["schemas"]["ProjectWeek"][];
+        };
+        WeekTime: {
+            minutesForObjectives: number;
+            minutesOther: number;
+            byObjective: components["schemas"]["ObjectiveTime"][];
         };
     };
     responses: never;
@@ -743,6 +1052,261 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LastVisited"];
+                };
+            };
+        };
+    };
+    listProjects: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                status?: "active" | "done" | "dropped" | "planned";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedProjectList"];
+                };
+            };
+        };
+    };
+    createProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+        };
+    };
+    getProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+        };
+    };
+    updateProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProjectWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+        };
+    };
+    listTimeEntries: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                /** @description First day, inclusive. */
+                from?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description Project (Item) id. */
+                project?: number;
+                /** @description Last day, inclusive. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTimeEntryList"];
+                };
+            };
+        };
+    };
+    createTimeEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimeEntryCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeEntry"];
+                };
+            };
+        };
+    };
+    updateTimeEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTimeEntryUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeEntry"];
+                };
+            };
+        };
+    };
+    getTimeSummary: {
+        parameters: {
+            query?: {
+                /** @description The week's Monday, YYYY-MM-DD; default this week. */
+                week?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekSummary"];
+                };
+            };
+        };
+    };
+    getTimer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timer"];
+                };
+            };
+        };
+    };
+    startTimer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimerStartRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeEntry"];
+                };
+            };
+        };
+    };
+    stopTimer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeEntry"];
                 };
             };
         };

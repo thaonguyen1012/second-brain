@@ -251,6 +251,269 @@ paths:
               schema:
                 $ref: '#/components/schemas/LastVisited'
           description: ''
+  /api/projects:
+    get:
+      operationId: listProjects
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - done
+          - dropped
+          - planned
+      tags:
+      - projects
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProjectList'
+          description: ''
+    post:
+      operationId: createProject
+      description: An Item with type=project plus its client and price, in one write.
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectWriteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+  /api/projects/{id}:
+    get:
+      operationId: getProject
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - projects
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    patch:
+      operationId: updateProject
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectWriteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+  /api/time-entries:
+    get:
+      operationId: listTimeEntries
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: First day, inclusive.
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: project
+        schema:
+          type: integer
+        description: Project (Item) id.
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: Last day, inclusive.
+      tags:
+      - time-entries
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTimeEntryList'
+          description: ''
+    post:
+      operationId: createTimeEntry
+      description: Time typed in by hand.
+      tags:
+      - time-entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeEntryCreateRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntry'
+          description: ''
+  /api/time-entries/{id}:
+    patch:
+      operationId: updateTimeEntry
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - time-entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTimeEntryUpdateRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntry'
+          description: ''
+  /api/time-entries/summary:
+    get:
+      operationId: getTimeSummary
+      description: Billable and non-billable minutes of one week, in total and per
+        project.
+      parameters:
+      - in: query
+        name: week
+        schema:
+          type: string
+          format: date
+        description: The week's Monday, YYYY-MM-DD; default this week.
+      tags:
+      - time-entries
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekSummary'
+          description: ''
+  /api/time-entries/timer:
+    get:
+      operationId: getTimer
+      description: The running timer entry, or null.
+      tags:
+      - time-entries
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Timer'
+          description: ''
+  /api/time-entries/timer/start:
+    post:
+      operationId: startTimer
+      description: Start a timer; a timer already running is stopped first.
+      tags:
+      - time-entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimerStartRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntry'
+          description: ''
+  /api/time-entries/timer/stop:
+    post:
+      operationId: stopTimer
+      description: Stop the running timer; 404 when nothing runs.
+      tags:
+      - time-entries
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntry'
+          description: ''
   /api/weeks:
     get:
       operationId: listWeeks
@@ -455,6 +718,14 @@ paths:
           description: ''
 components:
   schemas:
+    BillingEnum:
+      enum:
+      - fixed
+      - hourly
+      type: string
+      description: |-
+        * `fixed` - Fixed
+        * `hourly` - Hourly
     CarryCandidate:
       type: object
       properties:
@@ -490,10 +761,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PageWork'
+        minutesForObjectives:
+          type: integer
+        minutesOther:
+          type: integer
       required:
       - date
       - inboxArchived
       - itemsFinished
+      - minutesForObjectives
+      - minutesOther
       - pagesDone
     InboxEntry:
       type: object
@@ -812,6 +1089,19 @@ components:
         * `open` - Open
         * `done` - Done
         * `dropped` - Dropped
+    ObjectiveTime:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        minutes:
+          type: integer
+      required:
+      - id
+      - minutes
+      - title
     PageWork:
       type: object
       properties:
@@ -860,6 +1150,44 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Item'
+    PaginatedProjectList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+    PaginatedTimeEntryList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeEntry'
     PaginatedWeekList:
       type: object
       required:
@@ -934,6 +1262,54 @@ components:
           type: integer
           maximum: 1000
           minimum: 0
+    PatchedProjectWriteRequest:
+      type: object
+      description: Create (title required) or partial update; context["details"] is
+        the current details on update.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        status:
+          $ref: '#/components/schemas/ItemStatusEnum'
+        tags:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+          maxItems: 30
+        source:
+          type: string
+          maxLength: 2000
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        client:
+          type: string
+          maxLength: 200
+        billing:
+          $ref: '#/components/schemas/BillingEnum'
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        hourlyRate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        currency:
+          type: string
+          minLength: 1
+          pattern: ^[A-Z]{3}$
     PatchedReviewUpdateRequest:
       type: object
       properties:
@@ -955,6 +1331,27 @@ components:
         reviewOpportunityEvidence:
           type: string
           maxLength: 20000
+    PatchedTimeEntryUpdateRequest:
+      type: object
+      description: 'Used with partial=True: every field is optional.'
+      properties:
+        project:
+          type: integer
+        objective:
+          type: integer
+          nullable: true
+        date:
+          type: string
+          format: date
+        minutes:
+          type: integer
+          maximum: 1440
+          minimum: 1
+        note:
+          type: string
+          maxLength: 5000
+        billable:
+          type: boolean
     PlanRequest:
       type: object
       properties:
@@ -994,6 +1391,161 @@ components:
       required:
       - done
       - lastVisited
+    Project:
+      type: object
+      description: A project Item with its details and computed totals (minutes of
+        finished entries only).
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        status:
+          $ref: '#/components/schemas/ItemStatusEnum'
+        tags:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+        client:
+          type: string
+        billing:
+          $ref: '#/components/schemas/BillingEnum'
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        hourlyRate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        currency:
+          type: string
+        minutesTotal:
+          type: integer
+        minutesBillable:
+          type: integer
+        minutesNonBillable:
+          type: integer
+        earned:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          nullable: true
+        effectiveRate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - billing
+      - client
+      - createdAt
+      - currency
+      - earned
+      - effectiveRate
+      - finishedAt
+      - hourlyRate
+      - id
+      - minutesBillable
+      - minutesNonBillable
+      - minutesTotal
+      - price
+      - source
+      - startedAt
+      - status
+      - tags
+      - title
+      - updatedAt
+    ProjectWeek:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        client:
+          type: string
+        minutesTotal:
+          type: integer
+        minutesBillable:
+          type: integer
+        minutesNonBillable:
+          type: integer
+      required:
+      - client
+      - id
+      - minutesBillable
+      - minutesNonBillable
+      - minutesTotal
+      - title
+    ProjectWriteRequest:
+      type: object
+      description: Create (title required) or partial update; context["details"] is
+        the current details on update.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        status:
+          $ref: '#/components/schemas/ItemStatusEnum'
+        tags:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+          maxItems: 30
+        source:
+          type: string
+          maxLength: 2000
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        client:
+          type: string
+          maxLength: 200
+        billing:
+          $ref: '#/components/schemas/BillingEnum'
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        hourlyRate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        currency:
+          type: string
+          minLength: 1
+          pattern: ^[A-Z]{3}$
+      required:
+      - title
     ReviewView:
       type: object
       properties:
@@ -1005,9 +1557,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DayWork'
+        time:
+          $ref: '#/components/schemas/WeekTime'
       required:
       - days
       - objectiveCounts
+      - time
       - week
     SetDoneRequest:
       type: object
@@ -1049,6 +1604,115 @@ components:
       required:
       - book
       - page
+    TimeEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        project:
+          type: integer
+          readOnly: true
+        projectTitle:
+          type: string
+          readOnly: true
+        objective:
+          type: integer
+          readOnly: true
+          nullable: true
+        date:
+          type: string
+          format: date
+          readOnly: true
+        minutes:
+          type: integer
+          readOnly: true
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        running:
+          type: boolean
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        billable:
+          type: boolean
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - billable
+      - createdAt
+      - date
+      - id
+      - minutes
+      - note
+      - objective
+      - project
+      - projectTitle
+      - running
+      - startedAt
+      - updatedAt
+    TimeEntryCreateRequest:
+      type: object
+      description: Project and objective ids, checked against the owner in context["user"].
+      properties:
+        project:
+          type: integer
+        objective:
+          type: integer
+          nullable: true
+        date:
+          type: string
+          format: date
+        minutes:
+          type: integer
+          maximum: 1440
+          minimum: 1
+        note:
+          type: string
+          maxLength: 5000
+        billable:
+          type: boolean
+      required:
+      - date
+      - minutes
+      - project
+    Timer:
+      type: object
+      properties:
+        running:
+          allOf:
+          - $ref: '#/components/schemas/TimeEntry'
+          nullable: true
+      required:
+      - running
+    TimerStartRequest:
+      type: object
+      description: Project and objective ids, checked against the owner in context["user"].
+      properties:
+        project:
+          type: integer
+        objective:
+          type: integer
+          nullable: true
+        note:
+          type: string
+          maxLength: 5000
+        billable:
+          type: boolean
+      required:
+      - project
     TypeEnum:
       enum:
       - course
@@ -1132,6 +1796,43 @@ components:
       - reviewedAt
       - startDate
       - updatedAt
+    WeekSummary:
+      type: object
+      properties:
+        weekStart:
+          type: string
+          format: date
+        minutesTotal:
+          type: integer
+        minutesBillable:
+          type: integer
+        minutesNonBillable:
+          type: integer
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectWeek'
+      required:
+      - minutesBillable
+      - minutesNonBillable
+      - minutesTotal
+      - projects
+      - weekStart
+    WeekTime:
+      type: object
+      properties:
+        minutesForObjectives:
+          type: integer
+        minutesOther:
+          type: integer
+        byObjective:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObjectiveTime'
+      required:
+      - byObjective
+      - minutesForObjectives
+      - minutesOther
   securitySchemes:
     sessionAuth:
       type: apiKey

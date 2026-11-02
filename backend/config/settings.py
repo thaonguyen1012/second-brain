@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "library",
     "inbox",
     "weeks",
+    "work",
 ]
 
 MIDDLEWARE = [
@@ -155,6 +156,7 @@ SPECTACULAR_SETTINGS = {
         "ItemStatusEnum": "library.models.Item.Status",
         "InboxStatusEnum": "inbox.models.InboxEntry.Status",
         "ObjectiveStatusEnum": "weeks.models.Objective.Status",
+        "BillingEnum": "work.models.ProjectDetails.Billing",
     },
 }
 

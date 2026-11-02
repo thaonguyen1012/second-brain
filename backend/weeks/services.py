@@ -13,6 +13,7 @@ from inbox.models import InboxEntry
 from library.models import Item
 from progress.models import PageProgress
 from weeks.models import Objective, Week
+from work.services import objective_time
 
 REVIEW_FIELDS = (
     "review_win",
@@ -132,7 +133,8 @@ def review(week: Week) -> dict[str, Any]:
     """Objective progress and the body of work per day, from data that already exists.
 
     Body of work: inbox entries archived that day (their last update), Items finished that day and
-    handbook pages marked done that day. Hours per objective wait for TimeEntry (DECISIONS 9.4 step 3).
+    handbook pages marked done that day. Time: minutes of time entries linked to this week's objectives
+    vs other minutes, per day and per objective (the review chart, DECISIONS 9.2).
     """
     tz = timezone.get_current_timezone()
     first = dt.datetime.combine(week.start_date, dt.time.min, tzinfo=tz)
@@ -160,13 +162,31 @@ def review(week: Week) -> dict[str, Any]:
     for page in pages.order_by("updated_at").only("book", "page", "updated_at"):
         day_of(page.updated_at)["pagesDone"].append({"book": page.book, "page": page.page})
 
+    time = objective_time(user_id, week.pk, week.start_date)
     counts = dict.fromkeys(Objective.Status.values, 0)
+    by_objective = []
     for objective in week.objectives.all():
         counts[objective.status] += 1
+        minutes = time["byObjective"].get(objective.pk, 0)
+        by_objective.append({"id": objective.pk, "title": objective.title, "minutes": minutes})
+    day_minutes = time["days"]
     return {
         "week": week,
         "objectiveCounts": counts,
-        "days": [{"date": day, **work} for day, work in days.items()],
+        "days": [
+            {
+                "date": day,
+                **work,
+                "minutesForObjectives": day_minutes[day]["forObjectives"],
+                "minutesOther": day_minutes[day]["other"],
+            }
+            for day, work in days.items()
+        ],
+        "time": {
+            "minutesForObjectives": sum(d["forObjectives"] for d in day_minutes.values()),
+            "minutesOther": sum(d["other"] for d in day_minutes.values()),
+            "byObjective": by_objective,
+        },
     }
 
 

@@ -140,7 +140,60 @@ Review. `PATCH /api/weeks/{start}/review` saves any of `reviewWin`, `reviewDistr
 ```
 
 Body of work per day: inbox entries with status archived (by their last update), Items by `finishedAt`,
-handbook pages marked done (by their last update). Hours per objective come with TimeEntry (later step).
+handbook pages marked done (by their last update). Each day also has `minutesForObjectives` and `minutesOther`
+(finished time entries of that date; "for objectives" = linked to one of this week's objectives), and the review
+has a week total for the chart:
+
+```json
+"time": { "minutesForObjectives": 120, "minutesOther": 60,
+          "byObjective": [ { "id": 9, "title": "Ship Week", "minutes": 120 } ] }
+```
+
+## Projects and time (`/api/projects`, `/api/time-entries`)
+
+A project is an Item with `type: "project"`; its id is the Item id. Money is a decimal string with two places in
+`currency` (ISO 4217, default `CZK`). Minute totals count finished entries only (not a running timer).
+
+```json
+200 { "id": 4, "title": "Eshop", "status": "active", "tags": ["sme"], "source": "", "client": "Pekárna",
+      "billing": "hourly", "price": null, "hourlyRate": "800.00", "currency": "CZK",
+      "minutesTotal": 480, "minutesBillable": 360, "minutesNonBillable": 120,
+      "earned": "4800.00", "effectiveRate": "600.00",
+      "createdAt": "...", "updatedAt": "...", "startedAt": null, "finishedAt": null }
+```
+
+`earned` is the agreed `price` (fixed) or billable hours × `hourlyRate` (hourly). `effectiveRate` = `earned` /
+all hours spent, non-billable included (Harvest style); `null` without time or without a price.
+`GET /api/projects?status=active` lists projects (cursor pagination, newest first), `GET /api/projects/{id}` reads
+one. `POST /api/projects` (`201`) creates the Item and its details; `PATCH /api/projects/{id}` changes any of them.
+Fields: `title` (required on create), `status`, `tags`, `source`, `startedAt`, `finishedAt`, `client`,
+`billing` (fixed, hourly), `price`, `hourlyRate`, `currency`. An hourly project without `hourlyRate` answers `400`.
+
+Time entries:
+
+```json
+200 { "id": 12, "project": 4, "projectTitle": "Eshop", "objective": 9, "date": "2026-11-02", "minutes": 90,
+      "startedAt": null, "running": false, "note": "checkout", "billable": true, "createdAt": "...", "updatedAt": "..." }
+```
+
+`GET /api/time-entries?project=4&from=2026-11-02&to=2026-11-08` lists entries, newest `date` first (cursor
+pagination; all filters optional, dates inclusive). `POST /api/time-entries` `{ "project": 4, "date": "2026-11-02",
+"minutes": 90, "note": "", "billable": true, "objective": 9 }` (`201`; `minutes` 1–1440, `objective` optional)
+records time by hand; `PATCH /api/time-entries/{id}` accepts the same fields. A project or objective that is not the
+owner's answers `400`. Minutes of a running entry cannot be patched (`400`, stop it first).
+
+Timer. `GET /api/time-entries/timer` answers `{ "running": <entry>|null }`. `POST /api/time-entries/timer/start`
+`{ "project": 4, "note": "", "billable": true, "objective": 9 }` (only `project` required) stops a running timer and
+starts a new entry dated today (`201`, `minutes: null`, `running: true`). `POST /api/time-entries/timer/stop`
+answers the stopped entry (minutes rounded, at least 1), `404` when nothing runs. One running timer per owner.
+
+`GET /api/time-entries/summary?week=2026-11-02` (a Monday; default this week, another weekday `400`):
+
+```json
+200 { "weekStart": "2026-11-02", "minutesTotal": 210, "minutesBillable": 120, "minutesNonBillable": 90,
+      "projects": [ { "id": 4, "title": "Eshop", "client": "Pekárna", "minutesTotal": 150,
+                      "minutesBillable": 120, "minutesNonBillable": 30 } ] }
+```
 
 ## Mapping to ProgressStore
 

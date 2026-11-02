@@ -114,6 +114,8 @@ class DayWorkSerializer(serializers.Serializer[object]):
     inboxArchived = InboxWorkSerializer(many=True)
     itemsFinished = ItemWorkSerializer(many=True)
     pagesDone = PageWorkSerializer(many=True)
+    minutesForObjectives = serializers.IntegerField()
+    minutesOther = serializers.IntegerField()
 
 
 class ObjectiveCountsSerializer(serializers.Serializer[object]):
@@ -122,7 +124,20 @@ class ObjectiveCountsSerializer(serializers.Serializer[object]):
     dropped = serializers.IntegerField()
 
 
+class ObjectiveTimeSerializer(serializers.Serializer[object]):
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    minutes = serializers.IntegerField()
+
+
+class WeekTimeSerializer(serializers.Serializer[object]):
+    minutesForObjectives = serializers.IntegerField()
+    minutesOther = serializers.IntegerField()
+    byObjective = ObjectiveTimeSerializer(many=True)
+
+
 class ReviewViewSerializer(serializers.Serializer[object]):
     week = WeekSerializer()
     objectiveCounts = ObjectiveCountsSerializer()
     days = DayWorkSerializer(many=True)
+    time = WeekTimeSerializer()

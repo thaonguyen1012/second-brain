@@ -56,7 +56,18 @@ that it is a Monday; planning journal, the six review questions as text, `planne
 `GET /api/weeks/{start}/plan` lists the open objectives of the latest earlier week, `POST` carries the chosen ones
 (idempotent) and saves the journal. Review: `GET /api/weeks/{start}/review` counts objectives by status and lists
 the body of work per day from existing rows (inbox entries archived = status archived by `updated_at`, Items by
-`finished_at`, `PageProgress` done by `updated_at`). Hours per objective wait for TimeEntry (step 3). No tasks.
+`finished_at`, `PageProgress` done by `updated_at`) plus the minutes of time entries per day, split into "for this
+week's objectives" and "other", with minutes per objective (the review chart). No tasks.
+Step 3 (DECISIONS 9.4): `backend/work/`. A project stays an `Item` with type=project; `ProjectDetails` is a OneToOne
+on it (primary key = item id) with client (free text), billing fixed/hourly, agreed `price` or `hourly_rate` (DB
+check: hourly needs a rate), currency (default CZK). A project Item made through `/api/items` without details reads
+as fixed with no price; the first `PATCH /api/projects/{id}` creates them. `TimeEntry` (user, project Item, date,
+minutes, billable, note, optional `weeks.Objective`) is typed in or timed: a running timer has `started_at` and
+`minutes` null, a partial unique constraint allows one per user, starting a new one stops it (whole minutes, at
+least 1). `GET /api/projects` annotates minute totals in one query; `work/services.py` computes `earned` (price, or
+billable hours x rate) and the Harvest-style effective rate = earned / all hours including non-billable.
+`GET /api/time-entries/summary?week=` gives billable vs non-billable minutes per project. No invoices, no CRM, no
+Kimai rate tiers yet (DECISIONS 4.5).
 Deployment config is in `deploy/` (see deploy/README.md): nginx routes `/api/` (except `/api/search`), `/admin/`,
 `/healthz` and `/files/` to Django and everything else to Next; `/files/` passes `auth_request` (Django `/api/me`)
 and Django's `X-Accel-Redirect` to the internal `/internal/files/` alias; CSP is report-only. With
