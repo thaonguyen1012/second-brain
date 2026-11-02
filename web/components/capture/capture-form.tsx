@@ -1,0 +1,152 @@
+'use client';
+import { useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { CheckCircle2, Loader2 } from 'lucide-react';
+import { api, type ApiInboxEntry } from '@/lib/api/client';
+import { toApiError } from '@/lib/api/use-api';
+import { MAX_TEXT, MAX_URL, draftFromParams, httpUrl } from '@/lib/capture';
+import { describeApiError } from '@/components/brain/api-state';
+import { refreshInboxCount } from '@/components/brain/inbox-count';
+import { SaveKeys } from '@/components/brain/save-keys';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+
+/**
+ * /inbox/them/?url=&title=&text= (bookmarklet, PWA share target): a confirm form for one inbox capture.
+ * Uses useSearchParams: the page renders it inside a Suspense boundary.
+ */
+export function CaptureForm() {
+  const params = useSearchParams();
+  const [draft] = useState(() => draftFromParams(new URLSearchParams(params.toString())));
+  const [url, setUrl] = useState(draft.url);
+  const [note, setNote] = useState(draft.note);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<ApiInboxEntry | null>(null);
+
+  const href = httpUrl(url);
+  const urlError = url.trim() && !href ? 'Chỉ nhận link http hoặc https.' : null;
+  const canSave = !busy && !urlError && !!(href || note.trim());
+
+  const submit = async () => {
+    if (!canSave) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const body = href ? { url: href, text: note.trim() } : { text: note.trim() };
+      setSaved(await api.createInboxEntry(body));
+      void refreshInboxCount();
+    } catch (err) {
+      const e = toApiError(err);
+      const d = describeApiError(e);
+      setError(e.status === 400 ? 'Link không hợp lệ (chỉ nhận http và https).' : `${d.title}. ${d.text}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (saved) return <Saved entry={saved} />;
+
+  return (
+    <form
+      className="flex max-w-xl flex-col gap-4 rounded-3xl border bg-card p-4 shadow-depth-1"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault();
+          void submit();
+        }
+      }}
+    >
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="capture-url" className="text-sm font-medium">
+          Link
+        </label>
+        <Input
+          id="capture-url"
+          type="url"
+          inputMode="url"
+          value={url}
+          maxLength={MAX_URL}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://…"
+          aria-invalid={urlError ? true : undefined}
+          aria-describedby={urlError ? 'capture-url-error' : undefined}
+        />
+        {urlError && (
+          <p id="capture-url-error" className="text-xs text-destructive-foreground">
+            {urlError} Sửa link hoặc xóa trống để chỉ lưu ghi chú.
+          </p>
+        )}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="capture-note" className="text-sm font-medium">
+          Ghi chú kèm theo
+        </label>
+        <Textarea
+          id="capture-note"
+          value={note}
+          maxLength={MAX_TEXT}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Tiêu đề, đoạn trích hoặc vì sao lưu…"
+          rows={4}
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          <SaveKeys /> để lưu · tag và tóm tắt được thêm sau, trong nền
+        </span>
+        {error && (
+          <span className="text-xs text-destructive-foreground" role="alert">
+            {error}
+          </span>
+        )}
+        {/* Focused on open: Enter saves the capture as it came from the bookmarklet or the share sheet. */}
+        <Button type="submit" className="ms-auto" disabled={!canSave} autoFocus>
+          {busy && <Loader2 className="animate-spin" aria-hidden />}
+          Lưu vào inbox
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function Saved({ entry }: { entry: ApiInboxEntry }) {
+  const [closeFailed, setCloseFailed] = useState(false);
+  const close = () => {
+    window.close();
+    // Only windows opened by a script (the bookmarklet's popup) can close themselves.
+    window.setTimeout(() => {
+      if (!window.closed) setCloseFailed(true);
+    }, 300);
+  };
+  return (
+    <div
+      className="flex max-w-xl flex-col gap-4 rounded-3xl border bg-card p-4 shadow-depth-1"
+      role="status"
+      aria-live="polite"
+    >
+      <p className="flex items-center gap-2 font-medium">
+        <CheckCircle2 className="size-5 text-primary" aria-hidden />
+        Đã lưu vào inbox
+      </p>
+      <p className="truncate text-sm text-muted-foreground">{entry.url || (entry.text ?? '').split('\n')[0]}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" onClick={close} autoFocus>
+          Đóng
+        </Button>
+        <Button variant="outline" render={<Link href={`/inbox/?status=inbox&id=${entry.id}`} />}>
+          Mở Inbox
+        </Button>
+      </div>
+      {closeFailed && (
+        <p className="text-xs text-muted-foreground">Trình duyệt không cho trang này tự đóng. Hãy đóng tab bằng tay.</p>
+      )}
+    </div>
+  );
+}

@@ -9,7 +9,7 @@ DEV_WEB_PORT ?= 3100
 DEV_BUILD ?= 1
 DEV_HOT_PORT ?= 3001
 
-.PHONY: check web-check backend-check smoke budget api-types backend-dev build jobs dev dev-hot
+.PHONY: check web-check backend-check smoke budget api-types backend-dev build jobs dev dev-hot backup restore-check
 
 check: web-check backend-check smoke budget
 
@@ -42,6 +42,16 @@ backend-dev:
 
 build:
 	cd web && time npm run build
+
+# Backups (DECISIONS 10.1): pg_dump -Fc of the dev database into backend/backups/<date>.dump (gitignored), the newest
+# 14 kept (BACKUP_DIR, BACKUP_KEEP in backend/.env). restore-check restores the newest dump into a throwaway
+# database, prints row counts against the live database and drops it; it never writes to the dev database.
+# Nightly on the laptop: deploy/launchd/com.example.brain.backup.plist (deploy/README.md).
+backup:
+	$(UV) python manage.py backup
+
+restore-check:
+	$(UV) python manage.py restore_check
 
 # Background jobs (unfurl, tagging, feeds, morning brief) every JOBS_INTERVAL seconds, like the production cron.
 # Ctrl-C stops it. For a loop that survives logout, see deploy/README.md (launchd).

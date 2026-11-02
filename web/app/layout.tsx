@@ -18,6 +18,11 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: { default: appName, template: `%s · ${appName}` },
+  // PWA icons (public/icons/, see app/manifest.ts); the manifest link itself is added by app/manifest.ts.
+  icons: {
+    icon: [{ url: '/icons/icon.svg', type: 'image/svg+xml' }],
+    apple: '/icons/apple-touch-icon.png',
+  },
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {

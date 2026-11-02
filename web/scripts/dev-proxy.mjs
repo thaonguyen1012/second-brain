@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Development stand-in for deploy/nginx.conf: one origin that routes like production.
+// Pages such as /inbox/them/ (capture), /manifest.webmanifest and /icons/ go to Next like any non-Django path.
 // /api/me, /api/progress*, /api/{inbox,items,notes,weeks,projects,time-entries,opportunities,skills,market,news,brief,achievements,predictions,status}*, /api/schema/, /admin*, /admin-static/*, /healthz -> Django; everything else -> Next.
 // WebSocket upgrades are piped too, so `next dev` behind the proxy keeps hot reload.
 // The web upstream decides which progress store the pages use (NEXT_PUBLIC_PROGRESS_STORE is inlined at build

@@ -198,6 +198,29 @@ Local end to end: `make dev` (deploy/README.md, "Laptop: daily use without Docke
 the jobs loop (`make jobs`); it never touches :3000. `deploy/launchd/com.example.brain.jobs.plist` (not installed)
 runs `run_jobs` every 300 s as a launchd user agent.
 
+Capture from outside the app (DECISIONS 4.3): `/inbox/them/?url=&title=&text=` (`app/(home)/inbox/them/`,
+`components/capture/capture-form.tsx`) shows a confirm form (link + note prefilled with the title and the shared
+text; only http/https links, checked in `lib/capture.ts` and again by the API) and saves with `POST /api/inbox`
+through `lib/api/client.ts`, then offers "Đóng" (`window.close()`, works for the bookmarklet's popup; otherwise a
+hint) and "Mở Inbox" (`/inbox/?status=inbox&id=N`). Two ways in: the bookmarklet on the Inbox page
+(`components/capture/bookmarklet-help.tsx`, drag to the bookmarks bar; its `javascript:` href is built from
+`window.location.origin` after mount and set on the DOM, since React 19 blocks `javascript:` URLs in props) opens
+that page in a small window with the tab's URL, title and selection; and the PWA share target in
+`app/manifest.ts` (GET to `/inbox/them/` with url/title/text; Android often puts the link in `text`, the form moves
+the first http(s) link found there into the link field). Icons in `public/icons/` (generated locally with Pillow
+from the same geometry as `icon.svg`; theme colour `--primary`). No service worker: install works without one and
+nothing is cached offline. All of this is Next routes, so nginx and the dev proxy already send them to Next.
+
+Backups (DECISIONS 10.1, laptop): `make backup` = `manage.py backup` (`core/services/backup.py`): `pg_dump -Fc
+--no-owner --no-acl` of the configured database into `BACKUP_DIR/<date>.dump` (default `backend/backups/`,
+gitignored; written as `.partial`, then renamed; the newest `BACKUP_KEEP` = 14 dated dumps kept). The pg tools
+match the server's major version (`/opt/homebrew/opt/postgresql@16/bin` etc., `PG_BIN_DIR` overrides), the password
+goes through `PGPASSWORD`. `make restore-check` = `manage.py restore_check`: restores the newest dump into a
+throwaway `<db>_restore_check_<pid>` database, counts the rows of every table, fails when `django_migrations` or
+`django_content_type` is empty, prints the differences with the live database (rows written since the dump), and
+drops the throwaway database in a `finally`; it never writes to the dev database.
+`deploy/launchd/com.example.brain.backup.plist` (not installed) runs the backup nightly at 02:30.
+
 ### Switching your own dev server to the API store
 
 `NEXT_PUBLIC_PROGRESS_STORE` is inlined when Next compiles, so it is chosen when `next dev` (or `next build`) starts;

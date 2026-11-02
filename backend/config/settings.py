@@ -40,6 +40,9 @@ CONTENT_DIR = Path(env.str("CONTENT_DIR", default=str(REPO_DIR / "web" / "conten
 FILES_DIR = Path(env.str("FILES_DIR", default=str(REPO_DIR / "web" / "public" / "files")))
 # Inbox link thumbnails (webp written by run_jobs); nginx serves them from /internal/thumbs/.
 THUMBS_DIR = Path(env.str("THUMBS_DIR", default=str(BASE_DIR / "media" / "thumbs")))
+# make backup (DECISIONS 10.1): pg_dump -Fc files <date>.dump, the newest BACKUP_KEEP kept.
+BACKUP_DIR = Path(env.str("BACKUP_DIR", default=str(BASE_DIR / "backups")))
+BACKUP_KEEP = env.int("BACKUP_KEEP", default=14)
 
 # LLM (DECISIONS 10.4). Every call goes through core/services/llm.py. Temporary choice: Gemini free tier.
 LLM_PROVIDER = env.str("LLM_PROVIDER", default="gemini")
