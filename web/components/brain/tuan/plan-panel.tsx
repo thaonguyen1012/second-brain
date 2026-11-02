@@ -1,23 +1,25 @@
 'use client';
 import { useState } from 'react';
 import { ArrowRightLeft, NotebookPen, Target } from 'lucide-react';
-import type { ApiObjective, ApiWeek } from '@/lib/api/client';
+import type { ApiWeek } from '@/lib/api/client';
 import { type ApiCarryCandidate, weeksApi } from '@/lib/api/weeks';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Kbd } from '@/components/ui/kbd';
 import { Textarea } from '@/components/ui/textarea';
-import { ObjectiveHint, ObjectivesEditor } from './objectives-editor';
+import { ObjectiveHint, ObjectivesEditor, type ObjectivesUpdate } from './objectives-editor';
 import { WeekSection, WriteError } from './week-section';
 import { clockTime, weekRange } from './week-utils';
+import { SaveKeys } from '../save-keys';
 
 /** Last week's open objectives: tick the ones that still matter and carry them over in one action. */
 function CarryOver({
   start,
+  weekName,
   candidates,
   onCarried,
 }: {
   start: string;
+  weekName: string;
   candidates: ApiCarryCandidate[];
   onCarried: (week: ApiWeek, carried: number[]) => void;
 }) {
@@ -72,7 +74,7 @@ function CarryOver({
       {pending.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => void carry()} disabled={chosen.length === 0} loading={busy}>
-            Kéo {chosen.length} mục tiêu sang tuần này
+            Kéo {chosen.length} mục tiêu sang {weekName}
           </Button>
         </div>
       )}
@@ -81,8 +83,18 @@ function CarryOver({
   );
 }
 
-/** "Kỳ vọng cho tuần này": the planning journal, saved with POST /plan. */
-function PlanJournal({ start, week, onSaved }: { start: string; week: ApiWeek; onSaved: (week: ApiWeek) => void }) {
+/** "Kỳ vọng cho tuần này" (or "tuần tới"): the planning journal, saved with POST /plan. */
+function PlanJournal({
+  start,
+  weekName,
+  week,
+  onSaved,
+}: {
+  start: string;
+  weekName: string;
+  week: ApiWeek;
+  onSaved: (week: ApiWeek) => void;
+}) {
   const [text, setText] = useState(week.planningJournal);
   const [saved, setSaved] = useState(week.planningJournal);
   const [busy, setBusy] = useState(false);
@@ -108,8 +120,8 @@ function PlanJournal({ start, week, onSaved }: { start: string; week: ApiWeek; o
     <WeekSection
       icon={NotebookPen}
       id="week-plan-journal"
-      title="Kỳ vọng cho tuần này"
-      description="Vài dòng: tuần này mong điều gì, sợ điều gì, bận gì ngoài kế hoạch. Không lên task ở đây."
+      title={`Kỳ vọng cho ${weekName}`}
+      description={`Vài dòng: ${weekName} mong điều gì, sợ điều gì, bận gì ngoài kế hoạch. Không lên task ở đây.`}
     >
       <Textarea
         aria-labelledby="week-plan-journal"
@@ -122,7 +134,7 @@ function PlanJournal({ start, week, onSaved }: { start: string; week: ApiWeek; o
           }
         }}
         rows={6}
-        placeholder="Tuần này mình mong..."
+                placeholder={`${weekName.charAt(0).toUpperCase()}${weekName.slice(1)} mình mong...`}
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={() => void save()} disabled={!dirty} loading={busy}>
@@ -131,7 +143,7 @@ function PlanJournal({ start, week, onSaved }: { start: string; week: ApiWeek; o
         <span className="text-xs text-muted-foreground" aria-live="polite">
           {dirty ? (
             <>
-              Chưa lưu · <Kbd>Ctrl</Kbd>+<Kbd>Enter</Kbd> để lưu
+              Chưa lưu · <SaveKeys /> để lưu
             </>
           ) : week.plannedAt ? (
             `Đã lên kế hoạch lúc ${clockTime(week.plannedAt)}`
@@ -148,6 +160,7 @@ function PlanJournal({ start, week, onSaved }: { start: string; week: ApiWeek; o
 /** Planning ritual (DECISIONS 9.2, Sunsama): carry over, 3–5 objectives, the expectations journal. No tasks. */
 export function PlanPanel({
   start,
+  weekName,
   week,
   carryCandidates,
   onWeek,
@@ -155,22 +168,24 @@ export function PlanPanel({
   onCarried,
 }: {
   start: string;
+  /** How to name this week in sentences: "tuần này", "tuần tới" or "tuần 9/11 – 15/11". */
+  weekName: string;
   week: ApiWeek;
   carryCandidates: ApiCarryCandidate[];
   onWeek: (week: ApiWeek) => void;
-  onObjectives: (objectives: ApiObjective[]) => void;
+  onObjectives: (update: ObjectivesUpdate) => void;
   onCarried: (week: ApiWeek, carried: number[]) => void;
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
       <div className="flex flex-col gap-4">
-        {carryCandidates.length > 0 && <CarryOver start={start} candidates={carryCandidates} onCarried={onCarried} />}
+        {carryCandidates.length > 0 && <CarryOver start={start} weekName={weekName} candidates={carryCandidates} onCarried={onCarried} />}
         <WeekSection icon={Target} id="week-objectives" title="Mục tiêu tuần">
           <ObjectiveHint objectives={week.objectives} />
           <ObjectivesEditor start={start} objectives={week.objectives} onChange={onObjectives} />
         </WeekSection>
       </div>
-      <PlanJournal start={start} week={week} onSaved={onWeek} />
+      <PlanJournal start={start} weekName={weekName} week={week} onSaved={onWeek} />
     </div>
   );
 }

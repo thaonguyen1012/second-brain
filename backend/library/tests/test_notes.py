@@ -60,6 +60,9 @@ def test_list_notes_searches_and_filters(client: Client) -> None:
     assert len(queries) <= 4  # session + user + page + one prefetch of the items
     assert [n["title"] for n in data["results"]] == ["Habits", "Focus", "n3"]
     assert data["results"][2]["items"] == sorted([item.pk, other.pk])
+    # Labels of the linked Items come with the note (same prefetch), so lists never load every Item.
+    labels = {(row["id"], row["title"], row["type"]) for row in data["results"][2]["itemLabels"]}
+    assert labels == {(item.pk, "Deep Work", "book"), (other.pk, "Atomic Habits", "book")}
     assert [n["title"] for n in client.get(data["next"]).json()["results"]] == ["n2", "n1", "n0"]
     assert [n["title"] for n in client.get("/api/notes?q=DEEP").json()["results"]] == ["Focus"]
     assert [n["title"] for n in client.get("/api/notes?q=habits").json()["results"]] == ["Habits"]

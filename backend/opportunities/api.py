@@ -139,7 +139,7 @@ class EvidenceListView(APIView):
         try:
             evidence = services.add_evidence(opportunity, dict(body.validated_data))
         except services.DuplicateEvidence as error:
-            raise ValidationError({"inboxEntry": "Already evidence for this opportunity."}) from error
+            raise ValidationError({"inboxEntry": "Mục inbox này đã là bằng chứng cho cơ hội này."}) from error
         return Response(EvidenceSerializer(evidence).data, status=status.HTTP_201_CREATED)
 
 

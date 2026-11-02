@@ -1,20 +1,21 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { NotebookPen, Pencil, Plus, Search, X } from 'lucide-react';
-import { api, type Page } from '@/lib/api/client';
+import type { Page } from '@/lib/api/client';
 import { notesApi, type ApiNote } from '@/lib/api/library';
-import { toApiError, useApi } from '@/lib/api/use-api';
+import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate, itemTypeLabel } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
-import { ApiErrorState, EmptyState, LoadingCards, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { BrainCard } from '../brain-card';
 import { NoteDialog } from './note-dialog';
+import type { ItemLabel } from './item-picker';
 import { useItemIndex } from './use-item-index';
 
 const PAGE = 50;
@@ -142,7 +143,8 @@ export function NotesPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const index = useItemIndex();
+  // The full Item list is only for the picker in the dialog; the cards use the labels sent with each note.
+  const index = useItemIndex(dialogOpen);
   const notes = useApi<Page<ApiNote>>(`notes:${q}:${itemFilter ?? ''}`, () =>
     notesApi.list({ limit: PAGE, ...(q && { q }), ...(itemFilter && { item: itemFilter }) }),
   );
@@ -150,12 +152,18 @@ export function NotesPage() {
   const selected = Math.min(cursor, Math.max(0, shown.length - 1));
   const current = shown[selected];
 
+  const labels = useMemo(() => {
+    const m = new Map<number, ItemLabel>();
+    for (const n of notes.data?.results ?? []) for (const l of n.itemLabels) m.set(l.id, l);
+    for (const [id, it] of index.byId) m.set(id, it);
+    return m;
+  }, [notes.data, index.byId]);
   const itemTitle = useCallback(
     (id: number) => {
-      const it = index.byId.get(id);
+      const it = labels.get(id);
       return it ? { title: it.title, type: it.type } : { title: `Item #${id}` };
     },
-    [index.byId],
+    [labels],
   );
   const filterItem = itemFilter ? itemTitle(itemFilter) : null;
 
@@ -221,8 +229,7 @@ export function NotesPage() {
     if (!next) return;
     setLoadingMore(true);
     try {
-      const page = await api.page<ApiNote>(next);
-      notes.mutate((d) => d && { results: [...d.results, ...page.results], next: page.next });
+      await appendNextPage(notes);
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
     } finally {
@@ -247,6 +254,7 @@ export function NotesPage() {
           />
           <Input
             ref={searchRef}
+            data-local-search
             type="search"
             aria-label="Tìm trong ghi chú"
             placeholder="Tìm trong tiêu đề và nội dung…"
@@ -298,6 +306,7 @@ export function NotesPage() {
         </p>
       </div>
 
+      <ApiStaleAlert result={notes} />
       {notes.error && !notes.data ? (
         <ApiErrorState error={notes.error} onRetry={notes.reload} />
       ) : notes.loading && shown.length === 0 ? (
@@ -344,7 +353,7 @@ export function NotesPage() {
         note={editing}
         draft={editing ? undefined : { items: itemFilter ? [itemFilter] : [] }}
         items={index.items}
-        byId={index.byId}
+        byId={labels}
         itemsStatus={itemsStatus}
         onOpenChange={setDialogOpen}
         onSaved={(saved, created) => {

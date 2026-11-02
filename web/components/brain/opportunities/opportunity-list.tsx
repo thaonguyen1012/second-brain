@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { Clock, Lightbulb, Pencil, Plus, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { api, type ApiOpportunity, type Page } from '@/lib/api/client';
 import { opportunitiesApi, type ApiDecision } from '@/lib/api/opportunities';
-import { toApiError, useApi } from '@/lib/api/use-api';
+import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
+import { opportunityHref } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
-import { ApiErrorState, EmptyState, LoadingCards, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
 import { DecideByBadge, FitBadges, ScoresLine } from './bits';
@@ -25,7 +26,7 @@ const staleChoices: { value: StaleFilter; label: string }[] = [
   { value: 'false', label: 'Còn bằng chứng mới' },
 ];
 
-export const detailHref = (id: number) => `/co-hoi/?id=${id}`;
+export const detailHref = opportunityHref;
 
 function OpportunityCard({ o, onEdit, onDrop }: { o: ApiOpportunity; onEdit: () => void; onDrop: () => void }) {
   const d = decisionOf(o.decision);
@@ -140,8 +141,7 @@ export function OpportunityList() {
     if (!next) return;
     setLoadingMore(true);
     try {
-      const page = await api.page<ApiOpportunity>(next);
-      opps.mutate((d) => d && { results: [...d.results, ...page.results], next: page.next });
+      await appendNextPage(opps);
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
     } finally {
@@ -175,6 +175,7 @@ export function OpportunityList() {
         </p>
       )}
 
+      <ApiStaleAlert result={opps} />
       {opps.error && !opps.data ? (
         <ApiErrorState error={opps.error} onRetry={opps.reload} />
       ) : opps.loading && list.length === 0 ? (

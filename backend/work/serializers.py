@@ -85,7 +85,7 @@ class ProjectWriteSerializer(serializers.Serializer[object]):
         billing = attrs.get("billing", current.billing if current else ProjectDetails.Billing.FIXED)
         rate = attrs.get("hourly_rate", current.hourly_rate if current else None)
         if billing == ProjectDetails.Billing.HOURLY and rate is None:
-            raise serializers.ValidationError({"hourlyRate": "An hourly project needs an hourly rate."})
+            raise serializers.ValidationError({"hourlyRate": "Dự án tính theo giờ cần đơn giá mỗi giờ."})
         return attrs
 
 
@@ -125,7 +125,7 @@ class _EntryLinks(serializers.Serializer[object]):
         user: User = self.context["user"]
         project = Item.objects.filter(pk=value, user=user, type=Item.Type.PROJECT).first()
         if project is None:
-            raise serializers.ValidationError("Not one of your projects.")
+            raise serializers.ValidationError("Không phải dự án của bạn.")
         return project
 
     def validate_objective(self, value: int | None) -> Objective | None:
@@ -133,7 +133,7 @@ class _EntryLinks(serializers.Serializer[object]):
             return None
         objective = Objective.objects.filter(pk=value, week__user=self.context["user"]).first()
         if objective is None:
-            raise serializers.ValidationError("Not one of your objectives.")
+            raise serializers.ValidationError("Không phải mục tiêu của bạn.")
         return objective
 
 

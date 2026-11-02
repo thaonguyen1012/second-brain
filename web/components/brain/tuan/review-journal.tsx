@@ -4,10 +4,10 @@ import { MessageSquareText } from 'lucide-react';
 import type { ApiWeek } from '@/lib/api/client';
 import { type ApiReviewField, type ApiReviewPatch, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
 import { Button } from '@/components/ui/button';
-import { Kbd } from '@/components/ui/kbd';
 import { Textarea } from '@/components/ui/textarea';
 import { WeekSection, WriteError } from './week-section';
 import { clockTime, reviewQuestions } from './week-utils';
+import { SaveKeys } from '../save-keys';
 
 type Answers = Record<ApiReviewField, string>;
 
@@ -137,7 +137,7 @@ export function ReviewJournal({
             'Đang lưu…'
           ) : dirty ? (
             <>
-              Chưa lưu · <Kbd>Ctrl</Kbd>+<Kbd>Enter</Kbd> để lưu
+              Chưa lưu · <SaveKeys /> để lưu
             </>
           ) : reviewedAt ? (
             `Đã lưu lúc ${clockTime(reviewedAt)}`

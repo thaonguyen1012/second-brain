@@ -4,7 +4,7 @@ import { TrendingUp } from 'lucide-react';
 import { opportunitiesApi, type ApiTopicCounts } from '@/lib/api/opportunities';
 import { useApi } from '@/lib/api/use-api';
 import { cn } from '@/lib/utils';
-import { ApiErrorState, EmptyState } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { formatDay } from './labels';
 
@@ -219,6 +219,7 @@ export function TopicHeatmap() {
           className="w-auto"
         />
       </div>
+      <ApiStaleAlert result={topics} />
       {topics.error && !topics.data ? (
         <ApiErrorState error={topics.error} onRetry={topics.reload} />
       ) : !m ? (

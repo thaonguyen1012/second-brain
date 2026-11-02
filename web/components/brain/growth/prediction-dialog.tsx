@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { growthApi, type ApiOutcome, type ApiPrediction, type ApiPredictionWrite } from '@/lib/api/growth';
 import { toApiError } from '@/lib/api/use-api';
@@ -16,10 +16,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
+import { Radio, RadioGroup } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { describeApiError } from '../api-state';
 import { fieldErrors, formatDay, outcomeOf, today } from './labels';
 import { FormError, FormRow } from './shared';
+import { SaveKeys } from '../save-keys';
 
 const fieldNames = {
   statement: 'Dự đoán',
@@ -50,8 +52,11 @@ function PredictionForm({
   const [confidence, setConfidence] = useState(prediction?.confidence ? String(prediction.confidence) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set synchronously, so a second Cmd+Enter before the re-render cannot POST twice.
+  const inFlight = useRef(false);
 
   const submit = async () => {
+    if (inFlight.current) return;
     if (!statement.trim()) {
       setError('Cần ghi dự đoán.');
       return;
@@ -71,6 +76,7 @@ function PredictionForm({
       ...(madeOn && { madeOn }),
       ...(checkOn && { checkOn }),
     };
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -80,6 +86,7 @@ function PredictionForm({
       onSaved(saved, !prediction);
     } catch (err) {
       setError(errorText(err));
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -94,7 +101,7 @@ function PredictionForm({
       onKeyDown={(e) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
           e.preventDefault();
-          void submit();
+          if (!e.repeat) void submit();
         }
       }}
     >
@@ -129,7 +136,7 @@ function PredictionForm({
       </DialogPanel>
       <DialogFooter>
         <span className="me-auto hidden self-center text-xs text-muted-foreground sm:inline">
-          <Kbd>⌘</Kbd>+<Kbd>Enter</Kbd> để lưu
+          <SaveKeys /> để lưu
         </span>
         <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
         <Button type="submit" disabled={busy}>
@@ -148,12 +155,16 @@ const keyed: [string, ApiOutcome][] = [
   ['0', 'open'],
 ];
 
-/** Re-score: one key per outcome (1 đúng, 2 một phần, 3 sai, 0 chưa chấm), plus a note on what happened. */
+/**
+ * Re-score: one key per outcome (1 đúng, 2 một phần, 3 sai, 0 chưa chấm), plus a note on what happened.
+ * An open prediction starts with nothing chosen, so saving never records "Đúng" by default (DECISIONS 4.8).
+ */
 function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved: (p: ApiPrediction) => void }) {
-  const [outcome, setOutcome] = useState<ApiOutcome>(prediction.outcome === 'open' ? 'right' : prediction.outcome);
+  const [outcome, setOutcome] = useState<ApiOutcome | null>(prediction.outcome === 'open' ? null : prediction.outcome);
   const [note, setNote] = useState(prediction.note);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -169,12 +180,19 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
   }, []);
 
   const submit = async () => {
+    if (inFlight.current) return;
+    if (outcome === null) {
+      setError('Chọn kết quả trước: 1 đúng, 2 một phần, 3 sai.');
+      return;
+    }
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
       onSaved(await growthApi.updatePrediction(prediction.id, { outcome, note: note.trim() }));
     } catch (err) {
       setError(errorText(err));
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -189,33 +207,33 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
       onKeyDown={(e) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
           e.preventDefault();
-          void submit();
+          if (!e.repeat) void submit();
         }
       }}
     >
       <DialogPanel className="flex flex-col gap-4">
-        <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1.5 text-sm font-medium">Kết quả</legend>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Kết quả">
-            {keyed.map(([key, value]) => {
-              const o = outcomeOf(value);
-              const on = outcome === value;
-              return (
-                <Button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  size="sm"
-                  variant={on ? 'default' : 'outline'}
-                  onClick={() => setOutcome(value)}
-                >
-                  {o.label} <Kbd className="hidden sm:inline-flex">{key}</Kbd>
-                </Button>
-              );
-            })}
-          </div>
-        </fieldset>
+        <div className="flex flex-col gap-1.5">
+          <span id="pred-outcome" className="mb-1.5 text-sm font-medium">
+            Kết quả
+          </span>
+          <RadioGroup
+            aria-labelledby="pred-outcome"
+            className="flex flex-row flex-wrap gap-2"
+            value={outcome}
+            onValueChange={(v) => setOutcome(v as ApiOutcome)}
+          >
+            {keyed.map(([key, value]) => (
+              <label
+                key={value}
+                className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-accent/50 has-data-checked:border-primary has-data-checked:bg-primary/8"
+              >
+                <Radio value={value} />
+                {outcomeOf(value).label}
+                <Kbd className="hidden sm:inline-flex">{key}</Kbd>
+              </label>
+            ))}
+          </RadioGroup>
+        </div>
         <FormRow id="pred-note" label="Chuyện gì đã xảy ra, mình học được gì">
           <Textarea id="pred-note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
         </FormRow>
@@ -223,7 +241,7 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
       </DialogPanel>
       <DialogFooter>
         <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" disabled={busy || outcome === null}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
           Lưu kết quả
         </Button>

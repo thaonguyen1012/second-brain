@@ -85,7 +85,7 @@ def plan_week(week: Week, carry: Iterable[int], journal: str | None) -> Week:
             else set()
         )
         if unknown := wanted - open_ids:
-            raise PlanError(f"Not open objectives of the previous week: {sorted(unknown)}")
+            raise PlanError(f"Không phải mục tiêu đang mở của tuần trước: {sorted(unknown)}")
         already = set(
             week.objectives.filter(carried_from__isnull=False).values_list("carried_from_id", flat=True)
         )

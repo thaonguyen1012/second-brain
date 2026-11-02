@@ -4,22 +4,25 @@ import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { PanelLeftIcon } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useEventListener } from '@/hooks/use-event-listener'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { Sheet, SheetDescription, SheetHeader, SheetPopup, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip'
+import type { TooltipPopup } from '@/components/ui/tooltip'
+
+// The mobile drawer (Dialog) and the menu tooltip are loaded only when rendered; SidebarInput lives in
+// sidebar-input.tsx. Keeps Dialog, Tooltip, floating-ui and Input out of every page's First Load JS.
+const SidebarMobileSheet = dynamic(() => import('./sidebar-mobile-sheet'))
+const SidebarMenuTooltip = dynamic(() => import('./sidebar-menu-tooltip'))
 
 const SIDEBAR_COOKIE_NAME: string = 'sidebar_state'
 const SIDEBAR_COOKIE_MAX_AGE: number = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH: string = '16rem'
-const SIDEBAR_WIDTH_MOBILE: string = '18rem'
 const SIDEBAR_WIDTH_ICON: string = '3rem'
 const SIDEBAR_KEYBOARD_SHORTCUT: string = 'b'
 
@@ -79,7 +82,8 @@ export function SidebarProvider({
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }): React.ReactElement {
-  const isMobile = useMediaQuery('max-md')
+  // Tailwind md starts at 48rem (768px); the hook needs a real media query ('max-md' never matched).
+  const isMobile = useMediaQuery('(max-width: 767.98px)')
   const [openMobile, setOpenMobile] = React.useState(false)
 
   // This is the internal state of the sidebar.
@@ -184,26 +188,9 @@ export function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet onOpenChange={setOpenMobile} open={openMobile} {...props}>
-        <SheetPopup
-          className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          data-mobile="true"
-          data-sidebar="sidebar"
-          data-slot="sidebar"
-          side={side}
-          style={
-            {
-              '--sidebar-width': SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
-        >
-          <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-          </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
-        </SheetPopup>
-      </Sheet>
+      <SidebarMobileSheet onOpenChange={setOpenMobile} open={openMobile} side={side} {...props}>
+        {children}
+      </SidebarMobileSheet>
     )
   }
 
@@ -316,17 +303,6 @@ export function SidebarInset({ className, ...props }: React.ComponentProps<'main
         className,
       )}
       data-slot="sidebar-inset"
-      {...props}
-    />
-  )
-}
-
-export function SidebarInput({ className, ...props }: React.ComponentProps<typeof Input>): React.ReactElement {
-  return (
-    <Input
-      className={cn('h-8 w-full bg-background shadow-none', className)}
-      data-sidebar="input"
-      data-slot="sidebar-input"
       {...props}
     />
   )
@@ -509,10 +485,7 @@ export function SidebarMenuButton({
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger render={buttonElement as React.ReactElement<Record<string, unknown>>} />
-      <TooltipPopup align="center" hidden={state !== 'collapsed' || isMobile} side="right" {...tooltip} />
-    </Tooltip>
+    <SidebarMenuTooltip button={buttonElement} hidden={state !== 'collapsed' || isMobile} tooltip={tooltip} />
   )
 }
 

@@ -2,15 +2,22 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CalendarCheck, CalendarRange, ChevronLeft, ChevronRight, NotebookPen } from 'lucide-react';
-import type { ApiObjective, ApiWeek } from '@/lib/api/client';
+import type { ApiWeek } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
-import { type ApiAchievement, type ApiPlanView, type ApiReviewView, weeksApi } from '@/lib/api/weeks';
+import {
+  type ApiAchievement,
+  type ApiOpportunityDecision,
+  type ApiPlanView,
+  type ApiReviewView,
+  weeksApi,
+} from '@/lib/api/weeks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
-import { ApiErrorState, EmptyState, LoadingCards } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards } from '../api-state';
 import type { BookIndex } from './body-of-work';
+import type { ObjectivesUpdate } from './objectives-editor';
 import { PlanPanel } from './plan-panel';
 import { ReviewPanel } from './review-panel';
 import { addDays, isMonday, isoWeek, mondayOf, todayPrague, weekdayIndex, weekRange } from './week-utils';
@@ -35,8 +42,9 @@ async function loadWeek(start: string, create: boolean): Promise<WeekData> {
     if (!review) return { start, plan: null, review: null };
     return { start, plan: await weeksApi.getPlan(start), review };
   }
-  const plan = await weeksApi.getPlan(start);
-  return { start, plan, review: await weeksApi.getReview(start) };
+  // Both at once; GET /review answers 404 (null) only the first time, before GET /plan has opened the week.
+  const [plan, review] = await Promise.all([weeksApi.getPlan(start), weeksApi.getReview(start)]);
+  return { start, plan, review: review ?? (await weeksApi.getReview(start)) };
 }
 
 /** Planning early in the week, review from Friday; past weeks open on the review. */
@@ -118,8 +126,10 @@ export function WeekPage({ books }: { books: BookIndex }) {
         ? { ...d, plan: { ...d.plan, week: fn(d.plan.week) }, review: d.review && { ...d.review, week: fn(d.review.week) } }
         : d,
     );
-  const onWeek = (next: ApiWeek) => setWeek(() => next);
-  const onObjectives = (objectives: ApiObjective[]) => setWeek((w) => ({ ...w, objectives }));
+  // A journal save answers with the whole week: keep the local objectives (an objective write may still be on
+  // its way, and its optimistic change must not be replaced by the older server copy).
+  const onWeek = (next: ApiWeek) => setWeek((w) => ({ ...next, objectives: w.objectives }));
+  const onObjectives = (update: ObjectivesUpdate) => setWeek((w) => ({ ...w, objectives: update(w.objectives) }));
   const onCarried = (next: ApiWeek, carried: number[]) =>
     week.mutate((d) =>
       d && d.plan
@@ -145,6 +155,15 @@ export function WeekPage({ books }: { books: BookIndex }) {
           }
         : d,
     );
+
+  const onOpportunity = (id: number, decision: ApiOpportunityDecision) =>
+    week.mutate((d) => {
+      if (!d?.review) return d;
+      const { withEvidence, stale } = d.review.opportunities;
+      const set = <T extends { id: number; decision: ApiOpportunityDecision }>(list: T[]) =>
+        list.map((o) => (o.id === id ? { ...o, decision } : o));
+      return { ...d, review: { ...d.review, opportunities: { withEvidence: set(withEvidence), stale: set(stale) } } };
+    });
 
   const name = relativeName(start, current);
   const wk = data?.plan?.week;
@@ -193,6 +212,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
         </div>
       </nav>
 
+      {data && <ApiStaleAlert result={week} />}
       {week.error && !data ? (
         <ApiErrorState error={week.error} onRetry={week.reload} />
       ) : !data ? (
@@ -217,6 +237,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
             <PlanPanel
               key={start}
               start={start}
+              weekName={start === current ? 'tuần này' : start === latest ? 'tuần tới' : `tuần ${weekRange(start)}`}
               week={data.plan.week}
               carryCandidates={data.plan.carryCandidates}
               onWeek={onWeek}
@@ -235,6 +256,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
                 onWeek={onWeek}
                 onObjectives={onObjectives}
                 onAchievement={onAchievement}
+                onOpportunity={onOpportunity}
                 onNextWeek={start < latest ? () => go(addDays(start, 7), 'plan') : undefined}
               />
             ) : (

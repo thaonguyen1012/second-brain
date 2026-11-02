@@ -26,6 +26,9 @@ class InboxEntrySerializer(serializers.ModelSerializer[InboxEntry]):
         source="suggested_tags", child=serializers.CharField(), read_only=True
     )
     suggestedDestination = serializers.CharField(source="suggested_destination", read_only=True)
+    # Label of the linked Item (select_related("item") in the list), so the inbox never loads every Item.
+    itemTitle = serializers.CharField(source="item.title", read_only=True, allow_null=True)
+    itemType = serializers.CharField(source="item.type", read_only=True, allow_null=True)
 
     class Meta:
         model = InboxEntry
@@ -35,6 +38,8 @@ class InboxEntrySerializer(serializers.ModelSerializer[InboxEntry]):
             "text",
             "status",
             "item",
+            "itemTitle",
+            "itemType",
             "createdAt",
             "archivedAt",
             "processed",
@@ -55,7 +60,7 @@ class InboxEntrySerializer(serializers.ModelSerializer[InboxEntry]):
 
     def validate(self, attrs: dict[str, object]) -> dict[str, object]:
         if not attrs.get("url") and not attrs.get("text"):
-            raise serializers.ValidationError("Send a url or a text.")
+            raise serializers.ValidationError("Cần một link hoặc một đoạn văn bản.")
         return attrs
 
 
@@ -65,5 +70,5 @@ class InboxTriageSerializer(serializers.Serializer[object]):
 
     def validate_item(self, item: Item | None) -> Item | None:
         if item is not None and item.user_id != self.context["user"].pk:
-            raise serializers.ValidationError("Unknown item.")
+            raise serializers.ValidationError("Không tìm thấy item.")
         return item

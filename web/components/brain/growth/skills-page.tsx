@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
-import { ApiErrorState, EmptyState } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { freshness, freshnessOrder } from './labels';
 import { SkillDialog } from './skill-dialog';
@@ -108,6 +108,7 @@ export function SkillsPage() {
           />
           <Input
             ref={searchRef}
+            data-local-search
             type="search"
             aria-label="Tìm kỹ năng"
             placeholder="Tìm theo tên hoặc tên khác"
@@ -128,6 +129,7 @@ export function SkillsPage() {
         </p>
       )}
 
+      <ApiStaleAlert result={skills} />
       {skills.error && !skills.data ? (
         <ApiErrorState error={skills.error} onRetry={skills.reload} />
       ) : !skills.data ? (

@@ -152,7 +152,7 @@ class OpportunityWriteSerializer(serializers.Serializer[object]):
         user: User = self.context["user"]
         skills = list(Skill.objects.filter(user=user, pk__in=value))
         if len(skills) != len(set(value)):
-            raise serializers.ValidationError("Not one of your skills.")
+            raise serializers.ValidationError("Không phải kỹ năng của bạn.")
         return skills
 
 
@@ -181,7 +181,7 @@ class _Owned(serializers.Serializer[object]):
         user: User = self.context["user"]
         row = model.objects.filter(pk=pk, user=user).first()
         if row is None:
-            raise serializers.ValidationError("Not one of yours.")
+            raise serializers.ValidationError("Không có trong dữ liệu của bạn.")
         return row
 
 
@@ -213,13 +213,13 @@ class EvidenceCreateSerializer(_Owned):
         needed = LINKS.get(kind)
         for field in LINKS.values():
             if field != needed and attrs.get(field) is not None:
-                raise serializers.ValidationError(f"A {kind} evidence links no {field}.")
+                raise serializers.ValidationError(f"Bằng chứng loại {kind} không gắn {field}.")
         if needed and attrs.get(needed) is None:
-            raise serializers.ValidationError(f"A {kind} evidence needs its link.")
+            raise serializers.ValidationError(f"Bằng chứng loại {kind} cần chọn mục được gắn.")
         if needed is None and not attrs.get("title"):
-            raise serializers.ValidationError({"title": f"A {kind} evidence needs a title."})
+            raise serializers.ValidationError({"title": f"Bằng chứng loại {kind} cần tiêu đề."})
         if kind == Evidence.Kind.LINK and not attrs.get("url"):
-            raise serializers.ValidationError({"url": "A link evidence needs a url."})
+            raise serializers.ValidationError({"url": "Bằng chứng dạng link cần URL."})
         return attrs
 
 

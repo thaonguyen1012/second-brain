@@ -32,7 +32,7 @@ START = OpenApiParameter(
 
 def _monday(start: dt.date) -> dt.date:
     if start.weekday() != 0:
-        raise ValidationError({"start": "A week starts on a Monday."})
+        raise ValidationError({"start": "Tuần bắt đầu vào thứ Hai."})
     return start
 
 

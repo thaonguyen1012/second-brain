@@ -2,18 +2,84 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Lightbulb, Plus, Trophy } from 'lucide-react';
-import { type ApiAchievement, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
-import { formatDate } from '@/lib/labels';
+import { opportunitiesApi } from '@/lib/api/opportunities';
+import { type ApiAchievement, type ApiOpportunityDecision, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
+import { decisionOf, formatDate, opportunityHref } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '../brain-card';
 import { WeekSection, WriteError } from './week-section';
-import { decisionOf } from '@/lib/labels';
 import { addDays, shortDate, todayPrague } from './week-utils';
 
-/** "Cơ hội nào có thêm bằng chứng" and the stale ones (4 weeks without new evidence: drop, DECISIONS 9.2). */
-export function ReviewOpportunities({ opportunities }: { opportunities: ApiWeekOpportunities }) {
+/** Keep or drop a stale opportunity right in the review (PATCH /api/opportunities/{id} decision). */
+function DecideButtons({
+  id,
+  title,
+  decision,
+  onDecided,
+}: {
+  id: number;
+  title: string;
+  decision: ApiOpportunityDecision;
+  onDecided: (id: number, decision: ApiOpportunityDecision) => void;
+}) {
+  const [busy, setBusy] = useState<ApiOpportunityDecision | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const decide = async (to: ApiOpportunityDecision) => {
+    if (busy) return;
+    setBusy(to);
+    setError(null);
+    try {
+      const saved = await opportunitiesApi.update(id, { decision: to });
+      onDecided(id, saved.decision);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <>
+      <div className="flex items-center gap-1.5">
+        {decision !== 'keep' && (
+          <Button
+            size="xs"
+            variant="outline"
+            loading={busy === 'keep'}
+            disabled={busy !== null}
+            aria-label={`Giữ "${title}"`}
+            onClick={() => void decide('keep')}
+          >
+            Giữ
+          </Button>
+        )}
+        {decision !== 'drop' && (
+          <Button
+            size="xs"
+            variant="outline"
+            loading={busy === 'drop'}
+            disabled={busy !== null}
+            aria-label={`Bỏ "${title}"`}
+            onClick={() => void decide('drop')}
+          >
+            Bỏ
+          </Button>
+        )}
+      </div>
+      <WriteError error={error} className="basis-full" />
+    </>
+  );
+}
+
+/** "Cơ hội nào có thêm bằng chứng" and the stale ones (4 weeks without new evidence: keep or drop, DECISIONS 9.2). */
+export function ReviewOpportunities({
+  opportunities,
+  onDecided,
+}: {
+  opportunities: ApiWeekOpportunities;
+  onDecided: (id: number, decision: ApiOpportunityDecision) => void;
+}) {
   const { withEvidence, stale } = opportunities;
   return (
     <WeekSection
@@ -37,7 +103,12 @@ export function ReviewOpportunities({ opportunities }: { opportunities: ApiWeekO
               const d = decisionOf(o.decision);
               return (
                 <li key={o.id} className="flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-sm">
-                  <span className="min-w-0 flex-1 font-medium">{o.title}</span>
+                  <Link
+                    href={opportunityHref(o.id)}
+                    className="min-w-0 flex-1 font-medium hover:underline focus-visible:underline"
+                  >
+                    {o.title}
+                  </Link>
                   <StatusBadge tone={d.tone}>{d.label}</StatusBadge>
                   <span className="text-xs text-muted-foreground tabular-nums">
                     {o.supports} ủng hộ · {o.contradicts} phản bác
@@ -58,11 +129,14 @@ export function ReviewOpportunities({ opportunities }: { opportunities: ApiWeekO
               const d = decisionOf(o.decision);
               return (
                 <li key={o.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm">
-                  <span className="min-w-0 flex-1">{o.title}</span>
+                  <Link href={opportunityHref(o.id)} className="min-w-0 flex-1 hover:underline focus-visible:underline">
+                    {o.title}
+                  </Link>
                   <StatusBadge tone={d.tone}>{d.label}</StatusBadge>
                   <span className="text-xs text-muted-foreground">
                     {o.lastEvidenceAt ? `Bằng chứng cuối ${formatDate(o.lastEvidenceAt)}` : 'Chưa có bằng chứng'}
                   </span>
+                  <DecideButtons id={o.id} title={o.title} decision={o.decision} onDecided={onDecided} />
                 </li>
               );
             })}

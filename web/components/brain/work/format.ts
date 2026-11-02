@@ -21,9 +21,16 @@ export function formatMinutes(minutes: number | null | undefined): string {
   return r ? `${h} giờ ${r} phút` : `${h} giờ`;
 }
 
-/** 90 -> "1,5 giờ" (compact, for totals and chart labels). */
+/**
+ * Exact compact hours for totals and chart labels: 91 -> "1 giờ 31", 60 -> "1 giờ", 45 -> "45 phút".
+ * Never rounded, so tiles, the entry list ("1 giờ 31 phút") and the Tuần review ("1h31") agree.
+ */
 export function formatHours(minutes: number | null | undefined): string {
-  return `${numberVi.format((minutes ?? 0) / 60)} giờ`;
+  const m = Math.max(0, Math.round(minutes ?? 0));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  if (h === 0) return `${r} phút`;
+  return r ? `${h} giờ ${String(r).padStart(2, '0')}` : `${h} giờ`;
 }
 
 /** Decimal string from the API ("4800.00") in its currency, e.g. "4.800 CZK"; empty for null. */

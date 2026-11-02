@@ -34,16 +34,26 @@ class ItemSerializer(serializers.ModelSerializer[Item]):
         return normalize_tags(value)
 
 
+class ItemLabelSerializer(serializers.ModelSerializer[Item]):
+    """Just enough of an Item to label a link to it (badges on notes), so lists never need every Item."""
+
+    class Meta:
+        model = Item
+        fields = ["id", "title", "type"]
+        read_only_fields = fields
+
+
 class NoteSerializer(serializers.ModelSerializer[Note]):
-    """`items` are the ids of the linked Items (prefetch them)."""
+    """`items` are the ids of the linked Items, `itemLabels` their titles and types (prefetch `items`)."""
 
     items = serializers.SerializerMethodField()
+    itemLabels = ItemLabelSerializer(source="items", many=True, read_only=True)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
     updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
 
     class Meta:
         model = Note
-        fields = ["id", "title", "markdown", "items", "createdAt", "updatedAt"]
+        fields = ["id", "title", "markdown", "items", "itemLabels", "createdAt", "updatedAt"]
         read_only_fields = fields
 
     def get_items(self, note: Note) -> list[int]:
@@ -62,5 +72,5 @@ class NoteWriteSerializer(serializers.Serializer[object]):
         user: User = self.context["user"]
         items = list(Item.objects.filter(user=user, pk__in=value))
         if len(items) != len(set(value)):
-            raise serializers.ValidationError("Not one of your items.")
+            raise serializers.ValidationError("Không phải item của bạn.")
         return items

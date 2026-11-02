@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { growthApi, listAll, type ApiAchievement, type ApiAchievementWrite } from '@/lib/api/growth';
@@ -16,12 +16,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Kbd } from '@/components/ui/kbd';
 import { Textarea } from '@/components/ui/textarea';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { fieldErrors } from './labels';
 import { FormError, FormRow } from './shared';
+import { SaveKeys } from '../save-keys';
 
 const fieldNames = {
   title: 'Việc đã làm',
@@ -81,6 +81,8 @@ function AchievementForm({
   const [skills, setSkills] = useState<number[]>(achievement?.skills.map((s) => s.id) ?? []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set synchronously, so a second Cmd+Enter before the re-render cannot POST twice.
+  const inFlight = useRef(false);
   const projects = useApi('achievement-projects', loadProjects);
   const projectChoices = [
     { value: '', label: 'Không gắn dự án' },
@@ -92,6 +94,7 @@ function AchievementForm({
   ];
 
   const submit = async () => {
+    if (inFlight.current) return;
     if (!title.trim()) {
       setError('Cần ghi việc đã làm.');
       return;
@@ -104,6 +107,7 @@ function AchievementForm({
       project: project ? Number(project) : null,
       skills,
     };
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -114,6 +118,7 @@ function AchievementForm({
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, fieldNames)) || describeApiError(e).title);
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -128,7 +133,7 @@ function AchievementForm({
       onKeyDown={(e) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
           e.preventDefault();
-          void submit();
+          if (!e.repeat) void submit();
         }
       }}
     >
@@ -168,7 +173,7 @@ function AchievementForm({
       </DialogPanel>
       <DialogFooter>
         <span className="me-auto hidden self-center text-xs text-muted-foreground sm:inline">
-          <Kbd>⌘</Kbd>+<Kbd>Enter</Kbd> để lưu
+          <SaveKeys /> để lưu
         </span>
         <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
         <Button type="submit" disabled={busy}>

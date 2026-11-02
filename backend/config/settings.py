@@ -128,7 +128,7 @@ DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES["default"]["CONN_MAX_AGE"] = 60
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "vi"  # DRF and Django validation messages reach the UI (UI text in Vietnamese)
 TIME_ZONE = "Europe/Prague"
 USE_I18N = True
 USE_TZ = True

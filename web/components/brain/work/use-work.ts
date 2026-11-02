@@ -4,15 +4,21 @@ import { api, type ApiObjective, type Page } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import { workApi, type ApiProject, type ApiTimeEntry, type ApiTimer, type ApiTimerStart } from '@/lib/api/work';
 
-/** Projects for the pickers (timer, manual entry, filter): up to 200, open ones first, then by title. */
-export function useProjectChoices() {
-  const res = useApi<Page<ApiProject>>('work:project-choices', () => workApi.listProjects({ limit: 200 }));
-  const projects = useMemo(() => {
-    const rank = (p: ApiProject) => (p.status === 'active' ? 0 : p.status === 'planned' ? 1 : 2);
-    return [...(res.data?.results ?? [])].sort(
-      (a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title, 'vi'),
-    );
-  }, [res.data]);
+/** Picker order: open projects first (active, then planned), then by title. */
+export function sortProjectChoices(list: ApiProject[]): ApiProject[] {
+  const rank = (p: ApiProject) => (p.status === 'active' ? 0 : p.status === 'planned' ? 1 : 2);
+  return [...list].sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title, 'vi'));
+}
+
+/**
+ * Projects for the pickers (timer, manual entry, filter): up to 200, open ones first, then by title.
+ * `enabled` false skips the request (a page that already has the full list builds the choices itself).
+ */
+export function useProjectChoices(enabled = true) {
+  const res = useApi<Page<ApiProject>>(enabled ? 'work:project-choices' : null, () =>
+    workApi.listProjects({ limit: 200 }),
+  );
+  const projects = useMemo(() => sortProjectChoices(res.data?.results ?? []), [res.data]);
   return { ...res, projects };
 }
 

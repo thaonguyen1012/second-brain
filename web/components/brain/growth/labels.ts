@@ -28,7 +28,7 @@ export const freshness: Record<ApiFreshness, { label: string; hint: string; tone
       label: 'Đã mờ',
       hint: '6 tháng không có bằng chứng mới, hoặc chưa có',
       tone: 'outline',
-      tile: 'border-dashed bg-muted/60 text-muted-foreground opacity-55 grayscale',
+      tile: 'border-dashed border-muted-foreground/35 bg-muted/40 text-muted-foreground',
       dot: 'bg-muted-foreground/40',
     },
   };

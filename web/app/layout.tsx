@@ -8,7 +8,13 @@ import './global.css';
 // Space UI roles: Inter for UI and body, Geist for headings, JetBrains Mono for code (see global.css).
 const inter = Inter({ subsets: ['vietnamese', 'latin'], display: 'swap', variable: '--font-inter' });
 const geist = Geist({ subsets: ['latin'], display: 'swap', variable: '--font-geist' });
-const mono = JetBrains_Mono({ subsets: ['vietnamese', 'latin'], display: 'swap', variable: '--font-jetbrains' });
+// Mono is only for code blocks: no preload, the browser fetches it when monospace text renders.
+const mono = JetBrains_Mono({
+  subsets: ['vietnamese', 'latin'],
+  display: 'swap',
+  variable: '--font-jetbrains',
+  preload: false,
+});
 
 export const metadata: Metadata = {
   title: { default: appName, template: `%s · ${appName}` },

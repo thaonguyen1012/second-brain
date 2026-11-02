@@ -4,12 +4,16 @@ import { useSearchContext } from 'fumadocs-ui/contexts/search';
 import { useEffect, type ReactNode } from 'react';
 import { viTranslations } from '@/lib/i18n-vi';
 
-/** "/" opens search (in addition to ⌘K / Ctrl+K), unless the user is typing. */
+/**
+ * "/" opens search (in addition to ⌘K / Ctrl+K), unless the user is typing, another handler took the key, or
+ * the page has its own search box marked `data-local-search` (Ghi chú, Kỹ năng: "/" focuses that box).
+ */
 function SlashToSearch() {
   const { setOpenSearch } = useSearchContext();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key !== '/' || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (document.querySelector('[data-local-search]')) return;
       const el = e.target as HTMLElement | null;
       if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
       e.preventDefault();

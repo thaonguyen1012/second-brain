@@ -12,20 +12,21 @@ import {
   type Page,
 } from '@/lib/api/client';
 import { linkInboxItem } from '@/lib/api/library';
-import { toApiError, useApi } from '@/lib/api/use-api';
+import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { destinations, formatDate, hostOf, inboxStatuses, inboxStatusOf, itemTypeLabel } from '@/lib/labels';
 import { itemDraftFromEntry, noteTitle } from '@/lib/library-labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Textarea } from '@/components/ui/textarea';
-import { ApiErrorState, EmptyState, LoadingCards, describeApiError } from './api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
 import { refreshInboxCount } from './inbox-count';
 import { ItemDialog } from './item-dialog';
 import { NoteDialog, type NoteDraft } from './library/note-dialog';
 import { useItemIndex } from './library/use-item-index';
 import { OpportunityDialog } from './opportunity-dialog';
+import { SaveKeys } from './save-keys';
 
 const PAGE = 100;
 
@@ -109,7 +110,7 @@ function CaptureBox({
       />
       <div className="flex flex-wrap items-center gap-2 px-1">
         <span className="text-xs text-muted-foreground">
-          <Kbd>⌘</Kbd>+<Kbd>Enter</Kbd> để lưu · tag và tóm tắt được thêm sau, trong nền
+          <SaveKeys /> để lưu · tag và tóm tắt được thêm sau, trong nền
         </span>
         {error && (
           <span className="text-xs text-destructive-foreground" role="alert">
@@ -275,7 +276,8 @@ export function InboxPage() {
   const selected = Math.min(cursor, Math.max(0, shown.length - 1));
   const current = shown[selected];
   const { mutate, reload } = inbox;
-  const index = useItemIndex(shown.some((e) => e.item) || itemFor !== null || noteFor !== null);
+  // Cards label linked Items from `itemTitle`/`itemType`; the full list is only for the note dialog's picker.
+  const index = useItemIndex(noteFor !== null);
   const { put: putItem } = index;
   const dialogOpen = pickFor !== null || itemFor !== null || noteFor !== null;
 
@@ -290,7 +292,7 @@ export function InboxPage() {
     async (entry: ApiInboxEntry, item: ApiItem) => {
       setItemFor(null);
       putItem(item);
-      replace({ ...entry, item: item.id });
+      replace({ ...entry, item: item.id, itemTitle: item.title, itemType: item.type });
       try {
         replace(await linkInboxItem(entry.id, item.id));
         setNotice(`Đã thêm "${item.title}" vào thư viện và liên kết mục inbox. Nhấn A để lưu trữ mục.`);
@@ -373,8 +375,7 @@ export function InboxPage() {
     if (!next) return;
     setLoadingMore(true);
     try {
-      const page = await api.page<ApiInboxEntry>(next);
-      inbox.mutate((d) => d && { results: [...d.results, ...page.results], next: page.next });
+      await appendNextPage(inbox);
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
     } finally {
@@ -424,6 +425,7 @@ export function InboxPage() {
         </p>
       )}
 
+      <ApiStaleAlert result={inbox} />
       {inbox.error && !inbox.data ? (
         <ApiErrorState error={inbox.error} onRetry={inbox.reload} />
       ) : inbox.loading && shown.length === 0 ? (
@@ -444,7 +446,7 @@ export function InboxPage() {
               onSelect={() => setCursor(i)}
               onTriage={(next) => void triage(e, next)}
               onOpportunity={() => setPickFor(e)}
-              linkedItem={e.item ? index.byId.get(e.item) : undefined}
+              linkedItem={e.item && e.itemTitle !== null ? { title: e.itemTitle, type: e.itemType ?? '' } : undefined}
               onItem={() => setItemFor(e)}
               onNote={() => setNoteFor(e)}
             />

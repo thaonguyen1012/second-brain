@@ -18,6 +18,12 @@ function fold(s: string): string {
     .toLowerCase();
 }
 
+/** What a chosen Item badge needs. */
+export interface ItemLabel {
+  title: string;
+  type: string;
+}
+
 /**
  * Links a note to Items: chosen Items as removable badges, plus a combobox that searches titles.
  * Keys in the box: ↑/↓ choose, Enter adds, Backspace on an empty box removes the last link.
@@ -32,7 +38,8 @@ export function ItemPicker({
 }: {
   id: string;
   items: ApiItem[];
-  byId: Map<number, ApiItem>;
+  /** Labels of known Items (the full list, or the labels sent with the rows while it loads). */
+  byId: ReadonlyMap<number, ItemLabel>;
   value: number[];
   onChange: (ids: number[]) => void;
   /** Loading or error text for the Item list, shown under the box. */

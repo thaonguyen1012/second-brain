@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { growthApi, type ApiJobAd, type ApiJobAdPatch, type ApiJobAdWrite } from '@/lib/api/growth';
 import { toApiError } from '@/lib/api/use-api';
@@ -15,11 +15,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Kbd } from '@/components/ui/kbd';
 import { Textarea } from '@/components/ui/textarea';
 import { describeApiError } from '../api-state';
 import { fieldErrors, splitList } from './labels';
 import { FormError, FormRow } from './shared';
+import { SaveKeys } from '../save-keys';
 
 const MAX_TEXT = 20_000;
 const fieldNames = { title: 'Vị trí', company: 'Công ty', url: 'Link', text: 'Nội dung', month: 'Tháng', skills: 'Kỹ năng' };
@@ -42,8 +42,11 @@ function JobAdForm({
   const [skills, setSkills] = useState(initialSkills);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set synchronously, so a second Cmd+Enter before the re-render cannot POST twice (two paid extractions).
+  const inFlight = useRef(false);
 
   const submit = async () => {
+    if (inFlight.current) return;
     if (!title.trim() || !text.trim()) {
       setError('Cần có tên vị trí và nội dung tin.');
       return;
@@ -66,6 +69,7 @@ function JobAdForm({
     // Skills typed by hand set the result and skip the extraction job (API_CONTRACT.md).
     const patch: ApiJobAdPatch = { ...body };
     if (skills !== initialSkills) patch.skills = splitList(skills).map((s) => s.toLowerCase());
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -76,6 +80,7 @@ function JobAdForm({
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, fieldNames)) || describeApiError(e).title);
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -90,7 +95,7 @@ function JobAdForm({
       onKeyDown={(e) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
           e.preventDefault();
-          void submit();
+          if (!e.repeat) void submit();
         }
       }}
     >
@@ -157,7 +162,7 @@ function JobAdForm({
       </DialogPanel>
       <DialogFooter>
         <span className="me-auto hidden self-center text-xs text-muted-foreground sm:inline">
-          <Kbd>⌘</Kbd>+<Kbd>Enter</Kbd> để lưu
+          <SaveKeys /> để lưu
         </span>
         <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
         <Button type="submit" disabled={busy}>

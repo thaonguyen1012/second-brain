@@ -23,7 +23,7 @@ def parse_month(value: str) -> dt.date:
     """ "2026-11" -> 2026-11-01; raises ValueError."""
     match = MONTH.match(value)
     if match is None:
-        raise ValueError("A month as YYYY-MM.")
+        raise ValueError("Tháng có dạng YYYY-MM.")
     return dt.date(int(match[1]), int(match[2]), 1)
 
 
@@ -128,7 +128,7 @@ class SkillEvidenceCreateSerializer(serializers.Serializer[object]):
         user: User = self.context["user"]
         row = model.objects.filter(pk=pk, user=user).first()
         if row is None:
-            raise serializers.ValidationError("Not one of yours.")
+            raise serializers.ValidationError("Không có trong dữ liệu của bạn.")
         return row
 
     def validate_item(self, value: int | None) -> Item | None:
@@ -144,11 +144,11 @@ class SkillEvidenceCreateSerializer(serializers.Serializer[object]):
         needed = LINKS.get(kind)
         for field in LINKS.values():
             if field != needed and attrs.get(field) is not None:
-                raise serializers.ValidationError(f"A {kind} evidence links no {field}.")
+                raise serializers.ValidationError(f"Bằng chứng loại {kind} không gắn {field}.")
         if needed and attrs.get(needed) is None:
-            raise serializers.ValidationError(f"A {kind} evidence needs its link.")
+            raise serializers.ValidationError(f"Bằng chứng loại {kind} cần chọn mục được gắn.")
         if kind == SkillEvidence.Kind.LINK and not (attrs.get("title") and attrs.get("url")):
-            raise serializers.ValidationError({"url": "A link evidence needs a title and a url."})
+            raise serializers.ValidationError({"url": "Bằng chứng dạng link cần tiêu đề và URL."})
         return attrs
 
 
@@ -276,14 +276,14 @@ class AchievementWriteSerializer(serializers.Serializer[object]):
         user: User = self.context["user"]
         project = Item.objects.filter(pk=value, user=user, type=Item.Type.PROJECT).first()
         if project is None:
-            raise serializers.ValidationError("Not one of your projects.")
+            raise serializers.ValidationError("Không phải dự án của bạn.")
         return project
 
     def validate_skills(self, value: list[int]) -> list[Skill]:
         user: User = self.context["user"]
         skills = list(Skill.objects.filter(user=user, pk__in=value))
         if len(skills) != len(set(value)):
-            raise serializers.ValidationError("Not one of your skills.")
+            raise serializers.ValidationError("Không phải kỹ năng của bạn.")
         return skills
 
 

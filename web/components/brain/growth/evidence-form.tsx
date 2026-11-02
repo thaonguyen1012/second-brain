@@ -1,11 +1,12 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import {
   growthApi,
   listAll,
   type ApiEvidenceKind,
+  type ApiNote,
   type ApiSkillEvidence,
   type ApiSkillEvidenceCreate,
 } from '@/lib/api/growth';
@@ -35,23 +36,81 @@ const loadItems = () =>
   listAll(api.listItems({ limit: 200 }), 400).then((rows) =>
     rows.map((i): Choice => ({ value: String(i.id), label: `${itemTypeLabel(i.type)} · ${i.title}` })),
   );
-const loadNotes = () =>
-  listAll(growthApi.listNotes({ limit: 200 }), 400).then((rows) =>
-    rows.map((n): Choice => ({
-      value: String(n.id),
-      label: n.title || n.markdown.slice(0, 60).replace(/\s+/g, ' ') || `Ghi chú #${n.id}`,
-    })),
-  );
 
-function Picker({ kind, value, onChange }: { kind: 'item' | 'note'; value: string; onChange: (v: string) => void }) {
-  const rows = useApi(`evidence-picker:${kind}`, kind === 'item' ? loadItems : loadNotes);
-  const what = kind === 'item' ? 'item' : 'ghi chú';
+/** Notes carry their whole markdown: never load them all, search with ?q= and show at most this many. */
+const NOTE_RESULTS = 20;
+const noteChoice = (n: ApiNote): Choice => ({
+  value: String(n.id),
+  label: n.title || n.markdown.slice(0, 60).replace(/\s+/g, ' ') || `Ghi chú #${n.id}`,
+});
+
+function useDebounced<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
+function ItemPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const rows = useApi('evidence-picker:item', loadItems);
   if (rows.error && !rows.data) return <p className="text-sm text-destructive-foreground">{describeApiError(rows.error).title}</p>;
-  if (!rows.data) return <p className="text-sm text-muted-foreground">Đang tải danh sách {what}…</p>;
+  if (!rows.data) return <p className="text-sm text-muted-foreground">Đang tải danh sách item…</p>;
   if (rows.data.length === 0)
-    return <p className="text-sm text-muted-foreground">Thư viện chưa có {what} nào. Thêm ở trang Thư viện trước.</p>;
-  const choices = [{ value: '', label: `Chọn ${what}…` }, ...rows.data];
-  return <ChoiceSelect id="evidence-ref" label={`Chọn ${what}`} value={value} onChange={onChange} choices={choices} />;
+    return <p className="text-sm text-muted-foreground">Thư viện chưa có item nào. Thêm ở trang Thư viện trước.</p>;
+  const choices = [{ value: '', label: 'Chọn item…' }, ...rows.data];
+  return <ChoiceSelect id="evidence-ref" label="Chọn item" value={value} onChange={onChange} choices={choices} />;
+}
+
+/** Search-as-you-type over GET /api/notes?q= (newest notes while the box is empty). */
+function NotePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [query, setQuery] = useState('');
+  const q = useDebounced(query.trim(), 250);
+  const [picked, setPicked] = useState<Choice | null>(null);
+  const rows = useApi(`evidence-picker:note:${q}`, () =>
+    growthApi.listNotes({ limit: NOTE_RESULTS, ...(q && { q }) }).then((page) => page.results.map(noteChoice)),
+  );
+  const found = rows.loading ? [] : (rows.data ?? []);
+  const keep = picked && picked.value === value && !found.some((c) => c.value === value) ? [picked] : [];
+  const choices = [{ value: '', label: 'Chọn ghi chú…' }, ...keep, ...found];
+  const status = rows.error
+    ? describeApiError(rows.error).title
+    : rows.loading
+      ? 'Đang tìm…'
+      : found.length === 0
+        ? q
+          ? 'Không có ghi chú nào khớp.'
+          : 'Thư viện chưa có ghi chú nào. Thêm ở trang Ghi chú trước.'
+        : found.length === NOTE_RESULTS
+          ? `${NOTE_RESULTS} ghi chú mới nhất khớp; gõ thêm để thu hẹp.`
+          : null;
+  return (
+    <div className="flex flex-col gap-2">
+      <Input
+        type="search"
+        aria-label="Tìm ghi chú"
+        placeholder="Gõ để tìm trong tiêu đề và nội dung…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <ChoiceSelect
+        id="evidence-ref"
+        label="Chọn ghi chú"
+        value={value}
+        onChange={(v) => {
+          setPicked(choices.find((c) => c.value === v) ?? null);
+          onChange(v);
+        }}
+        choices={choices}
+      />
+      {status && (
+        <p className="text-xs text-muted-foreground" aria-live="polite">
+          {status}
+        </p>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -149,7 +208,11 @@ export function EvidenceForm({
       )}
       {!evidence && kind !== 'link' && (
         <FormRow id="evidence-ref" label={kind === 'item' ? 'Item' : 'Ghi chú'}>
-          <Picker kind={kind} value={ref} onChange={setRef} />
+          {kind === 'item' ? (
+            <ItemPicker value={ref} onChange={setRef} />
+          ) : (
+            <NotePicker value={ref} onChange={setRef} />
+          )}
         </FormRow>
       )}
       <FormRow

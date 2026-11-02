@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import { CircleAlert } from 'lucide-react';
 import type { ApiError } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
+import { firstFieldError } from '@/lib/labels';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
@@ -45,22 +46,12 @@ export function WeekSection({
   );
 }
 
-/** DRF 400 bodies are `{ field: [messages] }` or `{ detail }`; show the first message. */
-function firstMessage(body: unknown): string | null {
-  if (!body || typeof body !== 'object') return null;
-  for (const v of Object.values(body as Record<string, unknown>)) {
-    if (typeof v === 'string') return v;
-    if (Array.isArray(v) && typeof v[0] === 'string') return v[0];
-  }
-  return null;
-}
-
-/** A failed write, in Vietnamese; DRF validation messages are shown as they come. */
+/** A failed write, in Vietnamese; the first DRF validation message is shown (translated by lib/labels). */
 export function WriteError({ error, className }: { error: unknown; className?: string }) {
   if (!error) return null;
   const err: ApiError = toApiError(error);
   const { title, text } = describeApiError(err);
-  const detail = err.status === 400 ? firstMessage(err.body) : null;
+  const detail = err.status === 400 ? firstFieldError(err.body) : null;
   return (
     <Alert variant="error" className={className} role="alert">
       <CircleAlert aria-hidden />

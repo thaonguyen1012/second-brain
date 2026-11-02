@@ -926,6 +926,8 @@ export interface components {
             text?: string;
             readonly status: components["schemas"]["InboxStatusEnum"];
             readonly item: number | null;
+            readonly itemTitle: string | null;
+            readonly itemType: string | null;
             /** Format: date-time */
             readonly createdAt: string;
             /** Format: date-time */
@@ -973,6 +975,12 @@ export interface components {
             startedAt?: string | null;
             /** Format: date-time */
             finishedAt?: string | null;
+        };
+        /** @description Just enough of an Item to label a link to it (badges on notes), so lists never need every Item. */
+        ItemLabel: {
+            readonly id: number;
+            readonly title: string;
+            readonly type: components["schemas"]["TypeEnum"];
         };
         ItemRequest: {
             type: components["schemas"]["TypeEnum"];
@@ -1100,12 +1108,13 @@ export interface components {
          * @enum {string}
          */
         NewsTagStatusEnum: "queued" | "tagged" | "failed" | "skipped";
-        /** @description `items` are the ids of the linked Items (prefetch them). */
+        /** @description `items` are the ids of the linked Items, `itemLabels` their titles and types (prefetch `items`). */
         Note: {
             readonly id: number;
             readonly title: string;
             readonly markdown: string;
             readonly items: number[];
+            readonly itemLabels: components["schemas"]["ItemLabel"][];
             /** Format: date-time */
             readonly createdAt: string;
             /** Format: date-time */

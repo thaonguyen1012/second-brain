@@ -65,7 +65,7 @@ def _save(skill: Skill, data: dict[str, object]) -> None:
     try:
         services.save_skill(skill, data)
     except services.SkillConflict as error:
-        raise ValidationError({"name": f"Already used by another skill: {error}."}) from error
+        raise ValidationError({"name": f"Đã dùng cho kỹ năng khác: {error}."}) from error
 
 
 @extend_schema_view(
@@ -218,7 +218,7 @@ def _week(request: Request) -> dt.date | None:
     except ValidationError as error:
         raise ValidationError({"week": error.detail}) from error
     if start.weekday() != 0:
-        raise ValidationError({"week": "A week starts on a Monday."})
+        raise ValidationError({"week": "Tuần bắt đầu vào thứ Hai."})
     return start
 
 
@@ -278,7 +278,7 @@ def _save_prediction(prediction: Prediction, data: dict[str, object]) -> Predict
     try:
         return services.save_prediction(prediction, data)
     except services.PredictionDates as error:
-        raise ValidationError({"checkOn": "Not before madeOn."}) from error
+        raise ValidationError({"checkOn": "Ngày chấm lại không được trước ngày ghi."}) from error
 
 
 @extend_schema_view(

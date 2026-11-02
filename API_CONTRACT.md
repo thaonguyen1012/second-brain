@@ -90,6 +90,7 @@ never sent to an LLM.
 ```json
 request  { "title": "Deep Work: 3 ý chính", "markdown": "# ...", "items": [1, 4] }   (markdown required)
 response 201 { "id": 3, "title": "Deep Work: 3 ý chính", "markdown": "# ...", "items": [1, 4],
+               "itemLabels": [{ "id": 1, "title": "Deep Work", "type": "book" }, ...],
                "createdAt": "...", "updatedAt": "..." }
 ```
 
@@ -97,6 +98,8 @@ response 201 { "id": 3, "title": "Deep Work: 3 ý chính", "markdown": "# ...", 
 title or markdown (case-insensitive substring), `item` keeps notes linked to that Item id. `GET /api/notes/{id}`
 reads one; `PATCH /api/notes/{id}` accepts `title`, `markdown` and `items` (replaces the links; `[]` removes them).
 `items` are sorted ids; an Item that is not the owner's answers `400`. Markdown is up to 200,000 characters.
+`itemLabels` (read only) gives the id, title and type of each linked Item, so a list can label its links without
+loading every Item.
 
 ## Inbox (`/api/inbox`)
 
@@ -106,7 +109,7 @@ in a background job, never inside the request.
 ```json
 request  { "url": "https://example.com/post" }          (or { "text": "an idea" }; at least one is required)
 response 201 { "id": 7, "url": "https://example.com/post", "text": "", "status": "inbox", "item": null,
-               "createdAt": "...", "archivedAt": null, "processed": false, "processedAt": null, "error": "",
+               "itemTitle": null, "itemType": null, "createdAt": "...", "archivedAt": null, "processed": false, "processedAt": null, "error": "",
                "ogTitle": "", "ogDescription": "", "ogSiteName": "", "thumbnailUrl": null,
                "suggestedTags": [], "summary": "", "suggestedDestination": "" }
 ```
@@ -116,6 +119,7 @@ records the weekly triage and accepts only `{ "status": "inbox|later|archived", 
 `archivedAt` is set when the status becomes archived, kept while it stays
 archived and cleared (`null`) when it leaves the archive.
 `suggestedDestination` is one of read_later, book, opportunity, note (or empty until processed).
+`itemTitle` and `itemType` (read only) label the linked Item, `null` when `item` is `null`.
 
 ## Weeks (`/api/weeks`)
 

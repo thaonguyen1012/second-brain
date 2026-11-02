@@ -41,6 +41,31 @@ export function ApiErrorState({ error, onRetry }: { error: ApiError; onRetry?: (
   );
 }
 
+/**
+ * A failed reload (tab focus, retry) while the rows of the same list stay on screen: says the rows may be old.
+ * Renders nothing otherwise; the full ApiErrorState covers the case with no rows.
+ */
+export function ApiStaleAlert({
+  result,
+}: {
+  result: { error: ApiError | undefined; data: unknown; reload: () => void };
+}) {
+  if (!result.error || result.data === undefined) return null;
+  const { title } = describeApiError(result.error);
+  return (
+    <Alert variant="warning">
+      <CircleAlert aria-hidden />
+      <AlertTitle>{title}</AlertTitle>
+      <AlertDescription>Đang hiện dữ liệu tải lần trước, có thể đã cũ.</AlertDescription>
+      <AlertAction>
+        <Button size="sm" variant="outline" onClick={result.reload}>
+          Thử lại
+        </Button>
+      </AlertAction>
+    </Alert>
+  );
+}
+
 export function EmptyState({
   title,
   description,

@@ -41,6 +41,9 @@ def test_list_entries(client: Client) -> None:
     data = client.get("/api/inbox").json()
     assert [e["text"] for e in data["results"]] == ["two", "one"]
     assert data["results"][1]["item"] == item.pk
+    # The linked Item's label comes with the entry; null without a link.
+    assert (data["results"][1]["itemTitle"], data["results"][1]["itemType"]) == ("t", "article")
+    assert (data["results"][0]["itemTitle"], data["results"][0]["itemType"]) == (None, None)
     assert [e["text"] for e in client.get("/api/inbox?status=later").json()["results"]] == ["two"]
 
 

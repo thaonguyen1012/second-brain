@@ -2,13 +2,13 @@
 import Link from 'next/link';
 import { ArrowRight, CalendarPlus, Inbox, Target } from 'lucide-react';
 import type { ApiObjective, ApiWeek } from '@/lib/api/client';
-import type { ApiAchievement, ApiReviewView } from '@/lib/api/weeks';
+import type { ApiAchievement, ApiOpportunityDecision, ApiReviewView } from '@/lib/api/weeks';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useInboxCount } from '../inbox-count';
 import { type BookIndex, BodyOfWork } from './body-of-work';
-import { ObjectivesEditor } from './objectives-editor';
+import { ObjectivesEditor, type ObjectivesUpdate } from './objectives-editor';
 import { ReviewAchievements, ReviewOpportunities } from './review-extras';
 import { ReviewJournal } from './review-journal';
 import { TimeChart } from './time-chart';
@@ -73,6 +73,7 @@ export function ReviewPanel({
   onWeek,
   onObjectives,
   onAchievement,
+  onOpportunity,
   onNextWeek,
 }: {
   start: string;
@@ -80,8 +81,9 @@ export function ReviewPanel({
   review: ApiReviewView;
   books: BookIndex;
   onWeek: (week: ApiWeek) => void;
-  onObjectives: (objectives: ApiObjective[]) => void;
+  onObjectives: (update: ObjectivesUpdate) => void;
   onAchievement: (a: ApiAchievement) => void;
+  onOpportunity: (id: number, decision: ApiOpportunityDecision) => void;
   onNextWeek?: () => void;
 }) {
   const minutes = new Map(review.time.byObjective.map((o) => [o.id, o.minutes]));
@@ -110,7 +112,7 @@ export function ReviewPanel({
           </WeekSection>
           <TimeChart days={review.days} time={review.time} />
           <BodyOfWork days={review.days} books={books} />
-          <ReviewOpportunities opportunities={review.opportunities} />
+          <ReviewOpportunities opportunities={review.opportunities} onDecided={onOpportunity} />
           <ReviewAchievements start={start} achievements={review.achievements} onAdded={onAchievement} />
         </div>
         <div className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:rounded-3xl">

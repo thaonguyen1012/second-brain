@@ -1,14 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { CalendarCheck, Pencil, Plus, Scale, Trophy } from 'lucide-react';
-import { api, type Page } from '@/lib/api/client';
+import type { Page } from '@/lib/api/client';
 import { growthApi, type ApiAchievement, type ApiOutcome, type ApiPrediction } from '@/lib/api/growth';
-import { toApiError, useApi } from '@/lib/api/use-api';
+import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
-import { ApiErrorState, EmptyState, LoadingCards, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
 import { AchievementDialog } from './achievement-dialog';
@@ -89,8 +89,7 @@ function BragSection() {
     if (!next) return;
     setLoadingMore(true);
     try {
-      const page = await api.page<ApiAchievement>(next);
-      list.mutate((d) => d && { results: [...d.results, ...page.results], next: page.next });
+      await appendNextPage(list);
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
     } finally {
@@ -130,6 +129,7 @@ function BragSection() {
           {notice}
         </p>
       )}
+      <ApiStaleAlert result={list} />
       {list.error && !list.data ? (
         <ApiErrorState error={list.error} onRetry={list.reload} />
       ) : list.loading && rows.length === 0 ? (
@@ -137,7 +137,13 @@ function BragSection() {
       ) : rows.length === 0 ? (
         <EmptyState
           icon={<Trophy aria-hidden />}
-          title={scope === 'week' ? (week === thisWeek ? 'Tuần này chưa ghi gì' : 'Tuần này không có dòng nào') : 'Nhật ký còn trống'}
+          title={
+            scope === 'week'
+              ? week === thisWeek
+                ? 'Tuần này chưa ghi gì'
+                : `Tuần ${weekLabel(week)} không có dòng nào`
+              : 'Nhật ký còn trống'
+          }
           description="Mỗi tuần ghi những việc đã làm được, kèm kết quả bằng số. Đây là nguyên liệu cho CV và case study."
         >
           <Button onClick={create}>
@@ -271,8 +277,7 @@ function PredictionsSection() {
     if (!next) return;
     setLoadingMore(true);
     try {
-      const page = await api.page<ApiPrediction>(next);
-      list.mutate((d) => d && { results: [...d.results, ...page.results], next: page.next });
+      await appendNextPage(list);
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
     } finally {
@@ -313,6 +318,7 @@ function PredictionsSection() {
           {notice}
         </p>
       )}
+      <ApiStaleAlert result={list} />
       {list.error && !list.data ? (
         <ApiErrorState error={list.error} onRetry={list.reload} />
       ) : list.loading && rows.length === 0 ? (

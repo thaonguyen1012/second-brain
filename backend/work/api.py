@@ -151,7 +151,7 @@ class TimeEntryView(APIView):
         body = TimeEntryUpdateSerializer(data=request.data, partial=True, context={"user": user})
         body.is_valid(raise_exception=True)
         if entry.running and "minutes" in body.validated_data:
-            raise ValidationError({"minutes": "Stop the timer first."})
+            raise ValidationError({"minutes": "Hãy dừng đồng hồ trước."})
         entry = services.update_entry(entry, dict(body.validated_data))
         return Response(TimeEntrySerializer(entry).data)
 

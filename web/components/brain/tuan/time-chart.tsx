@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { WeekSection } from './week-section';
 import { dayLabel, minutesLong, minutesShort, shortDate, weekdayShort } from './week-utils';
 
-// Emphasis form (dataviz skill): the objective hours are the point (blue), the rest is context (gray).
-// Light: primary #1f6ae0 + zinc-400; dark: blue-500 + zinc-500 (validated against the dark surface).
+// Emphasis form (dataviz skill): the objective hours are the point (teal), the rest is context (gray).
+// Colours are the --chart-objective / --chart-other tokens in app/global.css (light and dark).
 // The gray is below 3:1 on white, so the values are always labelled and a table view exists.
-const FOR = 'bg-primary dark:bg-blue-500';
-const OTHER = 'bg-zinc-400 dark:bg-zinc-500';
+const FOR = 'bg-chart-objective';
+const OTHER = 'bg-chart-other';
 
 /** Clean hour ticks for the column axis. */
 function hourTicks(maxMinutes: number): number[] {

@@ -2,15 +2,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { BriefcaseBusiness, ClipboardPaste, ExternalLink, HelpCircle, Pencil, Plus, RefreshCw, Sparkles } from 'lucide-react';
-import { api, type Page } from '@/lib/api/client';
+import type { Page } from '@/lib/api/client';
 import { growthApi, type ApiJobAd, type ApiMarketReport, type ApiMarketSkill } from '@/lib/api/growth';
-import { toApiError, useApi } from '@/lib/api/use-api';
+import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { hostOf } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Kbd } from '@/components/ui/kbd';
-import { ApiErrorState, EmptyState, LoadingCards, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
 import { JobAdDialog } from './job-ad-dialog';
 import { MarketSkillTable, MatchedSkill } from './market-chart';
@@ -66,9 +66,15 @@ function JobAdCard({ ad, onEdit }: { ad: ApiJobAd; onEdit: () => void }) {
         </div>
       )}
       {!ad.processed && ad.error && (
-        <p className="text-xs text-muted-foreground">
-          {ad.error} Sửa tin để phân tích lại, hoặc tự điền kỹ năng.
-        </p>
+        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+          <p>AI không trả về kết quả hợp lệ. Sửa tin để phân tích lại, hoặc tự điền kỹ năng.</p>
+          <details>
+            <summary className="w-fit cursor-pointer select-none">Chi tiết kỹ thuật</summary>
+            <p className="mt-1 break-words font-mono text-[11px]" lang="en">
+              {ad.error}
+            </p>
+          </details>
+        </div>
       )}
       {!ad.processed && !ad.error && (
         <p className="text-xs text-muted-foreground">Kỹ năng và cấp bậc sẽ được rút ra trong nền, vài phút sau.</p>
@@ -236,8 +242,7 @@ export function MarketPage() {
     if (!next) return;
     setLoadingMore(true);
     try {
-      const page = await api.page<ApiJobAd>(next);
-      ads.mutate((d) => d && { results: [...d.results, ...page.results], next: page.next });
+      await appendNextPage(ads);
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
     } finally {
@@ -276,6 +281,7 @@ export function MarketPage() {
         </p>
       )}
 
+      <ApiStaleAlert result={report} />
       {report.error && !report.data ? (
         <ApiErrorState error={report.error} onRetry={report.reload} />
       ) : report.loading && !report.data ? (
@@ -323,6 +329,7 @@ export function MarketPage() {
           )}
         </section>
       )}
+      <ApiStaleAlert result={ads} />
       {ads.error && !ads.data && !report.error && <ApiErrorState error={ads.error} onRetry={ads.reload} />}
 
       <JobAdDialog

@@ -3,11 +3,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Library, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
 import { api, type ApiItem, type ApiItemStatus, type ApiItemType, type Page } from '@/lib/api/client';
-import { toApiError, useApi } from '@/lib/api/use-api';
+import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate, itemStatusOf, itemStatuses, itemTypeLabel, itemTypes } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ApiErrorState, EmptyState, LoadingCards, describeApiError } from './api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
 import { ChoiceSelect } from './choice-select';
 import { ItemDialog } from './item-dialog';
@@ -130,8 +130,7 @@ export function LibraryPage() {
     if (!next) return;
     setLoadingMore(true);
     try {
-      const page = await api.page<ApiItem>(next);
-      items.mutate((d) => d && { results: [...d.results, ...page.results], next: page.next });
+      await appendNextPage(items);
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
     } finally {
@@ -168,6 +167,7 @@ export function LibraryPage() {
         </p>
       )}
 
+      <ApiStaleAlert result={items} />
       {items.error && !items.data ? (
         <ApiErrorState error={items.error} onRetry={items.reload} />
       ) : items.loading && list.length === 0 ? (

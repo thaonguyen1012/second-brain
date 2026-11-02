@@ -94,7 +94,7 @@ export function BillableBar({
           </TooltipPopup>
         </Tooltip>
         {showTotal && (
-          <span className="w-16 shrink-0 text-end text-sm font-medium tabular-nums">{formatHours(total)}</span>
+          <span className="w-20 shrink-0 text-end text-sm font-medium tabular-nums">{formatHours(total)}</span>
         )}
       </div>
       <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground tabular-nums">

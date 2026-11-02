@@ -2049,6 +2049,14 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        itemTitle:
+          type: string
+          readOnly: true
+          nullable: true
+        itemType:
+          type: string
+          readOnly: true
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -2099,6 +2107,8 @@ components:
       - error
       - id
       - item
+      - itemTitle
+      - itemType
       - ogDescription
       - ogSiteName
       - ogTitle
@@ -2191,6 +2201,25 @@ components:
       - title
       - type
       - updatedAt
+    ItemLabel:
+      type: object
+      description: Just enough of an Item to label a link to it (badges on notes),
+        so lists never need every Item.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          readOnly: true
+      required:
+      - id
+      - title
+      - type
     ItemRequest:
       type: object
       properties:
@@ -2550,7 +2579,8 @@ components:
         * `skipped` - Skipped
     Note:
       type: object
-      description: '`items` are the ids of the linked Items (prefetch them).'
+      description: '`items` are the ids of the linked Items, `itemLabels` their titles
+        and types (prefetch `items`).'
       properties:
         id:
           type: integer
@@ -2566,6 +2596,11 @@ components:
           items:
             type: integer
           readOnly: true
+        itemLabels:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemLabel'
+          readOnly: true
         createdAt:
           type: string
           format: date-time
@@ -2577,6 +2612,7 @@ components:
       required:
       - createdAt
       - id
+      - itemLabels
       - items
       - markdown
       - title

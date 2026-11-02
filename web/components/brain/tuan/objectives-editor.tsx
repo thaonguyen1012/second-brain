@@ -82,10 +82,16 @@ export function ObjectiveHint({ objectives }: { objectives: ApiObjective[] }) {
   );
 }
 
+/** A change to the week's objectives, applied to the newest list (never to a stale copy). */
+export type ObjectivesUpdate = (current: ApiObjective[]) => ApiObjective[];
+
+const byPosition = (list: ApiObjective[]) => [...list].sort((a, b) => a.position - b.position || a.id - b.id);
+
 /**
- * The week's objectives: add, rename, change status and reorder. Updates are optimistic: `onChange` gets the
- * new list at once and the old one back if Django refuses. `minutes` (review) shows the time logged per
- * objective.
+ * The week's objectives: add, rename, change status and reorder. Updates are optimistic: `onChange` applies
+ * the change at once; if Django refuses, only the rows of that call go back (and only if no later write
+ * touched them), and a failed reorder reloads the order from the server. Moves are sent one after another.
+ * `minutes` (review) shows the time logged per objective.
  */
 export function ObjectivesEditor({
   start,
@@ -96,7 +102,7 @@ export function ObjectivesEditor({
 }: {
   start: string;
   objectives: ApiObjective[];
-  onChange: (next: ApiObjective[]) => void;
+  onChange: (update: ObjectivesUpdate) => void;
   minutes?: Map<number, number>;
   allowAdd?: boolean;
 }) {
@@ -117,21 +123,50 @@ export function ObjectivesEditor({
     focusId.current = null;
   });
 
-  async function write(next: ApiObjective[], call: () => Promise<unknown>) {
-    const previous = objectives;
+  // Newest write per objective id, so a late failure does not undo a later write that succeeded.
+  const lastWrite = useRef(new Map<number, number>());
+  const writes = useRef(0);
+  // Reorders run one after another: two quick moves never race on the same row's position.
+  const moves = useRef<Promise<unknown>>(Promise.resolve());
+
+  async function write(
+    changes: Map<number, Partial<ApiObjective>>,
+    call: () => Promise<unknown>,
+    reloadOnError = false,
+  ) {
+    const n = ++writes.current;
+    const before = new Map<number, Partial<ApiObjective>>();
+    for (const [id, c] of changes) {
+      const o = objectives.find((x) => x.id === id);
+      if (o) before.set(id, Object.fromEntries(Object.keys(c).map((k) => [k, o[k as keyof ApiObjective]])));
+      lastWrite.current.set(id, n);
+    }
     setError(null);
-    onChange(next);
+    onChange((list) => byPosition(list.map((x) => (changes.has(x.id) ? { ...x, ...changes.get(x.id) } : x))));
     try {
       await call();
     } catch (err) {
-      onChange(previous);
       setError(err);
+      if (reloadOnError) {
+        // Some positions may be saved and some not: take the order the server has.
+        try {
+          const fresh = byPosition((await weeksApi.getPlan(start)).week.objectives);
+          onChange(() => fresh);
+          return;
+        } catch {
+          // fall back to the local rollback below
+        }
+      }
+      onChange((list) =>
+        byPosition(
+          list.map((x) => (before.has(x.id) && lastWrite.current.get(x.id) === n ? { ...x, ...before.get(x.id) } : x)),
+        ),
+      );
     }
   }
 
   function patch(o: ApiObjective, changes: { title?: string; status?: ApiObjectiveStatus }) {
-    const next = objectives.map((x) => (x.id === o.id ? { ...x, ...changes } : x));
-    void write(next, () => weeksApi.updateObjective(start, o.id, changes));
+    void write(new Map([[o.id, changes]]), () => weeksApi.updateObjective(start, o.id, changes));
   }
 
   function move(index: number, delta: -1 | 1) {
@@ -144,9 +179,11 @@ export function ObjectivesEditor({
     const next = order.map((o, i) => (o.position === i ? o : { ...o, position: i }));
     const changed = next.filter((o, i) => objectives.find((x) => x.id === o.id)?.position !== i);
     setFocusId(moved.id);
-    void write(next, () =>
-      Promise.all(changed.map((o) => weeksApi.updateObjective(start, o.id, { position: o.position }))),
-    );
+    const run = moves.current.then(async () => {
+      for (const o of changed) await weeksApi.updateObjective(start, o.id, { position: o.position });
+    });
+    moves.current = run.catch(() => undefined);
+    void write(new Map(changed.map((o) => [o.id, { position: o.position }])), () => run, true);
   }
 
   function saveTitle(refocus: boolean) {
@@ -165,7 +202,7 @@ export function ObjectivesEditor({
     setError(null);
     try {
       const created = await weeksApi.addObjective(start, title);
-      onChange([...objectives, created]);
+      onChange((list) => [...list, created]);
       setDraft('');
     } catch (err) {
       setError(err);

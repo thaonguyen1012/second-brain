@@ -16,12 +16,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { describeApiError } from '../api-state';
-import { ItemPicker } from './item-picker';
+import { ItemPicker, type ItemLabel } from './item-picker';
 import { fieldErrors as sharedFieldErrors } from '@/lib/labels';
+import { SaveKeys } from '../save-keys';
 
 /** Backend limit for `markdown` (API_CONTRACT.md). */
 const MAX_MARKDOWN = 200_000;
@@ -57,7 +57,7 @@ function NoteForm({
   note: ApiNote | null;
   draft?: NoteDraft;
   items: ApiItem[];
-  byId: Map<number, ApiItem>;
+  byId: ReadonlyMap<number, ItemLabel>;
   itemsStatus?: string;
   onDirty: (dirty: boolean) => void;
   onSaved: (note: ApiNote, created: boolean) => void;
@@ -159,7 +159,7 @@ function NoteForm({
       </DialogPanel>
       <DialogFooter>
         <span className="me-auto hidden text-xs text-muted-foreground sm:inline">
-          <Kbd>⌘</Kbd>+<Kbd>Enter</Kbd> để lưu
+          <SaveKeys /> để lưu
         </span>
         <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
         <Button type="submit" disabled={busy}>
@@ -190,7 +190,7 @@ export function NoteDialog({
   note: ApiNote | null;
   draft?: NoteDraft;
   items: ApiItem[];
-  byId: Map<number, ApiItem>;
+  byId: ReadonlyMap<number, ItemLabel>;
   itemsStatus?: string;
   description?: string;
   onOpenChange: (open: boolean) => void;

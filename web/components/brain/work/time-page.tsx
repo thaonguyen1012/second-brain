@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Clock, Loader2, Pencil, Plus, Target, Trash2, X } from 'lucide-react';
-import { api, type Page } from '@/lib/api/client';
-import { toApiError, useApi } from '@/lib/api/use-api';
+import type { Page } from '@/lib/api/client';
+import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiTimeEntry } from '@/lib/api/work';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
-import { ApiErrorState, EmptyState, LoadingCards, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { addDays, formatDay, formatMinutes, isTyping } from './format';
 import { TimeEntryDialog } from './time-entry-dialog';
@@ -188,13 +188,20 @@ export function TimePage() {
   const matches = (e: ApiTimeEntry) =>
     (project === 'all' || e.project === Number(project)) && (!isDay(from) || e.date >= from) && (!isDay(to) || e.date <= to);
 
-  /** Keeps the list in date order after a local change (newest date first, then newest id). */
+  /**
+   * Keeps the list in date order after a local change (newest date first, then newest id). With more pages
+   * on the server, an entry that sorts after the last loaded row is left for "Tải thêm" to bring (adding it
+   * here would show it twice and count its minutes twice).
+   */
   const upsert = (saved: ApiTimeEntry) =>
     entries.mutate((d) => {
       if (!d) return d;
+      const order = (a: ApiTimeEntry, b: ApiTimeEntry) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1);
       const rest = d.results.filter((e) => e.id !== saved.id);
-      const results = matches(saved) ? [...rest, saved] : rest;
-      results.sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
+      const last = rest.at(-1);
+      const loaded = !d.next || (last !== undefined && order(saved, last) < 0);
+      const results = matches(saved) && loaded ? [...rest, saved] : rest;
+      results.sort(order);
       return { ...d, results };
     });
 
@@ -226,8 +233,7 @@ export function TimePage() {
     if (!next) return;
     setLoadingMore(true);
     try {
-      const page = await api.page<ApiTimeEntry>(next);
-      entries.mutate((d) => d && { results: [...d.results, ...page.results], next: page.next });
+      await appendNextPage(entries);
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
     } finally {
@@ -323,6 +329,7 @@ export function TimePage() {
           </p>
         )}
 
+        <ApiStaleAlert result={entries} />
         {badRange ? (
           <p className="text-sm text-destructive-foreground" role="alert">
             &quot;Từ ngày&quot; phải trước hoặc bằng &quot;Đến ngày&quot;.

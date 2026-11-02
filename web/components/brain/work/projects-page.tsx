@@ -1,21 +1,21 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Briefcase, Clock, Pencil, Play, Plus } from 'lucide-react';
-import { api, type ApiItemStatus, type Page } from '@/lib/api/client';
-import { toApiError, useApi } from '@/lib/api/use-api';
+import type { ApiItemStatus, Page } from '@/lib/api/client';
+import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiProject } from '@/lib/api/work';
 import { itemStatusOf, itemStatuses } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ApiErrorState, EmptyState, LoadingCards, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
 import { BillableBar, BillableLegend } from './billable-bar';
 import { billingLabel, formatHours, formatMoney } from './format';
 import { ProjectDialog } from './project-dialog';
 import { TimerPanel } from './timer-panel';
-import { useProjectChoices, useTimer, useWeekObjectives } from './use-work';
+import { sortProjectChoices, useProjectChoices, useTimer, useWeekObjectives } from './use-work';
 
 type StatusFilter = ApiItemStatus | 'all';
 const statusChoices = [{ value: 'all' as const, label: 'Mọi trạng thái' }, ...itemStatuses];
@@ -64,7 +64,7 @@ function ProjectCard({
       meta={[p.client ? `Khách: ${p.client}` : 'Chưa ghi khách', agreed || 'chưa có giá'].join(' · ')}
       actions={
         <>
-          {!running && (
+          {!running && (p.status === 'active' || p.status === 'planned') && (
             <Button size="xs" onClick={onStart}>
               <Play aria-hidden />
               Bấm giờ
@@ -112,11 +112,17 @@ export function ProjectsPage() {
   const projects = useApi<Page<ApiProject>>(`work:projects:${status}`, () =>
     workApi.listProjects({ limit: 100, ...(status !== 'all' && { status }) }),
   );
-  const choices = useProjectChoices();
+  // With no status filter the page list already holds every project: build the timer choices from it
+  // instead of asking the API for the same rows (with their rate aggregates) a second time.
+  const choices = useProjectChoices(status !== 'all');
   const { objectives } = useWeekObjectives();
   const timer = useTimer();
 
   const list = projects.loading ? [] : (projects.data?.results ?? []);
+  const allProjects = useMemo(
+    () => (status === 'all' ? sortProjectChoices(projects.data?.results ?? []) : choices.projects),
+    [status, projects.data, choices.projects],
+  );
   const upsert = (saved: ApiProject, created: boolean) =>
     projects.mutate((d) => {
       if (!d) return d;
@@ -128,13 +134,19 @@ export function ProjectsPage() {
   /** Totals change when a timer stops: refresh the cards from the API. */
   const refresh = () => {
     projects.reload();
-    choices.reload();
+    if (status !== 'all') choices.reload();
   };
 
   const startFor = async (p: ApiProject) => {
+    // The backend stops a running timer before starting the new one (Harvest): say so.
+    const stopped = timer.running && timer.running.project !== p.id ? timer.running : null;
     try {
       await timer.start({ project: p.id, billable: true });
-      setNotice(`Bắt đầu bấm giờ cho "${p.title}"`);
+      setNotice(
+        stopped
+          ? `Đã dừng giờ của "${stopped.projectTitle}" và bắt đầu bấm giờ cho "${p.title}", chưa gắn mục tiêu tuần`
+          : `Bắt đầu bấm giờ cho "${p.title}", chưa gắn mục tiêu tuần`,
+      );
       refresh();
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
@@ -146,8 +158,7 @@ export function ProjectsPage() {
     if (!next) return;
     setLoadingMore(true);
     try {
-      const more = await api.page<ApiProject>(next);
-      projects.mutate((d) => d && { results: [...d.results, ...more.results], next: more.next });
+      await appendNextPage(projects);
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
     } finally {
@@ -159,7 +170,7 @@ export function ProjectsPage() {
     <div className="flex flex-col gap-5 px-4 pb-12 sm:px-8">
       <TimerPanel
         timer={timer}
-        projects={choices.projects.filter((p) => p.status === 'active' || p.status === 'planned')}
+        projects={allProjects.filter((p) => p.status === 'active' || p.status === 'planned')}
         objectives={objectives}
         onChanged={(message) => {
           setNotice(message);
@@ -194,6 +205,7 @@ export function ProjectsPage() {
         </p>
       )}
 
+      <ApiStaleAlert result={projects} />
       {projects.error && !projects.data ? (
         <ApiErrorState error={projects.error} onRetry={projects.reload} />
       ) : projects.loading && list.length === 0 ? (
@@ -236,7 +248,7 @@ export function ProjectsPage() {
         onOpenChange={setDialogOpen}
         onSaved={(saved, created) => {
           upsert(saved, created);
-          choices.reload();
+          if (status !== 'all') choices.reload();
           setDialogOpen(false);
           setNotice(created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`);
         }}

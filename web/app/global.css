@@ -42,6 +42,9 @@
   /* Billable vs non-billable time (Công việc): dataviz palette slots 1-2, validated on white. */
   --chart-billable: #2a78d6;
   --chart-nonbillable: #eb6834;
+  /* Week review time (Tuần): hours for objectives (teal, not the billable blue) vs other hours (gray). */
+  --chart-objective: #12866f;
+  --chart-other: var(--color-zinc-400);
   --sidebar: var(--color-zinc-50);
   --sidebar-foreground: var(--color-zinc-950);
   --sidebar-primary: var(--primary);
@@ -88,6 +91,8 @@
   --chart-5: var(--color-rose-500);
   --chart-billable: #3987e5;
   --chart-nonbillable: #d95926;
+  --chart-objective: #2fb08f;
+  --chart-other: var(--color-zinc-500);
   --sidebar: hsl(0deg 0% 7%);
   --sidebar-foreground: var(--color-zinc-50);
   --sidebar-primary: var(--primary);
@@ -160,6 +165,8 @@
   --color-chart-5: var(--chart-5);
   --color-chart-billable: var(--chart-billable);
   --color-chart-nonbillable: var(--chart-nonbillable);
+  --color-chart-objective: var(--chart-objective);
+  --color-chart-other: var(--chart-other);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
