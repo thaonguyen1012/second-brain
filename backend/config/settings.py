@@ -41,6 +41,27 @@ FILES_DIR = Path(env.str("FILES_DIR", default=str(REPO_DIR / "web" / "public" / 
 # Inbox link thumbnails (webp written by run_jobs); nginx serves them from /internal/thumbs/.
 THUMBS_DIR = Path(env.str("THUMBS_DIR", default=str(BASE_DIR / "media" / "thumbs")))
 
+# LLM (DECISIONS 10.4). Every call goes through core/services/llm.py. Temporary choice: Gemini free tier.
+LLM_PROVIDER = env.str("LLM_PROVIDER", default="gemini")
+LLM_MODEL = env.str("LLM_MODEL", default="gemini-3.1-flash-lite")  # cheapest current Flash-Lite (2026-11)
+GEMINI_API_KEY = env.str("GEMINI_API_KEY", default="")
+LLM_MONTHLY_BUDGET_USD = env.float(
+    "LLM_MONTHLY_BUDGET_USD", default=5.0
+)  # hard cap, checked before each call
+# true: LlmCall.cost is recorded as 0 (tokens are kept). The budget guard ignores it and always counts
+# paid-tier prices, so a project that silently becomes billed is still capped.
+LLM_FREE_TIER = env.bool("LLM_FREE_TIER", default=False)
+# USD per 1M tokens on the paid tier (ai.google.dev/gemini-api/docs/pricing, read 2026-11-02).
+LLM_PRICES = {
+    "gemini-3.1-flash-lite": {"in": 0.25, "out": 1.50, "cache_read": 0.025},
+    "gemini-3.5-flash-lite": {"in": 0.30, "out": 2.50, "cache_read": 0.03},
+}
+LLM_MAX_OUTPUT_TOKENS = 400
+LLM_TIMEOUT_SECONDS = 30
+# Google publishes no fixed free-tier numbers (they vary per project; see AI Studio). One request every
+# 5 s stays under 15 RPM; a 429 leaves the job pending for the next run.
+LLM_MIN_INTERVAL_SECONDS = env.float("LLM_MIN_INTERVAL_SECONDS", default=5.0)
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

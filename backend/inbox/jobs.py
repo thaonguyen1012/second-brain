@@ -6,6 +6,7 @@ from typing import Any
 from django.utils import timezone
 
 from core.services import jobs, safe_fetch, thumbnails, unfurl
+from inbox import tagging
 from inbox.models import InboxEntry
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ def unfurl_entry(payload: dict[str, Any]) -> None:
         entry.error = f"unfurl refused: {exc}"[:500]
         entry.unfurled_at = timezone.now()  # final: the entry is tagged from its URL and text only
         entry.save(update_fields=["error", "unfurled_at", "updated_at"])
+        tagging.enqueue(entry)
         return
     except safe_fetch.FetchError as exc:
         entry.error = f"unfurl failed: {exc}"[:500]
@@ -42,6 +44,7 @@ def unfurl_entry(payload: dict[str, Any]) -> None:
             "updated_at",
         ]
     )
+    tagging.enqueue(entry)
 
 
 def _thumbnail(entry: InboxEntry, image_url: str) -> str:

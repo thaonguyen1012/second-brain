@@ -53,6 +53,10 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  `manage.py run_jobs` (cron) is the only place that makes outbound requests
   core/services/safe_fetch.py    SSRF-guarded GET (public IPs only, pinned IP, 3 redirects, 10 s, 2 MB);
                                  unfurl.py (OG card, nh3), thumbnails.py (webp <= 200 KB in THUMBS_DIR, X-Accel)
+  core/services/llm.py           the only LLM caller (LLM_PROVIDER=gemini now, anthropic later): count tokens,
+                                 budget guard (LLM_MONTHLY_BUDGET_USD), JSON schema call, LlmCall row, LlmCache
+  prompts/, evals/               versioned prompts (inbox_tag.md); golden sets for `manage.py eval tag` (real
+                                 LLM, never in make check). inbox/tagging.py: pydantic schema + `tag` job
   docker-compose.yml             dev Postgres (the laptop uses Homebrew Postgres 16 instead)
 deploy/                          nginx/ (site.conf + header snippets), docker-compose.prod.yml, .env.example, README (Cloudflare Tunnel +
                                  Access setup); config only, not deployed

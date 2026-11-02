@@ -47,8 +47,9 @@ def test_ingest_makes_no_outbound_request(client: Client, net: FakeNet) -> None:
     assert response.status_code == 201 and response.json()["processed"] is False
     assert net.requests == []
     assert Job.objects.get().key == f"unfurl:{response.json()['id']}"
-    send(client, "post", "/api/inbox", {"text": "only text"}, csrf(client))
-    assert Job.objects.count() == 1  # nothing to unfurl
+    text_id = send(client, "post", "/api/inbox", {"text": "only text"}, csrf(client)).json()["id"]
+    assert Job.objects.filter(kind="unfurl").count() == 1  # nothing to unfurl, tagging only
+    assert Job.objects.filter(kind="tag").get().key == f"tag:{text_id}"
 
 
 def test_run_jobs_unfurls_and_stores_a_thumbnail(client: Client, net: FakeNet, tmp_path: Path) -> None:
@@ -73,7 +74,8 @@ def test_refused_url_is_recorded_not_retried(client: Client, net: FakeNet) -> No
     call_command("run_jobs", stdout=io.StringIO())
     entry = InboxEntry.objects.get(pk=entry_id)
     assert entry.error.startswith("unfurl refused") and entry.og_title == ""
-    assert Job.objects.get().status == "done"
+    assert Job.objects.get(kind="unfurl").status == "done"
+    assert Job.objects.filter(kind="tag").exists()  # still tagged from the URL
     assert net.requests == []
 
 

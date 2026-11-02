@@ -6,4 +6,4 @@ class InboxConfig(AppConfig):
     name = "inbox"
 
     def ready(self) -> None:
-        from inbox import jobs  # noqa: F401  registers the job handlers
+        from inbox import jobs, tagging  # noqa: F401  registers the job handlers

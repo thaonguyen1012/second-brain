@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.db import transaction
 
 from core.services import jobs
+from inbox import tagging
 from inbox.models import InboxEntry
 
 TRIAGE_FIELDS = ("status", "item")
@@ -12,7 +13,9 @@ def add_entry(user: User, url: str, text: str) -> InboxEntry:
     with transaction.atomic():
         entry = InboxEntry.objects.create(user=user, url=url, text=text)
         if url:
-            jobs.enqueue("unfurl", f"unfurl:{entry.pk}", {"entry_id": entry.pk})
+            jobs.enqueue("unfurl", f"unfurl:{entry.pk}", {"entry_id": entry.pk})  # then tags
+        else:
+            tagging.enqueue(entry)
     return entry
 
 

@@ -44,6 +44,12 @@ Ingest returns at once; `POST /api/inbox` with a URL enqueues an `unfurl` Job. `
 `jobs` service in deploy/) fetches the page through `core/services/safe_fetch.py` (SSRF guard), stores the OG
 card as plain text and the og:image as a re-encoded webp in `THUMBS_DIR`, served by
 `/api/inbox/{id}/thumbnail` through X-Accel-Redirect to nginx `/internal/thumbs/` (Django streams it in DEBUG).
+After the unfurl (or at once for text), a `tag` job asks the LLM for tags, a one-line summary and a destination
+through `core/services/llm.py`, the only LLM caller: it counts tokens, refuses the call when the month's cost plus
+the estimate passes `LLM_MONTHLY_BUDGET_USD`, calls the provider with a JSON schema, validates the reply with
+pydantic and logs every attempt in `LlmCall`. Valid results are cached by content hash (`LlmCache`). Provider for
+now: Gemini free tier (`LLM_MODEL=gemini-3.1-flash-lite`, cost recorded as 0, tokens kept); a 429 leaves the job
+pending for the next run. Only the title, site name and first 500 characters are sent.
 Deployment config is in `deploy/` (see deploy/README.md): nginx routes `/api/` (except `/api/search`), `/admin/`,
 `/healthz` and `/files/` to Django and everything else to Next; `/files/` passes `auth_request` (Django `/api/me`)
 and Django's `X-Accel-Redirect` to the internal `/internal/files/` alias; CSP is report-only. With
