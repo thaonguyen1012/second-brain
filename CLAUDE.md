@@ -20,8 +20,9 @@ Read DECISIONS.md (owner's decisions), PLAN.md (v2), ARCHITECTURE.md and API_CON
 ```
 web/
   app/(home)/page.tsx            "Hôm nay" (continue learning, week objectives, inbox count, today's brief)
-  app/(home)/<route>/            app pages in the shell: inbox/, thu-vien/ (Items), phat-trien/ (handbook grid),
-                                 tuan/, co-hoi/, cong-viec/, phat-trien/{ky-nang,thi-truong,thanh-tuu}/ ("Đang xây")
+  app/(home)/<route>/            app pages in the shell: inbox/, thu-vien/ (Items) + thu-vien/ghi-chu/ (notes),
+                                 phat-trien/ (handbook grid) + {ky-nang,thi-truong,thanh-tuu}/, tuan/ (?w=&tab=),
+                                 co-hoi/ (?id= detail), cong-viec/ (projects) + cong-viec/gio/ (time); static shells
   app/lo-trinh/                  roadmap (data: lib/roadmap.ts, from the PDF)
   app/docs/[[...slug]]/page.tsx  lesson pages (rendered on request, ISR cached)
   app/trees/[book]/route.ts      full sidebar tree JSON (lazy sidebar, R1)
@@ -33,16 +34,20 @@ web/
   lib/mdx/                       rehype-safe-html (placeholders, safe raw HTML), rehype-code-classes (R4)
   lib/progress/                  ProgressStore interface; localStorage store (default) or ApiProgressStore when
                                  NEXT_PUBLIC_PROGRESS_STORE=api at build time; UI only uses the interface
-  lib/api/                       the only backend caller: client.ts (typed helpers, CSRF, cursor pages) +
-                                 schema.ts/openapi.yaml (make api-types); use-api.ts = client-side loading hook
-  lib/labels.ts                  shared labels and status colours (item, inbox, objective) for every card
+  lib/api/                       the only backend caller: client.ts (exported request(): CSRF, ApiError, DELETE;
+                                 cursor pages) + one module per area (weeks, opportunities, work, growth, library)
+                                 + schema.ts/openapi.yaml (make api-types); use-api.ts = client-side loading hook
+  lib/dates.ts                   Europe/Prague today, mondayOf, addDays, formatDay (date-only, UTC arithmetic)
+  lib/labels.ts                  shared labels and status colours (item, inbox, objective, opportunity decision)
+                                 for every card, plus fieldErrors() for DRF 400 bodies
   lib/page-tree.ts               shell tree, crumbs, prev/next
   components/ui/, components/spaceui/  Space UI components (shadcn registry on Base UI). Add with
                                  `npx shadcn@latest add @spaceui/<name>` (config: components.json); do not hand-write what can be added
   components/app-shell.tsx       app frame: Space UI Sidebar with the 6 items of lib/app-nav.ts + top bar
                                  (search, Inbox button with count, theme)
   components/brain/              second-brain UI (client): BrainCard, api-state (empty/error states), today,
-                                 inbox-page, library-page, dialogs. Data loads in the browser, never at build
+                                 inbox-page, library-page, dialogs; per area: tuan/, opportunities/, work/,
+                                 growth/, library/. Data loads in the browser, never at build
   lib/utils.ts                   cn()
   scripts/                       import-gitbook, build-search, prepare-assets, extract-courses,
                                  backfill-images, smoke-test, prepare-vendor, postbuild-standalone,

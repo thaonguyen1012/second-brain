@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { Library, Pencil, Plus, Star } from 'lucide-react';
+import Link from 'next/link';
+import { Library, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
 import { api, type ApiItem, type ApiItemStatus, type ApiItemType, type Page } from '@/lib/api/client';
 import { toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate, itemStatusOf, itemStatuses, itemTypeLabel, itemTypes } from '@/lib/labels';
@@ -64,6 +65,10 @@ function ItemCard({
           <Button size="xs" variant="outline" onClick={onEdit}>
             <Pencil aria-hidden />
             Sửa
+          </Button>
+          <Button size="xs" variant="ghost" render={<Link href={`/thu-vien/ghi-chu/?item=${item.id}`} />}>
+            <NotebookPen aria-hidden />
+            Ghi chú
           </Button>
         </>
       }

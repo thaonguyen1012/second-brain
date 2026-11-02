@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { api, type ApiItem, type ApiItemStatus, type ApiItemType } from '@/lib/api/client';
+import { api, type ApiItem, type ApiItemRequest, type ApiItemStatus, type ApiItemType } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
-import { itemStatuses, itemTypes } from '@/lib/labels';
+import { fieldErrors, itemStatuses, itemTypes } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -28,26 +28,29 @@ interface Form {
   rating: string;
 }
 
-const fromItem = (i: ApiItem | null): Form => ({
-  title: i?.title ?? '',
-  type: i?.type ?? 'book',
-  status: i?.status ?? 'planned',
-  tags: (i?.tags ?? []).join(', '),
-  source: i?.source ?? '',
-  rating: i?.rating ? String(i.rating) : '',
-});
+/** Form values of the edited Item, else of `draft` (a new Item prefilled by the caller), else empty. */
+const fromItem = (item: ApiItem | null, draft?: Partial<ApiItemRequest>): Form => {
+  const i: Partial<ApiItemRequest> = item ?? draft ?? {};
+  return {
+    title: i.title ?? '',
+    type: i.type ?? 'book',
+    status: i.status ?? 'planned',
+    tags: (i.tags ?? []).join(', '),
+    source: i.source ?? '',
+    rating: i.rating ? String(i.rating) : '',
+  };
+};
 
-/** DRF 400 body `{ field: [messages] }` -> one line per field. */
-function fieldErrors(body: unknown): string | null {
-  if (!body || typeof body !== 'object') return null;
-  const lines = Object.entries(body as Record<string, unknown>).map(
-    ([k, v]) => `${k}: ${Array.isArray(v) ? v.join(' ') : String(v)}`,
-  );
-  return lines.length ? lines.join('\n') : null;
-}
-
-function ItemForm({ item, onSaved }: { item: ApiItem | null; onSaved: (item: ApiItem, created: boolean) => void }) {
-  const [form, setForm] = useState<Form>(() => fromItem(item));
+function ItemForm({
+  item,
+  draft,
+  onSaved,
+}: {
+  item: ApiItem | null;
+  draft?: Partial<ApiItemRequest>;
+  onSaved: (item: ApiItem, created: boolean) => void;
+}) {
+  const [form, setForm] = useState<Form>(() => fromItem(item, draft));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -156,15 +159,17 @@ function ItemForm({ item, onSaved }: { item: ApiItem | null; onSaved: (item: Api
   );
 }
 
-/** Create (item = null) or edit an Item: POST/PATCH /api/items. */
+/** Create (item = null, optional prefilled `draft`) or edit an Item: POST/PATCH /api/items. */
 export function ItemDialog({
   open,
   item,
+  draft,
   onOpenChange,
   onSaved,
 }: {
   open: boolean;
   item: ApiItem | null;
+  draft?: Partial<ApiItemRequest>;
   onOpenChange: (open: boolean) => void;
   onSaved: (item: ApiItem, created: boolean) => void;
 }) {
@@ -175,7 +180,7 @@ export function ItemDialog({
           <DialogTitle>{item ? 'Sửa item' : 'Thêm item'}</DialogTitle>
         </DialogHeader>
         {/* keyed so the form resets for each item */}
-        {open && <ItemForm key={item?.id ?? 'new'} item={item} onSaved={onSaved} />}
+        {open && <ItemForm key={item?.id ?? 'new'} item={item} draft={draft} onSaved={onSaved} />}
       </DialogPopup>
     </Dialog>
   );

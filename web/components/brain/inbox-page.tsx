@@ -1,16 +1,20 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Inbox, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Inbox, Library, Loader2, NotebookPen, Plus } from 'lucide-react';
 import {
   api,
   type ApiInboxEntry,
   type ApiInboxStatus,
+  type ApiItem,
   type ApiOpportunity,
   type ApiStance,
   type Page,
 } from '@/lib/api/client';
+import { linkInboxItem } from '@/lib/api/library';
 import { toApiError, useApi } from '@/lib/api/use-api';
-import { destinations, formatDate, hostOf, inboxStatuses, inboxStatusOf } from '@/lib/labels';
+import { destinations, formatDate, hostOf, inboxStatuses, inboxStatusOf, itemTypeLabel } from '@/lib/labels';
+import { itemDraftFromEntry, noteTitle } from '@/lib/library-labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
@@ -18,6 +22,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiErrorState, EmptyState, LoadingCards, describeApiError } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
 import { refreshInboxCount } from './inbox-count';
+import { ItemDialog } from './item-dialog';
+import { NoteDialog, type NoteDraft } from './library/note-dialog';
+import { useItemIndex } from './library/use-item-index';
 import { OpportunityDialog } from './opportunity-dialog';
 
 const PAGE = 100;
@@ -30,6 +37,16 @@ function titleOf(e: ApiInboxEntry): string {
 function captureBody(value: string): { url: string } | { text: string } {
   const v = value.trim();
   return /^https?:\/\/\S+$/i.test(v) ? { url: v } : { text: v };
+}
+
+/** A note started from an inbox entry: its link and summary (or the captured text), linked to its Item. */
+function noteDraftOf(e: ApiInboxEntry): NoteDraft {
+  const about = e.summary || e.ogDescription;
+  return {
+    title: titleOf(e).slice(0, 300),
+    markdown: [e.url, about, e.url ? '' : e.text].filter(Boolean).join('\n\n') + '\n\n',
+    items: e.item ? [e.item] : [],
+  };
 }
 
 function isTyping(el: EventTarget | null): boolean {
@@ -110,16 +127,23 @@ function CaptureBox({
 
 function EntryCard({
   entry,
+  linkedItem,
   selected,
   onSelect,
   onTriage,
   onOpportunity,
+  onItem,
+  onNote,
 }: {
   entry: ApiInboxEntry;
+  /** Title and type of the linked Item, when the Item list has loaded. */
+  linkedItem?: { title: string; type: string };
   selected: boolean;
   onSelect: () => void;
   onTriage: (status: ApiInboxStatus) => void;
   onOpportunity: () => void;
+  onItem: () => void;
+  onNote: () => void;
 }) {
   const s = inboxStatusOf(entry.status);
   const site = entry.ogSiteName || hostOf(entry.url);
@@ -147,6 +171,16 @@ function EntryCard({
           {entry.error && <Badge variant="error">Lỗi xử lý</Badge>}
           {entry.suggestedDestination && (
             <Badge variant="outline">→ {destinations[entry.suggestedDestination] ?? entry.suggestedDestination}</Badge>
+          )}
+          {entry.item && (
+            <Badge
+              variant="success"
+              render={<Link href={`/thu-vien/ghi-chu/?item=${entry.item}`} title="Ghi chú của item này" />}
+            >
+              <Library aria-hidden />
+              {linkedItem ? `${itemTypeLabel(linkedItem.type)} · ` : 'Item '}
+              <span className="max-w-56 truncate">{linkedItem?.title ?? `#${entry.item}`}</span>
+            </Badge>
           )}
         </>
       }
@@ -180,6 +214,16 @@ function EntryCard({
           <Button size="xs" variant="outline" onClick={onOpportunity}>
             Cơ hội <Kbd>O</Kbd>
           </Button>
+          {!entry.item && (
+            <Button size="xs" variant="outline" onClick={onItem}>
+              <Plus aria-hidden />
+              Thành item <Kbd>T</Kbd>
+            </Button>
+          )}
+          <Button size="xs" variant="outline" onClick={onNote}>
+            <NotebookPen aria-hidden />
+            Ghi chú <Kbd>N</Kbd>
+          </Button>
           {entry.url && (
             <Button size="xs" variant="ghost" render={<a href={entry.url} target="_blank" rel="noreferrer" />}>
               Mở <Kbd>I</Kbd>
@@ -210,6 +254,8 @@ const keyHelp: [string, string][] = [
   ['A', 'lưu trữ'],
   ['U', 'về inbox'],
   ['O', 'bằng chứng cho cơ hội'],
+  ['T', 'thành item'],
+  ['N', 'ghi chú'],
   ['I', 'mở link'],
   ['C', 'thu thập'],
 ];
@@ -219,6 +265,8 @@ export function InboxPage() {
   const [status, setStatus] = useState<ApiInboxStatus>('inbox');
   const [cursor, setCursor] = useState(0);
   const [pickFor, setPickFor] = useState<ApiInboxEntry | null>(null);
+  const [itemFor, setItemFor] = useState<ApiInboxEntry | null>(null);
+  const [noteFor, setNoteFor] = useState<ApiInboxEntry | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const captureRef = useRef<HTMLTextAreaElement>(null);
@@ -227,6 +275,32 @@ export function InboxPage() {
   const selected = Math.min(cursor, Math.max(0, shown.length - 1));
   const current = shown[selected];
   const { mutate, reload } = inbox;
+  const index = useItemIndex(shown.some((e) => e.item) || itemFor !== null || noteFor !== null);
+  const { put: putItem } = index;
+  const dialogOpen = pickFor !== null || itemFor !== null || noteFor !== null;
+
+  const replace = useCallback(
+    (entry: ApiInboxEntry) =>
+      mutate((d) => d && { ...d, results: d.results.map((e) => (e.id === entry.id ? entry : e)) }),
+    [mutate],
+  );
+
+  /** "Thành item": the Item was created in the dialog; link the entry to it, status unchanged. */
+  const linkItem = useCallback(
+    async (entry: ApiInboxEntry, item: ApiItem) => {
+      setItemFor(null);
+      putItem(item);
+      replace({ ...entry, item: item.id });
+      try {
+        replace(await linkInboxItem(entry.id, item.id));
+        setNotice(`Đã thêm "${item.title}" vào thư viện và liên kết mục inbox. Nhấn A để lưu trữ mục.`);
+      } catch (err) {
+        setNotice(`Đã thêm "${item.title}" nhưng chưa liên kết được: ${describeApiError(toApiError(err)).title}`);
+        reload();
+      }
+    },
+    [putItem, replace, reload],
+  );
 
   const remove = useCallback(
     (id: number) => mutate((d) => d && { ...d, results: d.results.filter((e) => e.id !== id) }),
@@ -267,7 +341,7 @@ export function InboxPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (pickFor || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (dialogOpen || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
       const k = e.key.toLowerCase();
       const act: Record<string, () => void> = {
         j: () => setCursor(Math.min(selected + 1, shown.length - 1)),
@@ -280,6 +354,8 @@ export function InboxPage() {
           a: () => void triage(current, 'archived'),
           u: () => void triage(current, 'inbox'),
           o: () => setPickFor(current),
+          t: () => !current.item && setItemFor(current),
+          n: () => setNoteFor(current),
           i: () => current.url && window.open(current.url, '_blank', 'noopener'),
         }),
       };
@@ -290,7 +366,7 @@ export function InboxPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [pickFor, selected, shown.length, current, triage]);
+  }, [dialogOpen, selected, shown.length, current, triage]);
 
   const loadMore = async () => {
     const next = inbox.data?.next;
@@ -368,6 +444,9 @@ export function InboxPage() {
               onSelect={() => setCursor(i)}
               onTriage={(next) => void triage(e, next)}
               onOpportunity={() => setPickFor(e)}
+              linkedItem={e.item ? index.byId.get(e.item) : undefined}
+              onItem={() => setItemFor(e)}
+              onNote={() => setNoteFor(e)}
             />
           ))}
           {inbox.data?.next && (
@@ -383,6 +462,29 @@ export function InboxPage() {
         onOpenChange={(o) => !o && setPickFor(null)}
         entryTitle={pickFor ? titleOf(pickFor) : ''}
         onPick={(opp, stance) => pickFor && void attach(pickFor, opp, stance)}
+      />
+
+      <ItemDialog
+        open={itemFor !== null}
+        item={null}
+        draft={itemFor ? itemDraftFromEntry(itemFor, titleOf(itemFor)) : undefined}
+        onOpenChange={(o) => !o && setItemFor(null)}
+        onSaved={(item) => itemFor && void linkItem(itemFor, item)}
+      />
+
+      <NoteDialog
+        open={noteFor !== null}
+        note={null}
+        draft={noteFor ? noteDraftOf(noteFor) : undefined}
+        description={noteFor ? `Từ inbox: ${titleOf(noteFor)}` : undefined}
+        items={index.items}
+        byId={index.byId}
+        itemsStatus={index.loading && index.items.length === 0 ? 'Đang tải danh sách item…' : undefined}
+        onOpenChange={(o) => !o && setNoteFor(null)}
+        onSaved={(note) => {
+          setNoteFor(null);
+          setNotice(`Đã tạo ghi chú "${noteTitle(note)}". Nhấn A để lưu trữ mục inbox.`);
+        }}
       />
     </div>
   );

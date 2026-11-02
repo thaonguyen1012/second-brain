@@ -39,6 +39,9 @@
   --chart-3: var(--color-cyan-900);
   --chart-4: var(--color-amber-400);
   --chart-5: var(--color-amber-500);
+  /* Billable vs non-billable time (Công việc): dataviz palette slots 1-2, validated on white. */
+  --chart-billable: #2a78d6;
+  --chart-nonbillable: #eb6834;
   --sidebar: var(--color-zinc-50);
   --sidebar-foreground: var(--color-zinc-950);
   --sidebar-primary: var(--primary);
@@ -83,6 +86,8 @@
   --chart-3: var(--color-amber-500);
   --chart-4: var(--color-purple-500);
   --chart-5: var(--color-rose-500);
+  --chart-billable: #3987e5;
+  --chart-nonbillable: #d95926;
   --sidebar: hsl(0deg 0% 7%);
   --sidebar-foreground: var(--color-zinc-50);
   --sidebar-primary: var(--primary);
@@ -153,6 +158,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-billable: var(--chart-billable);
+  --color-chart-nonbillable: var(--chart-nonbillable);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);

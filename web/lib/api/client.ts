@@ -24,7 +24,8 @@ export type ApiStance = Schemas['EvidenceStanceEnum'];
 export type ApiAttachResult = Schemas['AttachResult'];
 export type ApiAttachNewsResult = Schemas['AttachNewsResult'];
 
-type Query<Op extends keyof operations> = operations[Op]['parameters'] extends { query?: infer Q }
+/** Query parameters of an OpenAPI operation. */
+export type Query<Op extends keyof operations> = operations[Op]['parameters'] extends { query?: infer Q }
   ? NonNullable<Q>
   : never;
 
@@ -60,14 +61,16 @@ function csrfToken(): string {
   return m ? decodeURIComponent(m[1]) : '';
 }
 
-type Method = 'GET' | 'POST' | 'PUT' | 'PATCH';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+/**
+ * The one sender for every backend call (lib/api/* modules use it): same origin, CSRF header on writes,
+ * ApiError on failure, undefined for 204.
+ */
+export async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (method !== 'GET') {
-    headers['Content-Type'] = 'application/json';
-    headers['X-CSRFToken'] = csrfToken();
-  }
+  if (method !== 'GET') headers['X-CSRFToken'] = csrfToken();
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
   let res: Response;
   try {
     res = await fetch(path, {
@@ -90,7 +93,8 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
   return (await res.json()) as T;
 }
 
-function withQuery(path: string, query?: Record<string, string | number | boolean | undefined>): string {
+/** Appends the defined, non-empty query values. */
+export function withQuery(path: string, query?: Record<string, string | number | boolean | undefined>): string {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined && v !== '') q.set(k, String(v));
   const s = q.toString();

@@ -1,0 +1,215 @@
+'use client';
+import { useState } from 'react';
+import { Check, Loader2 } from 'lucide-react';
+import { api } from '@/lib/api/client';
+import { growthApi, listAll, type ApiAchievement, type ApiAchievementWrite } from '@/lib/api/growth';
+import { toApiError, useApi } from '@/lib/api/use-api';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogPopup,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Kbd } from '@/components/ui/kbd';
+import { Textarea } from '@/components/ui/textarea';
+import { describeApiError } from '../api-state';
+import { ChoiceSelect } from '../choice-select';
+import { fieldErrors } from './labels';
+import { FormError, FormRow } from './shared';
+
+const fieldNames = {
+  title: 'Việc đã làm',
+  impact: 'Kết quả',
+  description: 'Mô tả',
+  date: 'Ngày',
+  project: 'Dự án',
+  skills: 'Kỹ năng',
+};
+
+const loadProjects = () => listAll(api.listItems({ type: 'project', limit: 200 }), 400);
+const loadSkills = () => listAll(growthApi.listSkills({ limit: 200 }));
+
+function SkillToggles({ value, onChange }: { value: number[]; onChange: (ids: number[]) => void }) {
+  const skills = useApi('achievement-skills', loadSkills);
+  if (skills.error && !skills.data)
+    return <p className="text-sm text-destructive-foreground">{describeApiError(skills.error).title}</p>;
+  if (!skills.data) return <p className="text-sm text-muted-foreground">Đang tải kỹ năng…</p>;
+  if (skills.data.length === 0)
+    return <p className="text-sm text-muted-foreground">Ma trận kỹ năng còn trống. Thêm ở trang Kỹ năng.</p>;
+  return (
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Kỹ năng đã dùng">
+      {skills.data.map((s) => {
+        const on = value.includes(s.id);
+        return (
+          <Button
+            key={s.id}
+            type="button"
+            size="xs"
+            variant={on ? 'default' : 'outline'}
+            aria-pressed={on}
+            onClick={() => onChange(on ? value.filter((id) => id !== s.id) : [...value, s.id])}
+          >
+            {on && <Check aria-hidden />}
+            {s.name}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+function AchievementForm({
+  achievement,
+  defaultDate,
+  onSaved,
+}: {
+  achievement: ApiAchievement | null;
+  defaultDate: string;
+  onSaved: (a: ApiAchievement, created: boolean) => void;
+}) {
+  const [title, setTitle] = useState(achievement?.title ?? '');
+  const [impact, setImpact] = useState(achievement?.impact ?? '');
+  const [description, setDescription] = useState(achievement?.description ?? '');
+  const [date, setDate] = useState(achievement?.date ?? defaultDate);
+  const [project, setProject] = useState(achievement?.project ? String(achievement.project) : '');
+  const [skills, setSkills] = useState<number[]>(achievement?.skills.map((s) => s.id) ?? []);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const projects = useApi('achievement-projects', loadProjects);
+  const projectChoices = [
+    { value: '', label: 'Không gắn dự án' },
+    ...(projects.data ?? []).map((p) => ({ value: String(p.id), label: p.title })),
+    // keep the current project selectable while the list loads
+    ...(achievement?.project && !projects.data
+      ? [{ value: String(achievement.project), label: achievement.projectTitle ?? `#${achievement.project}` }]
+      : []),
+  ];
+
+  const submit = async () => {
+    if (!title.trim()) {
+      setError('Cần ghi việc đã làm.');
+      return;
+    }
+    const body: ApiAchievementWrite = {
+      title: title.trim(),
+      impact: impact.trim(),
+      description: description.trim(),
+      ...(date && { date }),
+      project: project ? Number(project) : null,
+      skills,
+    };
+    setBusy(true);
+    setError(null);
+    try {
+      const saved = achievement
+        ? await growthApi.updateAchievement(achievement.id, body)
+        : await growthApi.createAchievement(body);
+      onSaved(saved, !achievement);
+    } catch (err) {
+      const e = toApiError(err);
+      setError((e.status === 400 && fieldErrors(e.body, fieldNames)) || describeApiError(e).title);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form
+      className="contents"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault();
+          void submit();
+        }
+      }}
+    >
+      <DialogPanel className="flex flex-col gap-4">
+        <FormRow id="ach-title" label="Việc đã làm">
+          <Input
+            id="ach-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Ship trang thanh toán mới"
+            autoFocus
+          />
+        </FormRow>
+        <FormRow id="ach-impact" label="Kết quả bằng số" hint="Con số dùng được trong CV: thời gian, tiền, người dùng, lỗi giảm…">
+          <Input
+            id="ach-impact"
+            value={impact}
+            onChange={(e) => setImpact(e.target.value)}
+            placeholder="Thanh toán 40 s → 12 s"
+          />
+        </FormRow>
+        <FormRow id="ach-description" label="Mô tả (không bắt buộc)">
+          <Textarea id="ach-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+        </FormRow>
+        <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
+          <FormRow id="ach-date" label="Ngày">
+            <Input id="ach-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </FormRow>
+          <FormRow id="ach-project" label="Dự án">
+            <ChoiceSelect id="ach-project" label="Dự án" value={project} onChange={setProject} choices={projectChoices} />
+          </FormRow>
+        </div>
+        <FormRow id="ach-skills" label="Kỹ năng đã dùng">
+          <SkillToggles value={skills} onChange={setSkills} />
+        </FormRow>
+        <FormError error={error} />
+      </DialogPanel>
+      <DialogFooter>
+        <span className="me-auto hidden self-center text-xs text-muted-foreground sm:inline">
+          <Kbd>⌘</Kbd>+<Kbd>Enter</Kbd> để lưu
+        </span>
+        <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
+        <Button type="submit" disabled={busy}>
+          {busy && <Loader2 className="animate-spin" aria-hidden />}
+          {achievement ? 'Lưu' : 'Ghi vào nhật ký'}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+/** Create (achievement = null) or edit a brag-document line: POST/PATCH /api/achievements. */
+export function AchievementDialog({
+  open,
+  achievement,
+  defaultDate,
+  onOpenChange,
+  onSaved,
+}: {
+  open: boolean;
+  achievement: ApiAchievement | null;
+  defaultDate: string;
+  onOpenChange: (open: boolean) => void;
+  onSaved: (a: ApiAchievement, created: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }} className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{achievement ? 'Sửa thành tựu' : 'Ghi thành tựu'}</DialogTitle>
+          <DialogDescription>Mỗi việc một dòng, kèm kết quả bằng số để sau này viết CV theo kết quả.</DialogDescription>
+        </DialogHeader>
+        {open && (
+          <AchievementForm
+            key={achievement?.id ?? 'new'}
+            achievement={achievement}
+            defaultDate={defaultDate}
+            onSaved={onSaved}
+          />
+        )}
+      </DialogPopup>
+    </Dialog>
+  );
+}

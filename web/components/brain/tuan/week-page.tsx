@@ -1,0 +1,248 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { CalendarCheck, CalendarRange, ChevronLeft, ChevronRight, NotebookPen } from 'lucide-react';
+import type { ApiObjective, ApiWeek } from '@/lib/api/client';
+import { useApi } from '@/lib/api/use-api';
+import { type ApiAchievement, type ApiPlanView, type ApiReviewView, weeksApi } from '@/lib/api/weeks';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Kbd } from '@/components/ui/kbd';
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
+import { ApiErrorState, EmptyState, LoadingCards } from '../api-state';
+import type { BookIndex } from './body-of-work';
+import { PlanPanel } from './plan-panel';
+import { ReviewPanel } from './review-panel';
+import { addDays, isMonday, isoWeek, mondayOf, todayPrague, weekdayIndex, weekRange } from './week-utils';
+
+type Tab = 'plan' | 'review';
+const tabParam: Record<Tab, string> = { plan: 'ke-hoach', review: 'nhin-lai' };
+
+interface WeekData {
+  start: string;
+  plan: ApiPlanView | null;
+  review: ApiReviewView | null;
+}
+
+/**
+ * Current and future weeks are opened (created) on first view, as GET /plan does. A past week is only read:
+ * GET /review answers 404 for a week that was never opened, and opening it is an explicit choice, so browsing
+ * history never creates empty weeks (which would change what the next week offers to carry over).
+ */
+async function loadWeek(start: string, create: boolean): Promise<WeekData> {
+  if (!create) {
+    const review = await weeksApi.getReview(start);
+    if (!review) return { start, plan: null, review: null };
+    return { start, plan: await weeksApi.getPlan(start), review };
+  }
+  const plan = await weeksApi.getPlan(start);
+  return { start, plan, review: await weeksApi.getReview(start) };
+}
+
+/** Planning early in the week, review from Friday; past weeks open on the review. */
+function defaultTab(start: string, current: string): Tab {
+  if (start < current) return 'review';
+  if (start > current) return 'plan';
+  return weekdayIndex(todayPrague()) >= 4 ? 'review' : 'plan';
+}
+
+function relativeName(start: string, current: string): string | null {
+  if (start === current) return 'Tuần này';
+  if (start === addDays(current, -7)) return 'Tuần trước';
+  if (start === addDays(current, 7)) return 'Tuần tới';
+  return null;
+}
+
+function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+    target.getAttribute('role') === 'combobox' ||
+    target.getAttribute('role') === 'option'
+  );
+}
+
+export function WeekPage({ books }: { books: BookIndex }) {
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [current] = useState(() => mondayOf(todayPrague()));
+  const latest = addDays(current, 7); // planning reaches next week, not further
+  const w = params.get('w');
+  const start = isMonday(w) && w <= latest ? w : current;
+  const t = params.get('tab');
+  const tab: Tab = t === tabParam.review ? 'review' : t === tabParam.plan ? 'plan' : defaultTab(start, current);
+
+  const [opened, setOpened] = useState<string | null>(null);
+  const create = start >= current || opened === start;
+  const week = useApi(`week:${start}:${create ? 'open' : 'read'}`, () => loadWeek(start, create));
+  const data = week.data?.start === start ? week.data : undefined;
+
+  function go(nextStart: string, nextTab?: Tab) {
+    const q = new URLSearchParams();
+    if (nextStart !== current) q.set('w', nextStart);
+    if (nextTab) q.set('tab', tabParam[nextTab]);
+    const s = q.toString();
+    router.push(s ? `${pathname}?${s}` : pathname, { scroll: false });
+  }
+
+  function setTab(next: Tab) {
+    const q = new URLSearchParams(params.toString());
+    q.set('tab', tabParam[next]);
+    router.replace(`${pathname}?${q.toString()}`, { scroll: false });
+  }
+
+  // Keys: [ previous week, ] next week, T this week, P plan, R review (never while typing).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      const k = e.key.toLowerCase();
+      let handled = true;
+      if (k === '[') go(addDays(start, -7));
+      else if (k === ']' && start < latest) go(addDays(start, 7));
+      else if (k === 't' && start !== current) go(current);
+      else if (k === 'p') setTab('plan');
+      else if (k === 'r') setTab('review');
+      else handled = false;
+      if (handled) e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  // Local updates after a write: the plan's week is the one source, the review keeps a copy.
+  const setWeek = (fn: (w: ApiWeek) => ApiWeek) =>
+    week.mutate((d) =>
+      d && d.plan
+        ? { ...d, plan: { ...d.plan, week: fn(d.plan.week) }, review: d.review && { ...d.review, week: fn(d.review.week) } }
+        : d,
+    );
+  const onWeek = (next: ApiWeek) => setWeek(() => next);
+  const onObjectives = (objectives: ApiObjective[]) => setWeek((w) => ({ ...w, objectives }));
+  const onCarried = (next: ApiWeek, carried: number[]) =>
+    week.mutate((d) =>
+      d && d.plan
+        ? {
+            ...d,
+            plan: {
+              week: next,
+              carryCandidates: d.plan.carryCandidates.map((c) => (carried.includes(c.id) ? { ...c, carried: true } : c)),
+            },
+            review: d.review && { ...d.review, week: next },
+          }
+        : d,
+    );
+  const onAchievement = (a: ApiAchievement) =>
+    week.mutate((d) =>
+      d && d.review
+        ? {
+            ...d,
+            review: {
+              ...d.review,
+              achievements: [...d.review.achievements, a].sort((x, y) => x.date.localeCompare(y.date) || x.id - y.id),
+            },
+          }
+        : d,
+    );
+
+  const name = relativeName(start, current);
+  const wk = data?.plan?.week;
+
+  return (
+    <div className="flex flex-col gap-4 px-4 pb-12 sm:px-8">
+      <nav aria-label="Chọn tuần" className="flex flex-wrap items-center gap-2">
+        <Button size="icon-sm" variant="outline" aria-label="Tuần trước" onClick={() => go(addDays(start, -7))}>
+          <ChevronLeft aria-hidden />
+        </Button>
+        <Button
+          size="icon-sm"
+          variant="outline"
+          aria-label="Tuần sau"
+          disabled={start >= latest}
+          onClick={() => go(addDays(start, 7))}
+        >
+          <ChevronRight aria-hidden />
+        </Button>
+        <h2 className="flex flex-wrap items-baseline gap-x-2 font-heading text-lg font-semibold tracking-tight" aria-live="polite">
+          <span>Tuần {isoWeek(start)}</span>
+          <span className="text-sm font-normal text-muted-foreground tabular-nums">{weekRange(start)}</span>
+        </h2>
+        {name && <Badge variant={start === current ? 'info' : 'secondary'}>{name}</Badge>}
+        {wk?.plannedAt && (
+          <Badge variant="success">
+            <NotebookPen aria-hidden />
+            Đã lên kế hoạch
+          </Badge>
+        )}
+        {wk?.reviewedAt && (
+          <Badge variant="success">
+            <CalendarCheck aria-hidden />
+            Đã nhìn lại
+          </Badge>
+        )}
+        <div className="ms-auto flex items-center gap-2">
+          {start !== current && (
+            <Button size="sm" variant="ghost" onClick={() => go(current)}>
+              Về tuần này
+            </Button>
+          )}
+          <span className="hidden text-xs text-muted-foreground lg:inline">
+            <Kbd>[</Kbd> <Kbd>]</Kbd> đổi tuần · <Kbd>P</Kbd> kế hoạch · <Kbd>R</Kbd> nhìn lại
+          </span>
+        </div>
+      </nav>
+
+      {week.error && !data ? (
+        <ApiErrorState error={week.error} onRetry={week.reload} />
+      ) : !data ? (
+        <LoadingCards count={3} />
+      ) : !data.plan ? (
+        <EmptyState
+          icon={<CalendarRange aria-hidden />}
+          title="Tuần này chưa được mở"
+          description={`Không có kế hoạch hay nhìn lại nào cho tuần ${weekRange(start)}.`}
+        >
+          <Button variant="outline" onClick={() => setOpened(start)}>
+            Mở tuần này để ghi lại
+          </Button>
+        </EmptyState>
+      ) : (
+        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="gap-4">
+          <TabsList aria-label="Nghi thức tuần">
+            <TabsTab value="plan">Kế hoạch</TabsTab>
+            <TabsTab value="review">Nhìn lại</TabsTab>
+          </TabsList>
+          <TabsPanel value="plan" keepMounted>
+            <PlanPanel
+              key={start}
+              start={start}
+              week={data.plan.week}
+              carryCandidates={data.plan.carryCandidates}
+              onWeek={onWeek}
+              onObjectives={onObjectives}
+              onCarried={onCarried}
+            />
+          </TabsPanel>
+          <TabsPanel value="review" keepMounted>
+            {data.review ? (
+              <ReviewPanel
+                key={start}
+                start={start}
+                week={data.plan.week}
+                review={data.review}
+                books={books}
+                onWeek={onWeek}
+                onObjectives={onObjectives}
+                onAchievement={onAchievement}
+                onNextWeek={start < latest ? () => go(addDays(start, 7), 'plan') : undefined}
+              />
+            ) : (
+              <LoadingCards count={2} />
+            )}
+          </TabsPanel>
+        </Tabs>
+      )}
+    </div>
+  );
+}

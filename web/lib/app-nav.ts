@@ -31,7 +31,15 @@ export const appNav: NavItem[] = [
       { title: 'Nhật ký thành tựu', href: '/phat-trien/thanh-tuu/' },
     ],
   },
-  { title: 'Thư viện', href: '/thu-vien/', icon: Library },
+  {
+    title: 'Thư viện',
+    href: '/thu-vien/',
+    icon: Library,
+    children: [
+      { title: 'Item', href: '/thu-vien/' },
+      { title: 'Ghi chú', href: '/thu-vien/ghi-chu/' },
+    ],
+  },
   { title: 'Cơ hội', href: '/co-hoi/', icon: Lightbulb },
   {
     title: 'Công việc',

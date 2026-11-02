@@ -1,6 +1,6 @@
 // One vocabulary for every second-brain page (DECISIONS 4.4: same card, same status colours, same tags).
 // Colours are Badge variants, so they follow the Space UI tokens in app/global.css.
-import type { ApiInboxStatus, ApiItemStatus, ApiItemType } from '@/lib/api/client';
+import type { ApiInboxStatus, ApiItemStatus, ApiItemType, ApiOpportunity } from '@/lib/api/client';
 
 export type Tone = 'secondary' | 'info' | 'success' | 'warning' | 'error' | 'outline';
 
@@ -56,4 +56,23 @@ export function hostOf(url: string | undefined): string {
   } catch {
     return '';
   }
+}
+
+/** Opportunity decisions (DECISIONS 9.2), shared by Cơ hội and the week review. */
+export const decisions: { value: ApiOpportunity['decision']; label: string; tone: Tone }[] = [
+  { value: 'open', label: 'Chưa quyết', tone: 'secondary' },
+  { value: 'keep', label: 'Giữ', tone: 'info' },
+  { value: 'build', label: 'Làm', tone: 'success' },
+  { value: 'drop', label: 'Bỏ', tone: 'outline' },
+];
+
+export const decisionOf = (d: string) => decisions.find((x) => x.value === d) ?? decisions[0];
+
+/** DRF 400 body `{ field: [messages] }` -> one line per field, with Vietnamese field names where given. */
+export function fieldErrors(body: unknown, names: Record<string, string> = {}): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const lines = Object.entries(body as Record<string, unknown>).map(
+    ([k, v]) => `${names[k] ?? k}: ${Array.isArray(v) ? v.join(' ') : String(v)}`,
+  );
+  return lines.length ? lines.join('\n') : null;
 }

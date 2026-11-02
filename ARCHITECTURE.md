@@ -140,10 +140,20 @@ Web UI, part A: the app shell (`web/components/app-shell.tsx`) has the six sideb
 Thị trường, Nhật ký thành tựu, Thư viện `/thu-vien/`, Cơ hội `/co-hoi/`, Công việc `/cong-viec/` with Giờ) and an
 Inbox button with a count in the top bar. Home is "Hôm nay" (continue learning, week objectives, inbox count,
 today's brief with a "bằng chứng cho cơ hội…" menu); the handbook grid moved to `/phat-trien/`. `/inbox/` (capture,
-OG cards, keyboard triage j/k l a u o i c) and `/thu-vien/` (Items with filters, create/edit) are built; Tuần,
-Cơ hội, Công việc and the other Phát triển pages are "Đang xây" placeholders. The pages are static shells; data
-loads in the browser through `web/lib/api/client.ts` (`useApi` in `lib/api/use-api.ts`), so `next build` never
-calls Django. A missing backend (network error, proxy 5xx, non-JSON answer) and 401/403 show Vietnamese states
+OG cards, keyboard triage j/k l a u o i c) and `/thu-vien/` (Items with filters, create/edit) are built.
+
+Web UI, part B: every sidebar link is a real page. `/tuan/` (`?w=<monday>&tab=ke-hoach|nhin-lai`: carry-over,
+objectives, planning journal; review with time chart, body of work, opportunities, achievements, six questions),
+`/co-hoi/` (list + topic heatmap; `?id=N` detail with decision, scores history, evidence), `/cong-viec/` (projects,
+timer) and `/cong-viec/gio/` (timer, week summary, entries), `/phat-trien/ky-nang/` (skills matrix by freshness,
+evidence), `/phat-trien/thi-truong/` (job ads, monthly report), `/phat-trien/thanh-tuu/` (brag document,
+predictions), `/thu-vien/ghi-chu/` (notes, `?item=N`); the inbox can turn an entry into an Item or a note.
+Detail views use query parameters, not dynamic segments, so every route stays static. Components live in
+`web/components/brain/<area>/`; each area has its typed calls in `web/lib/api/<area>.ts` (weeks, opportunities,
+work, growth, library), all going through the one exported `request()` of `client.ts`. Shared helpers:
+`lib/dates.ts` (Europe/Prague day, Monday, day arithmetic), `lib/labels.ts` (status tones, opportunity decisions,
+DRF `fieldErrors`). The pages are static shells; data loads in the browser through `web/lib/api/` (`useApi` in
+`lib/api/use-api.ts`), so `next build` never calls Django. A missing backend (network error, proxy 5xx, non-JSON answer) and 401/403 show Vietnamese states
 (`components/brain/api-state.tsx`). Cards and status colours are shared: `components/brain/brain-card.tsx`,
 `lib/labels.ts`.
 

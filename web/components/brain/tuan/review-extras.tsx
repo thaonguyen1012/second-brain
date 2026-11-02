@@ -1,0 +1,178 @@
+'use client';
+import { useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight, Lightbulb, Plus, Trophy } from 'lucide-react';
+import { type ApiAchievement, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
+import { formatDate } from '@/lib/labels';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { StatusBadge } from '../brain-card';
+import { WeekSection, WriteError } from './week-section';
+import { decisionOf } from '@/lib/labels';
+import { addDays, shortDate, todayPrague } from './week-utils';
+
+/** "Cơ hội nào có thêm bằng chứng" and the stale ones (4 weeks without new evidence: drop, DECISIONS 9.2). */
+export function ReviewOpportunities({ opportunities }: { opportunities: ApiWeekOpportunities }) {
+  const { withEvidence, stale } = opportunities;
+  return (
+    <WeekSection
+      icon={Lightbulb}
+      id="week-opportunities"
+      title="Cơ hội"
+      action={
+        <Button size="xs" variant="ghost" render={<Link href="/co-hoi/" />}>
+          Mở Cơ hội
+          <ArrowRight aria-hidden />
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-2">
+        <h3 className="text-xs font-medium text-muted-foreground">Có thêm bằng chứng tuần này</h3>
+        {withEvidence.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Tuần này chưa có bằng chứng mới cho cơ hội nào.</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {withEvidence.map((o) => {
+              const d = decisionOf(o.decision);
+              return (
+                <li key={o.id} className="flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-sm">
+                  <span className="min-w-0 flex-1 font-medium">{o.title}</span>
+                  <StatusBadge tone={d.tone}>{d.label}</StatusBadge>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {o.supports} ủng hộ · {o.contradicts} phản bác
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+      {stale.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-xs font-medium text-muted-foreground">
+            4 tuần không có bằng chứng mới: giữ hay bỏ?
+          </h3>
+          <ul className="flex flex-col gap-1.5">
+            {stale.map((o) => {
+              const d = decisionOf(o.decision);
+              return (
+                <li key={o.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm">
+                  <span className="min-w-0 flex-1">{o.title}</span>
+                  <StatusBadge tone={d.tone}>{d.label}</StatusBadge>
+                  <span className="text-xs text-muted-foreground">
+                    {o.lastEvidenceAt ? `Bằng chứng cuối ${formatDate(o.lastEvidenceAt)}` : 'Chưa có bằng chứng'}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </WeekSection>
+  );
+}
+
+/** The week's brag-document lines, with a one-line add so the weekly entry happens during the review. */
+export function ReviewAchievements({
+  start,
+  achievements,
+  onAdded,
+}: {
+  start: string;
+  achievements: ApiAchievement[];
+  onAdded: (a: ApiAchievement) => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [impact, setImpact] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  // Dated inside the reviewed week: today for the running week, its Sunday for a past one.
+  const today = todayPrague();
+  const sunday = addDays(start, 6);
+  const date = today < start ? start : today > sunday ? sunday : today;
+
+  async function add() {
+    if (!title.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const a = await weeksApi.addAchievement({ title: title.trim(), impact: impact.trim(), date });
+      onAdded(a);
+      setTitle('');
+      setImpact('');
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <WeekSection
+      icon={Trophy}
+      id="week-achievements"
+      title="Nhật ký thành tựu"
+      description="Mỗi tuần ít nhất một dòng, có số nếu được: dữ liệu cho CV và case study."
+      action={
+        <Button size="xs" variant="ghost" render={<Link href="/phat-trien/thanh-tuu/" />}>
+          Tất cả
+          <ArrowRight aria-hidden />
+        </Button>
+      }
+    >
+      {achievements.length > 0 && (
+        <ul className="flex flex-col gap-1.5">
+          {achievements.map((a) => (
+            <li key={a.id} className="flex flex-col gap-1 rounded-xl border px-3 py-2">
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="text-sm font-medium">{a.title}</span>
+                <span className="ms-auto text-xs text-muted-foreground tabular-nums">{shortDate(a.date)}</span>
+              </div>
+              {a.impact && <p className="text-[13px] text-muted-foreground">{a.impact}</p>}
+              {(a.projectTitle || a.skills.length > 0) && (
+                <div className="flex flex-wrap gap-1">
+                  {a.projectTitle && <Badge variant="secondary">{a.projectTitle}</Badge>}
+                  {a.skills.map((s) => (
+                    <Badge key={s.id} variant="outline">
+                      {s.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="flex flex-col gap-2 sm:flex-row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add();
+        }}
+      >
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Đã làm gì, ví dụ: Ship trang thanh toán"
+          aria-label="Thành tựu"
+          maxLength={200}
+          className="sm:flex-[3]"
+        />
+        <Input
+          value={impact}
+          onChange={(e) => setImpact(e.target.value)}
+          placeholder="Tác động, ví dụ: 40 s xuống 12 s"
+          aria-label="Tác động (con số)"
+          maxLength={200}
+          className="sm:flex-[2]"
+        />
+        <Button type="submit" variant="outline" disabled={!title.trim()} loading={busy}>
+          <Plus aria-hidden />
+          Thêm
+        </Button>
+      </form>
+      <WriteError error={error} />
+    </WeekSection>
+  );
+}
