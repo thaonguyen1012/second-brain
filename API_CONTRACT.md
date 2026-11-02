@@ -99,6 +99,49 @@ Only `http` and `https` URLs are accepted. `GET /api/inbox?status=inbox` lists e
 records the weekly triage and accepts only `{ "status": "inbox|later|archived", "item": <item id>|null }`.
 `suggestedDestination` is one of read_later, book, opportunity, note (or empty until processed).
 
+## Weeks (`/api/weeks`)
+
+A week runs Monday to Sunday in Europe/Prague; `{start}` is its Monday as `YYYY-MM-DD` (another weekday answers
+`400`, an impossible date `404`). `GET /api/weeks/current` returns this week and creates it empty on first access.
+`GET /api/weeks` lists weeks, newest `startDate` first (cursor pagination).
+
+```json
+200 { "id": 3, "startDate": "2026-11-02", "planningJournal": "", "plannedAt": null,
+      "reviewWin": "", "reviewDistraction": "", "reviewLearned": "", "reviewSatisfied": "",
+      "reviewChangedMind": "", "reviewOpportunityEvidence": "", "reviewedAt": null,
+      "objectives": [ { "id": 9, "title": "Ship Week", "status": "open", "position": 0, "carriedFrom": null,
+                        "createdAt": "...", "updatedAt": "..." } ],
+      "createdAt": "...", "updatedAt": "..." }
+```
+
+Planning. `GET /api/weeks/{start}/plan` (creates the week) answers `{ "week": <week>, "carryCandidates": [ { "id": 5,
+"title": "...", "weekStart": "2026-10-26", "carried": false } ] }`: the open objectives of the latest earlier week.
+`POST /api/weeks/{start}/plan` carries the chosen ones over and saves the journal; repeating it changes nothing.
+
+```json
+request  { "carry": [5, 6], "planningJournal": "What I expect this week" }   (both optional)
+response 200 <week>
+```
+
+An id that is not an open objective of that earlier week answers `400`.
+`POST /api/weeks/{start}/objectives` `{ "title": "..." }` adds an objective at the end (`201`);
+`PATCH /api/weeks/{start}/objectives/{id}` accepts `title`, `status` (open, done, dropped) and `position`.
+3–5 objectives per week is a guideline shown in the UI, not enforced.
+
+Review. `PATCH /api/weeks/{start}/review` saves any of `reviewWin`, `reviewDistraction`, `reviewLearned`,
+`reviewSatisfied`, `reviewChangedMind`, `reviewOpportunityEvidence` and sets `reviewedAt`; it answers `<week>`.
+`GET /api/weeks/{start}/review` (`404` if the week was never opened) answers:
+
+```json
+200 { "week": <week>, "objectiveCounts": { "open": 1, "done": 3, "dropped": 0 },
+      "days": [ { "date": "2026-11-02", "inboxArchived": [ { "id": 7, "title": "..." } ],
+                  "itemsFinished": [ { "id": 1, "title": "Deep Work", "type": "book" } ],
+                  "pagesDone": [ { "book": "handbook-08", "page": "c5-m3-..." } ] }, ... 7 days ] }
+```
+
+Body of work per day: inbox entries with status archived (by their last update), Items by `finishedAt`,
+handbook pages marked done (by their last update). Hours per objective come with TimeEntry (later step).
+
 ## Mapping to ProgressStore
 
 | ProgressStore method | HTTP |

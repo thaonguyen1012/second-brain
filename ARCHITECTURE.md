@@ -50,6 +50,13 @@ the estimate passes `LLM_MONTHLY_BUDGET_USD`, calls the provider with a JSON sch
 pydantic and logs every attempt in `LlmCall`. Valid results are cached by content hash (`LlmCache`). Provider for
 now: Gemini free tier (`LLM_MODEL=gemini-3.1-flash-lite`, cost recorded as 0, tokens kept); a 429 leaves the job
 pending for the next run. Only the title, site name and first 500 characters are sent.
+Step 2 (DECISIONS 9.4): `backend/weeks/` has `Week` (one per Monday in Europe/Prague, unique per user, DB check
+that it is a Monday; planning journal, the six review questions as text, `planned_at`, `reviewed_at`) and
+`Objective` (title, open/done/dropped, position, `carried_from` self FK; one carry per source and week). Planning:
+`GET /api/weeks/{start}/plan` lists the open objectives of the latest earlier week, `POST` carries the chosen ones
+(idempotent) and saves the journal. Review: `GET /api/weeks/{start}/review` counts objectives by status and lists
+the body of work per day from existing rows (inbox entries archived = status archived by `updated_at`, Items by
+`finished_at`, `PageProgress` done by `updated_at`). Hours per objective wait for TimeEntry (step 3). No tasks.
 Deployment config is in `deploy/` (see deploy/README.md): nginx routes `/api/` (except `/api/search`), `/admin/`,
 `/healthz` and `/files/` to Django and everything else to Next; `/files/` passes `auth_request` (Django `/api/me`)
 and Django's `X-Accel-Redirect` to the internal `/internal/files/` alias; CSP is report-only. With

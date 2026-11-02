@@ -13,4 +13,5 @@ urlpatterns = [
     path("", include("progress.urls")),
     path("", include("library.urls")),
     path("", include("inbox.urls")),
+    path("", include("weeks.urls")),
 ]

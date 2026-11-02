@@ -14,3 +14,9 @@ def client() -> Client:
 def anon_client(settings: Any) -> Client:
     settings.AUTH_MODE = "cf_access"  # no JWT header -> anonymous
     return Client(enforce_csrf_checks=True)
+
+
+@pytest.fixture(autouse=True)
+def no_real_llm(settings: Any) -> None:
+    """Tests never reach a real LLM provider, even when backend/.env has a key; fakes patch get_provider."""
+    settings.GEMINI_API_KEY = ""

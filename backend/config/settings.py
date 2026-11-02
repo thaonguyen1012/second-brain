@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "progress",
     "library",
     "inbox",
+    "weeks",
 ]
 
 MIDDLEWARE = [
@@ -153,6 +154,7 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "ItemStatusEnum": "library.models.Item.Status",
         "InboxStatusEnum": "inbox.models.InboxEntry.Status",
+        "ObjectiveStatusEnum": "weeks.models.Objective.Status",
     },
 }
 

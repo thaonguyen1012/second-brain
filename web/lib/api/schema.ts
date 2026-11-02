@@ -132,10 +132,123 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/weeks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listWeeks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/weeks/{start}/objectives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createObjective"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/weeks/{start}/objectives/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateObjective"];
+        trace?: never;
+    };
+    "/api/weeks/{start}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The week (created on first access) and the previous week's open objectives. */
+        get: operations["getWeekPlan"];
+        put?: never;
+        post: operations["planWeek"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/weeks/{start}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Objective progress and body of work per day; 404 for a week that was never opened. */
+        get: operations["getWeekReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateWeekReview"];
+        trace?: never;
+    };
+    "/api/weeks/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description This week (Europe/Prague), created empty on first access. */
+        get: operations["getCurrentWeek"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CarryCandidate: {
+            id: number;
+            title: string;
+            /** Format: date */
+            weekStart: string;
+            carried: boolean;
+        };
+        DayWork: {
+            /** Format: date */
+            date: string;
+            inboxArchived: components["schemas"]["InboxWork"][];
+            itemsFinished: components["schemas"]["ItemWork"][];
+            pagesDone: components["schemas"]["PageWork"][];
+        };
         InboxEntry: {
             readonly id: number;
             url?: string;
@@ -167,6 +280,10 @@ export interface components {
          * @enum {string}
          */
         InboxStatusEnum: "inbox" | "later" | "archived";
+        InboxWork: {
+            id: number;
+            title: string;
+        };
         Item: {
             readonly id: number;
             type: components["schemas"]["TypeEnum"];
@@ -204,6 +321,11 @@ export interface components {
          * @enum {string}
          */
         ItemStatusEnum: "planned" | "active" | "done" | "dropped";
+        ItemWork: {
+            id: number;
+            title: string;
+            type: string;
+        };
         LastVisited: {
             bookSlug: string;
             pageSlug: string;
@@ -216,6 +338,36 @@ export interface components {
             /** Format: email */
             email: string;
             name: string;
+        };
+        Objective: {
+            readonly id: number;
+            title: string;
+            status?: components["schemas"]["ObjectiveStatusEnum"];
+            readonly position: number;
+            readonly carriedFrom: number | null;
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+        };
+        ObjectiveCounts: {
+            open: number;
+            done: number;
+            dropped: number;
+        };
+        ObjectiveCreateRequest: {
+            title: string;
+        };
+        /**
+         * @description * `open` - Open
+         *     * `done` - Done
+         *     * `dropped` - Dropped
+         * @enum {string}
+         */
+        ObjectiveStatusEnum: "open" | "done" | "dropped";
+        PageWork: {
+            book: string;
+            page: string;
         };
         PaginatedInboxEntryList: {
             /**
@@ -243,6 +395,19 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Item"][];
         };
+        PaginatedWeekList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["Week"][];
+        };
         PatchedInboxTriageRequest: {
             status?: components["schemas"]["InboxStatusEnum"];
             item?: number | null;
@@ -259,6 +424,27 @@ export interface components {
             /** Format: date-time */
             finishedAt?: string | null;
         };
+        PatchedObjectiveUpdateRequest: {
+            title?: string;
+            status?: components["schemas"]["ObjectiveStatusEnum"];
+            position?: number;
+        };
+        PatchedReviewUpdateRequest: {
+            reviewWin?: string;
+            reviewDistraction?: string;
+            reviewLearned?: string;
+            reviewSatisfied?: string;
+            reviewChangedMind?: string;
+            reviewOpportunityEvidence?: string;
+        };
+        PlanRequest: {
+            carry?: number[];
+            planningJournal?: string;
+        };
+        PlanView: {
+            week: components["schemas"]["Week"];
+            carryCandidates: components["schemas"]["CarryCandidate"][];
+        };
         ProgressSnapshot: {
             done: {
                 [key: string]: {
@@ -266,6 +452,11 @@ export interface components {
                 };
             };
             lastVisited: components["schemas"]["LastVisited"] | null;
+        };
+        ReviewView: {
+            week: components["schemas"]["Week"];
+            objectiveCounts: components["schemas"]["ObjectiveCounts"];
+            days: components["schemas"]["DayWork"][];
         };
         SetDoneRequest: {
             done: boolean;
@@ -291,6 +482,27 @@ export interface components {
          * @enum {string}
          */
         TypeEnum: "course" | "book" | "film" | "article" | "project";
+        Week: {
+            readonly id: number;
+            /** Format: date */
+            readonly startDate: string;
+            readonly planningJournal: string;
+            /** Format: date-time */
+            readonly plannedAt: string | null;
+            readonly reviewWin: string;
+            readonly reviewDistraction: string;
+            readonly reviewLearned: string;
+            readonly reviewSatisfied: string;
+            readonly reviewChangedMind: string;
+            readonly reviewOpportunityEvidence: string;
+            /** Format: date-time */
+            readonly reviewedAt: string | null;
+            readonly objectives: components["schemas"]["Objective"][];
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -531,6 +743,198 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LastVisited"];
+                };
+            };
+        };
+    };
+    listWeeks: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedWeekList"];
+                };
+            };
+        };
+    };
+    createObjective: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The week's Monday, YYYY-MM-DD. */
+                start: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObjectiveCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Objective"];
+                };
+            };
+        };
+    };
+    updateObjective: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                /** @description The week's Monday, YYYY-MM-DD. */
+                start: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedObjectiveUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Objective"];
+                };
+            };
+        };
+    };
+    getWeekPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The week's Monday, YYYY-MM-DD. */
+                start: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanView"];
+                };
+            };
+        };
+    };
+    planWeek: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The week's Monday, YYYY-MM-DD. */
+                start: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PlanRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Week"];
+                };
+            };
+        };
+    };
+    getWeekReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The week's Monday, YYYY-MM-DD. */
+                start: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewView"];
+                };
+            };
+        };
+    };
+    updateWeekReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The week's Monday, YYYY-MM-DD. */
+                start: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedReviewUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Week"];
+                };
+            };
+        };
+    };
+    getCurrentWeek: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Week"];
                 };
             };
         };

@@ -251,8 +251,250 @@ paths:
               schema:
                 $ref: '#/components/schemas/LastVisited'
           description: ''
+  /api/weeks:
+    get:
+      operationId: listWeeks
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - weeks
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedWeekList'
+          description: ''
+  /api/weeks/{start}/objectives:
+    post:
+      operationId: createObjective
+      parameters:
+      - in: path
+        name: start
+        schema:
+          type: string
+          format: date
+        description: The week's Monday, YYYY-MM-DD.
+        required: true
+      tags:
+      - weeks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObjectiveCreateRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Objective'
+          description: ''
+  /api/weeks/{start}/objectives/{id}:
+    patch:
+      operationId: updateObjective
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: start
+        schema:
+          type: string
+          format: date
+        description: The week's Monday, YYYY-MM-DD.
+        required: true
+      tags:
+      - weeks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedObjectiveUpdateRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Objective'
+          description: ''
+  /api/weeks/{start}/plan:
+    get:
+      operationId: getWeekPlan
+      description: The week (created on first access) and the previous week's open
+        objectives.
+      parameters:
+      - in: path
+        name: start
+        schema:
+          type: string
+          format: date
+        description: The week's Monday, YYYY-MM-DD.
+        required: true
+      tags:
+      - weeks
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanView'
+          description: ''
+    post:
+      operationId: planWeek
+      parameters:
+      - in: path
+        name: start
+        schema:
+          type: string
+          format: date
+        description: The week's Monday, YYYY-MM-DD.
+        required: true
+      tags:
+      - weeks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Week'
+          description: ''
+  /api/weeks/{start}/review:
+    get:
+      operationId: getWeekReview
+      description: Objective progress and body of work per day; 404 for a week that
+        was never opened.
+      parameters:
+      - in: path
+        name: start
+        schema:
+          type: string
+          format: date
+        description: The week's Monday, YYYY-MM-DD.
+        required: true
+      tags:
+      - weeks
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewView'
+          description: ''
+    patch:
+      operationId: updateWeekReview
+      parameters:
+      - in: path
+        name: start
+        schema:
+          type: string
+          format: date
+        description: The week's Monday, YYYY-MM-DD.
+        required: true
+      tags:
+      - weeks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReviewUpdateRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Week'
+          description: ''
+  /api/weeks/current:
+    get:
+      operationId: getCurrentWeek
+      description: This week (Europe/Prague), created empty on first access.
+      tags:
+      - weeks
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Week'
+          description: ''
 components:
   schemas:
+    CarryCandidate:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        weekStart:
+          type: string
+          format: date
+        carried:
+          type: boolean
+      required:
+      - carried
+      - id
+      - title
+      - weekStart
+    DayWork:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        inboxArchived:
+          type: array
+          items:
+            $ref: '#/components/schemas/InboxWork'
+        itemsFinished:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemWork'
+        pagesDone:
+          type: array
+          items:
+            $ref: '#/components/schemas/PageWork'
+      required:
+      - date
+      - inboxArchived
+      - itemsFinished
+      - pagesDone
     InboxEntry:
       type: object
       properties:
@@ -354,6 +596,16 @@ components:
         * `inbox` - Inbox
         * `later` - Later
         * `archived` - Archived
+    InboxWork:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+      required:
+      - id
+      - title
     Item:
       type: object
       properties:
@@ -452,6 +704,19 @@ components:
         * `active` - Active
         * `done` - Done
         * `dropped` - Dropped
+    ItemWork:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+      required:
+      - id
+      - title
+      - type
     LastVisited:
       type: object
       properties:
@@ -482,6 +747,81 @@ components:
       - email
       - id
       - name
+    Objective:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 300
+        status:
+          $ref: '#/components/schemas/ObjectiveStatusEnum'
+        position:
+          type: integer
+          readOnly: true
+        carriedFrom:
+          type: integer
+          readOnly: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - carriedFrom
+      - createdAt
+      - id
+      - position
+      - title
+      - updatedAt
+    ObjectiveCounts:
+      type: object
+      properties:
+        open:
+          type: integer
+        done:
+          type: integer
+        dropped:
+          type: integer
+      required:
+      - done
+      - dropped
+      - open
+    ObjectiveCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - title
+    ObjectiveStatusEnum:
+      enum:
+      - open
+      - done
+      - dropped
+      type: string
+      description: |-
+        * `open` - Open
+        * `done` - Done
+        * `dropped` - Dropped
+    PageWork:
+      type: object
+      properties:
+        book:
+          type: string
+        page:
+          type: string
+      required:
+      - book
+      - page
     PaginatedInboxEntryList:
       type: object
       required:
@@ -520,6 +860,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Item'
+    PaginatedWeekList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Week'
     PatchedInboxTriageRequest:
       type: object
       properties:
@@ -562,6 +921,63 @@ components:
           type: string
           format: date-time
           nullable: true
+    PatchedObjectiveUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        status:
+          $ref: '#/components/schemas/ObjectiveStatusEnum'
+        position:
+          type: integer
+          maximum: 1000
+          minimum: 0
+    PatchedReviewUpdateRequest:
+      type: object
+      properties:
+        reviewWin:
+          type: string
+          maxLength: 20000
+        reviewDistraction:
+          type: string
+          maxLength: 20000
+        reviewLearned:
+          type: string
+          maxLength: 20000
+        reviewSatisfied:
+          type: string
+          maxLength: 20000
+        reviewChangedMind:
+          type: string
+          maxLength: 20000
+        reviewOpportunityEvidence:
+          type: string
+          maxLength: 20000
+    PlanRequest:
+      type: object
+      properties:
+        carry:
+          type: array
+          items:
+            type: integer
+          maxItems: 50
+        planningJournal:
+          type: string
+          maxLength: 20000
+    PlanView:
+      type: object
+      properties:
+        week:
+          $ref: '#/components/schemas/Week'
+        carryCandidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/CarryCandidate'
+      required:
+      - carryCandidates
+      - week
     ProgressSnapshot:
       type: object
       properties:
@@ -578,6 +994,21 @@ components:
       required:
       - done
       - lastVisited
+    ReviewView:
+      type: object
+      properties:
+        week:
+          $ref: '#/components/schemas/Week'
+        objectiveCounts:
+          $ref: '#/components/schemas/ObjectiveCounts'
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/DayWork'
+      required:
+      - days
+      - objectiveCounts
+      - week
     SetDoneRequest:
       type: object
       properties:
@@ -632,6 +1063,75 @@ components:
         * `film` - Film
         * `article` - Article
         * `project` - Project
+    Week:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        startDate:
+          type: string
+          format: date
+          readOnly: true
+        planningJournal:
+          type: string
+          readOnly: true
+        plannedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        reviewWin:
+          type: string
+          readOnly: true
+        reviewDistraction:
+          type: string
+          readOnly: true
+        reviewLearned:
+          type: string
+          readOnly: true
+        reviewSatisfied:
+          type: string
+          readOnly: true
+        reviewChangedMind:
+          type: string
+          readOnly: true
+        reviewOpportunityEvidence:
+          type: string
+          readOnly: true
+        reviewedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        objectives:
+          type: array
+          items:
+            $ref: '#/components/schemas/Objective'
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - createdAt
+      - id
+      - objectives
+      - plannedAt
+      - planningJournal
+      - reviewChangedMind
+      - reviewDistraction
+      - reviewLearned
+      - reviewOpportunityEvidence
+      - reviewSatisfied
+      - reviewWin
+      - reviewedAt
+      - startDate
+      - updatedAt
   securitySchemes:
     sessionAuth:
       type: apiKey

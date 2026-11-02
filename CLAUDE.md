@@ -48,6 +48,8 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
   progress/                      progress API (API_CONTRACT.md); logic in services.py, thin views
   library/                       Item (type, status, tags ArrayField, rating) + Note (admin only); /api/items
   inbox/                         InboxEntry (url|text, triage status, OG unfurl fields, LLM suggestions); /api/inbox
+  weeks/                         Week (Monday start, Europe/Prague; planning journal, 6 review questions) +
+                                 Objective (open|done|dropped, carried_from); /api/weeks*, review = body of work per day
   core/pagination.py, admin.py   NewestFirstCursor (cursor pagination for lists), OwnedAdmin (sets user on create)
   core/services/jobs.py          Job table queue: enqueue (idempotency key), @handler(kind), RetryLater (429);
                                  `manage.py run_jobs` (cron) is the only place that makes outbound requests
