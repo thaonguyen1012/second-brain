@@ -108,3 +108,11 @@ def test_feed_types_pass_the_guard_and_oversize_is_refused(monkeypatch: pytest.M
     )
     with pytest.raises(safe_fetch.FetchBlocked, match="content type"):
         safe_fetch.fetch("https://html.test/feed", safe_fetch.FEED_TYPES)
+
+
+def test_utf16_doctype_is_refused_by_the_parser() -> None:
+    doc = '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE rss [<!ENTITY a "aaaa">]><rss><channel/></rss>'
+    body = doc.encode("utf-16")
+    assert not feeds.FORBIDDEN.search(body)  # the byte regex cannot see it
+    with pytest.raises(feeds.FeedError, match="refused"):
+        feeds.parse(body, "https://feed.test/")

@@ -13,7 +13,7 @@ from collections import Counter
 from typing import Any
 
 from django.contrib.auth.models import User
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Case, CharField, Count, Max, QuerySet, Value, When
 from django.utils import timezone
 
@@ -99,9 +99,12 @@ def save_skill(skill: Skill, data: dict[str, Any]) -> Skill:
     skill.key, skill.aliases = skill_keys(skill.name, skill.aliases)
     if not skill.key:
         raise SkillConflict("empty name")
-    with transaction.atomic():
-        _check_free(skill)
-        skill.save()
+    try:
+        with transaction.atomic():
+            _check_free(skill)
+            skill.save()
+    except IntegrityError as error:  # a concurrent save took the same key
+        raise SkillConflict(skill.key) from error
     return skill
 
 

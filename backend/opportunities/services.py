@@ -183,7 +183,11 @@ def attach_inbox_entry(
                 "date": timezone.localdate(entry.created_at),
                 **data,
             }
-            evidence = add_evidence(opportunity, fields)
+            try:
+                evidence = add_evidence(opportunity, fields)
+            except DuplicateEvidence:  # a concurrent attach of the same entry won the race
+                evidence = Evidence.objects.get(opportunity=opportunity, inbox_entry=entry)
+                created = False
         if archive and entry.status != InboxEntry.Status.ARCHIVED:
             triage_entry(entry, {"status": InboxEntry.Status.ARCHIVED})
     return evidence, created

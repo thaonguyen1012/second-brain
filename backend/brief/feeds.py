@@ -12,6 +12,7 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+from xml.parsers import expat
 
 from core.services.unfurl import plain_text
 
@@ -88,14 +89,22 @@ def _link(node: ET.Element, base: str) -> str:
         return ""
 
 
+def _refuse_declaration(*args: object) -> None:
+    raise FeedError("DOCTYPE or ENTITY declaration refused")
+
+
 def parse(body: bytes, base_url: str) -> list[Entry]:
     """The newest MAX_ENTRIES entries with a title and an http(s) link, in feed order."""
     if FORBIDDEN.search(body):
         raise FeedError("DOCTYPE or ENTITY declaration refused")
+    # The regex is a fast path; the parser hooks also catch encodings it cannot see (e.g. UTF-16).
+    scan = expat.ParserCreate()
+    scan.StartDoctypeDeclHandler = _refuse_declaration
+    scan.EntityDeclHandler = _refuse_declaration
     try:
-        # No DOCTYPE and no ENTITY declaration got this far, so there is nothing to expand (defusedxml's job).
-        root = ET.fromstring(body)  # noqa: S314
-    except ET.ParseError as exc:
+        scan.Parse(body, True)
+        root = ET.fromstring(body)  # noqa: S314  no DOCTYPE or ENTITY declaration got this far
+    except (expat.ExpatError, ET.ParseError) as exc:
         raise FeedError(f"malformed XML: {exc}") from exc
     if _local(root.tag) not in ("rss", "rdf", "feed"):
         raise FeedError(f"not a feed: <{_local(root.tag)}>")
