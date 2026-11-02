@@ -11,23 +11,26 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { appNav } from '@/lib/app-nav';
+import { appNav, isNavActive } from '@/lib/app-nav';
+import { InboxButton } from '@/components/brain/inbox-count';
 import { appName } from '@/lib/shared';
 
-/** Space UI sidebar with the Brainwave layout: logo, then labelled groups of icon links (lib/app-nav.ts). */
+/** Space UI sidebar: logo, then the six items of lib/app-nav.ts with their sub-items. */
 function AppSidebar() {
-  const pathname = usePathname();
+  const raw = usePathname();
+  const pathname = raw.endsWith('/') ? raw : `${raw}/`;
   const { setOpenMobile } = useSidebar();
   // The mobile drawer does not close on navigation by itself.
   useEffect(() => setOpenMobile(false), [pathname, setOpenMobile]);
@@ -41,37 +44,38 @@ function AppSidebar() {
         </Link>
       </SidebarHeader>
       <SidebarContent>
-        {appNav.map((group) => (
-          <SidebarGroup key={group.title}>
-            <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      {item.href ? (
-                        <SidebarMenuButton
-                          isActive={pathname === item.href}
-                          render={<Link href={item.href} />}
-                        >
-                          <Icon aria-hidden />
-                          <span>{item.title}</span>
-                        </SidebarMenuButton>
-                      ) : (
-                        <SidebarMenuButton disabled className="opacity-60">
-                          <Icon aria-hidden />
-                          <span>{item.title}</span>
-                        </SidebarMenuButton>
-                      )}
-                      {!item.href && <SidebarMenuBadge className="text-[10px]">sắp có</SidebarMenuBadge>}
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {appNav.map((item) => {
+                const Icon = item.icon;
+                const active = isNavActive(item, pathname);
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton isActive={active && !item.children} render={<Link href={item.href} />}>
+                      <Icon aria-hidden />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                    {item.children && active && (
+                      <SidebarMenuSub>
+                        {item.children.map((child) => (
+                          <SidebarMenuSubItem key={child.href}>
+                            <SidebarMenuSubButton
+                              isActive={pathname === child.href}
+                              render={<Link href={child.href} />}
+                            >
+                              <span>{child.title}</span>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
   );
@@ -93,7 +97,7 @@ function SearchButton() {
   );
 }
 
-/** App frame for non-lesson pages: sidebar (drawer on mobile) and a sticky top bar with search and theme switch. */
+/** App frame for non-lesson pages: sidebar (drawer on mobile) and a sticky top bar with search, inbox and theme. */
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider style={{ '--sidebar-width': '14rem' } as React.CSSProperties}>
@@ -102,7 +106,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur sm:px-6">
           <SidebarTrigger aria-label="Mở hoặc đóng menu" />
           <SearchButton />
-          <div className="ms-auto">
+          <div className="ms-auto flex items-center gap-2">
+            <InboxButton />
             <ThemeSwitch />
           </div>
         </header>

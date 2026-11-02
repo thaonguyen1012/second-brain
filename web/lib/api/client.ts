@@ -1,20 +1,53 @@
 // The only module that calls the Django backend. Types come from schema.ts (`make api-types`, OpenAPI).
 // Same origin in every environment: nginx in production, scripts/dev-proxy.mjs in development.
-import type { components } from './schema';
+// Browser only: pages that use it render on the client, so `next build` never calls Django.
+import type { components, operations } from './schema';
 
 type Schemas = components['schemas'];
 export type ApiMe = Schemas['Me'];
 export type ApiProgressSnapshot = Schemas['ProgressSnapshot'];
 export type ApiLastVisited = Schemas['LastVisited'];
 export type ApiSetDoneResponse = Schemas['SetDoneResponse'];
+export type ApiWeek = Schemas['Week'];
+export type ApiObjective = Schemas['Objective'];
+export type ApiDailyBrief = Schemas['DailyBrief'];
+export type ApiNewsItem = Schemas['NewsItem'];
+export type ApiInboxEntry = Schemas['InboxEntry'];
+export type ApiInboxStatus = Schemas['InboxStatusEnum'];
+export type ApiItem = Schemas['Item'];
+export type ApiItemRequest = Schemas['ItemRequest'];
+export type ApiItemPatch = Schemas['PatchedItemRequest'];
+export type ApiItemType = Schemas['TypeEnum'];
+export type ApiItemStatus = Schemas['ItemStatusEnum'];
+export type ApiOpportunity = Schemas['Opportunity'];
+export type ApiStance = Schemas['EvidenceStanceEnum'];
+export type ApiAttachResult = Schemas['AttachResult'];
+export type ApiAttachNewsResult = Schemas['AttachNewsResult'];
 
+type Query<Op extends keyof operations> = operations[Op]['parameters'] extends { query?: infer Q }
+  ? NonNullable<Q>
+  : never;
+
+/**
+ * `status` 0 = network error. `reachable` is false when the answer did not come from Django (network error,
+ * proxy 502/503/504, or a non-JSON page such as Next's 404 when no proxy routes /api/ to Django).
+ */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly reachable = true,
+    /** Parsed JSON error body (DRF: `{ detail }` or `{ field: [messages] }`). */
+    readonly body?: unknown,
   ) {
     super(message);
   }
+}
+
+/** One page of a cursor-paginated list; `next` is a same-origin path to pass to `api.page()`, or null. */
+export interface Page<T> {
+  results: T[];
+  next: string | null;
 }
 
 /** The book's index page is '' in the app and '_index' in URLs; '/' inside the page path becomes %2F. */
@@ -27,20 +60,53 @@ function csrfToken(): string {
   return m ? decodeURIComponent(m[1]) : '';
 }
 
-async function request<T>(method: 'GET' | 'PUT', path: string, body?: unknown): Promise<T> {
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH';
+
+async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (method !== 'GET') {
     headers['Content-Type'] = 'application/json';
     headers['X-CSRFToken'] = csrfToken();
   }
-  const res = await fetch(path, {
-    method,
-    headers,
-    credentials: 'same-origin',
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) throw new ApiError(res.status, `${method} ${path}: ${res.status}`);
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method,
+      headers,
+      credentials: 'same-origin',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(0, `${method} ${path}: network error`, false);
+  }
+  const json = (res.headers.get('content-type') ?? '').includes('application/json');
+  if (!res.ok) {
+    const reachable = json && ![502, 503, 504].includes(res.status);
+    const errBody: unknown = json ? await res.json().catch(() => undefined) : undefined;
+    throw new ApiError(res.status, `${method} ${path}: ${res.status}`, reachable, errBody);
+  }
+  if (res.status === 204) return undefined as T;
+  if (!json) throw new ApiError(res.status, `${method} ${path}: not JSON`, false);
   return (await res.json()) as T;
+}
+
+function withQuery(path: string, query?: Record<string, string | number | boolean | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined && v !== '') q.set(k, String(v));
+  const s = q.toString();
+  return s ? `${path}?${s}` : path;
+}
+
+/** DRF builds `next` as an absolute URL with the host it saw; keep only path and query (same origin). */
+function samePath(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const u = new URL(url, 'http://local');
+  return u.pathname + u.search;
+}
+
+async function list<T>(path: string): Promise<Page<T>> {
+  const page = await request<{ results: T[]; next?: string | null }>('GET', path);
+  return { results: page.results, next: samePath(page.next) };
 }
 
 export const api = {
@@ -56,4 +122,38 @@ export const api = {
       page,
       ...(title ? { title } : {}),
     } satisfies Schemas['SetLastVisitedRequest']),
+
+  /** Next page of any list (the `next` of a previous Page). */
+  page: <T>(next: string) => list<T>(next),
+
+  /** This week (Europe/Prague), created empty on first access. */
+  getCurrentWeek: () => request<ApiWeek>('GET', '/api/weeks/current'),
+
+  /** Today's brief, or null before the 06:30 job has built it. */
+  getTodayBrief: async (): Promise<ApiDailyBrief | null> => {
+    try {
+      return await request<ApiDailyBrief>('GET', '/api/brief/today');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404 && err.reachable) return null;
+      throw err;
+    }
+  },
+
+  listInbox: (query?: Query<'listInbox'>) => list<ApiInboxEntry>(withQuery('/api/inbox', query)),
+  createInboxEntry: (body: Schemas['InboxEntryRequest']) => request<ApiInboxEntry>('POST', '/api/inbox', body),
+  triageInboxEntry: (id: number, body: Schemas['PatchedInboxTriageRequest']) =>
+    request<ApiInboxEntry>('PATCH', `/api/inbox/${id}`, body),
+
+  listItems: (query?: Query<'listItems'>) => list<ApiItem>(withQuery('/api/items', query)),
+  createItem: (body: ApiItemRequest) => request<ApiItem>('POST', '/api/items', body),
+  updateItem: (id: number, body: ApiItemPatch) => request<ApiItem>('PATCH', `/api/items/${id}`, body),
+
+  listOpportunities: (query?: Query<'listOpportunities'>) =>
+    list<ApiOpportunity>(withQuery('/api/opportunities', query)),
+  /** Weekly triage: the inbox entry becomes evidence and is archived (API_CONTRACT.md). */
+  attachInboxEvidence: (opportunity: number, body: Schemas['AttachInboxRequest']) =>
+    request<ApiAttachResult>('POST', `/api/opportunities/${opportunity}/evidence/inbox`, body),
+  /** Morning-brief button: a news item becomes link evidence. */
+  attachNewsEvidence: (opportunity: number, body: Schemas['AttachNewsRequest']) =>
+    request<ApiAttachNewsResult>('POST', `/api/opportunities/${opportunity}/evidence/news`, body),
 };

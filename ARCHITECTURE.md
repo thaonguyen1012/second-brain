@@ -123,6 +123,18 @@ Deployment config is in `deploy/` (see deploy/README.md): nginx routes `/api/` (
 and Django's `X-Accel-Redirect` to the internal `/internal/files/` alias; CSP is report-only. With
 `AUTH_MODE=cf_access` every request needs a valid Access JWT for `OWNER_EMAIL`; a session alone is not enough.
 
+Web UI, part A: the app shell (`web/components/app-shell.tsx`) has the six sidebar items of DECISIONS 9.3
+(`web/lib/app-nav.ts`: Hôm nay `/`, Tuần `/tuan/`, Phát triển `/phat-trien/` with Sổ tay, Lộ trình, Kỹ năng,
+Thị trường, Nhật ký thành tựu, Thư viện `/thu-vien/`, Cơ hội `/co-hoi/`, Công việc `/cong-viec/` with Giờ) and an
+Inbox button with a count in the top bar. Home is "Hôm nay" (continue learning, week objectives, inbox count,
+today's brief with a "bằng chứng cho cơ hội…" menu); the handbook grid moved to `/phat-trien/`. `/inbox/` (capture,
+OG cards, keyboard triage j/k l a u o i c) and `/thu-vien/` (Items with filters, create/edit) are built; Tuần,
+Cơ hội, Công việc and the other Phát triển pages are "Đang xây" placeholders. The pages are static shells; data
+loads in the browser through `web/lib/api/client.ts` (`useApi` in `lib/api/use-api.ts`), so `next build` never
+calls Django. A missing backend (network error, proxy 5xx, non-JSON answer) and 401/403 show Vietnamese states
+(`components/brain/api-state.tsx`). Cards and status colours are shared: `components/brain/brain-card.tsx`,
+`lib/labels.ts`.
+
 Local end to end: `make backend-dev`, a web server (e.g. `npm start` with `PORT=3100`), then
 `node web/scripts/dev-proxy.mjs --web http://127.0.0.1:3100` and open http://localhost:8080.
 

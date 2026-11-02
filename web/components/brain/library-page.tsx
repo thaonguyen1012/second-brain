@@ -1,0 +1,213 @@
+'use client';
+import { useState } from 'react';
+import { Library, Pencil, Plus, Star } from 'lucide-react';
+import { api, type ApiItem, type ApiItemStatus, type ApiItemType, type Page } from '@/lib/api/client';
+import { toApiError, useApi } from '@/lib/api/use-api';
+import { formatDate, itemStatusOf, itemStatuses, itemTypeLabel, itemTypes } from '@/lib/labels';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ApiErrorState, EmptyState, LoadingCards, describeApiError } from './api-state';
+import { BrainCard, StatusBadge } from './brain-card';
+import { ChoiceSelect } from './choice-select';
+import { ItemDialog } from './item-dialog';
+
+type TypeFilter = ApiItemType | 'all';
+type StatusFilter = ApiItemStatus | 'all';
+
+const typeChoices = [{ value: 'all' as const, label: 'Mọi loại' }, ...itemTypes];
+const statusChoices = [{ value: 'all' as const, label: 'Mọi trạng thái' }, ...itemStatuses];
+
+/** The one-click next step of the lifecycle (DECISIONS 4.2); "done" still needs a note to count. */
+const nextStep: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: string }>> = {
+  planned: { to: 'active', label: 'Bắt đầu' },
+  active: { to: 'done', label: 'Xong' },
+};
+
+function ItemCard({
+  item,
+  onEdit,
+  onStep,
+}: {
+  item: ApiItem;
+  onEdit: () => void;
+  onStep: (to: ApiItemStatus) => void;
+}) {
+  const s = itemStatusOf(item.status);
+  const step = nextStep[item.status ?? 'planned'];
+  const dates = [
+    item.startedAt && `bắt đầu ${formatDate(item.startedAt)}`,
+    item.finishedAt && `xong ${formatDate(item.finishedAt)}`,
+  ].filter(Boolean);
+  return (
+    <BrainCard
+      badges={
+        <>
+          <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+          <Badge variant="secondary">{itemTypeLabel(item.type)}</Badge>
+          {item.rating ? (
+            <Badge variant="outline">
+              <Star aria-hidden />
+              {item.rating}/10
+            </Badge>
+          ) : null}
+        </>
+      }
+      title={item.title}
+      meta={[item.source, ...dates].filter(Boolean).join(' · ') || `thêm ${formatDate(item.createdAt)}`}
+      actions={
+        <>
+          {step && (
+            <Button size="xs" onClick={() => onStep(step.to)}>
+              {step.label}
+            </Button>
+          )}
+          <Button size="xs" variant="outline" onClick={onEdit}>
+            <Pencil aria-hidden />
+            Sửa
+          </Button>
+        </>
+      }
+    >
+      {item.tags && item.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {item.tags.map((t) => (
+            <Badge key={t} variant="outline">
+              #{t}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </BrainCard>
+  );
+}
+
+/** Thư viện: Items with type and status filters, create and edit (POST/PATCH /api/items). */
+export function LibraryPage() {
+  const [type, setType] = useState<TypeFilter>('all');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [editing, setEditing] = useState<ApiItem | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const items = useApi<Page<ApiItem>>(`items:${type}:${status}`, () =>
+    api.listItems({
+      limit: 100,
+      ...(type !== 'all' && { type }),
+      ...(status !== 'all' && { status }),
+    }),
+  );
+  const list = items.loading ? [] : (items.data?.results ?? []);
+  const matches = (i: ApiItem) => (type === 'all' || i.type === type) && (status === 'all' || i.status === status);
+
+  const upsert = (saved: ApiItem, created: boolean) =>
+    items.mutate((d) => {
+      if (!d) return d;
+      const rest = d.results.filter((i) => i.id !== saved.id);
+      if (!matches(saved)) return { ...d, results: rest };
+      return {
+        ...d,
+        results: created ? [saved, ...rest] : d.results.map((i) => (i.id === saved.id ? saved : i)),
+      };
+    });
+
+  const step = async (item: ApiItem, to: ApiItemStatus) => {
+    try {
+      upsert(await api.updateItem(item.id, { status: to }), false);
+      setNotice(`"${item.title}" → ${itemStatusOf(to).label}`);
+    } catch (err) {
+      setNotice(describeApiError(toApiError(err)).title);
+    }
+  };
+
+  const loadMore = async () => {
+    const next = items.data?.next;
+    if (!next) return;
+    setLoadingMore(true);
+    try {
+      const page = await api.page<ApiItem>(next);
+      items.mutate((d) => d && { results: [...d.results, ...page.results], next: page.next });
+    } catch (err) {
+      setNotice(describeApiError(toApiError(err)).title);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-5 px-4 pb-12 sm:px-8">
+      <div className="flex flex-wrap items-center gap-2">
+        <ChoiceSelect label="Loại" value={type} onChange={setType} choices={typeChoices} className="w-auto" />
+        <ChoiceSelect
+          label="Trạng thái"
+          value={status}
+          onChange={setStatus}
+          choices={statusChoices}
+          className="w-auto"
+        />
+        <Button
+          className="ms-auto"
+          onClick={() => {
+            setEditing(null);
+            setDialogOpen(true);
+          }}
+        >
+          <Plus aria-hidden />
+          Thêm item
+        </Button>
+      </div>
+
+      {notice && (
+        <p className="text-sm text-muted-foreground" role="status">
+          {notice}
+        </p>
+      )}
+
+      {items.error && !items.data ? (
+        <ApiErrorState error={items.error} onRetry={items.reload} />
+      ) : items.loading && list.length === 0 ? (
+        <LoadingCards />
+      ) : list.length === 0 ? (
+        <EmptyState
+          icon={<Library aria-hidden />}
+          title="Chưa có item nào"
+          description={
+            type === 'all' && status === 'all'
+              ? 'Thêm sách, phim, khóa học, bài viết hoặc dự án. Mục từ inbox cũng có thể thành item.'
+              : 'Không có item nào khớp bộ lọc.'
+          }
+        />
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          {list.map((item) => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              onEdit={() => {
+                setEditing(item);
+                setDialogOpen(true);
+              }}
+              onStep={(to) => void step(item, to)}
+            />
+          ))}
+        </div>
+      )}
+      {items.data?.next && !items.loading && (
+        <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
+          Tải thêm
+        </Button>
+      )}
+
+      <ItemDialog
+        open={dialogOpen}
+        item={editing}
+        onOpenChange={setDialogOpen}
+        onSaved={(saved, created) => {
+          upsert(saved, created);
+          setDialogOpen(false);
+          setNotice(created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`);
+        }}
+      />
+    </div>
+  );
+}
