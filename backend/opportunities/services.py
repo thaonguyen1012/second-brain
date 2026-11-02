@@ -220,8 +220,7 @@ def week_activity(user_id: int, first: dt.datetime, after: dt.datetime) -> dict[
     moment = min(after, timezone.now())
     stale = [
         {"id": o.pk, "title": o.title, "decision": o.decision, "lastEvidenceAt": last_evidence(o)}
-        for o in opportunities(user_id, as_of=moment).filter(
-            Q(stale=True)
-        )  # annotation, unknown to the type checker.order_by("title", "id")
+        # Q(): `stale` is an annotation, unknown to the type checker.
+        for o in opportunities(user_id, as_of=moment).filter(Q(stale=True)).order_by("title", "id")
     ]
     return {"withEvidence": with_evidence, "stale": stale}
