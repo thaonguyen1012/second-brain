@@ -1,0 +1,166 @@
+/* The intro page (/gioi-thieu/): the hero tile, the feature grid (Stageshow references/bento.md: hero and strip,
+   one frame for every tile, copy on top, the picture pinned under it) and the print layout. Every rule is scoped
+   under .intro-page; colours are the Space UI tokens of app/global.css. The pictures inside the tiles are styled
+   by components/stageshow/intro/pictures.css. */
+
+.intro-page .intro-cq {
+  container-type: inline-size;
+  width: 100%;
+  max-width: 1120px;
+}
+
+/* One frame for all tiles: radius, ground, copy gutter. The ground is the stage well of brain-look.ts
+   (secondary in light, the sidebar gray in dark), so the pictures sit on what the kit expects. */
+.intro-page .intro-tile {
+  --intro-pad: 28px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--secondary);
+}
+
+.dark .intro-page .intro-tile {
+  background: var(--sidebar);
+}
+
+/* Run-in copy: a bold lead and its muted continuation at one size, page type (not stage type) */
+.intro-page .intro-copy {
+  position: relative;
+  z-index: 1;
+  max-width: calc(400px + 2 * var(--intro-pad));
+  margin: 0;
+  padding: 24px var(--intro-pad) 0;
+  color: var(--muted-foreground);
+  font-size: 17px;
+  line-height: 24px;
+  letter-spacing: -0.012em;
+  text-wrap: pretty;
+}
+
+.intro-page .intro-copy strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+/* The picture takes what the copy leaves; its Stage is drawn at this slot's size */
+.intro-page .intro-pic {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin-top: 16px;
+}
+
+/* The page hero: one tile, no copy, the shell inside */
+.intro-page .intro-hero {
+  height: 380px;
+}
+
+.intro-page .intro-hero .intro-pic {
+  margin-top: 0;
+}
+
+@container (min-width: 600px) {
+  .intro-page .intro-hero {
+    height: 440px;
+  }
+}
+
+/* ---- The grid: one column on a phone, pairs on a tablet, hero and strip on a desktop ---- */
+
+.intro-page .intro-grid {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 470px 250px 300px 340px 300px 350px;
+  grid-template-areas: 'inbox' 'search' 'week' 'opp' 'skills' 'brief';
+}
+
+.intro-page .intro-tile--inbox {
+  grid-area: inbox;
+}
+.intro-page .intro-tile--search {
+  grid-area: search;
+}
+.intro-page .intro-tile--week {
+  grid-area: week;
+}
+.intro-page .intro-tile--opp {
+  grid-area: opp;
+}
+.intro-page .intro-tile--skills {
+  grid-area: skills;
+}
+.intro-page .intro-tile--brief {
+  grid-area: brief;
+}
+
+@container (max-width: 599px) {
+  .intro-page .intro-tile {
+    --intro-pad: 24px;
+  }
+}
+
+@container (min-width: 600px) {
+  .intro-page .intro-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: 470px 300px 340px 320px;
+    grid-template-areas: 'inbox inbox' 'search week' 'opp skills' 'brief brief';
+  }
+}
+
+/* A desktop column: the inbox is the 2 x 2 hero, ⌘K and Tuần stack beside it, the strip below */
+@container (min-width: 880px) {
+  .intro-page .intro-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: 300px 300px 350px;
+    grid-template-areas: 'inbox inbox search' 'inbox inbox week' 'opp skills brief';
+  }
+}
+
+/* ---- Case study ---- */
+
+/* "Số liệu: Alex điền": a slot for a real outcome, visible on screen and on paper until it is filled */
+.intro-page .intro-todo {
+  border: 1px dashed color-mix(in srgb, var(--color-bw-yellow, #ffb73a) 80%, transparent);
+  background: color-mix(in srgb, var(--warning) 55%, transparent);
+  color: var(--warning-foreground);
+}
+
+/* ---- Print: the page alone, light, tiles and blocks never split ---- */
+
+@media print {
+  body:has(.intro-page) [data-slot='sidebar'],
+  body:has(.intro-page) [data-slot='sidebar-gap'],
+  body:has(.intro-page) [data-slot='sidebar-container'],
+  body:has(.intro-page) [data-slot='sidebar-inset'] > header {
+    display: none;
+  }
+
+  .intro-page {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .intro-page .intro-noprint {
+    display: none;
+  }
+
+  .intro-page .intro-tile,
+  .intro-page .intro-keep {
+    break-inside: avoid;
+  }
+
+  .intro-page .intro-case {
+    break-before: page;
+  }
+
+  .intro-page a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

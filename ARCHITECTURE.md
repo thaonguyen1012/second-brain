@@ -173,7 +173,9 @@ file when no other entry uses it (content addressed). Lists of items, inbox, opp
 counts by kind, never keys or error texts. `manage.py export --out <dir>` (`core/services/export.py`, DECISIONS
 4.7): `notes/<id>-<slug>.md` with YAML front matter (id, title, items, created, updated) and `data/<table>.json`
 (Django serializer) for every other owned model, plus `manifest.json`; never the User row, sessions, `Job`,
-`LlmCall` or `LlmCache`; a test fails when a new model is neither exported nor excluded.
+`LlmCall` or `LlmCache`; a test fails when a new model is neither exported nor excluded. `GET /api/export`
+streams the same files (`export_files()`) as `alex-brain-<date>.zip` (`stream_zip()`: ZipFile on an unseekable sink,
+one chunk per file, `X-Accel-Buffering: no`); the Phát triển page links it as a plain download.
 
 Web UI, part C (daily use in the UI): "Hôm nay" adds, per brief card, "Đưa vào Inbox" (`POST /api/inbox` with the
 URL; sent ids remembered per browser in localStorage `brain:brief-sent-to-inbox`, since the API has no link from
@@ -220,6 +222,20 @@ throwaway `<db>_restore_check_<pid>` database, counts the rows of every table, f
 `django_content_type` is empty, prints the differences with the live database (rows written since the dump), and
 drops the throwaway database in a `finally`; it never writes to the dev database.
 `deploy/launchd/com.example.brain.backup.plist` (not installed) runs the backup nightly at 02:30.
+
+Web UI, part D (guides and intro): `web/components/stageshow/` holds the Stageshow kit (`kit/`, MIT, brands left
+out) and the app's animated how-tos, drawn from the real pages simplified, never with the owner's data or numbers.
+`brain-look.ts` maps the Space UI tokens of `app/global.css` onto the kit's `--ss-*` tokens (so stages follow the
+theme); each guide is `guides/<name>.tsx` + `.css` scoped under `.ssg-<name>`, 600x452 with a 358x470 compact design
+below 560 px, a poster that is also the reduced-motion still, and a Vietnamese `role="img"` label. Pages import only
+`stageshow/lazy.tsx` (next/dynamic, `ssr: false`), so no kit code is in any first load. `EmptyStateGuide` shows a
+guide under a page's empty state (Inbox, Tuần when never planned, Cơ hội, Công việc + Giờ, Kỹ năng, Thư viện) only
+when the list loaded without error and unfiltered; "Ẩn hướng dẫn" is per guide in localStorage
+(`alex-brain:guide-hidden:<guide>`). The Inbox guide loops; the others play once in view with "Xem lại".
+`/huong-dan/` lists all six. `/gioi-thieu/` is the intro: server-rendered copy (feature bento, case study with
+"Số liệu: Alex điền" slots, print CSS and an "In hoặc lưu PDF" button) with pictures from `stageshow/intro/`
+(one lazy chunk; only the Inbox tile moves, once). The week review adds `rhythm` (DECISIONS 6.5) shown as
+"Nhịp thực hành" (`components/brain/tuan/review-rhythm.tsx`).
 
 ### Switching your own dev server to the API store
 

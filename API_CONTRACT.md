@@ -97,6 +97,14 @@ what the `LLM_MONTHLY_BUDGET_USD` guard compares, even on the free tier. `calls`
 since then, refused and failed ones too. `lastBriefDate` is the owner's newest DailyBrief (`null` when none). `jobs` counts background jobs waiting (`pending`) and given up
 (`failed`) by kind. No keys, payloads or error texts.
 
+## GET /api/export
+
+A copy of all the owner's data (DECISIONS 4.7), the same files as `manage.py export`, streamed as
+`200 application/zip` with `Content-Disposition: attachment; filename="alex-brain-<date>.zip"` and
+`Cache-Control: no-store`. Inside the folder `alex-brain-<date>/`: `notes/<id>-<slug>.md` (YAML front matter + the
+markdown), `data/<table>.json` for every other owned model, `manifest.json` (`exportedAt`, `owner`, `counts`).
+Never the User row, sessions, jobs, LLM calls or the LLM cache. `401` when not logged in.
+
 ## Items (`/api/items`)
 
 `GET /api/items?type=book&status=active&q=deep` lists items (all filters optional; `q` matches title or source,
@@ -226,6 +234,21 @@ and lists the stale ones as of the end of the week (or now for the current week)
 ```
 
 `achievements` lists the brag-document lines dated in the week, oldest first (shape as in `/api/achievements`).
+
+`rhythm` holds the practice-rhythm reminders (DECISIONS 6.5), counted from existing data:
+
+```json
+"rhythm": { "notes": 1, "achievements": 2, "predictionsDue": 0,
+            "month": { "month": "2026-10", "booksFinished": 1, "notes": 6 },
+            "quarter": null }
+```
+
+`notes`: notes created in the week; `achievements`: brag lines dated in it; `predictionsDue`: open predictions with
+`checkOn` on or before the Sunday. The review is written at the end of the week, so the week whose Sunday is day
+1-7 of a month holds the first review of that month: only then `month` describes the month that just ended (book
+Items finished, notes created), else `null`. When that month is January, April, July or October, `quarter` describes
+the quarter that just ended: `{ "year", "quarter" (1-4), "achievements", "projectsFinished", "predictionsOpen" }`
+(`predictionsOpen` = every prediction not scored yet); else `null`.
 
 ## Projects and time (`/api/projects`, `/api/time-entries`)
 

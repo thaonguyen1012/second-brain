@@ -11,6 +11,7 @@ import { type BookIndex, BodyOfWork } from './body-of-work';
 import { ObjectivesEditor, type ObjectivesUpdate } from './objectives-editor';
 import { ReviewAchievements, ReviewOpportunities, ReviewPredictions } from './review-extras';
 import { ReviewJournal } from './review-journal';
+import { ReviewRhythm } from './review-rhythm';
 import { TimeChart } from './time-chart';
 import { WeekSection } from './week-section';
 
@@ -112,6 +113,10 @@ export function ReviewPanel({
           </WeekSection>
           <TimeChart days={review.days} time={review.time} />
           <BodyOfWork days={review.days} books={books} />
+          {review.rhythm && (
+            // The brag lines added in this review count at once (the server counts the same rows).
+            <ReviewRhythm rhythm={{ ...review.rhythm, achievements: review.achievements.length }} />
+          )}
           <ReviewOpportunities opportunities={review.opportunities} onDecided={onOpportunity} />
           <ReviewAchievements start={start} achievements={review.achievements} onAdded={onAchievement} />
           <ReviewPredictions />

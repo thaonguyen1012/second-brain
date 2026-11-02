@@ -1,0 +1,305 @@
+/* Skill freshness guide (skill-freshness.tsx). Scoped under .ssg-skill; shared pieces are in base.css. */
+
+.ssg-skill .ss-stage .sk-col {
+  left: 24px;
+  width: 552px;
+}
+
+.ssg-skill .ss-stage[data-layout='compact'] .sk-col {
+  left: 16px;
+  width: 326px;
+}
+
+.ssg-skill .ss-stage .sk-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ssg-skill .ss-stage .sk-filter {
+  width: 132px;
+  font-size: 12.5px;
+}
+
+.ssg-skill .ss-stage .sk-search {
+  width: 200px;
+  color: var(--ss-text-faint);
+  font-size: 12.5px;
+}
+
+.ssg-skill .ss-stage .sk-new {
+  margin-left: auto;
+}
+
+.ssg-skill .ss-stage .sk-legend {
+  display: flex;
+  gap: 16px;
+  color: var(--ss-text-strong);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.ssg-skill .ss-stage .sk-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ssg-skill .ss-stage .sk-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid;
+  border-radius: 4px;
+}
+
+/* The matrix: 4 columns, 2 in the compact design, running off the bottom */
+.ssg-skill .ss-stage .sk-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ssg-skill .ss-stage[data-layout='compact'] .sk-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ssg-skill .ss-stage .sk-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  height: 92px;
+  padding: 12px;
+  border: 1px solid;
+  border-radius: 16px;
+  transition: background-color 0.6s ease, border-color 0.6s ease, color 0.6s ease, opacity 0.6s ease, box-shadow 0.15s ease;
+}
+
+.ssg-skill .ss-stage .sk-tile[data-hover] {
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.08);
+}
+
+.ssg-skill .ss-stage .sk-tile__name {
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.ssg-skill .ss-stage .sk-tile__alias {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.ssg-skill .ss-stage .sk-tile__bar {
+  margin-top: 6px;
+}
+
+.ssg-skill .ss-stage .sk-tile__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ssg-skill .ss-stage .sk-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background-color 0.6s ease;
+}
+
+.ssg-skill .ss-stage .sk-dot--lg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Freshness by colour and fading (growth/labels.ts freshness.tile / .dot), the word always beside it */
+.ssg-skill .ss-stage .sk-tile[data-fresh='fresh'],
+.ssg-skill .ss-stage .sk-swatch[data-fresh='fresh'] {
+  border-color: color-mix(in srgb, var(--ss-fresh) 45%, transparent);
+  background: var(--ss-success-soft);
+  color: var(--ss-success-text);
+}
+
+.ssg-skill .ss-stage .sk-tile[data-fresh='aging'],
+.ssg-skill .ss-stage .sk-swatch[data-fresh='aging'] {
+  border-color: color-mix(in srgb, var(--ss-aging) 50%, transparent);
+  background: color-mix(in srgb, var(--ss-warning-soft) 70%, transparent);
+  color: var(--ss-warning-text);
+}
+
+.ssg-skill .ss-stage .sk-tile[data-fresh='aging'] {
+  opacity: 0.85;
+}
+
+.ssg-skill .ss-stage .sk-tile[data-fresh='faded'],
+.ssg-skill .ss-stage .sk-swatch[data-fresh='faded'] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ss-text) 35%, transparent);
+  background: color-mix(in srgb, var(--ss-muted) 40%, transparent);
+  color: var(--ss-text);
+}
+
+.ssg-skill .ss-stage .sk-dot[data-fresh='fresh'] {
+  background: var(--ss-fresh);
+}
+
+.ssg-skill .ss-stage .sk-dot[data-fresh='aging'] {
+  background: var(--ss-aging);
+}
+
+.ssg-skill .ss-stage .sk-dot[data-fresh='faded'] {
+  background: color-mix(in srgb, var(--ss-text) 40%, transparent);
+}
+
+/* The time note hangs on the focal tile's lower edge (gold: corner-chip) */
+.ssg-skill .ss-stage .sk-note {
+  top: 183px;
+  left: 40px;
+}
+
+.ssg-skill .ss-stage[data-layout='compact'] .sk-note {
+  top: 169px;
+  left: 30px;
+}
+
+/* The sheet (SheetPopup, right side): slides in over the matrix's right part */
+.ssg-skill .ss-stage .sk-sheet {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  width: 304px;
+  border-left: 1px solid var(--ss-line);
+  border-radius: 20px 0 0 20px;
+  background: var(--ss-raised);
+  box-shadow: -12px 0 32px rgb(0 0 0 / 0.08);
+  translate: 105% 0;
+  transition: translate 0.45s cubic-bezier(0.45, 0, 0.1, 1);
+}
+
+.ssg-skill .ss-stage .sk-sheet[data-open] {
+  translate: 0 0;
+}
+
+.ssg-skill .ss-stage[data-layout='compact'] .sk-sheet {
+  width: 302px;
+}
+
+.ssg-skill .ss-stage .sk-sheet__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  color: var(--ss-icon);
+}
+
+.ssg-skill .ss-stage .sk-sheet__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 18px 12px;
+}
+
+.ssg-skill .ss-stage .sk-sheet__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ss-heading);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.ssg-skill .ss-stage .sk-sheet__swap {
+  display: block;
+}
+
+.ssg-skill .ss-stage .sk-sheet__statebox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.ssg-skill .ss-stage .sk-sheet__aliases {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ssg-skill .ss-stage .sk-sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 18px 18px;
+}
+
+.ssg-skill .ss-stage .sk-sheet__actions {
+  flex-wrap: wrap;
+}
+
+.ssg-skill .ss-stage .sk-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 2px;
+  padding: 12px;
+  border: 1px solid var(--ss-line);
+  border-radius: 16px;
+  background: var(--ss-surface);
+}
+
+.ssg-skill .ss-stage .sk-form .g-box {
+  font-size: 12.5px;
+}
+
+.ssg-skill .ss-stage .sk-sheet__title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ssg-skill .ss-stage .sk-sheet__none {
+  display: block;
+}
+
+.ssg-skill .ss-stage .sk-ev {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ss-line);
+  border-radius: 16px;
+  background: var(--ss-surface);
+}
+
+.ssg-skill .ss-stage .sk-ev__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ssg-skill .ss-stage .sk-ev__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ssg-skill .ss-stage .sk-ev__title svg {
+  flex: none;
+  color: var(--ss-icon);
+}

@@ -1,0 +1,202 @@
+/* Library item guide (library-item.tsx). Scoped under .ssg-lib; shared pieces are in base.css. */
+
+.ssg-lib .ss-stage .lb-col {
+  top: 48px;
+  left: 60px;
+  width: 480px;
+  gap: 0;
+}
+
+.ssg-lib .ss-stage[data-layout='compact'] .lb-col {
+  top: 16px;
+  left: 16px;
+  width: 326px;
+}
+
+/* The column is much shorter than the stage in both layouts: keep it centred on the well, so no frame (the end
+   frame especially, card only) leaves an empty lower half. It moves half of each Collapse, in step with it. */
+.ssg-lib .ss-stage[data-layout] .lb-col {
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.ssg-lib .ss-stage .lb-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ssg-lib .ss-stage .lb-filter {
+  width: 128px;
+  font-size: 12.5px;
+}
+
+.ssg-lib .ss-stage[data-layout='compact'] .lb-filter {
+  width: 112px;
+}
+
+.ssg-lib .ss-stage .lb-new {
+  margin-left: auto;
+}
+
+/* The page's status line (role=status) above the list */
+.ssg-lib .ss-stage .lb-notice {
+  padding: 0 4px 12px;
+  color: var(--ss-text);
+  font-size: 12.5px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.ssg-lib .ss-stage .lb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 30px 24px 32px;
+  border: 1px dashed color-mix(in srgb, var(--ss-text) 35%, transparent);
+  border-radius: 22px;
+  text-align: center;
+}
+
+.ssg-lib .ss-stage .lb-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 6px;
+  border: 1px solid var(--ss-line);
+  border-radius: 8px;
+  background: var(--ss-surface);
+}
+
+.ssg-lib .ss-stage .lb-empty__title {
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ssg-lib .ss-stage .lb-status {
+  flex: none;
+}
+
+.ssg-lib .ss-stage .lb-meta {
+  color: var(--ss-text);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+/* DoneOutputHint: a warning-tinted strip with the app's own icon and the "Viết ghi chú" action */
+.ssg-lib .ss-stage .lb-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--ss-warning-text) 20%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ss-warning-soft) 40%, transparent);
+  font-size: 12.5px;
+  line-height: 17px;
+}
+
+.ssg-lib .ss-stage .lb-hint__text {
+  display: flex;
+  flex: 1 1 200px;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ssg-lib .ss-stage .lb-hint__text svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ss-warning-text);
+}
+
+.ssg-lib .ss-stage .lb-hint b {
+  font-weight: 500;
+}
+
+.ssg-lib .ss-stage .lb-muted {
+  color: var(--ss-text);
+}
+
+/* "Xong" is the lifecycle's next step; a done item has none, so the button folds its width away */
+.ssg-lib .ss-stage .lb-step {
+  display: inline-flex;
+  max-width: 60px;
+  margin-right: 0;
+  overflow: hidden;
+  transition: max-width 0.35s ease, margin-right 0.35s ease, opacity 0.2s ease;
+}
+
+.ssg-lib .ss-stage .lb-step[data-gone] {
+  max-width: 0;
+  margin-right: -8px;
+  opacity: 0;
+}
+
+/* Dialogs */
+.ssg-lib .ss-stage .lb-dialog {
+  top: 64px;
+  left: 130px;
+  width: 340px;
+}
+
+.ssg-lib .ss-stage[data-layout='compact'] .lb-dialog {
+  top: 48px;
+  left: 16px;
+  width: 326px;
+}
+
+.ssg-lib .ss-stage .lb-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* The note's markdown box: the book template (done-output.tsx noteTemplates), in the editor's mono */
+.ssg-lib .ss-stage .lb-md {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  height: auto;
+  padding: 9px 10px;
+  font-family: var(--ss-mono);
+  font-size: 11.5px;
+  line-height: 16px;
+}
+
+.ssg-lib .ss-stage .lb-md > span:nth-child(odd) {
+  color: var(--ss-text);
+}
+
+.ssg-lib .ss-stage .lb-caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 13px;
+  margin-left: 1px;
+  vertical-align: -2px;
+  background: var(--ss-text-strong);
+  animation: ssg-lib-blink 1s steps(1) infinite;
+}
+
+@keyframes ssg-lib-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.ssg-lib .ss-stage[data-still] .lb-caret {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ssg-lib .ss-stage .lb-caret {
+    animation: none;
+  }
+}

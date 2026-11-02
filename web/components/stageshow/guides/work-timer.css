@@ -1,0 +1,378 @@
+/* Work timer guide (work-timer.tsx). Scoped under .ssg-work; shared pieces are in base.css. */
+
+.ssg-work .ss-stage .wt-col {
+  left: 40px;
+  width: 520px;
+}
+
+/* The two cards are shorter than the wide stage: centre them on the well instead of leaving its lower part empty */
+.ssg-work .ss-stage[data-layout='wide'] .wt-col {
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-col {
+  left: 16px;
+  width: 326px;
+}
+
+/* The timer card: its two states swap in place while the card eases to the new height */
+.ssg-work .ss-stage[data-layout] .wt-timer.g-card {
+  padding: 0;
+}
+
+.ssg-work .ss-stage .wt-swap {
+  display: block;
+}
+
+.ssg-work .ss-stage .wt-idle {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-idle {
+  padding: 12px 12px 14px;
+}
+
+.ssg-work .ss-stage .wt-idle__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.ssg-work .ss-stage .wt-idle__head svg {
+  color: var(--ss-icon);
+}
+
+.ssg-work .ss-stage .wt-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.ssg-work .ss-stage .wt-project {
+  flex: none;
+  width: 168px;
+}
+
+.ssg-work .ss-stage .wt-note {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ss-text-faint);
+  text-overflow: ellipsis;
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-project,
+.ssg-work .ss-stage[data-layout='compact'] .wt-note {
+  grid-column: 1 / -1;
+  width: auto;
+}
+
+.ssg-work .ss-stage .wt-bill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.ssg-work .ss-stage .wt-check {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: var(--ss-accent);
+  color: var(--ss-on-accent);
+}
+
+.ssg-work .ss-stage .wt-start {
+  height: 34px;
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-start {
+  justify-self: end;
+}
+
+/* Running: a pulsing dot, the clock, the project, the red stop button */
+.ssg-work .ss-stage .wt-run {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 16px;
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-run {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px 12px;
+  padding: 14px 12px;
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-run__text {
+  grid-row: 2;
+  grid-column: 1 / -1;
+}
+
+.ssg-work .ss-stage .wt-pulse {
+  position: relative;
+  display: block;
+  width: 12px;
+  height: 12px;
+}
+
+.ssg-work .ss-stage .wt-pulse::before,
+.ssg-work .ss-stage .wt-pulse > span {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--ss-accent);
+  content: '';
+}
+
+.ssg-work .ss-stage .wt-pulse::before {
+  opacity: 0.6;
+  animation: ssg-work-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ssg-work-ping {
+  75%,
+  100% {
+    opacity: 0;
+    scale: 2;
+  }
+}
+
+.ssg-work .ss-stage[data-still] .wt-pulse::before {
+  animation: none;
+  opacity: 0;
+}
+
+.ssg-work .ss-stage .wt-clock {
+  font-family: var(--ss-heading);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 34px;
+  letter-spacing: -0.02em;
+}
+
+.ssg-work .ss-stage .wt-run__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ssg-work .ss-stage .wt-run__title {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The week summary */
+.ssg-work .ss-stage .wt-summary {
+  gap: 12px;
+}
+
+.ssg-work .ss-stage .wt-summary__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ssg-work .ss-stage .wt-summary__title {
+  font-size: 16px;
+}
+
+.ssg-work .ss-stage .wt-stepper {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.ssg-work .ss-stage .wt-stepper > .g-button[aria-hidden] {
+  width: 24px;
+  padding: 0;
+}
+
+.ssg-work .ss-stage .wt-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ssg-work .ss-stage .wt-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--ss-panel);
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-tile {
+  padding: 9px 8px;
+}
+
+.ssg-work .ss-stage .wt-tile__label {
+  overflow: hidden;
+  color: var(--ss-text);
+  font-size: 11.5px;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ssg-work .ss-stage .wt-tile__value {
+  font-family: var(--ss-heading);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 26px;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-tile__label {
+  /* "Không tính tiền" wraps whole in the narrow tile rather than ending in an ellipsis */
+  white-space: normal;
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-tile__value {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.ssg-work .ss-stage .wt-tile__hint {
+  display: block;
+  color: var(--ss-text);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.ssg-work .ss-stage .wt-by {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ssg-work .ss-stage .wt-by__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ssg-work .ss-stage .wt-by__title {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ssg-work .ss-stage .wt-legend {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+  color: var(--ss-text);
+  font-size: 11.5px;
+}
+
+.ssg-work .ss-stage .wt-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.ssg-work .ss-stage .wt-legend i {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.ssg-work .ss-stage [data-kind='billable'] {
+  background: var(--ss-chart-billable);
+}
+
+.ssg-work .ss-stage [data-kind='nonbillable'] {
+  background: var(--ss-chart-nonbillable);
+}
+
+.ssg-work .ss-stage .wt-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ssg-work .ss-stage .wt-row__name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ssg-work .ss-stage .wt-row__client {
+  color: var(--ss-text);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.ssg-work .ss-stage .wt-row__track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ssg-work .ss-stage .wt-row__bar {
+  width: 82%;
+  height: 12px;
+  border-radius: 4px;
+  scale: 0 1;
+  transform-origin: left;
+  transition: scale 0.7s cubic-bezier(0.3, 0.7, 0.2, 1) 0.25s;
+}
+
+.ssg-work .ss-stage .wt-row__bar[data-on] {
+  scale: 1 1;
+}
+
+.ssg-work .ss-stage .wt-row__total {
+  color: var(--ss-text);
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The time-lapse note sits on the timer card's top edge, half outside (gold: corner-chip) */
+.ssg-work .ss-stage .wt-lapse {
+  top: 11px;
+  left: 92px;
+}
+
+.ssg-work .ss-stage[data-layout='compact'] .wt-lapse {
+  top: 3px;
+  left: 36px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ssg-work .ss-stage .wt-pulse::before {
+    animation: none;
+    opacity: 0;
+  }
+}

@@ -50,7 +50,13 @@ class InboxEntry(models.Model):
 
     class Meta:
         verbose_name_plural = "inbox entries"
-        indexes = [models.Index(fields=["created_at"]), models.Index(fields=["status", "created_at"])]
+        # (created_at) from DECISIONS 10.2 (no `type` here); (status, created_at) for the triage lists;
+        # (status, archived_at) for the week review's body of work.
+        indexes = [
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["status", "archived_at"]),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=~models.Q(url="") | ~models.Q(text=""), name="inbox_entry_url_or_text"

@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Textarea } from '@/components/ui/textarea';
+import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
 import { ConfirmDelete, DeleteButton } from './confirm-delete';
@@ -491,11 +492,14 @@ export function InboxPage() {
       ) : inbox.loading && shown.length === 0 ? (
         <LoadingCards />
       ) : shown.length === 0 ? (
-        <EmptyState
-          icon={<Inbox aria-hidden />}
-          title={status === 'inbox' ? 'Inbox đã về 0' : `Không có mục nào ở "${inboxStatusOf(status).label}"`}
-          description={status === 'inbox' ? 'Mọi thứ đã được xử lý. Dán link mới vào ô thu thập ở trên.' : undefined}
-        />
+        <>
+          <EmptyState
+            icon={<Inbox aria-hidden />}
+            title={status === 'inbox' ? 'Inbox đã về 0' : `Không có mục nào ở "${inboxStatusOf(status).label}"`}
+            description={status === 'inbox' ? 'Mọi thứ đã được xử lý. Dán link mới vào ô thu thập ở trên.' : undefined}
+          />
+          {status === 'inbox' && inbox.data && !inbox.error && <EmptyStateGuide guide="inbox" />}
+        </>
       ) : (
         <div className="flex flex-col gap-3">
           {shown.map((e, i) => (

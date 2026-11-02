@@ -8,6 +8,7 @@ import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { opportunityHref } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
+import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
@@ -181,22 +182,25 @@ export function OpportunityList() {
       ) : opps.loading && list.length === 0 ? (
         <LoadingCards />
       ) : list.length === 0 ? (
-        <EmptyState
-          icon={<Lightbulb aria-hidden />}
-          title={filtered ? 'Không có cơ hội nào khớp bộ lọc' : 'Chưa có cơ hội nào'}
-          description={
-            filtered
-              ? 'Đổi bộ lọc để xem các cơ hội khác.'
-              : 'Ghi một giả thuyết: ai, đau gì, trả tiền cho gì. Tin trong bản tin sáng và mục inbox sẽ thành bằng chứng.'
-          }
-        >
-          {!filtered && (
-            <Button onClick={openNew}>
-              <Plus aria-hidden />
-              Cơ hội mới
-            </Button>
-          )}
-        </EmptyState>
+        <>
+          <EmptyState
+            icon={<Lightbulb aria-hidden />}
+            title={filtered ? 'Không có cơ hội nào khớp bộ lọc' : 'Chưa có cơ hội nào'}
+            description={
+              filtered
+                ? 'Đổi bộ lọc để xem các cơ hội khác.'
+                : 'Ghi một giả thuyết: ai, đau gì, trả tiền cho gì. Tin trong bản tin sáng và mục inbox sẽ thành bằng chứng.'
+            }
+          >
+            {!filtered && (
+              <Button onClick={openNew}>
+                <Plus aria-hidden />
+                Cơ hội mới
+              </Button>
+            )}
+          </EmptyState>
+          {!filtered && opps.data && !opps.error && <EmptyStateGuide guide="opportunity" />}
+        </>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {list.map((o) => (

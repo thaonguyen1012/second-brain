@@ -74,6 +74,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description A copy of all the owner's data (DECISIONS 4.7) as a zip, the same files as `manage.py export`:
+         *     notes/*.md, data/*.json, manifest.json. No secrets: no password hash, sessions, jobs or LLM rows.
+         */
+        get: operations["downloadExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/inbox": {
         parameters: {
             query?: never;
@@ -114,7 +134,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description How many entries have the status (the Inbox badge in the top bar and on Hôm nay): one COUNT query. */
+        /** @description How many entries have the status (the Inbox badge in the top bar and on Hôm nay), one COUNT. */
         get: operations["countInbox"];
         put?: never;
         post?: never;
@@ -1800,6 +1820,39 @@ export interface components {
             opportunities: components["schemas"]["WeekOpportunities"];
             /** @description The week's brag-document lines, oldest first. */
             achievements: components["schemas"]["Achievement"][];
+            /** @description Practice-rhythm reminders (DECISIONS 6.5). */
+            rhythm: components["schemas"]["Rhythm"];
+        };
+        Rhythm: {
+            /** @description Notes created in the week. */
+            notes: number;
+            /** @description Brag-document lines dated in the week. */
+            achievements: number;
+            /** @description Open predictions, checkOn on or before Sunday. */
+            predictionsDue: number;
+            /** @description Only on the first review of a month (its Sunday is day 1-7). */
+            month: components["schemas"]["RhythmMonth"] | null;
+            /** @description Only on the first review of January, April, July and October. */
+            quarter: components["schemas"]["RhythmQuarter"] | null;
+        };
+        RhythmMonth: {
+            /** @description The month that just ended, YYYY-MM. */
+            month: string;
+            /** @description Book items finished in that month. */
+            booksFinished: number;
+            /** @description Notes created in that month. */
+            notes: number;
+        };
+        RhythmQuarter: {
+            year: number;
+            /** @description 1-4: the quarter that just ended. */
+            quarter: number;
+            /** @description Brag-document lines dated in that quarter. */
+            achievements: number;
+            /** @description Project items finished in that quarter. */
+            projectsFinished: number;
+            /** @description Predictions not scored yet, any date. */
+            predictionsOpen: number;
         };
         ScoreSnapshot: {
             readonly id: number;
@@ -2228,6 +2281,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DailyBrief"];
+                };
+            };
+        };
+    };
+    downloadExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description alex-brain-<date>.zip, streamed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
                 };
             };
         };

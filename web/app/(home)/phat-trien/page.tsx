@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { Download } from 'lucide-react';
 import { books, booksByTrack, tracks } from '@/lib/books';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { BookCard } from '@/components/book-card';
 import { PageHeader } from '@/components/brain/page-header';
+import { EXPORT_URL } from '@/lib/api/client';
 
 export const metadata: Metadata = { title: 'Sổ tay' };
 
@@ -18,7 +20,7 @@ export default function HandbooksPage() {
         description={
           <>
             {books.length} sổ tay từ các khóa Coursera và F8, {lessons.toLocaleString('vi-VN')} bài học, chia theo ba
-            nhóm. Tìm nhanh với <Kbd>/</Kbd> hoặc <Kbd>⌘ K</Kbd>.
+            nhóm. Tìm nhanh với <Kbd>/</Kbd> hoặc <span className="whitespace-nowrap"><Kbd>⌘ K</Kbd>.</span>
           </>
         }
       >
@@ -29,6 +31,16 @@ export default function HandbooksPage() {
               {t.title}
             </Button>
           ))}
+          {/* DECISIONS 4.7: the data is Alex's, downloadable at any time (GET /api/export). */}
+          <Button
+            variant="ghost"
+            className="sm:ms-auto"
+            title="Ghi chú dạng markdown và mọi dữ liệu khác dạng JSON, trong một tệp zip"
+            render={<a href={EXPORT_URL} download />}
+          >
+            <Download aria-hidden />
+            Tải bản sao dữ liệu
+          </Button>
         </div>
       </PageHeader>
 
@@ -51,6 +63,13 @@ export default function HandbooksPage() {
           </div>
         </section>
       ))}
+
+      <footer className="border-t px-4 py-6 text-sm text-muted-foreground sm:px-8">
+        Alex&apos;s Brain là gì và được xây thế nào?{' '}
+        <Link href="/gioi-thieu/" className="font-medium text-primary underline-offset-4 hover:underline">
+          Giới thiệu và case study →
+        </Link>
+      </footer>
     </div>
   );
 }

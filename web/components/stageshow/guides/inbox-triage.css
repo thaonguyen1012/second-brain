@@ -1,0 +1,451 @@
+/* Inbox triage guide. Every rule is scoped under .ssg-inbox (the Stage's className, on its .ss-fit wrapper),
+   so nothing here reaches the rest of the app. Sizes are design px at the stage's 1:1 size; the stage scales.
+   Colors come from the --ss-* tokens of brain-look.ts (the app's Space UI tokens). */
+
+.ssg-inbox .ss-stage {
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--ss-well);
+  font-family: var(--ss-font);
+  color: var(--ss-text-strong);
+}
+
+/* One column at one width, centered on the well; the list runs off the bottom (gold: stacked-cards) */
+.ssg-inbox .ib-col {
+  position: absolute;
+  top: 24px;
+  left: 70px;
+  display: flex;
+  flex-direction: column;
+  width: 460px;
+}
+
+.ssg-inbox .ss-stage[data-layout='compact'] .ib-col {
+  top: 16px;
+  left: 16px;
+  width: 326px;
+}
+
+/* Capture box: the "Thu thập nhanh" card (rounded-3xl, border, p-3) */
+.ssg-inbox .ib-capture {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--ss-line);
+  border-radius: 22px;
+  background: var(--ss-surface);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.02), 0 3px 3px rgb(0 0 0 / 0.02);
+}
+
+.ssg-inbox .ib-field .ss-field__label {
+  padding-inline: 4px;
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 500;
+}
+
+.ssg-inbox .ib-field .ss-field__box {
+  height: 40px;
+  border-radius: 10px;
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1px var(--ss-line), 0 0 0 0 transparent;
+  font-size: 13px;
+}
+
+/* The app's focus: a darker border and a soft foreground ring, not the accent */
+.ssg-inbox .ib-field[data-focused] .ss-field__box {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ss-text-strong) 20%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--ss-text-strong) 10%, transparent);
+}
+
+.ssg-inbox .ib-capture__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-left: 4px;
+}
+
+/* Buttons: primary, h-7 / xs; disabled at 64% as the app draws it while the box is empty */
+.ssg-inbox .ib-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--ss-accent);
+  color: var(--ss-on-accent);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: opacity 0.2s ease, background-color 0.12s ease, scale 0.12s ease;
+}
+
+.ssg-inbox .ib-button[data-off] {
+  opacity: 0.64;
+}
+
+.ssg-inbox .ib-button[data-pressed] {
+  background: color-mix(in srgb, var(--ss-accent) 86%, #000);
+  scale: 0.97;
+}
+
+.ssg-inbox .ib-button--xs {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+/* Key help row (inbox-page.tsx keyHelp): a Kbd and its label, muted; the key just pressed lights up */
+.ssg-inbox .ib-legend {
+  display: flex;
+  gap: 16px;
+  margin: 12px 4px;
+  color: var(--ss-text);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.ssg-inbox .ss-stage[data-layout='compact'] .ib-legend {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 6px 12px;
+}
+
+.ssg-inbox .ib-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.ssg-inbox .ib-legend__item[data-on] {
+  color: var(--ss-accent-text);
+}
+
+.ssg-inbox .ib-kbd {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1px var(--ss-line);
+  color: var(--ss-text);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ssg-inbox .ib-legend__item[data-on] .ib-kbd,
+.ssg-inbox .ib-kbd[data-on] {
+  background: var(--ss-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ss-accent) 40%, transparent);
+  color: var(--ss-accent-text);
+}
+
+/* The list: each card sits in a Collapse with its gap (padding) inside, so a leaving card takes its gap with it */
+.ssg-inbox .ib-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ssg-inbox .ib-gap {
+  padding-bottom: 12px;
+}
+
+/* BrainCard: rounded-3xl, border, p-2, a tinted header panel; selected = the keyboard cursor */
+.ssg-inbox .ib-card {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--ss-line);
+  border-radius: 22px;
+  background: var(--ss-surface);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.02), 0 3px 3px rgb(0 0 0 / 0.02);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ssg-inbox .ib-card[data-selected] {
+  border-color: color-mix(in srgb, var(--ss-accent) 70%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ss-accent) 30%, transparent);
+}
+
+.ssg-inbox .ib-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--ss-panel);
+}
+
+.ssg-inbox .ib-fthumb {
+  flex: none;
+}
+
+/* The thumbnail opens its own width as the unfurl lands: the text column moves over with it */
+.ssg-inbox .ib-thumb {
+  display: block;
+  flex: none;
+  width: 0;
+  height: 56px;
+  margin-right: -12px;
+  overflow: hidden;
+  border-radius: 12px;
+  opacity: 0;
+  transition:
+    width 0.45s cubic-bezier(0.45, 0, 0.1, 1),
+    margin-right 0.45s cubic-bezier(0.45, 0, 0.1, 1),
+    opacity 0.3s ease 0.15s;
+}
+
+.ssg-inbox .ib-thumb[data-show] {
+  width: 56px;
+  margin-right: 0;
+  opacity: 1;
+}
+
+/* A page preview, the shape of an og:image: dark tile, two light lines. Drawn, never fetched */
+.ssg-inbox .ib-thumb__art {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 5px;
+  width: 56px;
+  height: 56px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #18181b;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+.ssg-inbox .ib-thumb__line {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 0.85);
+}
+
+.ssg-inbox .ib-thumb__line[data-faint] {
+  height: 4px;
+  background: rgb(255 255 255 / 0.35);
+}
+
+.ssg-inbox .ib-head {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ssg-inbox .ib-head--filler {
+  gap: 8px;
+}
+
+.ssg-inbox .ib-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 18px;
+}
+
+.ssg-inbox .ib-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ssg-inbox .ib-badge[data-tone='warning'] {
+  background: var(--ss-warning-soft);
+  color: var(--ss-warning-text);
+}
+
+.ssg-inbox .ib-badge[data-tone='secondary'] {
+  background: var(--ss-panel);
+  color: var(--ss-panel-text);
+}
+
+.ssg-inbox .ib-badge[data-tone='outline'] {
+  border-color: var(--ss-line);
+  background: var(--ss-surface);
+  color: var(--ss-text-strong);
+}
+
+.ssg-inbox .ib-swap {
+  flex: none;
+}
+
+.ssg-inbox .ib-spin {
+  flex: none;
+  opacity: 0.8;
+  animation: ssg-inbox-spin 0.9s linear infinite;
+}
+
+@keyframes ssg-inbox-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.ssg-inbox .ss-stage[data-still] .ib-spin {
+  animation: none;
+}
+
+.ssg-inbox .ib-title {
+  margin-top: 7px;
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.ssg-inbox .ib-meta {
+  margin-top: 3px;
+  color: var(--ss-text);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.ssg-inbox .ib-tags {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 4px;
+}
+
+/* Empty state (api-state.tsx EmptyState): dashed rounded-3xl, an icon tile, the title */
+.ssg-inbox .ib-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 30px 24px 32px;
+  border: 1px dashed color-mix(in srgb, var(--ss-text) 35%, transparent);
+  border-radius: 22px;
+}
+
+.ssg-inbox .ib-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 8px;
+  border: 1px solid var(--ss-line);
+  border-radius: 8px;
+  background: var(--ss-surface);
+  color: var(--ss-text-strong);
+}
+
+.ssg-inbox .ib-empty__title {
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+/* The dialog: a soft backdrop (bg-black/10, blur) and a popover-colored panel */
+.ssg-inbox .ib-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgb(0 0 0 / 0.1);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+
+.ssg-inbox .ib-scrim[data-show] {
+  opacity: 1;
+}
+
+.ssg-inbox .ib-dialog {
+  top: 150px;
+  left: 110px;
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  padding: 16px;
+  border-radius: 18px;
+  --ss-popover-bg: var(--ss-raised);
+  --ss-popover-shadow: 0 0 0 1px var(--ss-line), 0 10px 21px rgb(0 0 0 / 0.07), 0 38px 38px rgb(0 0 0 / 0.06);
+}
+
+.ssg-inbox .ss-stage[data-layout='compact'] .ib-dialog {
+  top: 150px;
+  left: 24px;
+  width: 310px;
+}
+
+.ssg-inbox .ib-dialog__title {
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.ssg-inbox .ib-dialog__desc {
+  margin-top: 4px;
+  color: var(--ss-text);
+  font-size: 12.5px;
+  line-height: 16px;
+}
+
+.ssg-inbox .ib-dialog__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.ssg-inbox .ib-opp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--ss-line);
+  border-radius: 12px;
+}
+
+.ssg-inbox .ib-opp .ib-kbd {
+  background: var(--ss-panel);
+  box-shadow: none;
+}
+
+.ssg-inbox .ib-opp .ib-kbd[data-on] {
+  background: var(--ss-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ss-accent) 40%, transparent);
+}
+
+.ssg-inbox .ib-opp__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ssg-inbox .ib-spin {
+    animation: none;
+  }
+}

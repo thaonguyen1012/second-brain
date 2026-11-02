@@ -8,6 +8,7 @@ import { workApi, type ApiProject } from '@/lib/api/work';
 import { itemStatusOf, itemStatuses } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
@@ -211,15 +212,18 @@ export function ProjectsPage() {
       ) : projects.loading && list.length === 0 ? (
         <LoadingCards />
       ) : list.length === 0 ? (
-        <EmptyState
-          icon={<Briefcase aria-hidden />}
-          title="Chưa có dự án nào"
-          description={
-            status === 'all'
-              ? 'Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế.'
-              : 'Không có dự án nào ở trạng thái này.'
-          }
-        />
+        <>
+          <EmptyState
+            icon={<Briefcase aria-hidden />}
+            title="Chưa có dự án nào"
+            description={
+              status === 'all'
+                ? 'Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế.'
+                : 'Không có dự án nào ở trạng thái này.'
+            }
+          />
+          {status === 'all' && projects.data && !projects.error && <EmptyStateGuide guide="work" />}
+        </>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {list.map((p) => (

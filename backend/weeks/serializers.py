@@ -138,6 +138,32 @@ class WeekTimeSerializer(serializers.Serializer[object]):
     byObjective = ObjectiveTimeSerializer(many=True)
 
 
+class RhythmMonthSerializer(serializers.Serializer[object]):
+    month = serializers.CharField(help_text="The month that just ended, YYYY-MM.")
+    booksFinished = serializers.IntegerField(help_text="Book items finished in that month.")
+    notes = serializers.IntegerField(help_text="Notes created in that month.")
+
+
+class RhythmQuarterSerializer(serializers.Serializer[object]):
+    year = serializers.IntegerField()
+    quarter = serializers.IntegerField(help_text="1-4: the quarter that just ended.")
+    achievements = serializers.IntegerField(help_text="Brag-document lines dated in that quarter.")
+    projectsFinished = serializers.IntegerField(help_text="Project items finished in that quarter.")
+    predictionsOpen = serializers.IntegerField(help_text="Predictions not scored yet, any date.")
+
+
+class RhythmSerializer(serializers.Serializer[object]):
+    notes = serializers.IntegerField(help_text="Notes created in the week.")
+    achievements = serializers.IntegerField(help_text="Brag-document lines dated in the week.")
+    predictionsDue = serializers.IntegerField(help_text="Open predictions, checkOn on or before Sunday.")
+    month = RhythmMonthSerializer(
+        allow_null=True, help_text="Only on the first review of a month (its Sunday is day 1-7)."
+    )
+    quarter = RhythmQuarterSerializer(
+        allow_null=True, help_text="Only on the first review of January, April, July and October."
+    )
+
+
 class ReviewViewSerializer(serializers.Serializer[object]):
     week = WeekSerializer()
     objectiveCounts = ObjectiveCountsSerializer()
@@ -145,3 +171,4 @@ class ReviewViewSerializer(serializers.Serializer[object]):
     time = WeekTimeSerializer()
     opportunities = WeekOpportunitiesSerializer()
     achievements = AchievementSerializer(many=True, help_text="The week's brag-document lines, oldest first.")
+    rhythm = RhythmSerializer(help_text="Practice-rhythm reminders (DECISIONS 6.5).")

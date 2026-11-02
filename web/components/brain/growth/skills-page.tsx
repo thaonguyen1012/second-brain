@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
+import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { freshness, freshnessOrder } from './labels';
@@ -142,16 +143,19 @@ export function SkillsPage() {
           ))}
         </ul>
       ) : all.length === 0 ? (
-        <EmptyState
-          icon={<Sprout aria-hidden />}
-          title="Ma trận còn trống"
-          description="Thêm các kỹ năng nền và kỹ năng của vai trò nhắm tới, rồi gắn bằng chứng: thứ đã ship, case study, bài viết."
-        >
-          <Button onClick={create}>
-            <Plus aria-hidden />
-            Thêm kỹ năng đầu tiên
-          </Button>
-        </EmptyState>
+        <>
+          <EmptyState
+            icon={<Sprout aria-hidden />}
+            title="Ma trận còn trống"
+            description="Thêm các kỹ năng nền và kỹ năng của vai trò nhắm tới, rồi gắn bằng chứng: thứ đã ship, case study, bài viết."
+          >
+            <Button onClick={create}>
+              <Plus aria-hidden />
+              Thêm kỹ năng đầu tiên
+            </Button>
+          </EmptyState>
+          {!skills.error && <EmptyStateGuide guide="skill" />}
+        </>
       ) : (
         <>
           <Legend counts={counts} />

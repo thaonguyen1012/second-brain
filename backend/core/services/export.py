@@ -1,5 +1,6 @@
-"""`manage.py export` (DECISIONS 4.7: the data is Alex's): notes as markdown files with front matter, every
-other model of the owner as JSON (Django's serializer: pk, model, fields; links are ids).
+"""`manage.py export` and GET /api/export (DECISIONS 4.7: the data is Alex's): notes as markdown files with
+front matter, every other model of the owner as JSON (Django's serializer: pk, model, fields; links are ids).
+The command writes a folder, the endpoint streams the same files as a zip.
 
 Never exported: the User row (password hash), sessions, Job and LlmCache rows, LlmCall (not owned data), and
 nothing from settings or the environment. A test checks that every model with owner data is listed here.
@@ -7,6 +8,8 @@ nothing from settings or the environment. A test checks that every model with ow
 
 import json
 import re
+import zipfile
+from collections.abc import Iterator
 from pathlib import Path
 
 from django.contrib.auth.models import User
@@ -70,6 +73,27 @@ def note_markdown(note: Note) -> str:
     return "\n".join(lines) + note.markdown + ("" if note.markdown.endswith("\n") else "\n")
 
 
+def export_files(user: User) -> Iterator[tuple[str, bytes]]:
+    """Every file of an export as (relative path, UTF-8 bytes): notes/*.md, data/*.json, then manifest.json.
+
+    Runs one query per table while it is consumed; the manifest (last) holds the row counts by file.
+    """
+    counts: dict[str, int] = {}
+    notes = Note.objects.filter(user=user).prefetch_related("items").order_by("pk")
+    for note in notes:
+        yield f"notes/{note_file_name(note)}", note_markdown(note).encode()
+    counts["notes"] = len(notes)
+
+    for name, (model, owner) in TABLES.items():
+        rows = list(model._default_manager.filter(**{owner: user}).order_by("pk"))
+        text = serializers.serialize("json", rows, indent=2, ensure_ascii=False) + "\n"
+        yield f"data/{name}.json", text.encode()
+        counts[name] = len(rows)
+
+    manifest = {"exportedAt": timezone.now().isoformat(), "owner": user.email, "counts": counts}
+    yield "manifest.json", (json.dumps(manifest, indent=2) + "\n").encode()
+
+
 def export(user: User, out: Path) -> dict[str, int]:
     """Write <out>/notes/*.md and <out>/data/*.json (+ manifest.json); returns row counts by file.
 
@@ -83,19 +107,42 @@ def export(user: User, out: Path) -> dict[str, int]:
         if old.is_file() and NOTE_FILE.match(old.name):
             old.unlink()
 
-    counts: dict[str, int] = {}
-    notes = Note.objects.filter(user=user).prefetch_related("items").order_by("pk")
-    for note in notes:
-        (notes_dir / note_file_name(note)).write_text(note_markdown(note), encoding="utf-8")
-    counts["notes"] = len(notes)
-
-    for name, (model, owner) in TABLES.items():
-        rows = list(model._default_manager.filter(**{owner: user}).order_by("pk"))
-        (data_dir / f"{name}.json").write_text(
-            serializers.serialize("json", rows, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
-        counts[name] = len(rows)
-
-    manifest = {"exportedAt": timezone.now().isoformat(), "owner": user.email, "counts": counts}
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    manifest = b""
+    for name, data in export_files(user):
+        (out / name).write_bytes(data)
+        manifest = data
+    counts: dict[str, int] = json.loads(manifest)["counts"]
     return counts
+
+
+class _Chunks:
+    """Write-only, unseekable target for ZipFile: collects what it writes until `take()`. Having no `tell`,
+    it makes ZipFile write data descriptors instead of seeking back, so the zip can be streamed."""
+
+    def __init__(self) -> None:
+        self._parts: list[bytes] = []
+
+    def write(self, data: bytes) -> int:
+        self._parts.append(bytes(data))
+        return len(data)
+
+    def flush(self) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
+
+    def take(self) -> bytes:
+        data = b"".join(self._parts)
+        self._parts.clear()
+        return data
+
+
+def stream_zip(user: User, folder: str) -> Iterator[bytes]:
+    """The export as a zip, yielded file by file (deflated); every path sits under `folder/`."""
+    sink = _Chunks()
+    with zipfile.ZipFile(sink, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, data in export_files(user):
+            archive.writestr(f"{folder}/{name}", data)
+            yield sink.take()
+    yield sink.take()  # central directory

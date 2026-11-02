@@ -1,0 +1,437 @@
+/* Shared pieces of the page guides (week, opportunity, work, skill, library). Every rule is scoped under
+   .ssg-brain, which each of those Stages carries next to its own .ssg-<name> class (on the .ss-fit wrapper),
+   so nothing here reaches the rest of the app. Sizes are design px at the stage's 1:1 size; the stage scales.
+   Colors come from the --ss-* tokens of brain-look.ts (the app's Space UI tokens). The Inbox guide predates
+   this file and keeps its own copy of these pieces in inbox-triage.css. */
+
+.ssg-brain .ss-stage {
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--ss-well);
+  font-family: var(--ss-font);
+  color: var(--ss-text-strong);
+}
+
+/* The page column: one width, centered on the well, running off the bottom (gold: stacked-cards) */
+.ssg-brain .g-col {
+  position: absolute;
+  top: 24px;
+  left: 50px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 500px;
+}
+
+.ssg-brain .ss-stage[data-layout='compact'] .g-col {
+  top: 16px;
+  left: 16px;
+  width: 326px;
+}
+
+/* A section card: the app's WeekSection / Section (rounded-3xl, border, p-4, shadow-depth-1) */
+.ssg-brain .g-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--ss-line);
+  border-radius: 22px;
+  background: var(--ss-surface);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.02), 0 3px 3px rgb(0 0 0 / 0.02);
+}
+
+.ssg-brain .ss-stage[data-layout='compact'] .g-card {
+  padding: 12px 12px 14px;
+}
+
+.ssg-brain .g-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.ssg-brain .g-card__icon {
+  flex: none;
+  color: var(--ss-icon);
+}
+
+.ssg-brain .g-card__title {
+  font-family: var(--ss-heading);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.ssg-brain .g-card__action {
+  display: flex;
+  flex: none;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.ssg-brain .g-desc {
+  color: var(--ss-text);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+/* Badges: the app's Badge variants (lib/labels.ts tones) */
+.ssg-brain .g-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+.ssg-brain .g-badge[data-tone='success'] {
+  background: var(--ss-success-soft);
+  color: var(--ss-success-text);
+}
+
+.ssg-brain .g-badge[data-tone='warning'] {
+  background: var(--ss-warning-soft);
+  color: var(--ss-warning-text);
+}
+
+.ssg-brain .g-badge[data-tone='error'] {
+  background: var(--ss-danger-soft);
+  color: var(--ss-danger-text);
+}
+
+.ssg-brain .g-badge[data-tone='info'] {
+  background: var(--ss-info-soft);
+  color: var(--ss-info-text);
+}
+
+.ssg-brain .g-badge[data-tone='secondary'] {
+  background: var(--ss-panel);
+  color: var(--ss-panel-text);
+}
+
+.ssg-brain .g-badge[data-tone='outline'] {
+  border-color: var(--ss-line);
+  background: var(--ss-surface);
+  color: var(--ss-text-strong);
+}
+
+/* Buttons: default (primary), outline, ghost, destructive; h-8 / sm 28 / xs 24 */
+.ssg-brain .g-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 8px;
+  background: var(--ss-accent);
+  color: var(--ss-on-accent);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: opacity 0.2s ease, background-color 0.12s ease, box-shadow 0.12s ease, scale 0.12s ease;
+}
+
+.ssg-brain .g-button[data-size='sm'] {
+  height: 28px;
+  padding: 0 10px;
+}
+
+.ssg-brain .g-button[data-size='xs'] {
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+.ssg-brain .g-button[data-variant='outline'] {
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1px var(--ss-line);
+  color: var(--ss-text-strong);
+}
+
+.ssg-brain .g-button[data-variant='ghost'] {
+  background: transparent;
+  color: var(--ss-text-strong);
+}
+
+.ssg-brain .g-button[data-variant='destructive'] {
+  background: var(--ss-destructive);
+  color: #fff;
+}
+
+.ssg-brain .g-button[data-off] {
+  opacity: 0.64;
+}
+
+.ssg-brain .g-button[data-hover] {
+  background: color-mix(in srgb, var(--ss-accent) 90%, #000);
+}
+
+.ssg-brain .g-button[data-variant='outline'][data-hover],
+.ssg-brain .g-button[data-variant='ghost'][data-hover] {
+  background: var(--ss-panel);
+}
+
+.ssg-brain .g-button[data-variant='destructive'][data-hover] {
+  background: color-mix(in srgb, var(--ss-destructive) 90%, #000);
+}
+
+.ssg-brain .g-button[data-pressed] {
+  scale: 0.97;
+}
+
+.ssg-brain .g-button svg {
+  flex: none;
+}
+
+/* Kbd: the small key hint inside buttons and legends */
+.ssg-brain .g-kbd {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: var(--ss-panel);
+  color: var(--ss-text);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.ssg-brain .g-button:not([data-variant]) .g-kbd,
+.ssg-brain .g-button[data-variant='destructive'] .g-kbd {
+  background: rgb(255 255 255 / 0.2);
+  color: inherit;
+}
+
+/* Form pieces: a label over a box; Field (kit) for typed text, .g-box for a static value or a select */
+.ssg-brain .g-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.ssg-brain .g-hint {
+  color: var(--ss-text);
+  font-size: 11.5px;
+  line-height: 15px;
+}
+
+.ssg-brain .g-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ssg-brain .g-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1px var(--ss-line);
+  font-size: 13px;
+  white-space: nowrap;
+  transition: box-shadow 0.15s ease;
+}
+
+.ssg-brain .g-box[data-focused],
+.ssg-brain .g-box[data-open] {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ss-text-strong) 20%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--ss-text-strong) 10%, transparent);
+}
+
+.ssg-brain .g-box__chev {
+  flex: none;
+  margin-left: auto;
+  color: var(--ss-icon);
+}
+
+.ssg-brain .g-field .ss-field__label {
+  font-size: 12.5px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+.ssg-brain .g-field .ss-field__box {
+  height: 34px;
+  border-radius: 9px;
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1px var(--ss-line), 0 0 0 0 transparent;
+  font-size: 13px;
+}
+
+/* The app's focus: a darker border and a soft foreground ring, not the accent */
+.ssg-brain .g-field[data-focused] .ss-field__box {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ss-text-strong) 20%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--ss-text-strong) 10%, transparent);
+}
+
+/* A dialog over a soft backdrop (bg-black/10, blur), as the app's Dialog draws it */
+.ssg-brain .g-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgb(0 0 0 / 0.1);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+
+.ssg-brain .g-scrim[data-show] {
+  opacity: 1;
+}
+
+.ssg-brain .g-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  --ss-popover-bg: var(--ss-raised);
+  --ss-popover-shadow: 0 0 0 1px var(--ss-line), 0 10px 21px rgb(0 0 0 / 0.07), 0 38px 38px rgb(0 0 0 / 0.06);
+}
+
+.ssg-brain .g-dialog__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ssg-brain .g-dialog__title {
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.ssg-brain .g-dialog__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+/* A choice menu under a select box (ChoiceSelect's popup) */
+.ssg-brain .g-menu {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border-radius: 10px;
+  --ss-popover-bg: var(--ss-raised);
+  --ss-popover-shadow: 0 0 0 1px var(--ss-line), 0 8px 16px rgb(0 0 0 / 0.08);
+}
+
+.ssg-brain .g-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.ssg-brain .g-menu__item[data-hover],
+.ssg-brain .g-menu__item[data-on] {
+  background: var(--ss-panel);
+}
+
+/* BrainCard: rounded-3xl, border, p-2, a tinted header panel with badges, title and meta */
+.ssg-brain .g-brain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--ss-line);
+  border-radius: 22px;
+  background: var(--ss-surface);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.02), 0 3px 3px rgb(0 0 0 / 0.02);
+}
+
+.ssg-brain .g-brain__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--ss-panel);
+}
+
+.ssg-brain .g-brain__badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 18px;
+}
+
+.ssg-brain .g-brain__title {
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+}
+
+.ssg-brain .g-brain__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 10px 8px;
+}
+
+.ssg-brain .g-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A caption outside the product (an annotation, not app UI): a small dark pill */
+.ssg-brain .g-note {
+  position: absolute;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--ss-text-strong);
+  color: var(--ss-surface);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  translate: 0 4px;
+  transition: opacity 0.3s ease, translate 0.3s ease;
+}
+
+.ssg-brain .g-note[data-show] {
+  opacity: 1;
+  translate: 0 0;
+}

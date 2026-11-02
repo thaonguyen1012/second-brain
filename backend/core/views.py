@@ -3,11 +3,13 @@ from urllib.parse import quote
 
 from django.contrib.auth.models import User
 from django.db import connection
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_safe
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -15,7 +17,7 @@ from rest_framework.views import APIView
 
 from core.authentication import request_user
 from core.serializers import StatusSerializer
-from core.services import status
+from core.services import export, status
 from core.services.files import attachments_root, resolve_attachment
 
 
@@ -48,6 +50,29 @@ class StatusView(APIView):
         """This month's LLM cost at paid prices vs the budget, calls this month, the last morning brief and
         the background jobs waiting or failed, by kind."""
         return Response(StatusSerializer(status.snapshot(request_user(request))).data)
+
+
+class ExportView(APIView):
+    @extend_schema(
+        operation_id="downloadExport",
+        responses={
+            (200, "application/zip"): OpenApiResponse(
+                OpenApiTypes.BINARY, description="alex-brain-<date>.zip, streamed."
+            )
+        },
+    )
+    def get(self, request: Request) -> StreamingHttpResponse:
+        """A copy of all the owner's data (DECISIONS 4.7) as a zip, the same files as `manage.py export`:
+        notes/*.md, data/*.json, manifest.json. No secrets: no password hash, sessions, jobs or LLM rows."""
+        folder = f"alex-brain-{timezone.localdate().isoformat()}"
+        response = StreamingHttpResponse(
+            export.stream_zip(request_user(request), folder), content_type="application/zip"
+        )
+        response["Content-Disposition"] = f'attachment; filename="{folder}.zip"'
+        response["Cache-Control"] = "no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        response["X-Accel-Buffering"] = "no"  # nginx passes the chunks on as they come
+        return response
 
 
 # Types a browser may show inline; everything else (HTML, SVG, XML, office files...) downloads.

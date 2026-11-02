@@ -9,7 +9,7 @@ DEV_WEB_PORT ?= 3100
 DEV_BUILD ?= 1
 DEV_HOT_PORT ?= 3001
 
-.PHONY: check web-check backend-check smoke budget api-types backend-dev build jobs dev dev-hot backup restore-check
+.PHONY: check web-check backend-check smoke budget api-types backend-dev build jobs dev dev-hot backup restore-check audit
 
 check: web-check backend-check smoke budget
 
@@ -31,6 +31,11 @@ smoke:
 # Home First Load JS (gzip) of the last `npm run build`; skipped when there is no build (DECISIONS 10.2, 10.3).
 budget:
 	node web/scripts/check-budget.mjs --max-kb $(BUDGET_KB)
+
+# Known vulnerabilities in the web app's production dependencies (DECISIONS 10.5: npm audit every month).
+# Needs the network (registry.npmjs.org); not part of make check. Exits non-zero when it finds any.
+audit:
+	cd web && npm audit --omit=dev
 
 # OpenAPI schema -> web/lib/api/schema.ts (the only place the web app gets backend types from).
 api-types:

@@ -6,12 +6,13 @@ from typing import Any
 
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import Count, Max, Q
 from django.utils import timezone
 
+from growth.models import Achievement, Prediction
 from growth.services import achievements
 from inbox.models import InboxEntry
-from library.models import Item
+from library.models import Item, Note
 from opportunities.services import week_activity
 from progress.models import PageProgress
 from weeks.models import Objective, Week
@@ -194,7 +195,74 @@ def review(week: Week) -> dict[str, Any]:
         },
         "opportunities": week_activity(user_id, first, after),
         "achievements": list(achievements(user_id, week.start_date).order_by("date", "id")),
+        "rhythm": rhythm(week),
     }
+
+
+def rhythm(week: Week) -> dict[str, Any]:
+    """Practice-rhythm reminders of the review (DECISIONS 6.5), counted from data that already exists.
+
+    Weekly: notes created in the week, brag-document lines dated in it, predictions still open whose
+    `check_on` falls on or before the week's Sunday. The review is written at the end of the week, so the
+    week whose Sunday is one of the first 7 days of a month holds the first review of that month: it gets a
+    `month` block about the month that just ended (books finished, notes written) and, when that month opens
+    a quarter, a `quarter` block about the quarter that just ended (achievements, projects finished,
+    predictions still open, DECISIONS 6.2: "each quarter, look at the prediction list again").
+    """
+    user_id = week.user_id
+    sunday = week.start_date + dt.timedelta(days=6)
+    first, after = _span(week.start_date, sunday + dt.timedelta(days=1))
+    predictions = Prediction.objects.filter(user_id=user_id, outcome=Prediction.Outcome.OPEN).aggregate(
+        due=Count("id", filter=Q(check_on__lte=sunday)), open=Count("id")
+    )
+    data: dict[str, Any] = {
+        "notes": Note.objects.filter(user_id=user_id, created_at__gte=first, created_at__lt=after).count(),
+        "achievements": Achievement.objects.filter(
+            user_id=user_id, date__gte=week.start_date, date__lte=sunday
+        ).count(),
+        "predictionsDue": predictions["due"],
+        "month": None,
+        "quarter": None,
+    }
+    if sunday.day > 7:
+        return data
+
+    month_end = sunday.replace(day=1)  # first day of the new month = end (exclusive) of the old one
+    month_start = (month_end - dt.timedelta(days=1)).replace(day=1)
+    lo, hi = _span(month_start, month_end)
+    data["month"] = {
+        "month": f"{month_start:%Y-%m}",
+        "booksFinished": Item.objects.filter(
+            user_id=user_id, type=Item.Type.BOOK, finished_at__gte=lo, finished_at__lt=hi
+        ).count(),
+        "notes": Note.objects.filter(user_id=user_id, created_at__gte=lo, created_at__lt=hi).count(),
+    }
+    if month_end.month % 3 != 1:  # January, April, July and October open a quarter
+        return data
+
+    quarter_start = dt.date(month_end.year - (month_end.month == 1), (month_end.month - 4) % 12 + 1, 1)
+    lo, hi = _span(quarter_start, month_end)
+    data["quarter"] = {
+        "year": quarter_start.year,
+        "quarter": (quarter_start.month - 1) // 3 + 1,
+        "achievements": Achievement.objects.filter(
+            user_id=user_id, date__gte=quarter_start, date__lt=month_end
+        ).count(),
+        "projectsFinished": Item.objects.filter(
+            user_id=user_id, type=Item.Type.PROJECT, finished_at__gte=lo, finished_at__lt=hi
+        ).count(),
+        "predictionsOpen": predictions["open"],
+    }
+    return data
+
+
+def _span(start: dt.date, end: dt.date) -> tuple[dt.datetime, dt.datetime]:
+    """[start, end) as aware datetimes at local midnight (Europe/Prague)."""
+    tz = timezone.get_current_timezone()
+    return (
+        dt.datetime.combine(start, dt.time.min, tzinfo=tz),
+        dt.datetime.combine(end, dt.time.min, tzinfo=tz),
+    )
 
 
 def _empty_day() -> dict[str, list[dict[str, Any]]]:

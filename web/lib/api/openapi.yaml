@@ -161,6 +161,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/DailyBrief'
           description: ''
+  /api/export:
+    get:
+      operationId: downloadExport
+      description: |-
+        A copy of all the owner's data (DECISIONS 4.7) as a zip, the same files as `manage.py export`:
+        notes/*.md, data/*.json, manifest.json. No secrets: no password hash, sessions, jobs or LLM rows.
+      tags:
+      - export
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+          description: alex-brain-<date>.zip, streamed.
   /api/inbox:
     get:
       operationId: listInbox
@@ -263,8 +281,8 @@ paths:
   /api/inbox/count:
     get:
       operationId: countInbox
-      description: 'How many entries have the status (the Inbox badge in the top bar
-        and on Hôm nay): one COUNT query.'
+      description: How many entries have the status (the Inbox badge in the top bar
+        and on Hôm nay), one COUNT.
       parameters:
       - in: query
         name: status
@@ -4305,13 +4323,85 @@ components:
           items:
             $ref: '#/components/schemas/Achievement'
           description: The week's brag-document lines, oldest first.
+        rhythm:
+          allOf:
+          - $ref: '#/components/schemas/Rhythm'
+          description: Practice-rhythm reminders (DECISIONS 6.5).
       required:
       - achievements
       - days
       - objectiveCounts
       - opportunities
+      - rhythm
       - time
       - week
+    Rhythm:
+      type: object
+      properties:
+        notes:
+          type: integer
+          description: Notes created in the week.
+        achievements:
+          type: integer
+          description: Brag-document lines dated in the week.
+        predictionsDue:
+          type: integer
+          description: Open predictions, checkOn on or before Sunday.
+        month:
+          allOf:
+          - $ref: '#/components/schemas/RhythmMonth'
+          nullable: true
+          description: Only on the first review of a month (its Sunday is day 1-7).
+        quarter:
+          allOf:
+          - $ref: '#/components/schemas/RhythmQuarter'
+          nullable: true
+          description: Only on the first review of January, April, July and October.
+      required:
+      - achievements
+      - month
+      - notes
+      - predictionsDue
+      - quarter
+    RhythmMonth:
+      type: object
+      properties:
+        month:
+          type: string
+          description: The month that just ended, YYYY-MM.
+        booksFinished:
+          type: integer
+          description: Book items finished in that month.
+        notes:
+          type: integer
+          description: Notes created in that month.
+      required:
+      - booksFinished
+      - month
+      - notes
+    RhythmQuarter:
+      type: object
+      properties:
+        year:
+          type: integer
+        quarter:
+          type: integer
+          description: '1-4: the quarter that just ended.'
+        achievements:
+          type: integer
+          description: Brag-document lines dated in that quarter.
+        projectsFinished:
+          type: integer
+          description: Project items finished in that quarter.
+        predictionsOpen:
+          type: integer
+          description: Predictions not scored yet, any date.
+      required:
+      - achievements
+      - predictionsOpen
+      - projectsFinished
+      - quarter
+      - year
     ScoreSnapshot:
       type: object
       properties:

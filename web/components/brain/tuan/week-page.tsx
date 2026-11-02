@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
+import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards } from '../api-state';
 import type { BookIndex } from './body-of-work';
 import type { ObjectivesUpdate } from './objectives-editor';
@@ -265,6 +266,14 @@ export function WeekPage({ books }: { books: BookIndex }) {
           </TabsPanel>
         </Tabs>
       )}
+      {/* How the ritual goes: under the empty state of a week never opened, and under the real form of a blank
+          week (no objectives, never planned or reviewed), which is what a new user meets */}
+      {data &&
+        !week.error &&
+        (!data.plan ||
+          (data.plan.week.objectives.length === 0 && !data.plan.week.plannedAt && !data.plan.week.reviewedAt)) && (
+          <EmptyStateGuide guide="week" className={data.plan ? 'mt-4' : undefined} />
+        )}
     </div>
   );
 }

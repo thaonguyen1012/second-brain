@@ -123,6 +123,12 @@ async function list<T>(path: string, signal?: AbortSignal): Promise<Page<T>> {
   return { results: page.results, next: samePath(page.next) };
 }
 
+/**
+ * GET /api/export: a zip of all the owner's data (notes as markdown, the rest as JSON), streamed by Django as an
+ * attachment. Used as a plain download link (no fetch), so the browser saves it without holding it in memory.
+ */
+export const EXPORT_URL = '/api/export';
+
 export const api = {
   getMe: () => request<ApiMe>('GET', '/api/me'),
   /** LLM cost this month vs the budget, last brief date, pending / failed jobs by kind. */

@@ -17,6 +17,8 @@ export type ApiReviewField = keyof ApiReviewPatch;
 export type ApiAchievement = Schemas['Achievement'];
 export type ApiAchievementCreate = Schemas['AchievementWriteRequest'];
 export type ApiOpportunityDecision = Schemas['OpportunityDecisionEnum'];
+/** Practice-rhythm counts of the review (DECISIONS 6.5); month / quarter only on the first review of one. */
+export type ApiRhythm = Schemas['Rhythm'];
 
 /** `start` is the week's Monday as YYYY-MM-DD. */
 const base = (start: string) => `/api/weeks/${encodeURIComponent(start)}`;

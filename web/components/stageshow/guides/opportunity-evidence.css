@@ -1,0 +1,280 @@
+/* Opportunity guide (opportunity-evidence.tsx). Scoped under .ssg-opp; shared pieces are in base.css. */
+
+.ssg-opp .ss-stage .op-col {
+  left: 40px;
+  width: 520px;
+}
+
+.ssg-opp .ss-stage[data-layout='compact'] .op-col {
+  left: 16px;
+  width: 326px;
+}
+
+/* The list and the detail page share one place: opening the card is a page change, a crossfade */
+.ssg-opp .ss-stage .op-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  opacity: 0;
+  translate: 8px 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, translate 0.35s ease;
+}
+
+.ssg-opp .ss-stage .op-page[data-show] {
+  opacity: 1;
+  translate: 0 0;
+  transition-delay: 0.1s;
+}
+
+/* List: filters and the "Cơ hội mới" button, the empty state, then the new card */
+.ssg-opp .ss-stage .op-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ssg-opp .ss-stage .op-filter {
+  width: 148px;
+  font-size: 12.5px;
+}
+
+.ssg-opp .ss-stage .op-new {
+  margin-left: auto;
+}
+
+.ssg-opp .ss-stage .op-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 30px 24px 32px;
+  border: 1px dashed color-mix(in srgb, var(--ss-text) 35%, transparent);
+  border-radius: 22px;
+  text-align: center;
+}
+
+.ssg-opp .ss-stage .op-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 6px;
+  border: 1px solid var(--ss-line);
+  border-radius: 8px;
+  background: var(--ss-surface);
+}
+
+.ssg-opp .ss-stage .op-empty__title {
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ssg-opp .ss-stage .op-meta {
+  display: flex;
+  gap: 12px;
+  color: var(--ss-text);
+  font-size: 12px;
+}
+
+.ssg-opp .ss-stage .op-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Detail: badge, title, hypothesis */
+.ssg-opp .ss-stage .op-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 4px 2px;
+}
+
+.ssg-opp .ss-stage .op-title {
+  font-family: var(--ss-heading);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: -0.015em;
+}
+
+.ssg-opp .ss-stage[data-layout='compact'] .op-title {
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.ssg-opp .ss-stage .op-hyp {
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.ssg-opp .ss-stage .op-noscore {
+  display: block;
+}
+
+/* Score tiles (ScoreHistoryChart small multiples): name, value /10, one point on a 1-10 scale */
+.ssg-opp .ss-stage .op-scores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ssg-opp .ss-stage .op-score {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 6px 4px;
+  padding: 9px 10px 10px;
+  border: 1px solid var(--ss-line);
+  border-radius: 14px;
+}
+
+.ssg-opp .ss-stage .op-score__label {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ssg-opp .ss-stage .op-score__value {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ssg-opp .ss-stage .op-score__of {
+  color: var(--ss-text);
+  font-weight: 400;
+}
+
+.ssg-opp .ss-stage[data-layout='compact'] .op-scores {
+  gap: 6px;
+}
+
+/* Narrow tiles: side padding kept small so "Thời điểm" fits whole instead of ending in an ellipsis */
+.ssg-opp .ss-stage[data-layout='compact'] .op-score {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 8px 6px;
+}
+
+.ssg-opp .ss-stage[data-layout='compact'] .op-score__label {
+  font-size: 11px;
+}
+
+.ssg-opp .ss-stage .op-score__plot {
+  position: relative;
+  grid-column: 1 / -1;
+  height: 26px;
+  background-image: linear-gradient(var(--ss-line) 1px, transparent 1px);
+  background-size: 100% 12.5px;
+}
+
+.ssg-opp .ss-stage .op-score__dot {
+  position: absolute;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--ss-surface);
+  border-radius: 50%;
+  background: var(--ss-accent);
+  translate: -50% 50%;
+}
+
+/* Evidence */
+.ssg-opp .ss-stage .op-evcard .g-card__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.ssg-opp .ss-stage .op-noev {
+  display: grid;
+  place-items: center;
+  height: 52px;
+  border: 1px dashed color-mix(in srgb, var(--ss-text) 35%, transparent);
+  border-radius: 14px;
+  color: var(--ss-text);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.ssg-opp .ss-stage .op-evs {
+  display: flex;
+  flex-direction: column;
+}
+
+.ssg-opp .ss-stage .op-gap {
+  padding-bottom: 6px;
+}
+
+.ssg-opp .ss-stage .op-ev {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--ss-line);
+  border-radius: 14px;
+}
+
+.ssg-opp .ss-stage[data-layout='compact'] .op-ev {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ssg-opp .ss-stage .op-ev__badges {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
+.ssg-opp .ss-stage .op-ev__title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dialogs over the page */
+.ssg-opp .ss-stage .op-dialog {
+  top: 56px;
+  left: 130px;
+  width: 340px;
+}
+
+.ssg-opp .ss-stage[data-layout='compact'] .op-dialog {
+  top: 40px;
+  left: 16px;
+  width: 326px;
+}
+
+.ssg-opp .ss-stage .op-url {
+  overflow: hidden;
+  color: var(--ss-text);
+  text-overflow: ellipsis;
+}
+
+.ssg-opp .ss-stage .op-scoregrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.ssg-opp .ss-stage .op-scoregrid .g-box {
+  font-variant-numeric: tabular-nums;
+}
+
+.ssg-opp .ss-stage .op-menu {
+  top: 0;
+  left: 0;
+  width: 200px;
+}

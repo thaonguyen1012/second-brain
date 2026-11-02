@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
+import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { addDays, formatDay, formatMinutes, isTyping } from './format';
@@ -339,18 +340,21 @@ export function TimePage() {
         ) : entries.loading && list.length === 0 ? (
           <LoadingCards />
         ) : list.length === 0 ? (
-          <EmptyState
-            icon={<Clock aria-hidden />}
-            title={filtered ? 'Không có mục giờ nào khớp bộ lọc' : 'Chưa có giờ nào'}
-            description={filtered ? undefined : 'Bấm giờ ở trên, hoặc nhập tay giờ đã làm.'}
-          >
-            {!filtered && (
-              <Button onClick={openNew}>
-                <Plus aria-hidden />
-                Nhập giờ
-              </Button>
-            )}
-          </EmptyState>
+          <>
+            <EmptyState
+              icon={<Clock aria-hidden />}
+              title={filtered ? 'Không có mục giờ nào khớp bộ lọc' : 'Chưa có giờ nào'}
+              description={filtered ? undefined : 'Bấm giờ ở trên, hoặc nhập tay giờ đã làm.'}
+            >
+              {!filtered && (
+                <Button onClick={openNew}>
+                  <Plus aria-hidden />
+                  Nhập giờ
+                </Button>
+              )}
+            </EmptyState>
+            {!filtered && entries.data && !entries.error && <EmptyStateGuide guide="work" />}
+          </>
         ) : (
           <div className="flex flex-col gap-3">
             {days.map((d) => (

@@ -40,7 +40,12 @@ class Item(models.Model):
     finished_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        indexes = [models.Index(fields=["type", "status"]), models.Index(fields=["created_at"])]
+        # (type, status) and (created_at) from DECISIONS 10.2; finished_at for the week review's body of work.
+        indexes = [
+            models.Index(fields=["type", "status"]),
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["finished_at"]),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(rating__isnull=True) | models.Q(rating__gte=1, rating__lte=10),

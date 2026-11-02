@@ -10,6 +10,7 @@ import { noteTitle } from '@/lib/library-labels';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError, openError } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
 import { ChoiceSelect } from './choice-select';
@@ -212,15 +213,18 @@ export function LibraryPage() {
       ) : items.loading && list.length === 0 ? (
         <LoadingCards />
       ) : list.length === 0 ? (
-        <EmptyState
-          icon={<Library aria-hidden />}
-          title="Chưa có item nào"
-          description={
-            type === 'all' && status === 'all'
-              ? 'Thêm sách, phim, khóa học, bài viết hoặc dự án. Mục từ inbox cũng có thể thành item.'
-              : 'Không có item nào khớp bộ lọc.'
-          }
-        />
+        <>
+          <EmptyState
+            icon={<Library aria-hidden />}
+            title="Chưa có item nào"
+            description={
+              type === 'all' && status === 'all'
+                ? 'Thêm sách, phim, khóa học, bài viết hoặc dự án. Mục từ inbox cũng có thể thành item.'
+                : 'Không có item nào khớp bộ lọc.'
+            }
+          />
+          {type === 'all' && status === 'all' && items.data && !items.error && <EmptyStateGuide guide="library" />}
+        </>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {list.map((item) => (

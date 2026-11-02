@@ -1,0 +1,859 @@
+/* Pictures of the intro page (pictures.tsx). Every rule is scoped under .ssg-intro (the Stage's className, on
+   its .ss-fit wrapper) or under the slot wrapper .intro-pic-fill, so nothing reaches the rest of the app.
+   Sizes are design px at 1:1 (each Stage is drawn at its slot's measured size). Colors come from the --ss-*
+   tokens of brain-look.ts; the few app tokens used directly (--sidebar, --sidebar-accent, --info,
+   --chart-objective, --chart-other, --color-bw-*) are Space UI tokens of app/global.css that the look has no
+   --ss-* name for. --intro-pad is the tile's copy gutter, set by app/(home)/gioi-thieu/intro.css. */
+
+.intro-pic-fill {
+  position: absolute;
+  inset: 0;
+}
+
+/* The tile is the ground: the stage is transparent and crops at the tile's edge */
+.ssg-intro .ss-stage {
+  overflow: hidden;
+  background: transparent;
+  font-family: var(--ss-font);
+  color: var(--ss-text-strong);
+  --pad: var(--intro-pad, 28px);
+}
+
+/* ------------------------------------------------------------ shared: BrainCard pieces and badges */
+
+.ssg-intro .ip-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 18px;
+}
+
+.ssg-intro .ip-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ssg-intro .ip-badge[data-tone='warning'] {
+  background: var(--ss-warning-soft);
+  color: var(--ss-warning-text);
+}
+
+.ssg-intro .ip-badge[data-tone='success'] {
+  background: var(--ss-success-soft);
+  color: var(--ss-success-text);
+}
+
+.ssg-intro .ip-badge[data-tone='error'] {
+  background: var(--ss-danger-soft);
+  color: var(--ss-danger-text);
+}
+
+.ssg-intro .ip-badge[data-tone='info'] {
+  background: var(--info);
+  color: var(--info-foreground);
+}
+
+.ssg-intro .ip-badge[data-tone='secondary'] {
+  background: var(--ss-panel);
+  color: var(--ss-panel-text);
+}
+
+.ssg-intro .ip-badge[data-tone='outline'] {
+  border-color: var(--ss-line);
+  background: var(--ss-surface);
+  color: var(--ss-text-strong);
+}
+
+/* ------------------------------------------------------------ hero: the shell, Hôm nay */
+
+/* A sidebar window inset top and sides, running about a fifth off the bottom (gold: linear, fade-crop) */
+.ssg-intro .hs-win {
+  position: absolute;
+  top: var(--pad);
+  left: var(--pad);
+  width: calc(100% - 2 * var(--pad));
+  height: calc((100% - var(--pad)) * 1.25);
+  box-shadow: var(--ss-shadow-hero);
+}
+
+/* Narrow: the window keeps a desktop width and runs off the right; the sidebar and the start of Hôm nay show */
+.ssg-intro .hs-win--narrow {
+  top: 20px;
+  left: 16px;
+  width: 600px;
+  height: calc((100% - 20px) * 1.2);
+}
+
+.ssg-intro .hs-win .ss-window__side {
+  background: var(--sidebar);
+}
+
+.ssg-intro .hs-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 8px;
+}
+
+.ssg-intro .hs-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin-bottom: 8px;
+  padding: 0 8px;
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.ssg-intro .hs-nav {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--ss-text-strong);
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+.ssg-intro .hs-nav svg {
+  flex: none;
+  color: var(--ss-icon);
+}
+
+.ssg-intro .hs-nav[data-active] {
+  background: var(--sidebar-accent);
+  font-weight: 500;
+}
+
+.ssg-intro .hs-nav[data-active] svg {
+  color: var(--ss-text-strong);
+}
+
+.ssg-intro .hs-search {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  width: 236px;
+  height: 26px;
+  padding: 0 6px 0 9px;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--ss-line);
+  color: var(--ss-text);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ssg-intro .hs-win--narrow .hs-search {
+  width: 128px;
+}
+
+.ssg-intro .hs-search > span:nth-child(2) {
+  flex: 1;
+}
+
+.ssg-intro .hs-kbd {
+  display: inline-grid;
+  place-items: center;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--ss-panel);
+  color: var(--ss-text);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.ssg-intro .hs-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ssg-intro .hs-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 6px 0 8px;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--ss-line);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ssg-intro .hs-btn--icon {
+  justify-content: center;
+  width: 26px;
+  padding: 0;
+  color: var(--ss-icon);
+}
+
+.ssg-intro .hs-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--ss-accent);
+  color: var(--ss-on-accent);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ssg-intro .hs-body {
+  display: flex;
+  flex-direction: column;
+  padding: 22px 24px;
+}
+
+.ssg-intro .hs-title {
+  font-family: var(--ss-heading);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: -0.02em;
+}
+
+.ssg-intro .hs-desc {
+  margin-top: 10px;
+}
+
+/* "Tiếp tục học": the progress card (components/progress.tsx), its red-orange dot the app's highlight */
+.ssg-intro .hs-continue {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 560px;
+  margin-top: 18px;
+  padding: 6px;
+  border-radius: 20px;
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1px var(--ss-line), 0 3px 3px rgb(0 0 0 / 0.02);
+}
+
+.ssg-intro .hs-continue__tag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 13px;
+  border-radius: 14px;
+  background: var(--ss-panel);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ssg-intro .hs-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-bw-red, #fe5938);
+}
+
+.ssg-intro .hs-continue__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ssg-intro .hs-primary {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 28px;
+  margin-right: 4px;
+  padding: 0 11px;
+  border-radius: 8px;
+  background: var(--ss-accent);
+  color: var(--ss-on-accent);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ssg-intro .hs-panels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.ssg-intro .hs-win--narrow .hs-panels {
+  grid-template-columns: 300px;
+}
+
+.ssg-intro .hs-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 150px;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1px var(--ss-line), 0 3px 3px rgb(0 0 0 / 0.02);
+}
+
+.ssg-intro .hs-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 20px;
+  color: var(--ss-icon);
+}
+
+.ssg-intro .hs-panel__title {
+  color: var(--ss-text-strong);
+  font-family: var(--ss-heading);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.ssg-intro .hs-panel__link {
+  margin-left: auto;
+}
+
+.ssg-intro .hs-objective {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 18px;
+}
+
+.ssg-intro .hs-objective__n {
+  width: 14px;
+  color: var(--ss-text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ssg-intro .hs-objective__badge {
+  margin-left: auto;
+}
+
+.ssg-intro .hs-inbox {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ssg-intro .hs-inbox__n {
+  font-family: var(--ss-heading);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 34px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------ inbox tile: the triaged list */
+
+/* One column at the copy's gutters; the list runs off the bottom (gold: stacked-cards) */
+.ssg-intro .ip-col {
+  position: absolute;
+  top: 0;
+  left: var(--pad);
+  right: var(--pad);
+  display: flex;
+  flex-direction: column;
+}
+
+.ssg-intro .ip-legend {
+  display: flex;
+  gap: 16px;
+  margin: 0 4px 12px;
+  color: var(--ss-text);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.ssg-intro .ip-col[data-narrow] .ip-legend {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 6px 12px;
+}
+
+.ssg-intro .ip-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.ssg-intro .ip-legend__item[data-on] {
+  color: var(--ss-accent-text);
+}
+
+.ssg-intro .ip-kbd {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1px var(--ss-line);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ssg-intro .ip-legend__item[data-on] .ip-kbd {
+  background: var(--ss-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ss-accent) 40%, transparent);
+  color: var(--ss-accent-text);
+}
+
+/* Each card carries its gap, so a card that leaves takes its gap with it */
+.ssg-intro .ip-gap {
+  display: block;
+  padding-bottom: 12px;
+}
+
+/* BrainCard: rounded-3xl, border, p-2, a tinted header panel; selected = the keyboard cursor */
+.ssg-intro .ip-card {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--ss-line);
+  border-radius: 22px;
+  background: var(--ss-surface);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.02), 0 3px 3px rgb(0 0 0 / 0.02);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ssg-intro .ip-card[data-selected] {
+  border-color: color-mix(in srgb, var(--ss-accent) 70%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ss-accent) 30%, transparent);
+}
+
+.ssg-intro .ip-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--ss-panel);
+}
+
+/* A page preview, the shape of an og:image: dark tile, two light lines. Drawn, never fetched */
+.ssg-intro .ip-thumb {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 5px;
+  width: 56px;
+  height: 56px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #1d3b63;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+.ssg-intro .ip-thumb__line {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 0.85);
+}
+
+.ssg-intro .ip-thumb__line[data-faint] {
+  height: 4px;
+  background: rgb(255 255 255 / 0.35);
+}
+
+.ssg-intro .ip-head {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ssg-intro .ip-head--filler {
+  gap: 8px;
+}
+
+.ssg-intro .ip-title {
+  margin-top: 7px;
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.ssg-intro .ip-meta {
+  margin-top: 3px;
+  color: var(--ss-text);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.ssg-intro .ip-tags {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 4px;
+}
+
+/* ------------------------------------------------------------ ⌘K tile: two keycaps */
+
+.ssg-intro .sk-keys {
+  position: absolute;
+  inset: 0 0 var(--pad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.ssg-intro .sk-cap {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: var(--ss-surface);
+  box-shadow:
+    inset 0 0 0 1px var(--ss-line),
+    inset 0 -4px 0 var(--ss-line-faint),
+    0 10px 22px -10px rgb(0 0 0 / 0.18),
+    0 2px 4px rgb(0 0 0 / 0.04);
+  color: var(--ss-text-strong);
+  font-family: var(--ss-heading);
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* ------------------------------------------------------------ Tuần tile: the time chart */
+
+/* Emphasis (as components/brain/tuan/time-chart.tsx): objective hours in the chart teal at the baseline,
+   the rest gray. No axis and no values: the picture shows the form, not anyone's hours. */
+.ssg-intro .wk-chart {
+  position: absolute;
+  inset: 0 var(--pad) var(--pad);
+  display: flex;
+  flex-direction: column;
+}
+
+.ssg-intro .wk-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--ss-text);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.ssg-intro .wk-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.ssg-intro .wk-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.ssg-intro [data-series='for'] {
+  background: var(--chart-objective);
+}
+
+.ssg-intro [data-series='other'] {
+  background: var(--chart-other);
+}
+
+.ssg-intro .wk-plot {
+  position: relative;
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.ssg-intro .wk-grid {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.ssg-intro .wk-grid > span {
+  border-top: 1px solid var(--ss-line);
+}
+
+.ssg-intro .wk-day {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.ssg-intro .wk-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 22px;
+}
+
+.ssg-intro .wk-seg {
+  flex-basis: 0;
+  min-height: 3px;
+}
+
+.ssg-intro .wk-stack > .wk-seg:first-child {
+  border-radius: 4px 4px 0 0;
+}
+
+.ssg-intro .wk-days {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--ss-text);
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.ssg-intro .wk-days > span {
+  flex: 1;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------ Cơ hội and Bản tin tiles: one card each */
+
+/* A card at the copy's gutters, running off the bottom through its own empty body */
+.ssg-intro .op-card,
+.ssg-intro .bf-card {
+  position: absolute;
+  top: 0;
+  left: var(--pad);
+  right: var(--pad);
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100% + 24px);
+  padding: 6px;
+  border: 1px solid var(--ss-line);
+  border-radius: 22px;
+  background: var(--ss-surface);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.02), 0 3px 3px rgb(0 0 0 / 0.02);
+}
+
+.ssg-intro .op-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--ss-panel);
+}
+
+.ssg-intro .op-title {
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+}
+
+.ssg-intro .op-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.ssg-intro .op-scores > span {
+  display: inline-flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ssg-intro .op-scores__k {
+  color: var(--ss-text);
+}
+
+.ssg-intro .op-scores__v {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ssg-intro .op-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 10px 8px;
+}
+
+.ssg-intro .op-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 20px;
+}
+
+.ssg-intro .bf-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 3px 0 1px;
+}
+
+.ssg-intro .bf-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 10px 8px;
+}
+
+.ssg-intro .bf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ssg-intro .bf-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--ss-line);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ssg-intro .bf-btn svg {
+  flex: none;
+  color: var(--ss-icon);
+}
+
+.ssg-intro .bf-btn--icon {
+  justify-content: center;
+  width: 26px;
+  padding: 0;
+}
+
+/* ------------------------------------------------------------ Kỹ năng tile: tiles that fade */
+
+/* Two and a half columns from the copy gutter, so the third is cut about in half; rows run off the bottom.
+   Colours as components/brain/growth/labels.ts: fresh green, aging amber and fainter, faded dashed and muted. */
+.ssg-intro .sm-grid {
+  position: absolute;
+  top: 0;
+  left: var(--pad);
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(3, calc((100% - 20px) / 2.5));
+  grid-auto-rows: 84px;
+  gap: 10px;
+}
+
+.ssg-intro .sm-tile {
+  display: flex;
+  flex-direction: column;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+}
+
+.ssg-intro .sm-tile[data-f='fresh'] {
+  border-color: color-mix(in srgb, var(--color-bw-green, #49ba61) 45%, transparent);
+  background: var(--ss-success-soft);
+  color: var(--ss-success-text);
+}
+
+.ssg-intro .sm-tile[data-f='aging'] {
+  border-color: color-mix(in srgb, var(--color-bw-yellow, #ffb73a) 50%, transparent);
+  background: color-mix(in srgb, var(--ss-warning-soft) 70%, transparent);
+  color: var(--ss-warning-text);
+  opacity: 0.85;
+}
+
+.ssg-intro .sm-tile[data-f='faded'] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ss-text) 35%, transparent);
+  background: color-mix(in srgb, var(--ss-panel) 40%, transparent);
+  color: var(--ss-text);
+}
+
+.ssg-intro .sm-name {
+  font-family: var(--ss-heading);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.ssg-intro .sm-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.ssg-intro .sm-bar {
+  margin-top: 6px;
+}
+
+.ssg-intro .sm-state .sm-bar {
+  margin-top: 0;
+}
+
+.ssg-intro .sm-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.ssg-intro .sm-tile[data-f='fresh'] .sm-dot {
+  background: var(--color-bw-green, #49ba61);
+}
+
+.ssg-intro .sm-tile[data-f='aging'] .sm-dot {
+  background: var(--color-bw-yellow, #ffb73a);
+}
+
+.ssg-intro .sm-tile[data-f='faded'] .sm-dot {
+  background: color-mix(in srgb, var(--ss-text) 40%, transparent);
+}

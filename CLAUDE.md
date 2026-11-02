@@ -23,7 +23,9 @@ web/
   app/(home)/<route>/            app pages in the shell: inbox/, thu-vien/ (Items) + thu-vien/ghi-chu/ (notes),
                                  phat-trien/ (handbook grid) + {ky-nang,thi-truong,thanh-tuu}/, tuan/ (?w=&tab=),
                                  co-hoi/ (?id= detail), cong-viec/ (projects) + cong-viec/gio/ (time); static shells;
-                                 inbox/them/ (?url=&title=&text= capture: bookmarklet + PWA share target)
+                                 inbox/them/ (?url=&title=&text= capture: bookmarklet + PWA share target);
+                                 gioi-thieu/ (intro, feature bento, printable case study; linked from the sidebar footer);
+                                 huong-dan/ (all Stageshow guides; also shown in the pages' empty states)
   app/lo-trinh/                  roadmap (data: lib/roadmap.ts, from the PDF)
   app/docs/[[...slug]]/page.tsx  lesson pages (rendered on request, ISR cached)
   app/trees/[book]/route.ts      full sidebar tree JSON (lazy sidebar, R1)
@@ -57,6 +59,12 @@ web/
                                  load with next/dynamic (home First Load JS budget 220 kB)
   components/capture/            capture-form (/inbox/them/) + bookmarklet-help (on the Inbox page; javascript: href set
                                  on the DOM from window.location.origin); helpers in lib/capture.ts
+  components/stageshow/          animated how-to guides (Stageshow kit, MIT, in kit/; skill in .claude/skills/stageshow/):
+                                 brain-look.ts (Space UI -> --ss-* tokens), guides/<name>.tsx + .css scoped under
+                                 .ssg-<name>, pages import only lazy.tsx (next/dynamic, ssr false); shown on
+                                 /huong-dan/ and, via EmptyStateGuide, under empty lists; rules in its README.md.
+                                 intro/ = the /gioi-thieu/ pictures (own lazy.tsx). Check guides in a browser at
+                                 desktop and 390 px (posters = reduced-motion stills); kit code must stay off home
   components/search-dialog.tsx   Cmd+K: handbooks (/api/search) + second-brain group, lazy, registered in provider.tsx
   lib/utils.ts                   cn()
   scripts/                       import-gitbook, build-search, prepare-assets, extract-courses,
@@ -72,7 +80,9 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  single-owner auth middleware (AUTH_MODE dev|cf_access; cf_access verifies
                                  Cf-Access-Jwt-Assertion); `manage.py export --out <dir>` (services/export.py: notes
                                  as .md with front matter + every owned model as JSON; never User, Job, LlmCall,
-                                 LlmCache; a test catches unlisted models); services/search.py (`?q=` normaliser)
+                                 LlmCache; a test catches unlisted models; GET /api/export streams the same files
+                                 as a zip, the "Tải bản sao dữ liệu" button on Phát triển); services/search.py
+                                 (`?q=` normaliser)
   progress/                      progress API (API_CONTRACT.md); logic in services.py, thin views
   library/                       Item (type, status, tags ArrayField, rating; noteCount annotated by services.items) +
                                  Note (markdown, M2M Item; never sent to an LLM); /api/items* (?q= title/source/exact
@@ -84,7 +94,8 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
   weeks/                         Week (Monday start, Europe/Prague; planning journal, 6 review questions) +
                                  Objective (open|done|dropped, carried_from); /api/weeks*, review = body of work per day
                                  (inbox by archived_at) + minutes for objectives vs other (from work.TimeEntry) +
-                                 the week's growth.Achievement rows
+                                 the week's growth.Achievement rows + `rhythm` (DECISIONS 6.5 counts: notes,
+                                 achievements, due predictions; month/quarter lines on the first review of one)
   work/                          ProjectDetails (1:1 on Item type=project: client, fixed|hourly, price/rate, currency)
                                  + TimeEntry (project FK is PROTECT; minutes, billable, optional Objective; timer =
                                  started_at, minutes null,
@@ -131,7 +142,8 @@ deploy/                          nginx/ (site.conf + header snippets), docker-co
                                  (run_jobs every 300 s) and com.example.brain.backup.plist (make backup at 02:30), not
                                  installed; config only, not deployed
 Makefile                         make check = web types+lint, backend ruff+mypy+migrations+pytest, smoke test
-                                 (needs a web server at SMOKE_BASE, default :3000); make api-types, backend-dev;
+                                 (needs a web server at SMOKE_BASE, default :3000); make api-types, backend-dev; make audit
+                                 (npm audit --omit=dev in web/, not part of check);
                                  make jobs (run_jobs loop, 300 s); make dev (build with NEXT_PUBLIC_PROGRESS_STORE=api,
                                  Django :8000 + Next prod :3100 + proxy :8080 + jobs; never :3000; no $(MAKE) inside
                                  so `make -n dev` stays a dry run); make dev-hot (next dev :3001 with the API store
