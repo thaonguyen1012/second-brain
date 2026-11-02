@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "inbox",
     "weeks",
     "work",
+    "opportunities",
 ]
 
 MIDDLEWARE = [
@@ -157,6 +158,9 @@ SPECTACULAR_SETTINGS = {
         "InboxStatusEnum": "inbox.models.InboxEntry.Status",
         "ObjectiveStatusEnum": "weeks.models.Objective.Status",
         "BillingEnum": "work.models.ProjectDetails.Billing",
+        "OpportunityDecisionEnum": "opportunities.models.Opportunity.Decision",
+        "EvidenceKindEnum": "opportunities.models.Evidence.Kind",
+        "EvidenceStanceEnum": "opportunities.models.Evidence.Stance",
     },
 }
 

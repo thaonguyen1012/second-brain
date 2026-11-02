@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from opportunities.serializers import WeekOpportunitiesSerializer
 from weeks.models import Objective, Week
 
 
@@ -141,3 +142,4 @@ class ReviewViewSerializer(serializers.Serializer[object]):
     objectiveCounts = ObjectiveCountsSerializer()
     days = DayWorkSerializer(many=True)
     time = WeekTimeSerializer()
+    opportunities = WeekOpportunitiesSerializer()

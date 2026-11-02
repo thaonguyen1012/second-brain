@@ -54,6 +54,10 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
   work/                          ProjectDetails (1:1 on Item type=project: client, fixed|hourly, price/rate, currency)
                                  + TimeEntry (minutes, billable, optional Objective; timer = started_at, minutes null,
                                  one running per user); /api/projects* (effective rate), /api/time-entries* (timer, summary)
+  opportunities/                 Opportunity (hypothesis, why now, next action, decide_by, open|keep|drop|build) + Evidence
+                                 (inbox|item|note link or conversation|link record, supports|contradicts) + ScoreSnapshot
+                                 (4 scores 1-10, append-only); /api/opportunities*; stale = no evidence for 4 weeks
+                                 (computed); week review lists opportunities with new evidence and stale ones
   core/pagination.py, admin.py   NewestFirstCursor (cursor pagination for lists), OwnedAdmin (sets user on create)
   core/services/jobs.py          Job table queue: enqueue (idempotency key), @handler(kind), RetryLater (429);
                                  `manage.py run_jobs` (cron) is the only place that makes outbound requests

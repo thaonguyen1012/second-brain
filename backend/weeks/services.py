@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from inbox.models import InboxEntry
 from library.models import Item
+from opportunities.services import week_activity
 from progress.models import PageProgress
 from weeks.models import Objective, Week
 from work.services import objective_time
@@ -134,7 +135,8 @@ def review(week: Week) -> dict[str, Any]:
 
     Body of work: inbox entries archived that day (their last update), Items finished that day and
     handbook pages marked done that day. Time: minutes of time entries linked to this week's objectives
-    vs other minutes, per day and per objective (the review chart, DECISIONS 9.2).
+    vs other minutes, per day and per objective (the review chart, DECISIONS 9.2). Opportunities: those that
+    got evidence recorded this week ("which opportunity got more evidence") and the stale ones.
     """
     tz = timezone.get_current_timezone()
     first = dt.datetime.combine(week.start_date, dt.time.min, tzinfo=tz)
@@ -187,6 +189,7 @@ def review(week: Week) -> dict[str, Any]:
             "minutesOther": sum(d["other"] for d in day_minutes.values()),
             "byObjective": by_objective,
         },
+        "opportunities": week_activity(user_id, first, after),
     }
 
 

@@ -68,6 +68,18 @@ least 1). `GET /api/projects` annotates minute totals in one query; `work/servic
 billable hours x rate) and the Harvest-style effective rate = earned / all hours including non-billable.
 `GET /api/time-entries/summary?week=` gives billable vs non-billable minutes per project. No invoices, no CRM, no
 Kimai rate tiers yet (DECISIONS 4.5).
+Step 4 (DECISIONS 9.4): `backend/opportunities/`. `Opportunity` (title, one-sentence hypothesis, why now, next
+action, `decide_by`, decision open/keep/drop/build, `decided_at`) is Alex's own niche hypothesis. `Evidence` (kind
+inbox/item/note/conversation/link, stance supports/contradicts, title snapshot, url, note, date) links to an
+`InboxEntry`, `Item` or `Note` of the same owner (DB checks: a link only with its kind; one row per inbox entry and
+opportunity) or records a real conversation or an external link (the future morning-brief button, step 6, uses
+kind link). `ScoreSnapshot` holds the four self-scores (opportunity, pain, feasibility, timing, 1-10, DB check);
+it is append-only and the newest row is the current score. `services.opportunities()` annotates evidence counts,
+last evidence, current scores (subqueries) and `stale` in one query: decision open or keep and no evidence
+recorded (`created_at`, not the evidence date) for 4 weeks, counted from creation when there is none. The week
+review adds `opportunities.withEvidence` (evidence recorded that week) and `opportunities.stale` (as of the week's
+end or now). `POST /api/opportunities/{id}/evidence/inbox` attaches an inbox entry and archives it (idempotent).
+"Fit" (link to Skill) waits for step 5.
 Deployment config is in `deploy/` (see deploy/README.md): nginx routes `/api/` (except `/api/search`), `/admin/`,
 `/healthz` and `/files/` to Django and everything else to Next; `/files/` passes `auth_request` (Django `/api/me`)
 and Django's `X-Accel-Redirect` to the internal `/internal/files/` alias; CSP is report-only. With

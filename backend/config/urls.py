@@ -15,4 +15,5 @@ urlpatterns = [
     path("", include("inbox.urls")),
     path("", include("weeks.urls")),
     path("", include("work.urls")),
+    path("", include("opportunities.urls")),
 ]

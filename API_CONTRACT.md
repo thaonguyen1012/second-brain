@@ -149,6 +149,15 @@ has a week total for the chart:
           "byObjective": [ { "id": 9, "title": "Ship Week", "minutes": 120 } ] }
 ```
 
+The review also answers "which opportunity got more evidence" (evidence recorded this week, see Opportunities)
+and lists the stale ones as of the end of the week (or now for the current week):
+
+```json
+"opportunities": { "withEvidence": [ { "id": 2, "title": "Bakery stock", "decision": "keep", "supports": 2,
+                                       "contradicts": 1 } ],
+                   "stale": [ { "id": 5, "title": "...", "decision": "open", "lastEvidenceAt": null } ] }
+```
+
 ## Projects and time (`/api/projects`, `/api/time-entries`)
 
 A project is an Item with `type: "project"`; its id is the Item id. Money is a decimal string with two places in
@@ -194,6 +203,54 @@ answers the stopped entry (minutes rounded, at least 1), `404` when nothing runs
       "projects": [ { "id": 4, "title": "Eshop", "client": "Pekárna", "minutesTotal": 150,
                       "minutesBillable": 120, "minutesNonBillable": 30 } ] }
 ```
+
+## Opportunities (`/api/opportunities`)
+
+An opportunity is a niche hypothesis of the owner's (DECISIONS 9.2). `decision` is `open` (undecided), `keep`,
+`drop` or `build`; `decidedAt` is set when it changes to keep/drop/build and cleared when it goes back to open.
+
+```json
+200 { "id": 2, "title": "Bakery stock", "hypothesis": "Small bakeries lose money on waste and pay for a forecast.",
+      "whyNow": "...", "nextAction": "Talk to 3 bakers", "decideBy": "2026-12-01", "decision": "keep",
+      "decidedAt": "...", "scores": { "opportunity": 7, "pain": 8, "feasibility": 5, "timing": 6, "createdAt": "..." },
+      "evidenceSupports": 2, "evidenceContradicts": 1, "lastEvidenceAt": "...", "stale": false,
+      "createdAt": "...", "updatedAt": "..." }
+```
+
+`scores` is the newest snapshot (`null` if never scored). `stale` is computed: decision open or keep and no
+evidence recorded for 4 weeks (counted from `createdAt` when there is none); "recorded" is the evidence's
+`createdAt`, not its `date`. `GET /api/opportunities?decision=keep&stale=true` lists them (cursor pagination,
+newest first; both filters optional, `stale` is `true` or `false`). `GET /api/opportunities/{id}` adds `evidence`
+(newest `date` first) and `scoreHistory` (newest first). `POST /api/opportunities` (`201`, answers the detail)
+takes `title` and `hypothesis` (required), `whyNow`, `nextAction`, `decideBy`, `decision` and optional `scores`
+(the first snapshot); `PATCH /api/opportunities/{id}` changes the same fields except `scores`.
+
+Scores. `POST /api/opportunities/{id}/scores` `{ "opportunity": 7, "pain": 8, "feasibility": 5, "timing": 6,
+"note": "why" }` (each 1–10, all four required) records a new snapshot (`201`); older snapshots never change:
+
+```json
+201 { "id": 4, "opportunity": 7, "pain": 8, "feasibility": 5, "timing": 6, "note": "why", "createdAt": "..." }
+```
+
+Evidence:
+
+```json
+{ "id": 8, "kind": "inbox", "stance": "supports", "title": "Bakery news", "url": "https://...", "note": "...",
+  "date": "2026-11-02", "inboxEntry": 7, "item": null, "libraryNote": null, "createdAt": "...", "updatedAt": "..." }
+```
+
+`POST /api/opportunities/{id}/evidence` (`201`): `kind` and `stance` (supports, contradicts) required; `inbox`
+needs `inboxEntry`, `item` needs `item`, `note` needs `libraryNote` (title defaults to the linked row's);
+`conversation` (a real talk, The Mom Test) needs `title`; `link` (an external source, later a morning-brief story)
+needs `title` and `url`. `date` defaults to today. A linked row that is not the owner's, a link that does not match
+the kind, or an inbox entry already attached to this opportunity answers `400`.
+`PATCH /api/opportunities/{id}/evidence/{evidenceId}` accepts `stance`, `title`, `url`, `note`, `date`.
+
+Weekly triage in one action: `POST /api/opportunities/{id}/evidence/inbox`
+`{ "inboxEntry": 7, "stance": "supports", "note": "", "title": "", "date": "...", "archive": true }` (only
+`inboxEntry` and `stance` required; `date` defaults to the day the entry was captured, `archive` to `true`) makes
+the entry evidence and archives it. It answers `201` with `{ "evidence": <evidence>, "created": true,
+"inboxStatus": "archived" }`, or `200` with `created: false` when the entry was already attached.
 
 ## Mapping to ProgressStore
 

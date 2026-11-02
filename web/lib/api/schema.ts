@@ -84,6 +84,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/opportunities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listOpportunities"];
+        put?: never;
+        /** @description The opportunity and, with `scores`, its first score snapshot. */
+        post: operations["createOpportunity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description With its evidence and score history. */
+        get: operations["getOpportunity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Text fields, deadline and decision; scores change only through POST .../scores. */
+        patch: operations["updateOpportunity"];
+        trace?: never;
+    };
+    "/api/opportunities/{id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Evidence linked to an inbox entry, Item or Note, or a conversation / link record. */
+        post: operations["addOpportunityEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/{id}/evidence/{evidence_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateOpportunityEvidence"];
+        trace?: never;
+    };
+    "/api/opportunities/{id}/evidence/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Weekly triage in one action: the inbox entry becomes evidence and (by default) is archived.
+         *
+         *     201 when the evidence is new, 200 when the entry was already attached to this opportunity.
+         */
+        post: operations["attachInboxEntryAsEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/{id}/scores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A new snapshot of the four scores; older snapshots are kept as history. */
+        post: operations["recordOpportunityScores"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/progress": {
         parameters: {
             query?: never;
@@ -369,6 +475,22 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Resolves linked ids against the owner in context["user"]; another user's row answers 400. */
+        AttachInboxRequest: {
+            inboxEntry: number;
+            stance: components["schemas"]["EvidenceStanceEnum"];
+            title?: string;
+            note?: string;
+            /** Format: date */
+            date?: string;
+            /** @default true */
+            archive: boolean;
+        };
+        AttachResult: {
+            evidence: components["schemas"]["Evidence"];
+            created: boolean;
+            inboxStatus: components["schemas"]["InboxStatusEnum"];
+        };
         /**
          * @description * `fixed` - Fixed
          *     * `hourly` - Hourly
@@ -391,6 +513,52 @@ export interface components {
             minutesForObjectives: number;
             minutesOther: number;
         };
+        Evidence: {
+            readonly id: number;
+            readonly kind: components["schemas"]["EvidenceKindEnum"];
+            readonly stance: components["schemas"]["EvidenceStanceEnum"];
+            readonly title: string;
+            /** Format: uri */
+            readonly url: string;
+            readonly note: string;
+            /** Format: date */
+            readonly date: string;
+            readonly inboxEntry: number | null;
+            readonly item: number | null;
+            readonly libraryNote: number | null;
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+        };
+        /** @description Resolves linked ids against the owner in context["user"]; another user's row answers 400. */
+        EvidenceCreateRequest: {
+            kind: components["schemas"]["EvidenceKindEnum"];
+            stance: components["schemas"]["EvidenceStanceEnum"];
+            title?: string;
+            url?: string;
+            note?: string;
+            /** Format: date */
+            date?: string;
+            inboxEntry?: number | null;
+            item?: number | null;
+            libraryNote?: number | null;
+        };
+        /**
+         * @description * `inbox` - Inbox
+         *     * `item` - Item
+         *     * `note` - Note
+         *     * `conversation` - Conversation
+         *     * `link` - Link
+         * @enum {string}
+         */
+        EvidenceKindEnum: "inbox" | "item" | "note" | "conversation" | "link";
+        /**
+         * @description * `supports` - Supports
+         *     * `contradicts` - Contradicts
+         * @enum {string}
+         */
+        EvidenceStanceEnum: "supports" | "contradicts";
         InboxEntry: {
             readonly id: number;
             url?: string;
@@ -512,6 +680,73 @@ export interface components {
             title: string;
             minutes: number;
         };
+        /** @description An opportunity annotated by `services.opportunities()`. */
+        Opportunity: {
+            id: number;
+            title: string;
+            hypothesis: string;
+            whyNow: string;
+            nextAction: string;
+            /** Format: date */
+            decideBy: string | null;
+            decision: components["schemas"]["OpportunityDecisionEnum"];
+            /** Format: date-time */
+            decidedAt: string | null;
+            scores: components["schemas"]["Scores"] | null;
+            evidenceSupports: number;
+            evidenceContradicts: number;
+            /** Format: date-time */
+            lastEvidenceAt: string | null;
+            stale: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description Create (title and hypothesis required) or partial update. */
+        OpportunityCreateRequest: {
+            title: string;
+            hypothesis: string;
+            whyNow?: string;
+            nextAction?: string;
+            /** Format: date */
+            decideBy?: string | null;
+            decision?: components["schemas"]["OpportunityDecisionEnum"];
+            scores?: components["schemas"]["ScoresWriteRequest"];
+        };
+        /**
+         * @description * `open` - Open
+         *     * `keep` - Keep
+         *     * `drop` - Drop
+         *     * `build` - Build
+         * @enum {string}
+         */
+        OpportunityDecisionEnum: "open" | "keep" | "drop" | "build";
+        /** @description With the evidence (newest date first) and the score history (newest first); prefetch both. */
+        OpportunityDetail: {
+            id: number;
+            title: string;
+            hypothesis: string;
+            whyNow: string;
+            nextAction: string;
+            /** Format: date */
+            decideBy: string | null;
+            decision: components["schemas"]["OpportunityDecisionEnum"];
+            /** Format: date-time */
+            decidedAt: string | null;
+            scores: components["schemas"]["Scores"] | null;
+            evidenceSupports: number;
+            evidenceContradicts: number;
+            /** Format: date-time */
+            lastEvidenceAt: string | null;
+            stale: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            evidence: components["schemas"]["Evidence"][];
+            scoreHistory: components["schemas"]["ScoreSnapshot"][];
+        };
         PageWork: {
             book: string;
             page: string;
@@ -541,6 +776,19 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Item"][];
+        };
+        PaginatedOpportunityList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["Opportunity"][];
         };
         PaginatedProjectList: {
             /**
@@ -581,6 +829,15 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Week"][];
         };
+        /** @description Used with partial=True; the kind and the linked row do not change. */
+        PatchedEvidenceUpdateRequest: {
+            stance?: components["schemas"]["EvidenceStanceEnum"];
+            title?: string;
+            url?: string;
+            note?: string;
+            /** Format: date */
+            date?: string;
+        };
         PatchedInboxTriageRequest: {
             status?: components["schemas"]["InboxStatusEnum"];
             item?: number | null;
@@ -601,6 +858,16 @@ export interface components {
             title?: string;
             status?: components["schemas"]["ObjectiveStatusEnum"];
             position?: number;
+        };
+        /** @description Create (title and hypothesis required) or partial update. */
+        PatchedOpportunityWriteRequest: {
+            title?: string;
+            hypothesis?: string;
+            whyNow?: string;
+            nextAction?: string;
+            /** Format: date */
+            decideBy?: string | null;
+            decision?: components["schemas"]["OpportunityDecisionEnum"];
         };
         /** @description Create (title required) or partial update; context["details"] is the current details on update. */
         PatchedProjectWriteRequest: {
@@ -715,6 +982,33 @@ export interface components {
             objectiveCounts: components["schemas"]["ObjectiveCounts"];
             days: components["schemas"]["DayWork"][];
             time: components["schemas"]["WeekTime"];
+            opportunities: components["schemas"]["WeekOpportunities"];
+        };
+        ScoreSnapshot: {
+            readonly id: number;
+            readonly opportunity: number;
+            readonly pain: number;
+            readonly feasibility: number;
+            readonly timing: number;
+            readonly note: string;
+            /** Format: date-time */
+            readonly createdAt: string;
+        };
+        /** @description The current (newest) scores. */
+        Scores: {
+            opportunity: number;
+            pain: number;
+            feasibility: number;
+            timing: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ScoresWriteRequest: {
+            opportunity: number;
+            pain: number;
+            feasibility: number;
+            timing: number;
+            note?: string;
         };
         SetDoneRequest: {
             done: boolean;
@@ -730,6 +1024,13 @@ export interface components {
             book: string;
             page: string;
             title?: string;
+        };
+        StaleOpportunity: {
+            id: number;
+            title: string;
+            decision: components["schemas"]["OpportunityDecisionEnum"];
+            /** Format: date-time */
+            lastEvidenceAt: string | null;
         };
         TimeEntry: {
             readonly id: number;
@@ -798,6 +1099,17 @@ export interface components {
             readonly createdAt: string;
             /** Format: date-time */
             readonly updatedAt: string;
+        };
+        WeekOpportunities: {
+            withEvidence: components["schemas"]["WeekOpportunity"][];
+            stale: components["schemas"]["StaleOpportunity"][];
+        };
+        WeekOpportunity: {
+            id: number;
+            title: string;
+            decision: components["schemas"]["OpportunityDecisionEnum"];
+            supports: number;
+            contradicts: number;
         };
         WeekSummary: {
             /** Format: date */
@@ -983,6 +1295,211 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
+    listOpportunities: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                decision?: "build" | "drop" | "keep" | "open";
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description true: only stale ones; false: only fresh ones. */
+                stale?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedOpportunityList"];
+                };
+            };
+        };
+    };
+    createOpportunity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+        };
+    };
+    getOpportunity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+        };
+    };
+    updateOpportunity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOpportunityWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+        };
+    };
+    addOpportunityEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvidenceCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Evidence"];
+                };
+            };
+        };
+    };
+    updateOpportunityEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedEvidenceUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Evidence"];
+                };
+            };
+        };
+    };
+    attachInboxEntryAsEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachInboxRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachResult"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachResult"];
+                };
+            };
+        };
+    };
+    recordOpportunityScores: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoresWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreSnapshot"];
                 };
             };
         };

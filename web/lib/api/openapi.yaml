@@ -185,6 +185,236 @@ paths:
               schema:
                 $ref: '#/components/schemas/Me'
           description: ''
+  /api/opportunities:
+    get:
+      operationId: listOpportunities
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - in: query
+        name: decision
+        schema:
+          type: string
+          enum:
+          - build
+          - drop
+          - keep
+          - open
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: stale
+        schema:
+          type: boolean
+        description: 'true: only stale ones; false: only fresh ones.'
+      tags:
+      - opportunities
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOpportunityList'
+          description: ''
+    post:
+      operationId: createOpportunity
+      description: The opportunity and, with `scores`, its first score snapshot.
+      tags:
+      - opportunities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpportunityCreateRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpportunityDetail'
+          description: ''
+  /api/opportunities/{id}:
+    get:
+      operationId: getOpportunity
+      description: With its evidence and score history.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - opportunities
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpportunityDetail'
+          description: ''
+    patch:
+      operationId: updateOpportunity
+      description: Text fields, deadline and decision; scores change only through
+        POST .../scores.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - opportunities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOpportunityWriteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpportunityDetail'
+          description: ''
+  /api/opportunities/{id}/evidence:
+    post:
+      operationId: addOpportunityEvidence
+      description: Evidence linked to an inbox entry, Item or Note, or a conversation
+        / link record.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - opportunities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvidenceCreateRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evidence'
+          description: ''
+  /api/opportunities/{id}/evidence/{evidence_id}:
+    patch:
+      operationId: updateOpportunityEvidence
+      parameters:
+      - in: path
+        name: evidence_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - opportunities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEvidenceUpdateRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evidence'
+          description: ''
+  /api/opportunities/{id}/evidence/inbox:
+    post:
+      operationId: attachInboxEntryAsEvidence
+      description: |-
+        Weekly triage in one action: the inbox entry becomes evidence and (by default) is archived.
+
+        201 when the evidence is new, 200 when the entry was already attached to this opportunity.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - opportunities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachInboxRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachResult'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachResult'
+          description: ''
+  /api/opportunities/{id}/scores:
+    post:
+      operationId: recordOpportunityScores
+      description: A new snapshot of the four scores; older snapshots are kept as
+        history.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - opportunities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScoresWriteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreSnapshot'
+          description: ''
   /api/progress:
     get:
       operationId: getProgress
@@ -718,6 +948,43 @@ paths:
           description: ''
 components:
   schemas:
+    AttachInboxRequest:
+      type: object
+      description: Resolves linked ids against the owner in context["user"]; another
+        user's row answers 400.
+      properties:
+        inboxEntry:
+          type: integer
+        stance:
+          $ref: '#/components/schemas/EvidenceStanceEnum'
+        title:
+          type: string
+          maxLength: 300
+        note:
+          type: string
+          maxLength: 20000
+        date:
+          type: string
+          format: date
+        archive:
+          type: boolean
+          default: true
+      required:
+      - inboxEntry
+      - stance
+    AttachResult:
+      type: object
+      properties:
+        evidence:
+          $ref: '#/components/schemas/Evidence'
+        created:
+          type: boolean
+        inboxStatus:
+          $ref: '#/components/schemas/InboxStatusEnum'
+      required:
+      - created
+      - evidence
+      - inboxStatus
     BillingEnum:
       enum:
       - fixed
@@ -772,6 +1039,126 @@ components:
       - minutesForObjectives
       - minutesOther
       - pagesDone
+    Evidence:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/EvidenceKindEnum'
+          readOnly: true
+        stance:
+          allOf:
+          - $ref: '#/components/schemas/EvidenceStanceEnum'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+          readOnly: true
+        inboxEntry:
+          type: integer
+          readOnly: true
+          nullable: true
+        item:
+          type: integer
+          readOnly: true
+          nullable: true
+        libraryNote:
+          type: integer
+          readOnly: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - createdAt
+      - date
+      - id
+      - inboxEntry
+      - item
+      - kind
+      - libraryNote
+      - note
+      - stance
+      - title
+      - updatedAt
+      - url
+    EvidenceCreateRequest:
+      type: object
+      description: Resolves linked ids against the owner in context["user"]; another
+        user's row answers 400.
+      properties:
+        kind:
+          $ref: '#/components/schemas/EvidenceKindEnum'
+        stance:
+          $ref: '#/components/schemas/EvidenceStanceEnum'
+        title:
+          type: string
+          maxLength: 300
+        url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2000
+          - type: string
+            maxLength: 0
+        note:
+          type: string
+          maxLength: 20000
+        date:
+          type: string
+          format: date
+        inboxEntry:
+          type: integer
+          nullable: true
+        item:
+          type: integer
+          nullable: true
+        libraryNote:
+          type: integer
+          nullable: true
+      required:
+      - kind
+      - stance
+    EvidenceKindEnum:
+      enum:
+      - inbox
+      - item
+      - note
+      - conversation
+      - link
+      type: string
+      description: |-
+        * `inbox` - Inbox
+        * `item` - Item
+        * `note` - Note
+        * `conversation` - Conversation
+        * `link` - Link
+    EvidenceStanceEnum:
+      enum:
+      - supports
+      - contradicts
+      type: string
+      description: |-
+        * `supports` - Supports
+        * `contradicts` - Contradicts
     InboxEntry:
       type: object
       properties:
@@ -1102,6 +1489,178 @@ components:
       - id
       - minutes
       - title
+    Opportunity:
+      type: object
+      description: An opportunity annotated by `services.opportunities()`.
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        hypothesis:
+          type: string
+        whyNow:
+          type: string
+        nextAction:
+          type: string
+        decideBy:
+          type: string
+          format: date
+          nullable: true
+        decision:
+          $ref: '#/components/schemas/OpportunityDecisionEnum'
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        scores:
+          allOf:
+          - $ref: '#/components/schemas/Scores'
+          nullable: true
+        evidenceSupports:
+          type: integer
+        evidenceContradicts:
+          type: integer
+        lastEvidenceAt:
+          type: string
+          format: date-time
+          nullable: true
+        stale:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - createdAt
+      - decideBy
+      - decidedAt
+      - decision
+      - evidenceContradicts
+      - evidenceSupports
+      - hypothesis
+      - id
+      - lastEvidenceAt
+      - nextAction
+      - scores
+      - stale
+      - title
+      - updatedAt
+      - whyNow
+    OpportunityCreateRequest:
+      type: object
+      description: Create (title and hypothesis required) or partial update.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        hypothesis:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        whyNow:
+          type: string
+          maxLength: 5000
+        nextAction:
+          type: string
+          maxLength: 500
+        decideBy:
+          type: string
+          format: date
+          nullable: true
+        decision:
+          $ref: '#/components/schemas/OpportunityDecisionEnum'
+        scores:
+          $ref: '#/components/schemas/ScoresWriteRequest'
+      required:
+      - hypothesis
+      - title
+    OpportunityDecisionEnum:
+      enum:
+      - open
+      - keep
+      - drop
+      - build
+      type: string
+      description: |-
+        * `open` - Open
+        * `keep` - Keep
+        * `drop` - Drop
+        * `build` - Build
+    OpportunityDetail:
+      type: object
+      description: With the evidence (newest date first) and the score history (newest
+        first); prefetch both.
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        hypothesis:
+          type: string
+        whyNow:
+          type: string
+        nextAction:
+          type: string
+        decideBy:
+          type: string
+          format: date
+          nullable: true
+        decision:
+          $ref: '#/components/schemas/OpportunityDecisionEnum'
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        scores:
+          allOf:
+          - $ref: '#/components/schemas/Scores'
+          nullable: true
+        evidenceSupports:
+          type: integer
+        evidenceContradicts:
+          type: integer
+        lastEvidenceAt:
+          type: string
+          format: date-time
+          nullable: true
+        stale:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evidence'
+        scoreHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreSnapshot'
+      required:
+      - createdAt
+      - decideBy
+      - decidedAt
+      - decision
+      - evidence
+      - evidenceContradicts
+      - evidenceSupports
+      - hypothesis
+      - id
+      - lastEvidenceAt
+      - nextAction
+      - scoreHistory
+      - scores
+      - stale
+      - title
+      - updatedAt
+      - whyNow
     PageWork:
       type: object
       properties:
@@ -1150,6 +1709,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Item'
+    PaginatedOpportunityList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Opportunity'
     PaginatedProjectList:
       type: object
       required:
@@ -1207,6 +1785,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Week'
+    PatchedEvidenceUpdateRequest:
+      type: object
+      description: Used with partial=True; the kind and the linked row do not change.
+      properties:
+        stance:
+          $ref: '#/components/schemas/EvidenceStanceEnum'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2000
+          - type: string
+            maxLength: 0
+        note:
+          type: string
+          maxLength: 20000
+        date:
+          type: string
+          format: date
     PatchedInboxTriageRequest:
       type: object
       properties:
@@ -1262,6 +1863,30 @@ components:
           type: integer
           maximum: 1000
           minimum: 0
+    PatchedOpportunityWriteRequest:
+      type: object
+      description: Create (title and hypothesis required) or partial update.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        hypothesis:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        whyNow:
+          type: string
+          maxLength: 5000
+        nextAction:
+          type: string
+          maxLength: 500
+        decideBy:
+          type: string
+          format: date
+          nullable: true
+        decision:
+          $ref: '#/components/schemas/OpportunityDecisionEnum'
     PatchedProjectWriteRequest:
       type: object
       description: Create (title required) or partial update; context["details"] is
@@ -1559,11 +2184,95 @@ components:
             $ref: '#/components/schemas/DayWork'
         time:
           $ref: '#/components/schemas/WeekTime'
+        opportunities:
+          $ref: '#/components/schemas/WeekOpportunities'
       required:
       - days
       - objectiveCounts
+      - opportunities
       - time
       - week
+    ScoreSnapshot:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        opportunity:
+          type: integer
+          readOnly: true
+        pain:
+          type: integer
+          readOnly: true
+        feasibility:
+          type: integer
+          readOnly: true
+        timing:
+          type: integer
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - createdAt
+      - feasibility
+      - id
+      - note
+      - opportunity
+      - pain
+      - timing
+    Scores:
+      type: object
+      description: The current (newest) scores.
+      properties:
+        opportunity:
+          type: integer
+        pain:
+          type: integer
+        feasibility:
+          type: integer
+        timing:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - createdAt
+      - feasibility
+      - opportunity
+      - pain
+      - timing
+    ScoresWriteRequest:
+      type: object
+      properties:
+        opportunity:
+          type: integer
+          maximum: 10
+          minimum: 1
+        pain:
+          type: integer
+          maximum: 10
+          minimum: 1
+        feasibility:
+          type: integer
+          maximum: 10
+          minimum: 1
+        timing:
+          type: integer
+          maximum: 10
+          minimum: 1
+        note:
+          type: string
+          maxLength: 5000
+      required:
+      - feasibility
+      - opportunity
+      - pain
+      - timing
     SetDoneRequest:
       type: object
       properties:
@@ -1604,6 +2313,24 @@ components:
       required:
       - book
       - page
+    StaleOpportunity:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        decision:
+          $ref: '#/components/schemas/OpportunityDecisionEnum'
+        lastEvidenceAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - decision
+      - id
+      - lastEvidenceAt
+      - title
     TimeEntry:
       type: object
       properties:
@@ -1796,6 +2523,39 @@ components:
       - reviewedAt
       - startDate
       - updatedAt
+    WeekOpportunities:
+      type: object
+      properties:
+        withEvidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeekOpportunity'
+        stale:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaleOpportunity'
+      required:
+      - stale
+      - withEvidence
+    WeekOpportunity:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        decision:
+          $ref: '#/components/schemas/OpportunityDecisionEnum'
+        supports:
+          type: integer
+        contradicts:
+          type: integer
+      required:
+      - contradicts
+      - decision
+      - id
+      - supports
+      - title
     WeekSummary:
       type: object
       properties:
