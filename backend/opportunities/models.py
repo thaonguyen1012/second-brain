@@ -10,7 +10,7 @@ class Opportunity(models.Model):
     """A niche hypothesis of Alex's own, IdeaBrowser style (DECISIONS 9.2).
 
     Scores live in ScoreSnapshot (append-only history); "stale" is computed from Evidence (services.py).
-    TODO(step 5, DECISIONS 9.4): "fit" links to the Skill model of the development app; not built yet.
+    `fit` ("hợp với mình") links the skills of the development app the opportunity would use.
     """
 
     class Decision(models.TextChoices):  # the keep / drop / build call, due by `decide_by`
@@ -27,6 +27,7 @@ class Opportunity(models.Model):
     decide_by = models.DateField(null=True, blank=True)
     decision = models.CharField(max_length=10, choices=Decision.choices, default=Decision.OPEN)
     decided_at = models.DateTimeField(null=True, blank=True)  # last change to keep/drop/build
+    fit = models.ManyToManyField("growth.Skill", related_name="opportunities", blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

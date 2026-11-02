@@ -10,6 +10,8 @@ from rest_framework.views import APIView
 
 from core.authentication import request_user
 from core.pagination import NewestFirstCursor
+from growth.models import Skill
+from growth.services import with_freshness
 from opportunities import services
 from opportunities.models import Evidence, Opportunity
 from opportunities.serializers import (
@@ -29,9 +31,14 @@ from opportunities.serializers import (
 BOOLEAN = {"true": True, "false": False}
 
 
+def _fit() -> Prefetch[str]:
+    """The fitting skills with their freshness."""
+    return Prefetch("fit", queryset=with_freshness(Skill.objects.order_by("key")))
+
+
 def _detail(user: User, pk: int) -> Opportunity:
     evidence = Prefetch("evidence", queryset=Evidence.objects.order_by("-date", "-id"))
-    rows = services.opportunities(user).prefetch_related(evidence, "scores")
+    rows = services.opportunities(user).prefetch_related(evidence, "scores", _fit())
     return get_object_or_404(rows, pk=pk)
 
 
@@ -53,7 +60,7 @@ class OpportunityListView(generics.ListAPIView[Opportunity]):
     pagination_class = NewestFirstCursor
 
     def get_queryset(self) -> QuerySet[Opportunity]:
-        rows = services.opportunities(request_user(self.request))
+        rows = services.opportunities(request_user(self.request)).prefetch_related(_fit())
         if decision := self.request.query_params.get("decision"):
             if decision not in Opportunity.Decision.values:
                 raise ValidationError({"decision": f"One of {Opportunity.Decision.values}."})
@@ -72,7 +79,7 @@ class OpportunityListView(generics.ListAPIView[Opportunity]):
     def post(self, request: Request) -> Response:
         """The opportunity and, with `scores`, its first score snapshot."""
         user = request_user(request)
-        body = OpportunityCreateSerializer(data=request.data)
+        body = OpportunityCreateSerializer(data=request.data, context={"user": user})
         body.is_valid(raise_exception=True)
         opportunity = services.create_opportunity(user, dict(body.validated_data))
         data = OpportunityDetailSerializer(_detail(user, opportunity.pk)).data
@@ -94,7 +101,7 @@ class OpportunityView(APIView):
         """Text fields, deadline and decision; scores change only through POST .../scores."""
         user = request_user(request)
         opportunity = _own(request, pk)
-        body = OpportunityWriteSerializer(data=request.data, partial=True)
+        body = OpportunityWriteSerializer(data=request.data, partial=True, context={"user": user})
         body.is_valid(raise_exception=True)
         services.update_opportunity(opportunity, dict(body.validated_data))
         return Response(OpportunityDetailSerializer(_detail(user, pk)).data)

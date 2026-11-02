@@ -1,0 +1,24 @@
+{
+  "input": {
+    "title": "Senior Full-stack Engineer, AI products",
+    "company": "Example Software a.s.",
+    "text": "Join our product team building AI features for 40,000 small businesses across Central Europe. Responsibilities: design and build features across the stack, from React components to Node.js services; integrate LLMs into existing workflows; write automated tests and keep our CI/CD pipelines green; mentor two junior developers. Requirements: 5+ years with JavaScript/TypeScript, React, Node.js; experience with AWS (Lambda, S3) and Docker; solid SQL; experience shipping LLM-powered features to production; fluent English. Nice to have: GraphQL, Kubernetes. Remote within the EU or Lyon office."
+  },
+  "expect": {
+    "skills": [
+      "typescript",
+      "react",
+      [
+        "node.js",
+        "nodejs",
+        "node"
+      ],
+      "aws",
+      "docker"
+    ],
+    "seniority": [
+      "senior",
+      "lead"
+    ]
+  }
+}

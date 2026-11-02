@@ -214,7 +214,7 @@ An opportunity is a niche hypothesis of the owner's (DECISIONS 9.2). `decision` 
       "whyNow": "...", "nextAction": "Talk to 3 bakers", "decideBy": "2026-12-01", "decision": "keep",
       "decidedAt": "...", "scores": { "opportunity": 7, "pain": 8, "feasibility": 5, "timing": 6, "createdAt": "..." },
       "evidenceSupports": 2, "evidenceContradicts": 1, "lastEvidenceAt": "...", "stale": false,
-      "createdAt": "...", "updatedAt": "..." }
+      "fit": [ { "id": 3, "name": "Python", "freshness": "fresh" } ], "createdAt": "...", "updatedAt": "..." }
 ```
 
 `scores` is the newest snapshot (`null` if never scored). `stale` is computed: decision open or keep and no
@@ -224,6 +224,8 @@ newest first; both filters optional, `stale` is `true` or `false`). `GET /api/op
 (newest `date` first) and `scoreHistory` (newest first). `POST /api/opportunities` (`201`, answers the detail)
 takes `title` and `hypothesis` (required), `whyNow`, `nextAction`, `decideBy`, `decision` and optional `scores`
 (the first snapshot); `PATCH /api/opportunities/{id}` changes the same fields except `scores`.
+`fit` ("hợp với mình") is written as a list of skill ids (`/api/skills`) and replaces the set; it reads as
+`{ id, name, freshness }` sorted by name. A skill that is not the owner's answers `400`.
 
 Scores. `POST /api/opportunities/{id}/scores` `{ "opportunity": 7, "pain": 8, "feasibility": 5, "timing": 6,
 "note": "why" }` (each 1–10, all four required) records a new snapshot (`201`); older snapshots never change:
@@ -251,6 +253,70 @@ Weekly triage in one action: `POST /api/opportunities/{id}/evidence/inbox`
 `inboxEntry` and `stance` required; `date` defaults to the day the entry was captured, `archive` to `true`) makes
 the entry evidence and archives it. It answers `201` with `{ "evidence": <evidence>, "created": true,
 "inboxStatus": "archived" }`, or `200` with `created: false` when the entry was already attached.
+
+## Skills (`/api/skills`)
+
+A row of the portable skills matrix (DECISIONS 6.5). There is no self-rating: `freshness` is computed from the
+newest evidence `date`: `fresh` (within 3 months), `aging` (3 to 6 months), `faded` (6 months or more, or no
+evidence). Market matching uses the name and `aliases`, both lowercased with single spaces.
+
+```json
+200 { "id": 3, "name": "PostgreSQL", "aliases": ["postgres"], "note": "", "freshness": "aging",
+      "lastEvidenceOn": "2026-07-10", "evidenceCount": 2, "createdAt": "...", "updatedAt": "..." }
+```
+
+`GET /api/skills?freshness=faded` lists skills by name (cursor pagination, `limit` up to 200; filter optional).
+`GET /api/skills/{id}` adds `evidence` (newest `date` first). `POST /api/skills` (`201`, answers the detail) takes
+`name` (required), `aliases`, `note`; `PATCH /api/skills/{id}` the same fields (`aliases` replaces the list). A name
+or alias already used by another skill of the owner answers `400`.
+
+Evidence:
+
+```json
+{ "id": 5, "kind": "item", "title": "Pekárna eshop", "url": "", "note": "", "date": "2026-10-01",
+  "item": 4, "libraryNote": null, "createdAt": "...", "updatedAt": "..." }
+```
+
+`POST /api/skills/{id}/evidence` (`201`): `kind` required; `item` needs `item` (a library Item, a shipped work
+project too), `note` needs `libraryNote` (title defaults to the linked row's), `link` (an article, a public repo, a
+case study online) needs `title` and `url`. `date` (when it was shipped or written) defaults to today. A linked row
+that is not the owner's or a link that does not match the kind answers `400`.
+`PATCH /api/skills/{id}/evidence/{evidenceId}` accepts `title`, `url`, `note`, `date`;
+`DELETE /api/skills/{id}/evidence/{evidenceId}` answers `204`.
+
+## Market (`/api/market`)
+
+Each month the owner pastes 5 to 10 job ads for the target roles (DECISIONS 9.5). Months are `YYYY-MM`.
+
+```json
+200 { "id": 9, "title": "Product Engineer", "company": "Acme", "url": "https://...", "text": "...",
+      "month": "2026-11", "skills": ["python", "llm apis", "czech"], "seniority": "senior",
+      "processed": true, "processedAt": "...", "error": "", "createdAt": "...", "updatedAt": "..." }
+```
+
+`GET /api/market/job-ads?month=2026-11` lists ads (cursor pagination, newest first; `month` optional).
+`POST /api/market/job-ads` (`201`) takes `title` and `text` (required, text up to 20,000 characters), `company`,
+`url`, `month` (default this month) and returns at once with `processed: false`; a background job asks the LLM
+for the skills (up to 15 short lowercase names) and `seniority` (junior, mid, senior, lead, unknown). An invalid
+reply leaves `processed: false` with `error`; a rate limit retries on a later run. `PATCH /api/market/job-ads/{id}`
+accepts the same fields; changed `title`, `company` or `text` clears the result and extracts again, `skills` sent
+by hand sets the result and skips the job.
+
+`GET /api/market/report?month=2026-11` (default this month):
+
+```json
+200 { "month": "2026-11", "jobAds": 8, "processed": 7,
+      "seniority": [ { "level": "senior", "count": 5 } ],
+      "skills": [ { "name": "PostgreSQL", "count": 4, "previousCount": 2,
+                    "skill": { "id": 3, "name": "PostgreSQL", "freshness": "faded", "lastEvidenceOn": "2026-03-01" },
+                    "gap": true } ],
+      "gaps": [ ... ] }
+```
+
+`count` is the number of processed ads of the month asking for the skill (once per ad), `previousCount` the same
+for the previous month. A requested name matches a skill by its normalised name or an alias (shown under the
+skill's name), otherwise `skill` is `null`. `gap` (and the `gaps` subset) = asked for, and no skill or a faded one.
+Sorted by `count`, then name.
 
 ## Mapping to ProgressStore
 

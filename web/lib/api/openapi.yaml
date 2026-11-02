@@ -171,6 +171,108 @@ paths:
               schema:
                 $ref: '#/components/schemas/Item'
           description: ''
+  /api/market/job-ads:
+    get:
+      operationId: listJobAds
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: month
+        schema:
+          type: string
+        description: 'YYYY-MM; default: this month (Europe/Prague).'
+      tags:
+      - market
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedJobAdList'
+          description: ''
+    post:
+      operationId: createJobAd
+      description: Stores the ad and returns at once; a background job extracts the
+        skills it asks for.
+      tags:
+      - market
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobAdWriteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAd'
+          description: ''
+  /api/market/job-ads/{id}:
+    patch:
+      operationId: updateJobAd
+      description: Changed title, company or text re-runs the extraction; `skills`
+        corrects it by hand.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - market
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedJobAdWriteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAd'
+          description: ''
+  /api/market/report:
+    get:
+      operationId: getMarketReport
+      description: Skill frequency in the month's job ads vs the previous month, next
+        to the skills matrix.
+      parameters:
+      - in: query
+        name: month
+        schema:
+          type: string
+        description: 'YYYY-MM; default: this month (Europe/Prague).'
+      tags:
+      - market
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketReport'
+          description: ''
   /api/me:
     get:
       operationId: getMe
@@ -581,6 +683,183 @@ paths:
               schema:
                 $ref: '#/components/schemas/Project'
           description: ''
+  /api/skills:
+    get:
+      operationId: listSkills
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - in: query
+        name: freshness
+        schema:
+          type: string
+          enum:
+          - aging
+          - faded
+          - fresh
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - skills
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSkillList'
+          description: ''
+    post:
+      operationId: createSkill
+      tags:
+      - skills
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillWriteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillDetail'
+          description: ''
+  /api/skills/{id}:
+    get:
+      operationId: getSkill
+      description: With its evidence, newest date first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - skills
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillDetail'
+          description: ''
+    patch:
+      operationId: updateSkill
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - skills
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSkillWriteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillDetail'
+          description: ''
+  /api/skills/{id}/evidence:
+    post:
+      operationId: addSkillEvidence
+      description: Evidence linked to a library Item (a work project too) or Note,
+        or an external link.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - skills
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillEvidenceCreateRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillEvidence'
+          description: ''
+  /api/skills/{id}/evidence/{evidence_id}:
+    patch:
+      operationId: updateSkillEvidence
+      parameters:
+      - in: path
+        name: evidence_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - skills
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSkillEvidenceUpdateRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillEvidence'
+          description: ''
+    delete:
+      operationId: deleteSkillEvidence
+      parameters:
+      - in: path
+        name: evidence_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - skills
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/time-entries:
     get:
       operationId: listTimeEntries
@@ -1159,6 +1438,20 @@ components:
       description: |-
         * `supports` - Supports
         * `contradicts` - Contradicts
+    FitSkill:
+      type: object
+      description: A skill an opportunity fits, with its freshness (annotated by `services.with_freshness()`).
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        freshness:
+          $ref: '#/components/schemas/SkillFreshnessEnum'
+      required:
+      - freshness
+      - id
+      - name
     InboxEntry:
       type: object
       properties:
@@ -1381,6 +1674,107 @@ components:
       - id
       - title
       - type
+    JobAd:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        company:
+          type: string
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        text:
+          type: string
+          readOnly: true
+        month:
+          type: string
+          readOnly: true
+        skills:
+          type: array
+          items:
+            type: string
+            maxLength: 60
+          readOnly: true
+        seniority:
+          allOf:
+          - $ref: '#/components/schemas/SeniorityEnum'
+          readOnly: true
+        processed:
+          type: boolean
+          readOnly: true
+        processedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        error:
+          type: string
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - company
+      - createdAt
+      - error
+      - id
+      - month
+      - processed
+      - processedAt
+      - seniority
+      - skills
+      - text
+      - title
+      - updatedAt
+      - url
+    JobAdWriteRequest:
+      type: object
+      description: Create (title and text required) or partial update. `skills` set
+        by hand skips the extraction.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        company:
+          type: string
+          maxLength: 200
+        url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2000
+          - type: string
+            maxLength: 0
+        text:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        month:
+          type: string
+          minLength: 1
+        skills:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 30
+      required:
+      - text
+      - title
     LastVisited:
       type: object
       properties:
@@ -1397,6 +1791,55 @@ components:
       - at
       - bookSlug
       - pageSlug
+    MarketReport:
+      type: object
+      properties:
+        month:
+          type: string
+        jobAds:
+          type: integer
+        processed:
+          type: integer
+        seniority:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeniorityCount'
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketSkill'
+        gaps:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketSkill'
+      required:
+      - gaps
+      - jobAds
+      - month
+      - processed
+      - seniority
+      - skills
+    MarketSkill:
+      type: object
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+        previousCount:
+          type: integer
+        skill:
+          allOf:
+          - $ref: '#/components/schemas/MirrorSkill'
+          nullable: true
+        gap:
+          type: boolean
+      required:
+      - count
+      - gap
+      - name
+      - previousCount
+      - skill
     Me:
       type: object
       properties:
@@ -1410,6 +1853,24 @@ components:
       required:
       - email
       - id
+      - name
+    MirrorSkill:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        freshness:
+          $ref: '#/components/schemas/SkillFreshnessEnum'
+        lastEvidenceOn:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - freshness
+      - id
+      - lastEvidenceOn
       - name
     Objective:
       type: object
@@ -1527,6 +1988,10 @@ components:
           nullable: true
         stale:
           type: boolean
+        fit:
+          type: array
+          items:
+            $ref: '#/components/schemas/FitSkill'
         createdAt:
           type: string
           format: date-time
@@ -1540,6 +2005,7 @@ components:
       - decision
       - evidenceContradicts
       - evidenceSupports
+      - fit
       - hypothesis
       - id
       - lastEvidenceAt
@@ -1551,7 +2017,9 @@ components:
       - whyNow
     OpportunityCreateRequest:
       type: object
-      description: Create (title and hypothesis required) or partial update.
+      description: |-
+        Create (title and hypothesis required) or partial update. `fit` replaces the fitting skills (ids of
+        the owner's skills in context["user"]).
       properties:
         title:
           type: string
@@ -1573,6 +2041,11 @@ components:
           nullable: true
         decision:
           $ref: '#/components/schemas/OpportunityDecisionEnum'
+        fit:
+          type: array
+          items:
+            type: integer
+          maxItems: 50
         scores:
           $ref: '#/components/schemas/ScoresWriteRequest'
       required:
@@ -1629,6 +2102,10 @@ components:
           nullable: true
         stale:
           type: boolean
+        fit:
+          type: array
+          items:
+            $ref: '#/components/schemas/FitSkill'
         createdAt:
           type: string
           format: date-time
@@ -1651,6 +2128,7 @@ components:
       - evidence
       - evidenceContradicts
       - evidenceSupports
+      - fit
       - hypothesis
       - id
       - lastEvidenceAt
@@ -1709,6 +2187,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Item'
+    PaginatedJobAdList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobAd'
     PaginatedOpportunityList:
       type: object
       required:
@@ -1747,6 +2244,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Project'
+    PaginatedSkillList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
     PaginatedTimeEntryList:
       type: object
       required:
@@ -1850,6 +2366,39 @@ components:
           type: string
           format: date-time
           nullable: true
+    PatchedJobAdWriteRequest:
+      type: object
+      description: Create (title and text required) or partial update. `skills` set
+        by hand skips the extraction.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        company:
+          type: string
+          maxLength: 200
+        url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2000
+          - type: string
+            maxLength: 0
+        text:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        month:
+          type: string
+          minLength: 1
+        skills:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 30
     PatchedObjectiveUpdateRequest:
       type: object
       properties:
@@ -1865,7 +2414,9 @@ components:
           minimum: 0
     PatchedOpportunityWriteRequest:
       type: object
-      description: Create (title and hypothesis required) or partial update.
+      description: |-
+        Create (title and hypothesis required) or partial update. `fit` replaces the fitting skills (ids of
+        the owner's skills in context["user"]).
       properties:
         title:
           type: string
@@ -1887,6 +2438,11 @@ components:
           nullable: true
         decision:
           $ref: '#/components/schemas/OpportunityDecisionEnum'
+        fit:
+          type: array
+          items:
+            type: integer
+          maxItems: 50
     PatchedProjectWriteRequest:
       type: object
       description: Create (title required) or partial update; context["details"] is
@@ -1956,6 +2512,46 @@ components:
         reviewOpportunityEvidence:
           type: string
           maxLength: 20000
+    PatchedSkillEvidenceUpdateRequest:
+      type: object
+      description: Used with partial=True; the kind and the linked row do not change.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2000
+          - type: string
+            maxLength: 0
+        note:
+          type: string
+          maxLength: 20000
+        date:
+          type: string
+          format: date
+    PatchedSkillWriteRequest:
+      type: object
+      description: Create (name required) or partial update; there is no self-rating
+        to type (DECISIONS 9.1).
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        aliases:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 20
+        note:
+          type: string
+          maxLength: 5000
     PatchedTimeEntryUpdateRequest:
       type: object
       description: 'Used with partial=True: every field is optional.'
@@ -2273,6 +2869,30 @@ components:
       - opportunity
       - pain
       - timing
+    SeniorityCount:
+      type: object
+      properties:
+        level:
+          $ref: '#/components/schemas/SeniorityEnum'
+        count:
+          type: integer
+      required:
+      - count
+      - level
+    SeniorityEnum:
+      enum:
+      - junior
+      - mid
+      - senior
+      - lead
+      - unknown
+      type: string
+      description: |-
+        * `junior` - Junior
+        * `mid` - Mid
+        * `senior` - Senior
+        * `lead` - Lead
+        * `unknown` - Unknown
     SetDoneRequest:
       type: object
       properties:
@@ -2313,6 +2933,210 @@ components:
       required:
       - book
       - page
+    Skill:
+      type: object
+      description: A skill annotated by `services.skills()`.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        note:
+          type: string
+        freshness:
+          $ref: '#/components/schemas/SkillFreshnessEnum'
+        lastEvidenceOn:
+          type: string
+          format: date
+          nullable: true
+        evidenceCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - aliases
+      - createdAt
+      - evidenceCount
+      - freshness
+      - id
+      - lastEvidenceOn
+      - name
+      - note
+      - updatedAt
+    SkillDetail:
+      type: object
+      description: With the evidence, newest date first (prefetch it).
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        note:
+          type: string
+        freshness:
+          $ref: '#/components/schemas/SkillFreshnessEnum'
+        lastEvidenceOn:
+          type: string
+          format: date
+          nullable: true
+        evidenceCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillEvidence'
+      required:
+      - aliases
+      - createdAt
+      - evidence
+      - evidenceCount
+      - freshness
+      - id
+      - lastEvidenceOn
+      - name
+      - note
+      - updatedAt
+    SkillEvidence:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/SkillEvidenceKindEnum'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+          readOnly: true
+        item:
+          type: integer
+          readOnly: true
+          nullable: true
+        libraryNote:
+          type: integer
+          readOnly: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - createdAt
+      - date
+      - id
+      - item
+      - kind
+      - libraryNote
+      - note
+      - title
+      - updatedAt
+      - url
+    SkillEvidenceCreateRequest:
+      type: object
+      description: Links resolve against the owner in context["user"]; another user's
+        row answers 400.
+      properties:
+        kind:
+          $ref: '#/components/schemas/SkillEvidenceKindEnum'
+        title:
+          type: string
+          maxLength: 300
+        url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2000
+          - type: string
+            maxLength: 0
+        note:
+          type: string
+          maxLength: 20000
+        date:
+          type: string
+          format: date
+        item:
+          type: integer
+          nullable: true
+        libraryNote:
+          type: integer
+          nullable: true
+      required:
+      - kind
+    SkillEvidenceKindEnum:
+      enum:
+      - item
+      - note
+      - link
+      type: string
+      description: |-
+        * `item` - Item
+        * `note` - Note
+        * `link` - Link
+    SkillFreshnessEnum:
+      enum:
+      - fresh
+      - aging
+      - faded
+      type: string
+      description: |-
+        * `fresh` - Fresh
+        * `aging` - Aging
+        * `faded` - Faded
+    SkillWriteRequest:
+      type: object
+      description: Create (name required) or partial update; there is no self-rating
+        to type (DECISIONS 9.1).
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        aliases:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 20
+        note:
+          type: string
+          maxLength: 5000
+      required:
+      - name
     StaleOpportunity:
       type: object
       properties:

@@ -1,0 +1,28 @@
+{
+  "input": {
+    "title": "Founding Engineer",
+    "company": "Example Health s.r.o.",
+    "text": "Hledáme prvního inženýra do týmu. Postavíš s námi produkt od nuly: webovou aplikaci pro kliniky, která pomocí AI přepisuje a shrnuje návštěvy pacientů. Požadujeme: zkušenosti s Pythonem a Djangem, PostgreSQL, nasazování na AWS, Docker, práce s LLM API. Výhodou je React. Komunikace v češtině a angličtině. Nabízíme podíl ve firmě, plat 120-160 tis. Kč, kancelář v Praze."
+  },
+  "expect": {
+    "skills": [
+      "python",
+      "django",
+      [
+        "postgresql",
+        "postgres"
+      ],
+      "aws",
+      [
+        "czech"
+      ]
+    ],
+    "absent": [
+      "salary"
+    ],
+    "seniority": [
+      "lead",
+      "senior"
+    ]
+  }
+}

@@ -57,7 +57,12 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
   opportunities/                 Opportunity (hypothesis, why now, next action, decide_by, open|keep|drop|build) + Evidence
                                  (inbox|item|note link or conversation|link record, supports|contradicts) + ScoreSnapshot
                                  (4 scores 1-10, append-only); /api/opportunities*; stale = no evidence for 4 weeks
-                                 (computed); week review lists opportunities with new evidence and stale ones
+                                 (computed); week review lists opportunities with new evidence and stale ones;
+                                 fit = M2M to growth.Skill
+  growth/                        Skill (name, normalised key + aliases, no self-rating) + SkillEvidence (item|note|link,
+                                 dated); freshness fresh|aging|faded computed from the newest evidence date (3/6 months);
+                                 JobAd (pasted JD, month) -> `jd_skills` job (extraction.py, prompts/jd_skills.md, 4000
+                                 chars sent); /api/skills*, /api/market/job-ads*, /api/market/report (frequency, gaps)
   core/pagination.py, admin.py   NewestFirstCursor (cursor pagination for lists), OwnedAdmin (sets user on create)
   core/services/jobs.py          Job table queue: enqueue (idempotency key), @handler(kind), RetryLater (429);
                                  `manage.py run_jobs` (cron) is the only place that makes outbound requests

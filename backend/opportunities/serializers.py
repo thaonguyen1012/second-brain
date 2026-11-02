@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.core.validators import URLValidator
 from rest_framework import serializers
 
+from growth.models import Skill
+from growth.serializers import FitSkillSerializer
 from inbox.models import InboxEntry
 from library.models import Item, Note
 from opportunities import services
@@ -91,6 +93,7 @@ class OpportunitySerializer(serializers.Serializer[Any]):
     evidenceContradicts = serializers.IntegerField()
     lastEvidenceAt = serializers.DateTimeField(allow_null=True)
     stale = serializers.BooleanField()
+    fit = FitSkillSerializer(many=True)
     createdAt = serializers.DateTimeField()
     updatedAt = serializers.DateTimeField()
 
@@ -109,6 +112,7 @@ class OpportunitySerializer(serializers.Serializer[Any]):
             "evidenceContradicts": getattr(instance, "evidence_contradicts", 0),
             "lastEvidenceAt": services.last_evidence(instance),
             "stale": getattr(instance, "stale", False),
+            "fit": instance.fit.all(),  # prefetched with freshness (api.py)
             "createdAt": instance.created_at,
             "updatedAt": instance.updated_at,
         }
@@ -132,7 +136,8 @@ class OpportunityDetailSerializer(OpportunitySerializer):
 
 
 class OpportunityWriteSerializer(serializers.Serializer[object]):
-    """Create (title and hypothesis required) or partial update."""
+    """Create (title and hypothesis required) or partial update. `fit` replaces the fitting skills (ids of
+    the owner's skills in context["user"])."""
 
     title = serializers.CharField(max_length=200)
     hypothesis = serializers.CharField(max_length=1000)
@@ -140,6 +145,14 @@ class OpportunityWriteSerializer(serializers.Serializer[object]):
     nextAction = serializers.CharField(source="next_action", max_length=500, required=False, allow_blank=True)
     decideBy = serializers.DateField(source="decide_by", required=False, allow_null=True)
     decision = serializers.ChoiceField(choices=Opportunity.Decision.choices, required=False)
+    fit = serializers.ListField(child=serializers.IntegerField(), max_length=50, required=False)
+
+    def validate_fit(self, value: list[int]) -> list[Skill]:
+        user: User = self.context["user"]
+        skills = list(Skill.objects.filter(user=user, pk__in=value))
+        if len(skills) != len(set(value)):
+            raise serializers.ValidationError("Not one of your skills.")
+        return skills
 
 
 class OpportunityCreateSerializer(OpportunityWriteSerializer):

@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "weeks",
     "work",
     "opportunities",
+    "growth",
 ]
 
 MIDDLEWARE = [
@@ -161,6 +162,9 @@ SPECTACULAR_SETTINGS = {
         "OpportunityDecisionEnum": "opportunities.models.Opportunity.Decision",
         "EvidenceKindEnum": "opportunities.models.Evidence.Kind",
         "EvidenceStanceEnum": "opportunities.models.Evidence.Stance",
+        "SkillEvidenceKindEnum": "growth.models.SkillEvidence.Kind",
+        "SkillFreshnessEnum": "growth.models.Freshness",
+        "SeniorityEnum": "growth.models.JobAd.Seniority",
     },
 }
 

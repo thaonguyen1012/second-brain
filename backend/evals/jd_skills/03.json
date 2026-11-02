@@ -1,0 +1,30 @@
+{
+  "input": {
+    "title": "Forward Deployed Engineer",
+    "company": "Example AI GmbH",
+    "text": "Forward Deployed Engineers sit with our enterprise customers in Czechia and Slovakia and turn our AI agent platform into working solutions for their processes. You will run discovery workshops with business stakeholders, build integrations in Python against customer APIs and databases, write prompts and evaluation sets, and own the deployment until it runs in production. You need: strong Python, REST APIs and SQL, hands-on experience with LLMs and prompt engineering, excellent customer communication, fluent Czech and English. Travel 30%. Experience in consulting or solutions engineering is a plus."
+  },
+  "expect": {
+    "skills": [
+      "python",
+      "czech",
+      "english",
+      [
+        "prompt engineering",
+        "llms",
+        "llm",
+        "llm apis"
+      ],
+      [
+        "customer communication",
+        "stakeholder management",
+        "communication"
+      ]
+    ],
+    "seniority": [
+      "mid",
+      "senior",
+      "unknown"
+    ]
+  }
+}

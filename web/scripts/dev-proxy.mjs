@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Development stand-in for deploy/nginx.conf: one origin that routes like production.
-// /api/me, /api/progress*, /api/{inbox,items,notes,weeks,projects,time-entries,opportunities}*, /api/schema/, /admin*, /admin-static/*, /healthz -> Django; everything else -> Next.
+// /api/me, /api/progress*, /api/{inbox,items,notes,weeks,projects,time-entries,opportunities,skills,market}*, /api/schema/, /admin*, /admin-static/*, /healthz -> Django; everything else -> Next.
 // Usage: node scripts/dev-proxy.mjs [--port 8080] [--web http://127.0.0.1:3000] [--api http://127.0.0.1:8000]
 import http from 'node:http';
 import { parseArgs } from 'node:util';
@@ -13,7 +13,7 @@ const { values } = parseArgs({
   },
 });
 
-const DJANGO = /^\/(api\/(me|progress|schema|inbox|items|notes|weeks|projects|time-entries|opportunities)(\/|$|\?)|admin(\/|$)|admin-static\/|healthz$)/;
+const DJANGO = /^\/(api\/(me|progress|schema|inbox|items|notes|weeks|projects|time-entries|opportunities|skills|market)(\/|$|\?)|admin(\/|$)|admin-static\/|healthz$)/;
 
 http
   .createServer((req, res) => {

@@ -103,6 +103,8 @@ def create_opportunity(user: User, data: dict[str, Any]) -> Opportunity:
         if "decision" in data:
             _decided(opportunity, data["decision"])
         opportunity.save()
+        if "fit" in data:
+            opportunity.fit.set(data["fit"])
         if scores := data.get("scores"):
             record_scores(opportunity, scores)
     return opportunity
@@ -115,7 +117,10 @@ def update_opportunity(opportunity: Opportunity, data: dict[str, Any]) -> Opport
     if "decision" in data:
         _decided(opportunity, data["decision"])
         fields += ["decision", "decided_at"]
-    opportunity.save(update_fields=[*fields, "updated_at"])
+    with transaction.atomic():
+        opportunity.save(update_fields=[*fields, "updated_at"])
+        if "fit" in data:
+            opportunity.fit.set(data["fit"])
     return opportunity
 
 

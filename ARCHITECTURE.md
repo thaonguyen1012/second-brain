@@ -79,7 +79,21 @@ last evidence, current scores (subqueries) and `stale` in one query: decision op
 recorded (`created_at`, not the evidence date) for 4 weeks, counted from creation when there is none. The week
 review adds `opportunities.withEvidence` (evidence recorded that week) and `opportunities.stale` (as of the week's
 end or now). `POST /api/opportunities/{id}/evidence/inbox` attaches an inbox entry and archives it (idempotent).
-"Fit" (link to Skill) waits for step 5.
+"Fit" (`Opportunity.fit`, M2M to `growth.Skill`, owner checked) came with step 5.
+Step 5 (DECISIONS 9.4): `backend/growth/`. `Skill` (display name, normalised `key` unique per owner, normalised
+`aliases`, note; no self-rating) and `SkillEvidence` (kind item/note/link, a library `Item` (a work project is an
+Item of type project) or `Note` of the owner, or an external URL; title snapshot, `date`). Freshness is computed
+by `services.with_freshness()` from the newest evidence `date` (when it happened, not when it was recorded): fresh
+within 3 months, aging within 6, faded after 6 months or with no evidence (DECISIONS 9.1, 9.2). `JobAd` (title,
+company, url, pasted text, `month` = first day, DB check) enqueues a `jd_skills` job (key includes a hash of title,
+company and text, so an edit re-runs it); `growth/extraction.py` sends title, company and the first 4000 characters
+(job ads are public, unlike the 500-character cap for private inbox content; never the URL) with
+`prompts/jd_skills.md` through `llm.complete()`; the pydantic `JdSkills` schema accepts 1-15 short normalised skill
+names and a seniority; invalid output leaves the ad unprocessed with `error`, 429/budget leaves the job pending.
+Skills can be corrected by hand (`skills` in PATCH skips the job). `GET /api/market/report?month=` counts, per
+skill, the processed ads of the month that ask for it (once per ad) and of the previous month, matched to `Skill` by
+exact normalised name or alias (no fuzzy matching, DECISIONS 4.5); a gap is a requested skill with no Skill row or
+a faded one. `manage.py eval jd` runs `backend/evals/jd_skills/`. No RSS from job boards yet.
 Deployment config is in `deploy/` (see deploy/README.md): nginx routes `/api/` (except `/api/search`), `/admin/`,
 `/healthz` and `/files/` to Django and everything else to Next; `/files/` passes `auth_request` (Django `/api/me`)
 and Django's `X-Accel-Redirect` to the internal `/internal/files/` alias; CSP is report-only. With

@@ -1,0 +1,35 @@
+{
+  "input": {
+    "title": "Product Engineer (AI-native)",
+    "company": "Example Labs s.r.o.",
+    "text": "We are a 25-person startup in Prague building an AI assistant for accountants. As a Product Engineer you own features end to end: you talk to customers, decide what to build with the PM, write the code and ship it the same week. Our stack: TypeScript, React and Next.js on the frontend, Python with FastAPI on the backend, PostgreSQL, and LLM APIs (OpenAI, Anthropic) with retrieval-augmented generation. You have 3+ years of full-stack experience, strong product thinking, and you write clear English. Czech is a plus. Hybrid, Prague Karlin. We offer ESOP, 5 weeks of vacation and a MultiSport card."
+  },
+  "expect": {
+    "skills": [
+      "typescript",
+      "react",
+      [
+        "python"
+      ],
+      [
+        "postgresql",
+        "postgres"
+      ],
+      [
+        "llm apis",
+        "llm",
+        "large language models",
+        "llms"
+      ]
+    ],
+    "absent": [
+      "multisport",
+      "esop",
+      "vacation"
+    ],
+    "seniority": [
+      "mid",
+      "senior"
+    ]
+  }
+}

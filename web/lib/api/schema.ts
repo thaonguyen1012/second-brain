@@ -68,6 +68,57 @@ export interface paths {
         patch: operations["updateItem"];
         trace?: never;
     };
+    "/api/market/job-ads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listJobAds"];
+        put?: never;
+        /** @description Stores the ad and returns at once; a background job extracts the skills it asks for. */
+        post: operations["createJobAd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/market/job-ads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Changed title, company or text re-runs the extraction; `skills` corrects it by hand. */
+        patch: operations["updateJobAd"];
+        trace?: never;
+    };
+    "/api/market/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Skill frequency in the month's job ads vs the previous month, next to the skills matrix. */
+        get: operations["getMarketReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me": {
         parameters: {
             query?: never;
@@ -269,6 +320,72 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["updateProject"];
+        trace?: never;
+    };
+    "/api/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listSkills"];
+        put?: never;
+        post: operations["createSkill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/skills/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description With its evidence, newest date first. */
+        get: operations["getSkill"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateSkill"];
+        trace?: never;
+    };
+    "/api/skills/{id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Evidence linked to a library Item (a work project too) or Note, or an external link. */
+        post: operations["addSkillEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/skills/{id}/evidence/{evidence_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteSkillEvidence"];
+        options?: never;
+        head?: never;
+        patch: operations["updateSkillEvidence"];
         trace?: never;
     };
     "/api/time-entries": {
@@ -559,6 +676,12 @@ export interface components {
          * @enum {string}
          */
         EvidenceStanceEnum: "supports" | "contradicts";
+        /** @description A skill an opportunity fits, with its freshness (annotated by `services.with_freshness()`). */
+        FitSkill: {
+            id: number;
+            name: string;
+            freshness: components["schemas"]["SkillFreshnessEnum"];
+        };
         InboxEntry: {
             readonly id: number;
             url?: string;
@@ -636,6 +759,34 @@ export interface components {
             title: string;
             type: string;
         };
+        JobAd: {
+            readonly id: number;
+            readonly title: string;
+            readonly company: string;
+            /** Format: uri */
+            readonly url: string;
+            readonly text: string;
+            readonly month: string;
+            readonly skills: string[];
+            readonly seniority: components["schemas"]["SeniorityEnum"];
+            readonly processed: boolean;
+            /** Format: date-time */
+            readonly processedAt: string | null;
+            readonly error: string;
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+        };
+        /** @description Create (title and text required) or partial update. `skills` set by hand skips the extraction. */
+        JobAdWriteRequest: {
+            title: string;
+            company?: string;
+            url?: string;
+            text: string;
+            month?: string;
+            skills?: string[];
+        };
         LastVisited: {
             bookSlug: string;
             pageSlug: string;
@@ -643,11 +794,33 @@ export interface components {
             /** Format: date-time */
             at: string;
         };
+        MarketReport: {
+            month: string;
+            jobAds: number;
+            processed: number;
+            seniority: components["schemas"]["SeniorityCount"][];
+            skills: components["schemas"]["MarketSkill"][];
+            gaps: components["schemas"]["MarketSkill"][];
+        };
+        MarketSkill: {
+            name: string;
+            count: number;
+            previousCount: number;
+            skill: components["schemas"]["MirrorSkill"] | null;
+            gap: boolean;
+        };
         Me: {
             id: number;
             /** Format: email */
             email: string;
             name: string;
+        };
+        MirrorSkill: {
+            id: number;
+            name: string;
+            freshness: components["schemas"]["SkillFreshnessEnum"];
+            /** Format: date */
+            lastEvidenceOn: string | null;
         };
         Objective: {
             readonly id: number;
@@ -698,12 +871,16 @@ export interface components {
             /** Format: date-time */
             lastEvidenceAt: string | null;
             stale: boolean;
+            fit: components["schemas"]["FitSkill"][];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
         };
-        /** @description Create (title and hypothesis required) or partial update. */
+        /**
+         * @description Create (title and hypothesis required) or partial update. `fit` replaces the fitting skills (ids of
+         *     the owner's skills in context["user"]).
+         */
         OpportunityCreateRequest: {
             title: string;
             hypothesis: string;
@@ -712,6 +889,7 @@ export interface components {
             /** Format: date */
             decideBy?: string | null;
             decision?: components["schemas"]["OpportunityDecisionEnum"];
+            fit?: number[];
             scores?: components["schemas"]["ScoresWriteRequest"];
         };
         /**
@@ -740,6 +918,7 @@ export interface components {
             /** Format: date-time */
             lastEvidenceAt: string | null;
             stale: boolean;
+            fit: components["schemas"]["FitSkill"][];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -777,6 +956,19 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Item"][];
         };
+        PaginatedJobAdList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["JobAd"][];
+        };
         PaginatedOpportunityList: {
             /**
              * Format: uri
@@ -802,6 +994,19 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Project"][];
+        };
+        PaginatedSkillList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["Skill"][];
         };
         PaginatedTimeEntryList: {
             /**
@@ -854,12 +1059,24 @@ export interface components {
             /** Format: date-time */
             finishedAt?: string | null;
         };
+        /** @description Create (title and text required) or partial update. `skills` set by hand skips the extraction. */
+        PatchedJobAdWriteRequest: {
+            title?: string;
+            company?: string;
+            url?: string;
+            text?: string;
+            month?: string;
+            skills?: string[];
+        };
         PatchedObjectiveUpdateRequest: {
             title?: string;
             status?: components["schemas"]["ObjectiveStatusEnum"];
             position?: number;
         };
-        /** @description Create (title and hypothesis required) or partial update. */
+        /**
+         * @description Create (title and hypothesis required) or partial update. `fit` replaces the fitting skills (ids of
+         *     the owner's skills in context["user"]).
+         */
         PatchedOpportunityWriteRequest: {
             title?: string;
             hypothesis?: string;
@@ -868,6 +1085,7 @@ export interface components {
             /** Format: date */
             decideBy?: string | null;
             decision?: components["schemas"]["OpportunityDecisionEnum"];
+            fit?: number[];
         };
         /** @description Create (title required) or partial update; context["details"] is the current details on update. */
         PatchedProjectWriteRequest: {
@@ -894,6 +1112,20 @@ export interface components {
             reviewSatisfied?: string;
             reviewChangedMind?: string;
             reviewOpportunityEvidence?: string;
+        };
+        /** @description Used with partial=True; the kind and the linked row do not change. */
+        PatchedSkillEvidenceUpdateRequest: {
+            title?: string;
+            url?: string;
+            note?: string;
+            /** Format: date */
+            date?: string;
+        };
+        /** @description Create (name required) or partial update; there is no self-rating to type (DECISIONS 9.1). */
+        PatchedSkillWriteRequest: {
+            name?: string;
+            aliases?: string[];
+            note?: string;
         };
         /** @description Used with partial=True: every field is optional. */
         PatchedTimeEntryUpdateRequest: {
@@ -1010,6 +1242,19 @@ export interface components {
             timing: number;
             note?: string;
         };
+        SeniorityCount: {
+            level: components["schemas"]["SeniorityEnum"];
+            count: number;
+        };
+        /**
+         * @description * `junior` - Junior
+         *     * `mid` - Mid
+         *     * `senior` - Senior
+         *     * `lead` - Lead
+         *     * `unknown` - Unknown
+         * @enum {string}
+         */
+        SeniorityEnum: "junior" | "mid" | "senior" | "lead" | "unknown";
         SetDoneRequest: {
             done: boolean;
         };
@@ -1024,6 +1269,84 @@ export interface components {
             book: string;
             page: string;
             title?: string;
+        };
+        /** @description A skill annotated by `services.skills()`. */
+        Skill: {
+            id: number;
+            name: string;
+            aliases: string[];
+            note: string;
+            freshness: components["schemas"]["SkillFreshnessEnum"];
+            /** Format: date */
+            lastEvidenceOn: string | null;
+            evidenceCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description With the evidence, newest date first (prefetch it). */
+        SkillDetail: {
+            id: number;
+            name: string;
+            aliases: string[];
+            note: string;
+            freshness: components["schemas"]["SkillFreshnessEnum"];
+            /** Format: date */
+            lastEvidenceOn: string | null;
+            evidenceCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            evidence: components["schemas"]["SkillEvidence"][];
+        };
+        SkillEvidence: {
+            readonly id: number;
+            readonly kind: components["schemas"]["SkillEvidenceKindEnum"];
+            readonly title: string;
+            /** Format: uri */
+            readonly url: string;
+            readonly note: string;
+            /** Format: date */
+            readonly date: string;
+            readonly item: number | null;
+            readonly libraryNote: number | null;
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+        };
+        /** @description Links resolve against the owner in context["user"]; another user's row answers 400. */
+        SkillEvidenceCreateRequest: {
+            kind: components["schemas"]["SkillEvidenceKindEnum"];
+            title?: string;
+            url?: string;
+            note?: string;
+            /** Format: date */
+            date?: string;
+            item?: number | null;
+            libraryNote?: number | null;
+        };
+        /**
+         * @description * `item` - Item
+         *     * `note` - Note
+         *     * `link` - Link
+         * @enum {string}
+         */
+        SkillEvidenceKindEnum: "item" | "note" | "link";
+        /**
+         * @description * `fresh` - Fresh
+         *     * `aging` - Aging
+         *     * `faded` - Faded
+         * @enum {string}
+         */
+        SkillFreshnessEnum: "fresh" | "aging" | "faded";
+        /** @description Create (name required) or partial update; there is no self-rating to type (DECISIONS 9.1). */
+        SkillWriteRequest: {
+            name: string;
+            aliases?: string[];
+            note?: string;
         };
         StaleOpportunity: {
             id: number;
@@ -1276,6 +1599,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Item"];
+                };
+            };
+        };
+    };
+    listJobAds: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description YYYY-MM; default: this month (Europe/Prague). */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedJobAdList"];
+                };
+            };
+        };
+    };
+    createJobAd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobAdWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAd"];
+                };
+            };
+        };
+    };
+    updateJobAd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedJobAdWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAd"];
+                };
+            };
+        };
+    };
+    getMarketReport: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM; default: this month (Europe/Prague). */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketReport"];
                 };
             };
         };
@@ -1663,6 +2082,172 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Project"];
+                };
+            };
+        };
+    };
+    listSkills: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                freshness?: "aging" | "faded" | "fresh";
+                /** @description Number of results to return per page. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSkillList"];
+                };
+            };
+        };
+    };
+    createSkill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkillWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillDetail"];
+                };
+            };
+        };
+    };
+    getSkill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillDetail"];
+                };
+            };
+        };
+    };
+    updateSkill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSkillWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillDetail"];
+                };
+            };
+        };
+    };
+    addSkillEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkillEvidenceCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillEvidence"];
+                };
+            };
+        };
+    };
+    deleteSkillEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateSkillEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSkillEvidenceUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillEvidence"];
                 };
             };
         };

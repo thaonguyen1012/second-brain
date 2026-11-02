@@ -158,7 +158,7 @@ def test_get_opportunity_with_evidence_and_history(client: Client) -> None:
     with CaptureQueriesContext(connection) as queries:
         response = client.get(f"/api/opportunities/{opp.pk}")
     assert response.status_code == 200
-    assert len(queries) <= 5  # session + user + opportunity + evidence + scores
+    assert len(queries) <= 6  # session + user + opportunity + evidence + scores + fit
     data = response.json()
     assert [e["title"] for e in data["evidence"]] == ["New talk", "Old talk"]
     assert [s["opportunity"] for s in data["scoreHistory"]] == [6, 5]  # newest first, old values kept
