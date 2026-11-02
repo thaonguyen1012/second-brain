@@ -1,0 +1,21 @@
+{
+  "input": {
+    "title": "European Central Bank leaves rates unchanged as inflation eases to 2.4%",
+    "source": "Reuters",
+    "text": "The ECB governing council kept the deposit rate at 2.0% on Thursday. Inflation slowed for a third month and the euro strengthened against the dollar. Economists expect a cut early next year."
+  },
+  "expect": {
+    "tags": [
+      [
+        "economy",
+        "business"
+      ],
+      "eu"
+    ],
+    "new_tool": false,
+    "relevance": [
+      2,
+      5
+    ]
+  }
+}

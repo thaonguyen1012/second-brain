@@ -34,7 +34,8 @@ services:
     depends_on:
       db: { condition: service_healthy }
 
-  # Background jobs (unfurl, LLM tagging): the only place that makes outbound requests. Every 5 minutes.
+  # Background jobs (unfurl, LLM tagging, feeds, morning brief): the only place that makes outbound requests.
+  # Every 5 minutes; run_jobs itself enqueues the feed fetches (6/12/18) and the 06:30 brief (Europe/Prague).
   jobs:
     build: ../backend
     restart: unless-stopped

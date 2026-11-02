@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.core.validators import URLValidator
 from rest_framework import serializers
 
+from brief.serializers import NewsItemSerializer
 from growth.models import Freshness, JobAd, Skill, SkillEvidence
 from library.models import Item, Note
 
@@ -218,3 +219,4 @@ class MarketReportSerializer(serializers.Serializer[object]):
     seniority = SeniorityCountSerializer(many=True)
     skills = MarketSkillSerializer(many=True)
     gaps = MarketSkillSerializer(many=True)
+    newTools = NewsItemSerializer(many=True, help_text='News of the month tagged "new tool/skill".')

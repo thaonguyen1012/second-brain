@@ -16,6 +16,8 @@ from opportunities import services
 from opportunities.models import Evidence, Opportunity
 from opportunities.serializers import (
     AttachInboxSerializer,
+    AttachNewsResultSerializer,
+    AttachNewsSerializer,
     AttachResultSerializer,
     EvidenceCreateSerializer,
     EvidenceSerializer,
@@ -178,3 +180,26 @@ class AttachInboxView(APIView):
         result = {"evidence": evidence, "created": created, "inboxStatus": entry.status}
         code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
         return Response(AttachResultSerializer(result).data, status=code)
+
+
+class AttachNewsView(APIView):
+    @extend_schema(
+        request=AttachNewsSerializer,
+        responses={200: AttachNewsResultSerializer, 201: AttachNewsResultSerializer},
+        operation_id="attachNewsItemAsEvidence",
+    )
+    def post(self, request: Request, pk: int) -> Response:
+        """The morning-brief button: this news item is evidence for this opportunity (kind link).
+
+        201 when the evidence is new, 200 when the item's URL is already link evidence of this opportunity.
+        """
+        user = request_user(request)
+        opportunity = _own(request, pk)
+        body = AttachNewsSerializer(data=request.data, context={"user": user})
+        body.is_valid(raise_exception=True)
+        data = dict(body.validated_data)
+        evidence, created = services.attach_news_item(opportunity, data.pop("news_item"), data)
+        code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(
+            AttachNewsResultSerializer({"evidence": evidence, "created": created}).data, status=code
+        )

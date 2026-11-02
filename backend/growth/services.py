@@ -2,7 +2,8 @@
 
 "Not falling behind" is a mirror, not numbers (9.1): a skill is fresh, aging or faded by the date of its
 newest evidence (3 and 6 months), and the monthly market report lists the skills the pasted job ads ask for
-next to that freshness. Matching is exact on normalised names plus the aliases of each skill (DECISIONS 4.5).
+next to that freshness, plus the month's morning-brief items flagged "new tool/skill". Matching is exact on
+normalised names plus the aliases of each skill (DECISIONS 4.5).
 """
 
 import calendar
@@ -16,6 +17,7 @@ from django.db import transaction
 from django.db.models import Case, CharField, Count, Max, QuerySet, Value, When
 from django.utils import timezone
 
+from brief.services import new_tools
 from core.models import Job
 from core.services import jobs
 from growth.models import Freshness, JobAd, Skill, SkillEvidence
@@ -258,4 +260,5 @@ def market_report(user: User | int, month: dt.date, today: dt.date | None = None
         "seniority": [{"level": level, "count": n} for level, n in seniority.most_common()],
         "skills": lines,
         "gaps": [line for line in lines if line["gap"]],
+        "newTools": new_tools(user, month),  # morning-brief items flagged "new tool/skill" (9.2)
     }

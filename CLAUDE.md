@@ -62,16 +62,25 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
   growth/                        Skill (name, normalised key + aliases, no self-rating) + SkillEvidence (item|note|link,
                                  dated); freshness fresh|aging|faded computed from the newest evidence date (3/6 months);
                                  JobAd (pasted JD, month) -> `jd_skills` job (extraction.py, prompts/jd_skills.md, 4000
-                                 chars sent); /api/skills*, /api/market/job-ads*, /api/market/report (frequency, gaps)
+                                 chars sent); /api/skills*, /api/market/job-ads*, /api/market/report (frequency, gaps,
+                                 newTools from brief)
+  brief/                         Source (feed, area of 6.2, active; admin or `manage.py brief_sources`) + NewsItem (dedupe
+                                 sha256 title+URL, 500-char nh3 excerpt, LLM tags/summary/new_tool/relevance, tag_status)
+                                 + DailyBrief (one per day, BriefEntry order, LLM intro). feeds.py (stdlib XML, no
+                                 DOCTYPE), services.py (jobs.periodic scheduler, `feeds`/`brief` jobs, daily tag cap),
+                                 tagging.py (`news_tag`, `brief_intro`); /api/news*, /api/brief/*;
+                                 POST /api/opportunities/{id}/evidence/news (the "evidence for" button)
   core/pagination.py, admin.py   NewestFirstCursor (cursor pagination for lists), OwnedAdmin (sets user on create)
-  core/services/jobs.py          Job table queue: enqueue (idempotency key), @handler(kind), RetryLater (429);
+  core/services/jobs.py          Job table queue: enqueue (idempotency key), @handler(kind), RetryLater (429),
+                                 @periodic schedulers (run first by run_jobs, e.g. `feeds:2026-11-02T06`, `brief:2026-11-02`);
                                  `manage.py run_jobs` (cron) is the only place that makes outbound requests
   core/services/safe_fetch.py    SSRF-guarded GET (public IPs only, pinned IP, 3 redirects, 10 s, 2 MB);
                                  unfurl.py (OG card, nh3), thumbnails.py (webp <= 200 KB in THUMBS_DIR, X-Accel)
   core/services/llm.py           the only LLM caller (LLM_PROVIDER=gemini now, anthropic later): count tokens,
                                  budget guard (LLM_MONTHLY_BUDGET_USD), JSON schema call, LlmCall row, LlmCache
-  prompts/, evals/               versioned prompts (inbox_tag.md); golden sets for `manage.py eval tag` (real
-                                 LLM, never in make check). inbox/tagging.py: pydantic schema + `tag` job
+  prompts/, evals/               versioned prompts (inbox_tag, jd_skills, news_tag, brief_intro); golden sets for
+                                 `manage.py eval tag|jd|brief` (real LLM, never in make check). inbox/tagging.py:
+                                 pydantic schema + `tag` job
   docker-compose.yml             dev Postgres (the laptop uses Homebrew Postgres 16 instead)
 deploy/                          nginx/ (site.conf + header snippets), docker-compose.prod.yml, .env.example, README (Cloudflare Tunnel +
                                  Access setup); config only, not deployed

@@ -94,6 +94,30 @@ Skills can be corrected by hand (`skills` in PATCH skips the job). `GET /api/mar
 skill, the processed ads of the month that ask for it (once per ad) and of the previous month, matched to `Skill` by
 exact normalised name or alias (no fuzzy matching, DECISIONS 4.5); a gap is a requested skill with no Skill row or
 a faded one. `manage.py eval jd` runs `backend/evals/jd_skills/`. No RSS from job boards yet.
+Step 6 (DECISIONS 9.4, 5): `backend/brief/`. `Source` (name, feed URL, area of DECISIONS 6.2, active; added in the
+admin or with `manage.py brief_sources add|seed|list|activate|deactivate`; `seed` adds only feeds of sources 6.2
+names). `run_jobs` first calls the `jobs.periodic` schedulers: when an active source exists it enqueues the latest
+due fetch slot (`feeds:2026-11-02T06`, hours `BRIEF_FETCH_HOURS`, default 6/12/18 Prague) and, from
+`BRIEF_BUILD_TIME` (06:30), `brief:2026-11-02`; idempotency keys make the 5-minute cron enqueue each once. The `feeds`
+job fetches every active source through `safe_fetch` (`FEED_TYPES`: rss+xml, atom+xml, xml, text/xml; 2 MB cap),
+parses RSS 2.0 / RSS 1.0 / Atom with `xml.etree` after refusing any DOCTYPE or ENTITY declaration (`brief/feeds.py`),
+keeps entries younger than `BRIEF_MAX_AGE_HOURS` (48), cleans title and excerpt to plain text (nh3, 500 characters)
+and stores a `NewsItem` only when sha256(normalised title + URL without tracking parameters) is new for the owner (a
+unique constraint), before any LLM call. A failing feed records `last_error` and does not stop the others. Each new
+item gets a `news_tag` job until `BRIEF_TAG_DAILY_CAP` (40) items of the owner were queued that day; the rest is
+stored `skipped`. `brief/tagging.py` sends title, source name and the excerpt (never the URL) with
+`prompts/news_tag.md`; `NewsTags` (extra=forbid) accepts 1-5 tags (controlled list = 6.2 areas + brief/market topics,
+at most 2 free), a Vietnamese one-line summary of at most 160 characters, `new_tool` and `relevance` 1-5; invalid
+output sets `tag_status=failed` with `error`, 429/budget leaves the job pending. The `brief` job waits (RetryLater)
+while `feeds`/`news_tag` jobs are queued, until `BRIEF_WAIT_UNTIL` (09:00), then builds one `DailyBrief` per owner
+from the `BRIEF_MAX_ITEMS` (8) most relevant tagged items of the last 48 hours not shown in another day's brief
+(`BriefEntry` keeps the order), and enqueues one `brief_intro` call (`prompts/brief_intro.md`, titles and summaries
+only); a failed intro leaves the brief without one. Per day: at most 40 tag calls + 1 intro call (about 1 USD a
+month at paid prices; the free tier now). `GET /api/brief/today`, `GET /api/brief/{date}`, `GET /api/news` (filters),
+`GET /api/news/topics?weeks=` (tag counts per ISO week: replaces Exploding Topics, 9.2),
+`POST /api/opportunities/{id}/evidence/news` (the brief's "evidence for" button: link evidence, idempotent per URL),
+and `newTools` in the market report (items flagged "new tool/skill" that month). `manage.py eval brief` runs
+`backend/evals/news_tag/`. Not yet: Telegram, the useful/not button, the weekly digest, moving an item to Inbox.
 Deployment config is in `deploy/` (see deploy/README.md): nginx routes `/api/` (except `/api/search`), `/admin/`,
 `/healthz` and `/files/` to Django and everything else to Next; `/files/` passes `auth_request` (Django `/api/me`)
 and Django's `X-Accel-Redirect` to the internal `/internal/files/` alias; CSP is report-only. With

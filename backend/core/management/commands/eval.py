@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from core.services import llm
 
 # purpose -> golden set directory under backend/evals/
-SUITES = {"tag": "inbox_tag", "jd": "jd_skills"}
+SUITES = {"tag": "inbox_tag", "jd": "jd_skills", "brief": "news_tag"}
 
 
 def _call(fn: Callable[[], BaseModel]) -> BaseModel | str:
@@ -69,7 +69,38 @@ def check_jd(case: dict[str, Any]) -> list[str]:
     return problems
 
 
-CHECKS: dict[str, Callable[[dict[str, Any]], list[str]]] = {"tag": check_tag, "jd": check_jd}
+def check_brief(case: dict[str, Any]) -> list[str]:
+    """Morning-brief tagging. `expect.tags`: each entry a tag or a list of accepted tags; `new_tool`: the
+    flag; `relevance`: [lowest, highest] accepted."""
+    from brief import tagging
+
+    source, expect = case["input"], case["expect"]
+    user = tagging.news_text(source.get("title", ""), source.get("source", ""), source.get("text", ""))
+    result = _call(lambda: tagging.suggest(user, use_cache=False))
+    if isinstance(result, str):
+        return [result]
+    assert isinstance(result, tagging.NewsTags)
+    problems = []
+    for wanted in expect.get("tags", []):
+        names = [wanted] if isinstance(wanted, str) else wanted
+        if not set(names) & set(result.tags):
+            problems.append(f"missing tag {names} (got {result.tags})")
+    if len(result.summary) > 160 or "\n" in result.summary:
+        problems.append("summary is not one line of at most 160 characters")
+    if "new_tool" in expect and result.new_tool != expect["new_tool"]:
+        problems.append(f"new_tool {result.new_tool}, expected {expect['new_tool']}")
+    if "relevance" in expect:
+        low, high = expect["relevance"]
+        if not low <= result.relevance <= high:
+            problems.append(f"relevance {result.relevance}, expected {low}-{high}")
+    return problems
+
+
+CHECKS: dict[str, Callable[[dict[str, Any]], list[str]]] = {
+    "tag": check_tag,
+    "jd": check_jd,
+    "brief": check_brief,
+}
 
 
 class Command(BaseCommand):

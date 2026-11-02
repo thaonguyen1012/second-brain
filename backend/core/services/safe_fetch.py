@@ -22,6 +22,7 @@ MAX_BYTES = 2 * 1024 * 1024
 USER_AGENT = "AlexBrain/1.0 (link preview)"
 HTML_TYPES = ("text/html", "application/xhtml+xml")
 IMAGE_TYPES = ("image/jpeg", "image/png", "image/gif", "image/webp")
+FEED_TYPES = ("application/rss+xml", "application/atom+xml", "application/xml", "text/xml")
 TRANSPORT: httpx.BaseTransport | None = None  # tests swap in httpx.MockTransport
 
 

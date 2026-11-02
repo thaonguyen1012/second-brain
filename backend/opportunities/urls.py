@@ -2,6 +2,7 @@ from django.urls import path
 
 from opportunities.api import (
     AttachInboxView,
+    AttachNewsView,
     EvidenceListView,
     EvidenceView,
     OpportunityListView,
@@ -16,4 +17,5 @@ urlpatterns = [
     path("api/opportunities/<int:pk>/evidence", EvidenceListView.as_view()),
     path("api/opportunities/<int:pk>/evidence/<int:evidence_id>", EvidenceView.as_view()),
     path("api/opportunities/<int:pk>/evidence/inbox", AttachInboxView.as_view()),
+    path("api/opportunities/<int:pk>/evidence/news", AttachNewsView.as_view()),
 ]

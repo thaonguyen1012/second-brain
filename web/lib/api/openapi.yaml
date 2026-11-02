@@ -3,6 +3,44 @@ info:
   title: Alex's Brain API
   version: 0.1.0
 paths:
+  /api/brief/{day}:
+    get:
+      operationId: getBrief
+      description: The brief of a day (YYYY-MM-DD); 404 when there is none.
+      parameters:
+      - in: path
+        name: day
+        schema:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+        required: true
+      tags:
+      - brief
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyBrief'
+          description: ''
+  /api/brief/today:
+    get:
+      operationId: getTodayBrief
+      description: Today's brief (Europe/Prague); 404 until the morning job has built
+        it.
+      tags:
+      - brief
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyBrief'
+          description: ''
   /api/inbox:
     get:
       operationId: listInbox
@@ -287,6 +325,88 @@ paths:
               schema:
                 $ref: '#/components/schemas/Me'
           description: ''
+  /api/news:
+    get:
+      operationId: listNews
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - in: query
+        name: date
+        schema:
+          type: string
+        description: 'YYYY-MM-DD: fetched that day (Europe/Prague).'
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: minRelevance
+        schema:
+          type: integer
+        description: 1-5.
+      - in: query
+        name: newTool
+        schema:
+          type: boolean
+        description: 'true: only "new tool/skill" items.'
+      - in: query
+        name: source
+        schema:
+          type: integer
+      - in: query
+        name: tag
+        schema:
+          type: string
+        description: Only items with this topic tag.
+      - in: query
+        name: tagStatus
+        schema:
+          type: string
+          enum:
+          - failed
+          - queued
+          - skipped
+          - tagged
+      tags:
+      - news
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNewsItemList'
+          description: ''
+  /api/news/topics:
+    get:
+      operationId: getNewsTopicCounts
+      description: How often each topic tag appeared in the fetched news per ISO week,
+        oldest week first.
+      parameters:
+      - in: query
+        name: weeks
+        schema:
+          type: integer
+        description: 1-52, default 8.
+      tags:
+      - news
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicCounts'
+          description: ''
   /api/opportunities:
     get:
       operationId: listOpportunities
@@ -488,6 +608,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AttachResult'
+          description: ''
+  /api/opportunities/{id}/evidence/news:
+    post:
+      operationId: attachNewsItemAsEvidence
+      description: |-
+        The morning-brief button: this news item is evidence for this opportunity (kind link).
+
+        201 when the evidence is new, 200 when the item's URL is already link evidence of this opportunity.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - opportunities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachNewsRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachNewsResult'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachNewsResult'
           description: ''
   /api/opportunities/{id}/scores:
     post:
@@ -1251,6 +1407,37 @@ components:
       required:
       - inboxEntry
       - stance
+    AttachNewsRequest:
+      type: object
+      description: Resolves linked ids against the owner in context["user"]; another
+        user's row answers 400.
+      properties:
+        newsItem:
+          type: integer
+        stance:
+          $ref: '#/components/schemas/EvidenceStanceEnum'
+        title:
+          type: string
+          maxLength: 300
+        note:
+          type: string
+          maxLength: 20000
+        date:
+          type: string
+          format: date
+      required:
+      - newsItem
+      - stance
+    AttachNewsResult:
+      type: object
+      properties:
+        evidence:
+          $ref: '#/components/schemas/Evidence'
+        created:
+          type: boolean
+      required:
+      - created
+      - evidence
     AttachResult:
       type: object
       properties:
@@ -1289,6 +1476,26 @@ components:
       - id
       - title
       - weekStart
+    DailyBrief:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        intro:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewsItem'
+      required:
+      - date
+      - generatedAt
+      - intro
+      - items
     DayWork:
       type: object
       properties:
@@ -1812,10 +2019,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MarketSkill'
+        newTools:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewsItem'
+          description: News of the month tagged "new tool/skill".
       required:
       - gaps
       - jobAds
       - month
+      - newTools
       - processed
       - seniority
       - skills
@@ -1872,6 +2085,97 @@ components:
       - id
       - lastEvidenceOn
       - name
+    NewsAreaEnum:
+      enum:
+      - ai
+      - business
+      - psychology
+      - geopolitics
+      - science
+      - health
+      type: string
+      description: |-
+        * `ai` - Ai
+        * `business` - Business
+        * `psychology` - Psychology
+        * `geopolitics` - Geopolitics
+        * `science` - Science
+        * `health` - Health
+    NewsItem:
+      type: object
+      description: '`select_related("source")` on lists.'
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceRef'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        published:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        excerpt:
+          type: string
+          readOnly: true
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 40
+          readOnly: true
+        summary:
+          type: string
+          readOnly: true
+        newTool:
+          type: boolean
+          readOnly: true
+        relevance:
+          type: integer
+          readOnly: true
+          nullable: true
+        tagStatus:
+          allOf:
+          - $ref: '#/components/schemas/NewsTagStatusEnum'
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - createdAt
+      - excerpt
+      - id
+      - newTool
+      - published
+      - relevance
+      - source
+      - summary
+      - tagStatus
+      - tags
+      - title
+      - url
+    NewsTagStatusEnum:
+      enum:
+      - queued
+      - tagged
+      - failed
+      - skipped
+      type: string
+      description: |-
+        * `queued` - Queued
+        * `tagged` - Tagged
+        * `failed` - Failed
+        * `skipped` - Skipped
     Objective:
       type: object
       properties:
@@ -2206,6 +2510,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/JobAd'
+    PaginatedNewsItemList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewsItem'
     PaginatedOpportunityList:
       type: object
       required:
@@ -3137,6 +3460,23 @@ components:
           maxLength: 5000
       required:
       - name
+    SourceRef:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        area:
+          allOf:
+          - $ref: '#/components/schemas/NewsAreaEnum'
+          readOnly: true
+      required:
+      - area
+      - id
+      - name
     StaleOpportunity:
       type: object
       properties:
@@ -3264,6 +3604,47 @@ components:
           type: boolean
       required:
       - project
+    TopicCount:
+      type: object
+      properties:
+        tag:
+          type: string
+        count:
+          type: integer
+      required:
+      - count
+      - tag
+    TopicCounts:
+      type: object
+      properties:
+        weeks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopicWeek'
+      required:
+      - weeks
+    TopicWeek:
+      type: object
+      properties:
+        week:
+          type: string
+          description: ISO week, e.g. 2026-W45.
+        start:
+          type: string
+          format: date
+          description: The Monday of the week (Europe/Prague).
+        items:
+          type: integer
+          description: Tagged news items fetched that week.
+        topics:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopicCount'
+      required:
+      - items
+      - start
+      - topics
+      - week
     TypeEnum:
       enum:
       - course

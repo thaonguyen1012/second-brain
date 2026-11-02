@@ -1,0 +1,21 @@
+{
+  "input": {
+    "title": "Introducing Claude Code SDK for Python: build your own coding agents",
+    "source": "Simon Willison",
+    "text": "Anthropic released a Python SDK that exposes the agent loop behind Claude Code, with tools, permissions and subagents. Install it with pip and run an agent against a local repository in a few lines of code."
+  },
+  "expect": {
+    "tags": [
+      "ai",
+      [
+        "ai tools",
+        "agents"
+      ]
+    ],
+    "new_tool": true,
+    "relevance": [
+      4,
+      5
+    ]
+  }
+}

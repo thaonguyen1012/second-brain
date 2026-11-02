@@ -62,6 +62,18 @@ LLM_TIMEOUT_SECONDS = 30
 # 5 s stays under 15 RPM; a 429 leaves the job pending for the next run.
 LLM_MIN_INTERVAL_SECONDS = env.float("LLM_MIN_INTERVAL_SECONDS", default=5.0)
 
+# Morning brief (DECISIONS 5, 9.4 step 6). run_jobs enqueues a feed fetch at each of these hours (Prague) and
+# the brief at BRIEF_BUILD_TIME; the brief waits for queued fetches and tagging until BRIEF_WAIT_UNTIL.
+BRIEF_FETCH_HOURS = env.list("BRIEF_FETCH_HOURS", cast=int, default=[6, 12, 18])
+BRIEF_BUILD_TIME = env.str("BRIEF_BUILD_TIME", default="06:30")
+BRIEF_WAIT_UNTIL = env.str("BRIEF_WAIT_UNTIL", default="09:00")
+# At most this many news items per day go to the LLM (free tier quota and the 5 USD cap); the rest is stored
+# untagged ("skipped") and never enters a brief.
+BRIEF_TAG_DAILY_CAP = env.int("BRIEF_TAG_DAILY_CAP", default=40)
+BRIEF_MAX_ITEMS = env.int("BRIEF_MAX_ITEMS", default=8)  # 5-8 stories (DECISIONS 5)
+BRIEF_MAX_AGE_HOURS = env.int("BRIEF_MAX_AGE_HOURS", default=48)  # older feed entries are not stored
+BRIEF_INTRO = env.bool("BRIEF_INTRO", default=True)  # one LLM call per day for the intro
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -79,6 +91,7 @@ INSTALLED_APPS = [
     "work",
     "opportunities",
     "growth",
+    "brief",
 ]
 
 MIDDLEWARE = [
@@ -165,6 +178,8 @@ SPECTACULAR_SETTINGS = {
         "SkillEvidenceKindEnum": "growth.models.SkillEvidence.Kind",
         "SkillFreshnessEnum": "growth.models.Freshness",
         "SeniorityEnum": "growth.models.JobAd.Seniority",
+        "NewsAreaEnum": "brief.models.Area",
+        "NewsTagStatusEnum": "brief.models.NewsItem.TagStatus",
     },
 }
 

@@ -1,8 +1,9 @@
-"""Job queue on the Job table: enqueue (idempotent), handlers by kind, and the loop used by run_jobs."""
+"""Job queue on the Job table: enqueue (idempotent), handlers by kind, periodic schedulers, and the loop
+used by run_jobs."""
 
 import logging
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from django.db import transaction
@@ -17,7 +18,9 @@ RETRY_DELAY = timedelta(minutes=10)
 STALE_AFTER = timedelta(minutes=30)  # a RUNNING job this old was interrupted (crash, kill)
 
 Handler = Callable[[dict[str, Any]], None]
+Scheduler = Callable[[datetime], None]
 _handlers: dict[str, Handler] = {}
+_schedulers: list[Scheduler] = []
 
 
 class RetryLater(Exception):
@@ -31,6 +34,19 @@ def handler(kind: str) -> Callable[[Handler], Handler]:
         return fn
 
     return register
+
+
+def periodic(fn: Scheduler) -> Scheduler:
+    """Register a function that run_jobs calls (with the current time) before running jobs; it enqueues the
+    jobs that are due, with idempotency keys per slot (e.g. `brief:2026-11-02`), so cron needs one line."""
+    _schedulers.append(fn)
+    return fn
+
+
+def schedule(now: datetime | None = None) -> None:
+    moment = now or timezone.now()
+    for fn in _schedulers:
+        fn(moment)
 
 
 def enqueue(kind: str, key: str, payload: dict[str, Any]) -> Job:

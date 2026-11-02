@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.core.validators import URLValidator
 from rest_framework import serializers
 
+from brief.models import NewsItem
 from growth.models import Skill
 from growth.serializers import FitSkillSerializer
 from inbox.models import InboxEntry
@@ -172,7 +173,9 @@ class EvidenceUpdateSerializer(serializers.Serializer[object]):
 class _Owned(serializers.Serializer[object]):
     """Resolves linked ids against the owner in context["user"]; another user's row answers 400."""
 
-    def owned(self, model: type[InboxEntry] | type[Item] | type[Note], pk: int | None) -> Any:
+    def owned(
+        self, model: type[InboxEntry] | type[Item] | type[Note] | type[NewsItem], pk: int | None
+    ) -> Any:
         if pk is None:
             return None
         user: User = self.context["user"]
@@ -237,6 +240,23 @@ class AttachResultSerializer(serializers.Serializer[object]):
     evidence = EvidenceSerializer()
     created = serializers.BooleanField()
     inboxStatus = serializers.ChoiceField(choices=InboxEntry.Status.choices)
+
+
+class AttachNewsSerializer(_Owned):
+    newsItem = serializers.IntegerField(source="news_item")
+    stance = serializers.ChoiceField(choices=Evidence.Stance.choices)
+    title = serializers.CharField(max_length=300, required=False, allow_blank=True)
+    note = serializers.CharField(max_length=20_000, required=False, allow_blank=True)
+    date = serializers.DateField(required=False)
+
+    def validate_newsItem(self, value: int) -> NewsItem:
+        item: NewsItem = self.owned(NewsItem, value)
+        return item
+
+
+class AttachNewsResultSerializer(serializers.Serializer[object]):
+    evidence = EvidenceSerializer()
+    created = serializers.BooleanField()
 
 
 class WeekOpportunitySerializer(serializers.Serializer[object]):

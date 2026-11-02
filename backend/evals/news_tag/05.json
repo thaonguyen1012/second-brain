@@ -1,0 +1,21 @@
+{
+  "input": {
+    "title": "Doanh nghiệp Việt tăng tốc ứng dụng AI vào chăm sóc khách hàng",
+    "source": "Báo Kinh doanh",
+    "text": "Nhiều ngân hàng và sàn thương mại điện tử tại Việt Nam triển khai chatbot dùng mô hình ngôn ngữ lớn, giảm 30% chi phí tổng đài. Các doanh nghiệp nhỏ vẫn thiếu người biết tích hợp AI vào quy trình."
+  },
+  "expect": {
+    "tags": [
+      "ai",
+      [
+        "business",
+        "automation"
+      ]
+    ],
+    "new_tool": false,
+    "relevance": [
+      3,
+      5
+    ]
+  }
+}

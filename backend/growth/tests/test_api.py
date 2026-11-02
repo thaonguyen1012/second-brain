@@ -265,7 +265,7 @@ def test_market_report_counts_and_gaps(client: Client) -> None:
     ad(stranger(), THIS_MONTH, ["go", "go"])
     with CaptureQueriesContext(connection) as queries:
         response = client.get(f"/api/market/report?month={THIS_MONTH:%Y-%m}")
-    assert response.status_code == 200 and len(queries) <= 4
+    assert response.status_code == 200 and len(queries) <= 5  # + the morning-brief "new tools" query
     data = response.json()
     assert (data["month"], data["jobAds"], data["processed"]) == (f"{THIS_MONTH:%Y-%m}", 4, 3)
     assert data["seniority"] == [{"level": "senior", "count": 2}, {"level": "mid", "count": 1}]

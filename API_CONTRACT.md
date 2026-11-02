@@ -254,6 +254,13 @@ Weekly triage in one action: `POST /api/opportunities/{id}/evidence/inbox`
 the entry evidence and archives it. It answers `201` with `{ "evidence": <evidence>, "created": true,
 "inboxStatus": "archived" }`, or `200` with `created: false` when the entry was already attached.
 
+Morning-brief button ("tin này là bằng chứng cho cơ hội nào"): `POST /api/opportunities/{id}/evidence/news`
+`{ "newsItem": 31, "stance": "supports", "title": "", "note": "", "date": "..." }` (only `newsItem` and `stance`
+required) records the news item (`/api/news`) as `link` evidence: title and URL from the item, `note` defaults to its
+summary, `date` to the day it was published (else fetched). It answers `201` with `{ "evidence": <evidence>,
+"created": true }`, or `200` with `created: false` when this URL is already link evidence of the opportunity. A news
+item that is not the owner's answers `400`, an opportunity that is not the owner's `404`.
+
 ## Skills (`/api/skills`)
 
 A row of the portable skills matrix (DECISIONS 6.5). There is no self-rating: `freshness` is computed from the
@@ -316,7 +323,48 @@ by hand sets the result and skips the job.
 `count` is the number of processed ads of the month asking for the skill (once per ad), `previousCount` the same
 for the previous month. A requested name matches a skill by its normalised name or an alias (shown under the
 skill's name), otherwise `skill` is `null`. `gap` (and the `gaps` subset) = asked for, and no skill or a faded one.
-Sorted by `count`, then name.
+Sorted by `count`, then name. `newTools` lists up to 20 morning-brief news items (shape as in `/api/news`) fetched
+in that month and tagged "new tool/skill", most relevant first; the UI asks the two questions of DECISIONS 6.1 next
+to them.
+
+## Morning brief (`/api/brief`, `/api/news`)
+
+Feeds (`Source`, managed in the admin or with `manage.py brief_sources`) are fetched by background jobs; each new
+item is tagged by the LLM in the background (at most `BRIEF_TAG_DAILY_CAP` a day, the rest stays `skipped`). A news
+item:
+
+```json
+{ "id": 31, "source": { "id": 2, "name": "Simon Willison", "area": "ai" }, "title": "...", "url": "https://...",
+  "published": "2026-11-02T05:10:00Z", "excerpt": "first 500 characters, plain text",
+  "tags": ["ai", "ai tools"], "summary": "một dòng tiếng Việt", "newTool": true, "relevance": 4,
+  "tagStatus": "tagged", "createdAt": "..." }
+```
+
+`area` is one of `ai`, `business`, `psychology`, `geopolitics`, `science`, `health` (DECISIONS 6.2). `tagStatus`:
+`queued` (waiting for the LLM), `tagged`, `failed` (invalid reply; no tags), `skipped` (over the daily cap).
+`published` may be `null`; `relevance` is 1-5 or `null` until tagged.
+
+`GET /api/news` lists items, newest fetched first (cursor pagination). Filters, all optional: `tag` (one topic tag),
+`newTool=true|false`, `date=YYYY-MM-DD` (fetched that day, Europe/Prague), `minRelevance=1..5`, `source` (id),
+`tagStatus`. An invalid filter answers `400`.
+
+`GET /api/brief/today` and `GET /api/brief/{date}` (YYYY-MM-DD) answer the day's brief, or `404` before the 06:30
+job has built it (an impossible date answers `400`):
+
+```json
+200 { "date": "2026-11-02", "intro": "2-3 câu tiếng Việt, or empty", "generatedAt": "...",
+      "items": [ <news item>, ... ] }
+```
+
+`items` (up to 8, in order) are the most relevant tagged items of the last 48 hours not shown in an earlier brief.
+
+`GET /api/news/topics?weeks=8` (1-52, default 8) counts topic tags of the tagged items fetched per ISO week
+(Europe/Prague), oldest week first, the running week last (replaces Exploding Topics, DECISIONS 9.2):
+
+```json
+200 { "weeks": [ { "week": "2026-W45", "start": "2026-11-02", "items": 37,
+                   "topics": [ { "tag": "ai", "count": 21 }, { "tag": "economy", "count": 6 } ] } ] }
+```
 
 ## Mapping to ProgressStore
 

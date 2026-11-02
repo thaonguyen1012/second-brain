@@ -25,6 +25,7 @@ from django.db.models import (
 )
 from django.utils import timezone
 
+from brief.models import NewsItem
 from inbox.models import InboxEntry
 from inbox.services import triage_entry
 from opportunities.models import Evidence, Opportunity, ScoreSnapshot
@@ -186,6 +187,29 @@ def attach_inbox_entry(
         if archive and entry.status != InboxEntry.Status.ARCHIVED:
             triage_entry(entry, {"status": InboxEntry.Status.ARCHIVED})
     return evidence, created
+
+
+def attach_news_item(opportunity: Opportunity, item: NewsItem, data: dict[str, Any]) -> tuple[Evidence, bool]:
+    """The morning-brief button (DECISIONS 9.2): the news item becomes link evidence (title and URL snapshot,
+    dated the day it was published, else fetched). Idempotent per opportunity and URL.
+
+    Returns the evidence and whether it was created.
+    """
+    with transaction.atomic():
+        evidence = Evidence.objects.filter(
+            opportunity=opportunity, kind=Evidence.Kind.LINK, url=item.url
+        ).first()
+        if evidence is not None:
+            return evidence, False
+        fields = {
+            "kind": Evidence.Kind.LINK,
+            "url": item.url,
+            "title": item.title[:300],
+            "note": item.summary,
+            "date": timezone.localdate(item.published or item.created_at),
+            **{k: v for k, v in data.items() if v not in ("", None)},
+        }
+        return add_evidence(opportunity, fields), True
 
 
 def evidence_of(opportunity: Opportunity) -> QuerySet[Evidence]:

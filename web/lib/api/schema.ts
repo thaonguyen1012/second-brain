@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/brief/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The brief of a day (YYYY-MM-DD); 404 when there is none. */
+        get: operations["getBrief"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/brief/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Today's brief (Europe/Prague); 404 until the morning job has built it. */
+        get: operations["getTodayBrief"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/inbox": {
         parameters: {
             query?: never;
@@ -135,6 +169,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listNews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/news/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description How often each topic tag appeared in the fetched news per ISO week, oldest week first. */
+        get: operations["getNewsTopicCounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/opportunities": {
         parameters: {
             query?: never;
@@ -218,6 +285,27 @@ export interface paths {
          *     201 when the evidence is new, 200 when the entry was already attached to this opportunity.
          */
         post: operations["attachInboxEntryAsEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/{id}/evidence/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The morning-brief button: this news item is evidence for this opportunity (kind link).
+         *
+         *     201 when the evidence is new, 200 when the item's URL is already link evidence of this opportunity.
+         */
+        post: operations["attachNewsItemAsEvidence"];
         delete?: never;
         options?: never;
         head?: never;
@@ -603,6 +691,19 @@ export interface components {
             /** @default true */
             archive: boolean;
         };
+        /** @description Resolves linked ids against the owner in context["user"]; another user's row answers 400. */
+        AttachNewsRequest: {
+            newsItem: number;
+            stance: components["schemas"]["EvidenceStanceEnum"];
+            title?: string;
+            note?: string;
+            /** Format: date */
+            date?: string;
+        };
+        AttachNewsResult: {
+            evidence: components["schemas"]["Evidence"];
+            created: boolean;
+        };
         AttachResult: {
             evidence: components["schemas"]["Evidence"];
             created: boolean;
@@ -620,6 +721,14 @@ export interface components {
             /** Format: date */
             weekStart: string;
             carried: boolean;
+        };
+        DailyBrief: {
+            /** Format: date */
+            date: string;
+            intro: string;
+            /** Format: date-time */
+            generatedAt: string;
+            items: components["schemas"]["NewsItem"][];
         };
         DayWork: {
             /** Format: date */
@@ -801,6 +910,8 @@ export interface components {
             seniority: components["schemas"]["SeniorityCount"][];
             skills: components["schemas"]["MarketSkill"][];
             gaps: components["schemas"]["MarketSkill"][];
+            /** @description News of the month tagged "new tool/skill". */
+            newTools: components["schemas"]["NewsItem"][];
         };
         MarketSkill: {
             name: string;
@@ -822,6 +933,42 @@ export interface components {
             /** Format: date */
             lastEvidenceOn: string | null;
         };
+        /**
+         * @description * `ai` - Ai
+         *     * `business` - Business
+         *     * `psychology` - Psychology
+         *     * `geopolitics` - Geopolitics
+         *     * `science` - Science
+         *     * `health` - Health
+         * @enum {string}
+         */
+        NewsAreaEnum: "ai" | "business" | "psychology" | "geopolitics" | "science" | "health";
+        /** @description `select_related("source")` on lists. */
+        NewsItem: {
+            readonly id: number;
+            readonly source: components["schemas"]["SourceRef"];
+            readonly title: string;
+            /** Format: uri */
+            readonly url: string;
+            /** Format: date-time */
+            readonly published: string | null;
+            readonly excerpt: string;
+            readonly tags: string[];
+            readonly summary: string;
+            readonly newTool: boolean;
+            readonly relevance: number | null;
+            readonly tagStatus: components["schemas"]["NewsTagStatusEnum"];
+            /** Format: date-time */
+            readonly createdAt: string;
+        };
+        /**
+         * @description * `queued` - Queued
+         *     * `tagged` - Tagged
+         *     * `failed` - Failed
+         *     * `skipped` - Skipped
+         * @enum {string}
+         */
+        NewsTagStatusEnum: "queued" | "tagged" | "failed" | "skipped";
         Objective: {
             readonly id: number;
             title: string;
@@ -968,6 +1115,19 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["JobAd"][];
+        };
+        PaginatedNewsItemList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["NewsItem"][];
         };
         PaginatedOpportunityList: {
             /**
@@ -1348,6 +1508,11 @@ export interface components {
             aliases?: string[];
             note?: string;
         };
+        SourceRef: {
+            readonly id: number;
+            readonly name: string;
+            readonly area: components["schemas"]["NewsAreaEnum"];
+        };
         StaleOpportunity: {
             id: number;
             title: string;
@@ -1392,6 +1557,25 @@ export interface components {
             objective?: number | null;
             note?: string;
             billable?: boolean;
+        };
+        TopicCount: {
+            tag: string;
+            count: number;
+        };
+        TopicCounts: {
+            weeks: components["schemas"]["TopicWeek"][];
+        };
+        TopicWeek: {
+            /** @description ISO week, e.g. 2026-W45. */
+            week: string;
+            /**
+             * Format: date
+             * @description The Monday of the week (Europe/Prague).
+             */
+            start: string;
+            /** @description Tagged news items fetched that week. */
+            items: number;
+            topics: components["schemas"]["TopicCount"][];
         };
         /**
          * @description * `course` - Course
@@ -1456,6 +1640,46 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getBrief: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyBrief"];
+                };
+            };
+        };
+    };
+    getTodayBrief: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyBrief"];
+                };
+            };
+        };
+    };
     listInbox: {
         parameters: {
             query?: {
@@ -1718,6 +1942,62 @@ export interface operations {
             };
         };
     };
+    listNews: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                /** @description YYYY-MM-DD: fetched that day (Europe/Prague). */
+                date?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description 1-5. */
+                minRelevance?: number;
+                /** @description true: only "new tool/skill" items. */
+                newTool?: boolean;
+                source?: number;
+                /** @description Only items with this topic tag. */
+                tag?: string;
+                tagStatus?: "failed" | "queued" | "skipped" | "tagged";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedNewsItemList"];
+                };
+            };
+        };
+    };
+    getNewsTopicCounts: {
+        parameters: {
+            query?: {
+                /** @description 1-52, default 8. */
+                weeks?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopicCounts"];
+                };
+            };
+        };
+    };
     listOpportunities: {
         parameters: {
             query?: {
@@ -1894,6 +2174,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttachResult"];
+                };
+            };
+        };
+    };
+    attachNewsItemAsEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachNewsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachNewsResult"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachNewsResult"];
                 };
             };
         };
