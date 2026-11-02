@@ -43,6 +43,10 @@ class NewsItem(models.Model):
     when the daily cap (BRIEF_TAG_DAILY_CAP) was reached, `failed` when the reply was invalid (`error`).
     """
 
+    class Feedback(models.TextChoices):
+        USEFUL = "useful"
+        NOT_USEFUL = "not_useful"
+
     class TagStatus(models.TextChoices):
         QUEUED = "queued"
         TAGGED = "tagged"
@@ -63,6 +67,10 @@ class NewsItem(models.Model):
     tag_status = models.CharField(max_length=10, choices=TagStatus.choices, default=TagStatus.QUEUED)
     tagged_at = models.DateTimeField(null=True, blank=True)
     error = models.CharField(max_length=500, blank=True)
+    # Alex's "useful / not useful" button (DECISIONS 5, 10.3); "" = not rated. Rated items feed the golden set
+    # (`manage.py export_brief_feedback`).
+    feedback = models.CharField(max_length=12, choices=Feedback.choices, blank=True)
+    feedback_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)  # when it was fetched
     updated_at = models.DateTimeField(auto_now=True)
 

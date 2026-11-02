@@ -34,6 +34,7 @@ export const opportunitiesApi = {
   addEvidence: (id: number, body: ApiEvidenceCreate) => send<ApiEvidence>('POST', `${base(id)}/evidence`, body),
   updateEvidence: (id: number, evidenceId: number, body: ApiEvidencePatch) =>
     send<ApiEvidence>('PATCH', `${base(id)}/evidence/${evidenceId}`, body),
+  deleteEvidence: (id: number, evidenceId: number) => send<void>('DELETE', `${base(id)}/evidence/${evidenceId}`),
 
   /** Skills by name for the "hợp với mình" picker (one page, up to 200). */
   listSkills: (query: Query<'listSkills'> = { limit: 200 }) => api.page<ApiSkill>(withQuery('/api/skills', query)),

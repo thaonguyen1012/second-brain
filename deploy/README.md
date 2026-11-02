@@ -45,6 +45,48 @@ docker compose -f deploy/docker-compose.prod.yml exec django uv run --no-sync py
 
 The web image is built with `NEXT_PUBLIC_PROGRESS_STORE=api` (inlined at build time).
 
+## Laptop: daily use without Docker
+
+Prerequisites: Homebrew Postgres 16 running, `backend/.env` filled in (see `backend/.env.example`), and the morning
+brief feeds added once:
+
+```
+cd backend && uv run python manage.py brief_sources seed     # the feeds DECISIONS 6.2 names; `list` shows them
+```
+
+* `make dev`: the whole app on one origin, like production. It builds the web app with
+  `NEXT_PUBLIC_PROGRESS_STORE=api` (skip with `DEV_BUILD=0`), runs `migrate`, then starts Django on :8000, a Next
+  production server on :3100 (`DEV_WEB_PORT`), the dev proxy on :8080 and the jobs loop. Open
+  http://localhost:8080. It refuses to start when :8000, :8080 or :3100 is taken and never touches :3000 (`next
+  dev`). Ctrl-C stops all four.
+* `make jobs`: only the jobs loop (`manage.py run_jobs` every 300 s, `JOBS_INTERVAL`), for when Django runs elsewhere.
+* `GET /api/status` (or http://localhost:8080/api/status) shows this month's LLM cost against the budget, the last
+  morning brief and the jobs waiting or failed.
+* `manage.py export --out <dir>` writes the notes as markdown and everything else as JSON (DECISIONS 4.7);
+  `manage.py export_brief_feedback` adds the rated news items to the `eval brief` golden set.
+
+### Background jobs on the laptop (launchd)
+
+`deploy/launchd/com.example.brain.jobs.plist` runs `manage.py run_jobs` every 300 s while Alex is logged in, without
+a terminal (the feeds at their hours, the 06:30 brief, tagging). It is not installed; to install it:
+
+```
+cp deploy/launchd/com.example.brain.jobs.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.example.brain.jobs.plist
+launchctl kickstart -k gui/$(id -u)/com.example.brain.jobs      # run once now
+tail -f ~/Library/Logs/com.example.brain.jobs.log
+```
+
+To stop it: `launchctl bootout gui/$(id -u)/com.example.brain.jobs` (then delete the copied file).
+
+* The paths inside are absolute (repo, `~/.local/bin/uv`, log file); edit the copy if the repo or uv moves.
+* The repo is under `~/Desktop`, which macOS protects: if the log shows "Operation not permitted", give `uv`
+  (`~/.local/bin/uv`) Full Disk Access in System Settings > Privacy & Security, or move the repo out of Desktop.
+* Do not run `make jobs` / `make dev` at the same time as the agent: it is safe (jobs are claimed with row locks)
+  but doubles the free-tier LLM request rate.
+* A sleeping laptop runs nothing; launchd runs the job once on wake, and the 06:30 brief is built on the first run
+  after 06:30.
+
 ## Not validated yet
 
 The laptop has no Docker or nginx, so the Dockerfiles, `docker-compose.prod.yml` and `nginx/` have not been

@@ -55,7 +55,7 @@ class TimeEntry(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="time_entries")
     project = models.ForeignKey(
         Item,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,  # deleting a project never drops logged hours (library delete_item)
         related_name="time_entries",
         limit_choices_to={"type": Item.Type.PROJECT},
     )

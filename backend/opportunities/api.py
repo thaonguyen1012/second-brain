@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from core.authentication import request_user
 from core.pagination import NewestFirstCursor
+from core.services.search import normalize_query
 from growth.models import Skill
 from growth.services import with_freshness
 from opportunities import services
@@ -54,6 +55,7 @@ def _own(request: Request, pk: int) -> Opportunity:
         parameters=[
             OpenApiParameter("decision", str, enum=Opportunity.Decision.values),
             OpenApiParameter("stale", bool, description="true: only stale ones; false: only fresh ones."),
+            OpenApiParameter("q", str, description="Case-insensitive match in title or hypothesis."),
         ],
     )
 )
@@ -71,6 +73,8 @@ class OpportunityListView(generics.ListAPIView[Opportunity]):
             if stale not in BOOLEAN:
                 raise ValidationError({"stale": "true or false."})
             rows = rows.filter(Q(stale=BOOLEAN[stale]))
+        if query := normalize_query(self.request.query_params.get("q", "")):
+            rows = rows.filter(Q(title__icontains=query) | Q(hypothesis__icontains=query))
         return rows
 
     @extend_schema(
@@ -144,19 +148,28 @@ class EvidenceListView(APIView):
 
 
 class EvidenceView(APIView):
+    def _evidence(self, request: Request, pk: int, evidence_id: int) -> Evidence:
+        return get_object_or_404(
+            Evidence, pk=evidence_id, opportunity_id=pk, opportunity__user=request_user(request)
+        )
+
     @extend_schema(
         request=EvidenceUpdateSerializer,
         responses=EvidenceSerializer,
         operation_id="updateOpportunityEvidence",
     )
     def patch(self, request: Request, pk: int, evidence_id: int) -> Response:
-        evidence = get_object_or_404(
-            Evidence, pk=evidence_id, opportunity_id=pk, opportunity__user=request_user(request)
-        )
+        evidence = self._evidence(request, pk, evidence_id)
         body = EvidenceUpdateSerializer(data=request.data, partial=True)
         body.is_valid(raise_exception=True)
         evidence = services.update_evidence(evidence, dict(body.validated_data))
         return Response(EvidenceSerializer(evidence).data)
+
+    @extend_schema(responses={204: None}, operation_id="deleteOpportunityEvidence")
+    def delete(self, request: Request, pk: int, evidence_id: int) -> Response:
+        """The linked inbox entry, Item or Note stays; "stale" is computed again from what is left."""
+        self._evidence(request, pk, evidence_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AttachInboxView(APIView):

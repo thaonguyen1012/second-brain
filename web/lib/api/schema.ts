@@ -32,7 +32,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** @description The linked project Item and skills stay. */
+        delete: operations["deleteAchievement"];
         options?: never;
         head?: never;
         patch: operations["updateAchievement"];
@@ -98,7 +99,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** @description Evidence made from it keeps its title snapshot. */
+        delete: operations["deleteInboxEntry"];
         options?: never;
         head?: never;
         patch: operations["updateInboxEntry"];
@@ -130,7 +132,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * @description Links to it are cleared (notes, inbox, evidence, achievements); 409 for a project with time
+         *     entries.
+         */
+        delete: operations["deleteItem"];
         options?: never;
         head?: never;
         patch: operations["updateItem"];
@@ -163,7 +169,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** @description The market report counts without it; a pending extraction job finds nothing and stops. */
+        delete: operations["deleteJobAd"];
         options?: never;
         head?: never;
         /** @description Changed title, company or text re-runs the extraction; `skills` corrects it by hand. */
@@ -219,6 +226,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/news/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description The "useful / not useful" button: `feedback` is useful, not_useful or null (clears the rating). */
+        patch: operations["rateNewsItem"];
+        trace?: never;
+    };
     "/api/news/topics": {
         parameters: {
             query?: never;
@@ -262,7 +286,8 @@ export interface paths {
         get: operations["getNote"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** @description Evidence that pointed at the note keeps its title snapshot. */
+        delete: operations["deleteNote"];
         options?: never;
         head?: never;
         patch: operations["updateNote"];
@@ -330,7 +355,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** @description The linked inbox entry, Item or Note stays; "stale" is computed again from what is left. */
+        delete: operations["deleteOpportunityEvidence"];
         options?: never;
         head?: never;
         patch: operations["updateOpportunityEvidence"];
@@ -421,7 +447,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["deletePrediction"];
         options?: never;
         head?: never;
         /** @description Re-score with `outcome` (right, wrong, partial; open again clears `scoredAt`) and `note`. */
@@ -575,6 +601,26 @@ export interface paths {
         patch: operations["updateSkillEvidence"];
         trace?: never;
     };
+    "/api/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description This month's LLM cost at paid prices vs the budget, calls this month, the last morning brief and
+         *     the background jobs waiting or failed, by kind.
+         */
+        get: operations["getStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/time-entries": {
         parameters: {
             query?: never;
@@ -719,7 +765,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * @description Objectives carried from it keep their title (carriedFrom becomes null); time entries linked to it
+         *     stay and count as other work.
+         */
+        delete: operations["deleteObjective"];
         options?: never;
         head?: never;
         patch: operations["updateObjective"];
@@ -868,6 +918,10 @@ export interface components {
             minutesForObjectives: number;
             minutesOther: number;
         };
+        /** @description DRF's error body: `{"detail": "..."}`. */
+        Error: {
+            detail: string;
+        };
         Evidence: {
             readonly id: number;
             readonly kind: components["schemas"]["EvidenceKindEnum"];
@@ -975,6 +1029,8 @@ export interface components {
             startedAt?: string | null;
             /** Format: date-time */
             finishedAt?: string | null;
+            /** @default 0 */
+            readonly noteCount: number;
         };
         /** @description Just enough of an Item to label a link to it (badges on notes), so lists never need every Item. */
         ItemLabel: {
@@ -1035,12 +1091,38 @@ export interface components {
             month?: string;
             skills?: string[];
         };
+        JobCount: {
+            kind: string;
+            count: number;
+        };
+        JobCounts: {
+            pending: components["schemas"]["JobCount"][];
+            failed: components["schemas"]["JobCount"][];
+        };
         LastVisited: {
             bookSlug: string;
             pageSlug: string;
             title?: string;
             /** Format: date-time */
             at: string;
+        };
+        LlmStatus: {
+            provider: string;
+            model: string;
+            /** @description Calls cost 0 on the provider's free tier. */
+            freeTier: boolean;
+            /** Format: date-time */
+            monthStart: string;
+            /**
+             * Format: double
+             * @description This month at paid-tier prices: what the budget guard compares with budgetUsd.
+             */
+            monthCostUsd: number;
+            /** Format: double */
+            budgetUsd: number;
+            /** @description LLM calls recorded this month, refused and failed ones too. */
+            calls: number;
+            failedCalls: number;
         };
         MarketReport: {
             month: string;
@@ -1082,6 +1164,12 @@ export interface components {
          * @enum {string}
          */
         NewsAreaEnum: "ai" | "business" | "psychology" | "geopolitics" | "science" | "health";
+        /**
+         * @description * `useful` - Useful
+         *     * `not_useful` - Not Useful
+         * @enum {string}
+         */
+        NewsFeedbackEnum: "useful" | "not_useful";
         /** @description `select_related("source")` on lists. */
         NewsItem: {
             readonly id: number;
@@ -1099,6 +1187,13 @@ export interface components {
             readonly tagStatus: components["schemas"]["NewsTagStatusEnum"];
             /** Format: date-time */
             readonly createdAt: string;
+            /**
+             * @description null: not rated.
+             *
+             *     * `useful` - Useful
+             *     * `not_useful` - Not Useful
+             */
+            readonly feedback: (components["schemas"]["NewsFeedbackEnum"] | components["schemas"]["NullEnum"]) | null;
         };
         /**
          * @description * `queued` - Queued
@@ -1129,6 +1224,8 @@ export interface components {
             markdown: string;
             items?: number[];
         };
+        /** @enum {unknown} */
+        NullEnum: null;
         Objective: {
             readonly id: number;
             title: string;
@@ -1439,6 +1536,9 @@ export interface components {
             text?: string;
             month?: string;
             skills?: string[];
+        };
+        PatchedNewsFeedbackRequest: {
+            feedback?: (components["schemas"]["NewsFeedbackEnum"] | components["schemas"]["NullEnum"]) | null;
         };
         /**
          * @description Create (markdown required) or partial update; `items` replaces the links with ids of the owner's Items
@@ -1794,6 +1894,12 @@ export interface components {
             /** Format: date-time */
             lastEvidenceAt: string | null;
         };
+        Status: {
+            llm: components["schemas"]["LlmStatus"];
+            /** Format: date */
+            lastBriefDate: string | null;
+            jobs: components["schemas"]["JobCounts"];
+        };
         TimeEntry: {
             readonly id: number;
             readonly project: number;
@@ -1963,6 +2069,26 @@ export interface operations {
             };
         };
     };
+    deleteAchievement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     updateAchievement: {
         parameters: {
             query?: never;
@@ -2035,6 +2161,8 @@ export interface operations {
                 cursor?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
+                /** @description Case-insensitive match in the OG title, text or URL. */
+                q?: string;
                 status?: "archived" | "inbox" | "later";
             };
             header?: never;
@@ -2076,6 +2204,26 @@ export interface operations {
             };
         };
     };
+    deleteInboxEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     updateInboxEntry: {
         parameters: {
             query?: never;
@@ -2108,6 +2256,8 @@ export interface operations {
                 cursor?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
+                /** @description Case-insensitive match in title or source, or one exact tag. */
+                q?: string;
                 status?: "active" | "done" | "dropped" | "planned";
                 type?: "article" | "book" | "course" | "film" | "project";
             };
@@ -2146,6 +2296,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Item"];
+                };
+            };
+        };
+    };
+    deleteItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
         };
@@ -2221,6 +2399,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["JobAd"];
                 };
+            };
+        };
+    };
+    deleteJobAd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2324,6 +2522,31 @@ export interface operations {
             };
         };
     };
+    rateNewsItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedNewsFeedbackRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsItem"];
+                };
+            };
+        };
+    };
     getNewsTopicCounts: {
         parameters: {
             query?: {
@@ -2418,6 +2641,26 @@ export interface operations {
             };
         };
     };
+    deleteNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     updateNote: {
         parameters: {
             query?: never;
@@ -2451,6 +2694,8 @@ export interface operations {
                 decision?: "build" | "drop" | "keep" | "open";
                 /** @description Number of results to return per page. */
                 limit?: number;
+                /** @description Case-insensitive match in title or hypothesis. */
+                q?: string;
                 /** @description true: only stale ones; false: only fresh ones. */
                 stale?: boolean;
             };
@@ -2561,6 +2806,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Evidence"];
                 };
+            };
+        };
+    };
+    deleteOpportunityEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2728,6 +2994,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Prediction"];
                 };
+            };
+        };
+    };
+    deletePrediction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2927,6 +3213,8 @@ export interface operations {
                 freshness?: "aging" | "faded" | "fresh";
                 /** @description Number of results to return per page. */
                 limit?: number;
+                /** @description Case-insensitive match in the name or an alias. */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -3081,6 +3369,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SkillEvidence"];
+                };
+            };
+        };
+    };
+    getStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
                 };
             };
         };
@@ -3313,6 +3620,28 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Objective"];
                 };
+            };
+        };
+    };
+    deleteObjective: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                /** @description The week's Monday, YYYY-MM-DD. */
+                start: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

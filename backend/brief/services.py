@@ -197,6 +197,33 @@ def news(user: User | int) -> QuerySet[NewsItem]:
     return NewsItem.objects.filter(user=user).select_related("source")
 
 
+def set_feedback(item: NewsItem, feedback: str | None) -> NewsItem:
+    """Rate an item (useful / not_useful) or clear the rating with None; `feedback_at` follows."""
+    item.feedback = feedback or ""
+    item.feedback_at = timezone.now() if feedback else None
+    item.save(update_fields=["feedback", "feedback_at", "updated_at"])
+    return item
+
+
+def rated(user: User | int) -> QuerySet[NewsItem]:
+    """Items Alex rated, oldest rating first (the golden-set export)."""
+    return news(user).exclude(feedback="").order_by("feedback_at", "id")
+
+
+# What a rating means for `eval brief` (expect.relevance, 1-5): useful items must score high, the rest low.
+FEEDBACK_RELEVANCE = {NewsItem.Feedback.USEFUL: [3, 5], NewsItem.Feedback.NOT_USEFUL: [1, 2]}
+
+
+def golden_case(item: NewsItem) -> dict[str, Any]:
+    """A golden-set case in the format of evals/news_tag: only the title and the first 500 characters (what
+    the LLM saw), never anything else of Alex's."""
+    return {
+        "input": {"title": item.title, "source": item.source.name, "text": item.excerpt[:500]},
+        "expect": {"relevance": FEEDBACK_RELEVANCE[NewsItem.Feedback(item.feedback)]},
+        "feedback": item.feedback,
+    }
+
+
 def brief_of(user: User | int, day: dt.date) -> DailyBrief | None:
     entries = Prefetch(
         "entries",

@@ -67,17 +67,49 @@ List endpoints return the newest rows first, 50 per page (`?limit=` up to 200):
 
 Follow `next` until it is `null`. Unknown ids answer `404`; validation errors answer `400` with field messages.
 
+Search: `?q=` on `/api/items`, `/api/inbox`, `/api/opportunities`, `/api/skills` and `/api/notes` is a
+case-insensitive substring match (spaces collapsed, at most 200 characters) on the fields named in each section;
+it combines with the other filters. Only `/api/notes` searches note markdown.
+
+## Deleting
+
+`DELETE` answers `204` with no body, `404` for an unknown id or a row of another owner, and needs the CSRF header
+like every unsafe method. What points at the deleted row is kept and unlinked: the linked field becomes `null`
+(evidence keeps its `title` snapshot), notes lose the Item from `items`. Deletable: `/api/items/{id}`,
+`/api/notes/{id}`, `/api/inbox/{id}`, `/api/weeks/{start}/objectives/{id}`, `/api/time-entries/{id}`,
+`/api/opportunities/{id}/evidence/{evidenceId}`, `/api/skills/{id}/evidence/{evidenceId}`, `/api/achievements/{id}`,
+`/api/predictions/{id}`, `/api/market/job-ads/{id}`.
+
+## GET /api/status
+
+```json
+200 { "llm": { "provider": "gemini", "model": "gemini-3.1-flash-lite", "freeTier": true,
+               "monthStart": "...", "monthCostUsd": 0.012345, "budgetUsd": 5.0,
+               "calls": 42, "failedCalls": 3 },
+      "lastBriefDate": "2026-11-02",
+      "jobs": { "pending": [ { "kind": "tag", "count": 2 } ], "failed": [ { "kind": "unfurl", "count": 1 } ] } }
+```
+
+`monthCostUsd` is the cost since `monthStart` (the first of the month, UTC, like the guard) at paid-tier prices:
+what the `LLM_MONTHLY_BUDGET_USD` guard compares, even on the free tier. `calls` counts every LLM call recorded
+since then, refused and failed ones too. `lastBriefDate` is the owner's newest DailyBrief (`null` when none). `jobs` counts background jobs waiting (`pending`) and given up
+(`failed`) by kind. No keys, payloads or error texts.
+
 ## Items (`/api/items`)
 
-`GET /api/items?type=book&status=active` lists items (both filters optional). `POST /api/items` creates one,
-`PATCH /api/items/{id}` changes any writable field.
+`GET /api/items?type=book&status=active&q=deep` lists items (all filters optional; `q` matches title or source,
+or is exactly one of the tags). `POST /api/items` creates one, `PATCH /api/items/{id}` changes any writable field.
+`DELETE /api/items/{id}` (`204`) unlinks notes, inbox entries, evidence and achievements and removes the project's
+details; a project with time entries answers `409` `{ "detail": "..." }` (delete its time entries first).
 
 ```json
 request  { "type": "book", "title": "Deep Work", "tags": ["Focus"], "source": "Cal Newport", "rating": 9 }
 response 201 { "id": 1, "type": "book", "status": "planned", "title": "Deep Work", "tags": ["focus"],
                "source": "Cal Newport", "rating": 9, "createdAt": "...", "updatedAt": "...",
-               "startedAt": null, "finishedAt": null }
+               "startedAt": null, "finishedAt": null, "noteCount": 0 }
 ```
+
+`noteCount` (read only) is the number of notes linked to the Item.
 
 `type`: course, book, film, article, project. `status`: planned, active, done, dropped. Tags are lowercased and
 deduplicated; `rating` is 1-10 or null.
@@ -96,7 +128,7 @@ response 201 { "id": 3, "title": "Deep Work: 3 ý chính", "markdown": "# ...", 
 
 `GET /api/notes?q=focus&item=1` lists notes (cursor pagination, newest first; both filters optional): `q` matches
 title or markdown (case-insensitive substring), `item` keeps notes linked to that Item id. `GET /api/notes/{id}`
-reads one; `PATCH /api/notes/{id}` accepts `title`, `markdown` and `items` (replaces the links; `[]` removes them).
+reads one, `DELETE /api/notes/{id}` removes it (`204`); `PATCH /api/notes/{id}` accepts `title`, `markdown` and `items` (replaces the links; `[]` removes them).
 `items` are sorted ids; an Item that is not the owner's answers `400`. Markdown is up to 200,000 characters.
 `itemLabels` (read only) gives the id, title and type of each linked Item, so a list can label its links without
 loading every Item.
@@ -114,7 +146,9 @@ response 201 { "id": 7, "url": "https://example.com/post", "text": "", "status":
                "suggestedTags": [], "summary": "", "suggestedDestination": "" }
 ```
 
-Only `http` and `https` URLs are accepted. `GET /api/inbox?status=inbox` lists entries. `PATCH /api/inbox/{id}`
+Only `http` and `https` URLs are accepted. `GET /api/inbox?status=inbox&q=bakery` lists entries (`q` matches
+`ogTitle`, `text` or `url`). `DELETE /api/inbox/{id}` (`204`) removes an entry and its thumbnail file when no other
+entry uses it; evidence made from it keeps its title. `PATCH /api/inbox/{id}`
 records the weekly triage and accepts only `{ "status": "inbox|later|archived", "item": <item id>|null }`.
 `archivedAt` is set when the status becomes archived, kept while it stays
 archived and cleared (`null`) when it leaves the archive.
@@ -147,7 +181,9 @@ response 200 <week>
 
 An id that is not an open objective of that earlier week answers `400`.
 `POST /api/weeks/{start}/objectives` `{ "title": "..." }` adds an objective at the end (`201`);
-`PATCH /api/weeks/{start}/objectives/{id}` accepts `title`, `status` (open, done, dropped) and `position`.
+`PATCH /api/weeks/{start}/objectives/{id}` accepts `title`, `status` (open, done, dropped) and `position`;
+`DELETE /api/weeks/{start}/objectives/{id}` (`204`) removes it: objectives carried from it keep their title with
+`carriedFrom: null`, time entries linked to it lose the link.
 3–5 objectives per week is a guideline shown in the UI, not enforced.
 
 Review. `PATCH /api/weeks/{start}/review` saves any of `reviewWin`, `reviewDistraction`, `reviewLearned`,
@@ -272,7 +308,9 @@ needs `inboxEntry`, `item` needs `item`, `note` needs `libraryNote` (title defau
 `conversation` (a real talk, The Mom Test) needs `title`; `link` (an external source, later a morning-brief story)
 needs `title` and `url`. `date` defaults to today. A linked row that is not the owner's, a link that does not match
 the kind, or an inbox entry already attached to this opportunity answers `400`.
-`PATCH /api/opportunities/{id}/evidence/{evidenceId}` accepts `stance`, `title`, `url`, `note`, `date`.
+`PATCH /api/opportunities/{id}/evidence/{evidenceId}` accepts `stance`, `title`, `url`, `note`, `date`;
+`DELETE /api/opportunities/{id}/evidence/{evidenceId}` (`204`) removes it (the linked row stays; `stale` is computed
+again).
 
 Weekly triage in one action: `POST /api/opportunities/{id}/evidence/inbox`
 `{ "inboxEntry": 7, "stance": "supports", "note": "", "title": "", "date": "...", "archive": true }` (only
@@ -298,7 +336,8 @@ evidence). Market matching uses the name and `aliases`, both lowercased with sin
       "lastEvidenceOn": "2026-07-10", "evidenceCount": 2, "createdAt": "...", "updatedAt": "..." }
 ```
 
-`GET /api/skills?freshness=faded` lists skills by name (cursor pagination, `limit` up to 200; filter optional).
+`GET /api/skills?freshness=faded&q=sql` lists skills by name (cursor pagination, `limit` up to 200; filters
+optional, `q` matches the name or an alias).
 `GET /api/skills/{id}` adds `evidence` (newest `date` first). `POST /api/skills` (`201`, answers the detail) takes
 `name` (required), `aliases`, `note`; `PATCH /api/skills/{id}` the same fields (`aliases` replaces the list). A name
 or alias already used by another skill of the owner answers `400`.
@@ -333,6 +372,7 @@ response 201 { "id": 2, "date": "2026-10-28", "title": "Ship checkout", "descrip
 Monday; another weekday `400`) keeps that week's dates. `PATCH /api/achievements/{id}` accepts the same fields;
 `skills` replaces the links, `project: null` removes it. `project` must be an Item of type project of the owner and
 `skills` the owner's skill ids (skills sorted by name in the answer), otherwise `400`.
+`DELETE /api/achievements/{id}` (`204`) removes the line; the project Item and skills stay.
 
 ## Predictions (`/api/predictions`)
 
@@ -350,7 +390,7 @@ day), `confidence` is 1-10 or null, `outcome` is open, right, wrong or partial. 
 `400`. `GET /api/predictions` lists them (cursor pagination, newest first); `?due=true` keeps the open ones whose
 `checkOn` is today or earlier (Europe/Prague), `?due=false` the others, `?outcome=` filters by outcome.
 `PATCH /api/predictions/{id}` accepts the same fields: re-scoring sets `outcome` and `note`; `scoredAt` is set when
-the outcome leaves `open` and cleared when it goes back.
+the outcome leaves `open` and cleared when it goes back. `DELETE /api/predictions/{id}` answers `204`.
 
 ## Market (`/api/market`)
 
@@ -368,7 +408,8 @@ Each month the owner pastes 5 to 10 job ads for the target roles (DECISIONS 9.5)
 for the skills (up to 15 short lowercase names) and `seniority` (junior, mid, senior, lead, unknown). An invalid
 reply leaves `processed: false` with `error`; a rate limit retries on a later run. `PATCH /api/market/job-ads/{id}`
 accepts the same fields; changed `title`, `company` or `text` clears the result and extracts again, `skills` sent
-by hand sets the result and skips the job.
+by hand sets the result and skips the job. `DELETE /api/market/job-ads/{id}` (`204`) removes the ad from the
+report; a pending extraction finds nothing and stops.
 
 `GET /api/market/report?month=2026-11` (default this month):
 
@@ -398,7 +439,7 @@ item:
 { "id": 31, "source": { "id": 2, "name": "Simon Willison", "area": "ai" }, "title": "...", "url": "https://...",
   "published": "2026-11-02T05:10:00Z", "excerpt": "first 500 characters, plain text",
   "tags": ["ai", "ai tools"], "summary": "một dòng tiếng Việt", "newTool": true, "relevance": 4,
-  "tagStatus": "tagged", "createdAt": "..." }
+  "tagStatus": "tagged", "createdAt": "...", "feedback": null }
 ```
 
 `area` is one of `ai`, `business`, `psychology`, `geopolitics`, `science`, `health` (DECISIONS 6.2). `tagStatus`:
@@ -418,6 +459,12 @@ job has built it (an impossible date answers `400`):
 ```
 
 `items` (up to 8, in order) are the most relevant tagged items of the last 48 hours not shown in an earlier brief.
+
+Feedback (the "hữu ích / không" button, DECISIONS 5, 10.3): `PATCH /api/news/{id}` `{ "feedback": "useful" }`
+(`useful`, `not_useful`, or `null` to clear; the field is required) answers the news item. Every news item, in lists
+and briefs, carries `feedback` (`null` when not rated). Another owner's item answers `404`.
+`manage.py export_brief_feedback` writes the rated items into `backend/evals/news_tag/fb-<id>.json` for
+`manage.py eval brief` (title, source, first 500 characters; expected relevance 3-5 for useful, 1-2 for not useful).
 
 `GET /api/news/topics?weeks=8` (1-52, default 8) counts topic tags of the tagged items fetched per ISO week
 (Europe/Prague), oldest week first, the running week last (replaces Exploding Topics, DECISIONS 9.2):

@@ -15,6 +15,7 @@ export const notesApi = {
   create: (body: ApiNoteCreate) => request<ApiNote>('POST', '/api/notes', body),
   /** `items` replaces the links (`[]` removes them). */
   update: (id: number, body: ApiNotePatch) => request<ApiNote>('PATCH', `/api/notes/${id}`, body),
+  delete: (id: number) => request<void>('DELETE', `/api/notes/${id}`),
 };
 
 /** Upper bound for loadAllItems(): 10 pages of 200 (the backend's max page size). */

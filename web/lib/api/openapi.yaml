@@ -82,6 +82,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Achievement'
           description: ''
+    delete:
+      operationId: deleteAchievement
+      description: The linked project Item and skills stay.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - achievements
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/brief/{day}:
     get:
       operationId: getBrief
@@ -136,6 +152,11 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive match in the OG title, text or URL.
       - in: query
         name: status
         schema:
@@ -198,6 +219,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/InboxEntry'
           description: ''
+    delete:
+      operationId: deleteInboxEntry
+      description: Evidence made from it keeps its title snapshot.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - inbox
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/items:
     get:
       operationId: listItems
@@ -214,6 +251,11 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive match in title or source, or one exact tag.
       - in: query
         name: status
         schema:
@@ -287,6 +329,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Item'
+          description: ''
+    delete:
+      operationId: deleteItem
+      description: |-
+        Links to it are cleared (notes, inbox, evidence, achievements); 409 for a project with time
+        entries.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - items
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
           description: ''
   /api/market/job-ads:
     get:
@@ -368,6 +434,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/JobAd'
           description: ''
+    delete:
+      operationId: deleteJobAd
+      description: The market report counts without it; a pending extraction job finds
+        nothing and stops.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - market
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/market/report:
     get:
       operationId: getMarketReport
@@ -463,6 +546,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedNewsItemList'
+          description: ''
+  /api/news/{id}:
+    patch:
+      operationId: rateNewsItem
+      description: 'The "useful / not useful" button: `feedback` is useful, not_useful
+        or null (clears the rating).'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - news
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNewsFeedbackRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewsItem'
           description: ''
   /api/news/topics:
     get:
@@ -586,6 +696,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Note'
           description: ''
+    delete:
+      operationId: deleteNote
+      description: Evidence that pointed at the note keeps its title snapshot.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - notes
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/opportunities:
     get:
       operationId: listOpportunities
@@ -611,6 +737,11 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive match in title or hypothesis.
       - in: query
         name: stale
         schema:
@@ -752,6 +883,28 @@ paths:
               schema:
                 $ref: '#/components/schemas/Evidence'
           description: ''
+    delete:
+      operationId: deleteOpportunityEvidence
+      description: The linked inbox entry, Item or Note stays; "stale" is computed
+        again from what is left.
+      parameters:
+      - in: path
+        name: evidence_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - opportunities
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/opportunities/{id}/evidence/inbox:
     post:
       operationId: attachInboxEntryAsEvidence
@@ -940,6 +1093,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/Prediction'
           description: ''
+    delete:
+      operationId: deletePrediction
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - predictions
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/progress:
     get:
       operationId: getProgress
@@ -1130,6 +1298,11 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive match in the name or an alias.
       tags:
       - skills
       security:
@@ -1283,6 +1456,23 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/status:
+    get:
+      operationId: getStatus
+      description: |-
+        This month's LLM cost at paid prices vs the budget, calls this month, the last morning brief and
+        the background jobs waiting or failed, by kind.
+      tags:
+      - status
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+          description: ''
   /api/time-entries:
     get:
       operationId: listTimeEntries
@@ -1550,6 +1740,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/Objective'
           description: ''
+    delete:
+      operationId: deleteObjective
+      description: |-
+        Objectives carried from it keep their title (carriedFrom becomes null); time entries linked to it
+        stay and count as other work.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: start
+        schema:
+          type: string
+          format: date
+        description: The week's Monday, YYYY-MM-DD.
+        required: true
+      tags:
+      - weeks
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/weeks/{start}/plan:
     get:
       operationId: getWeekPlan
@@ -1891,6 +2106,14 @@ components:
       - minutesForObjectives
       - minutesOther
       - pagesDone
+    Error:
+      type: object
+      description: 'DRF''s error body: `{"detail": "..."}`.'
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     Evidence:
       type: object
       properties:
@@ -2195,9 +2418,14 @@ components:
           type: string
           format: date-time
           nullable: true
+        noteCount:
+          type: integer
+          readOnly: true
+          default: 0
       required:
       - createdAt
       - id
+      - noteCount
       - title
       - type
       - updatedAt
@@ -2383,6 +2611,30 @@ components:
       required:
       - text
       - title
+    JobCount:
+      type: object
+      properties:
+        kind:
+          type: string
+        count:
+          type: integer
+      required:
+      - count
+      - kind
+    JobCounts:
+      type: object
+      properties:
+        pending:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobCount'
+        failed:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobCount'
+      required:
+      - failed
+      - pending
     LastVisited:
       type: object
       properties:
@@ -2399,6 +2651,49 @@ components:
       - at
       - bookSlug
       - pageSlug
+    LlmStatus:
+      type: object
+      properties:
+        provider:
+          type: string
+        model:
+          type: string
+        freeTier:
+          type: boolean
+          description: Calls cost 0 on the provider's free tier.
+        monthStart:
+          type: string
+          format: date-time
+        monthCostUsd:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          description: 'This month at paid-tier prices: what the budget guard compares
+            with budgetUsd.'
+        budgetUsd:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        calls:
+          type: integer
+          description: LLM calls recorded this month, refused and failed ones too.
+        failedCalls:
+          type: integer
+      required:
+      - budgetUsd
+      - calls
+      - failedCalls
+      - freeTier
+      - model
+      - monthCostUsd
+      - monthStart
+      - provider
     MarketReport:
       type: object
       properties:
@@ -2502,6 +2797,14 @@ components:
         * `geopolitics` - Geopolitics
         * `science` - Science
         * `health` - Health
+    NewsFeedbackEnum:
+      enum:
+      - useful
+      - not_useful
+      type: string
+      description: |-
+        * `useful` - Useful
+        * `not_useful` - Not Useful
     NewsItem:
       type: object
       description: '`select_related("source")` on lists.'
@@ -2552,9 +2855,21 @@ components:
           type: string
           format: date-time
           readOnly: true
+        feedback:
+          nullable: true
+          description: |-
+            null: not rated.
+
+            * `useful` - Useful
+            * `not_useful` - Not Useful
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/NewsFeedbackEnum'
+          - $ref: '#/components/schemas/NullEnum'
       required:
       - createdAt
       - excerpt
+      - feedback
       - id
       - newTool
       - published
@@ -2637,6 +2952,9 @@ components:
           maxItems: 50
       required:
       - markdown
+    NullEnum:
+      enum:
+      - null
     Objective:
       type: object
       properties:
@@ -3267,6 +3585,14 @@ components:
             minLength: 1
             maxLength: 60
           maxItems: 30
+    PatchedNewsFeedbackRequest:
+      type: object
+      properties:
+        feedback:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/NewsFeedbackEnum'
+          - $ref: '#/components/schemas/NullEnum'
     PatchedNoteWriteRequest:
       type: object
       description: |-
@@ -4190,6 +4516,21 @@ components:
       - id
       - lastEvidenceAt
       - title
+    Status:
+      type: object
+      properties:
+        llm:
+          $ref: '#/components/schemas/LlmStatus'
+        lastBriefDate:
+          type: string
+          format: date
+          nullable: true
+        jobs:
+          $ref: '#/components/schemas/JobCounts'
+      required:
+      - jobs
+      - lastBriefDate
+      - llm
     TimeEntry:
       type: object
       properties:

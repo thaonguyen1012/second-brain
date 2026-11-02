@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from core.authentication import request_user
 from core.pagination import NewestFirstCursor
+from core.serializers import ErrorSerializer
 from library import services
 from library.models import Item, Note
 from library.serializers import ItemSerializer, NoteSerializer, NoteWriteSerializer
@@ -21,6 +22,9 @@ from library.serializers import ItemSerializer, NoteSerializer, NoteWriteSeriali
         parameters=[
             OpenApiParameter("type", str, enum=Item.Type.values),
             OpenApiParameter("status", str, enum=Item.Status.values),
+            OpenApiParameter(
+                "q", str, description="Case-insensitive match in title or source, or one exact tag."
+            ),
         ],
     ),
     post=extend_schema(operation_id="createItem"),
@@ -30,7 +34,7 @@ class ItemListView(generics.ListCreateAPIView[Item]):
     pagination_class = NewestFirstCursor
 
     def get_queryset(self) -> QuerySet[Item]:
-        items = Item.objects.filter(user=request_user(self.request))
+        items = services.items(request_user(self.request), self.request.query_params.get("q", ""))
         for field in ("type", "status"):
             if value := self.request.query_params.get(field):
                 items = items.filter(**{field: value})
@@ -43,11 +47,23 @@ class ItemListView(generics.ListCreateAPIView[Item]):
 class ItemView(APIView):
     @extend_schema(request=ItemSerializer, responses=ItemSerializer, operation_id="updateItem")
     def patch(self, request: Request, pk: int) -> Response:
-        item = get_object_or_404(Item, pk=pk, user=request_user(request))
+        item = get_object_or_404(services.items(request_user(request)), pk=pk)
         body = ItemSerializer(item, data=request.data, partial=True)
         body.is_valid(raise_exception=True)
         body.save()
         return Response(body.data)
+
+    @extend_schema(responses={204: None, 409: ErrorSerializer}, operation_id="deleteItem")
+    def delete(self, request: Request, pk: int) -> Response:
+        """Links to it are cleared (notes, inbox, evidence, achievements); 409 for a project with time
+        entries."""
+        item = get_object_or_404(Item, pk=pk, user=request_user(request))
+        try:
+            services.delete_item(item)
+        except services.ItemInUse:
+            detail = "Dự án đã có giờ làm. Hãy xóa các mục giờ làm trước."
+            return Response({"detail": detail}, status=status.HTTP_409_CONFLICT)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def _note(request: Request, pk: int) -> Note:
@@ -96,3 +112,9 @@ class NoteView(APIView):
         body.is_valid(raise_exception=True)
         services.save_note(note, dict(body.validated_data))
         return Response(NoteSerializer(_note(request, pk)).data)
+
+    @extend_schema(responses={204: None}, operation_id="deleteNote")
+    def delete(self, request: Request, pk: int) -> Response:
+        """Evidence that pointed at the note keeps its title snapshot."""
+        get_object_or_404(Note, pk=pk, user=request_user(request)).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -71,7 +71,10 @@ def _save(skill: Skill, data: dict[str, object]) -> None:
 @extend_schema_view(
     get=extend_schema(
         operation_id="listSkills",
-        parameters=[OpenApiParameter("freshness", str, enum=Freshness.values)],
+        parameters=[
+            OpenApiParameter("freshness", str, enum=Freshness.values),
+            OpenApiParameter("q", str, description="Case-insensitive match in the name or an alias."),
+        ],
     )
 )
 class SkillListView(generics.ListAPIView[Skill]):
@@ -79,7 +82,7 @@ class SkillListView(generics.ListAPIView[Skill]):
     pagination_class = ByNameCursor
 
     def get_queryset(self) -> QuerySet[Skill]:
-        rows = services.skills(request_user(self.request))
+        rows = services.skills(request_user(self.request), query=self.request.query_params.get("q", ""))
         if freshness := self.request.query_params.get("freshness"):
             if freshness not in Freshness.values:
                 raise ValidationError({"freshness": f"One of {Freshness.values}."})
@@ -185,6 +188,12 @@ class JobAdView(APIView):
         body.is_valid(raise_exception=True)
         return Response(JobAdSerializer(services.update_job_ad(ad, dict(body.validated_data))).data)
 
+    @extend_schema(responses={204: None}, operation_id="deleteJobAd")
+    def delete(self, request: Request, pk: int) -> Response:
+        """The market report counts without it; a pending extraction job finds nothing and stops."""
+        get_object_or_404(JobAd, pk=pk, user=request_user(request)).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class MarketReportView(APIView):
     @extend_schema(responses=MarketReportSerializer, operation_id="getMarketReport", parameters=[MONTH_PARAM])
@@ -270,6 +279,12 @@ class AchievementView(APIView):
         services.save_achievement(row, dict(body.validated_data))
         return Response(AchievementSerializer(_achievement(request, pk)).data)
 
+    @extend_schema(responses={204: None}, operation_id="deleteAchievement")
+    def delete(self, request: Request, pk: int) -> Response:
+        """The linked project Item and skills stay."""
+        get_object_or_404(Achievement, pk=pk, user=request_user(request)).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 # --- Predictions ------------------------------------------------------------------------------------
 
@@ -332,3 +347,8 @@ class PredictionView(APIView):
         body = PredictionWriteSerializer(data=request.data, partial=True)
         body.is_valid(raise_exception=True)
         return Response(PredictionSerializer(_save_prediction(row, dict(body.validated_data))).data)
+
+    @extend_schema(responses={204: None}, operation_id="deletePrediction")
+    def delete(self, request: Request, pk: int) -> Response:
+        get_object_or_404(Prediction, pk=pk, user=request_user(request)).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

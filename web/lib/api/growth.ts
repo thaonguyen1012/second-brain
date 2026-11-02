@@ -59,17 +59,20 @@ export const growthApi = {
   listJobAds: (query?: Query<'listJobAds'>) => list<ApiJobAd>('/api/market/job-ads', query),
   createJobAd: (body: ApiJobAdWrite) => send<ApiJobAd>('POST', '/api/market/job-ads', body),
   updateJobAd: (id: number, body: ApiJobAdPatch) => send<ApiJobAd>('PATCH', `/api/market/job-ads/${id}`, body),
+  deleteJobAd: (id: number) => send<void>('DELETE', `/api/market/job-ads/${id}`),
   getMarketReport: (month?: string) => send<ApiMarketReport>('GET', withQuery('/api/market/report', { month })),
 
   listAchievements: (query?: Query<'listAchievements'>) => list<ApiAchievement>('/api/achievements', query),
   createAchievement: (body: ApiAchievementWrite) => send<ApiAchievement>('POST', '/api/achievements', body),
   updateAchievement: (id: number, body: ApiAchievementPatch) =>
     send<ApiAchievement>('PATCH', `/api/achievements/${id}`, body),
+  deleteAchievement: (id: number) => send<void>('DELETE', `/api/achievements/${id}`),
 
   listPredictions: (query?: Query<'listPredictions'>) => list<ApiPrediction>('/api/predictions', query),
   createPrediction: (body: ApiPredictionWrite) => send<ApiPrediction>('POST', '/api/predictions', body),
   updatePrediction: (id: number, body: ApiPredictionPatch) =>
     send<ApiPrediction>('PATCH', `/api/predictions/${id}`, body),
+  deletePrediction: (id: number) => send<void>('DELETE', `/api/predictions/${id}`),
 
   /** Library notes, for the "ghi chú" evidence picker. */
   listNotes: (query?: Query<'listNotes'>) => list<ApiNote>('/api/notes', query),

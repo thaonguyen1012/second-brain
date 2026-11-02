@@ -2,6 +2,7 @@ import datetime as dt
 
 from django.db.models import QuerySet
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics
@@ -12,7 +13,12 @@ from rest_framework.views import APIView
 
 from brief import services
 from brief.models import DailyBrief, NewsItem
-from brief.serializers import DailyBriefSerializer, NewsItemSerializer, TopicCountsSerializer
+from brief.serializers import (
+    DailyBriefSerializer,
+    NewsFeedbackSerializer,
+    NewsItemSerializer,
+    TopicCountsSerializer,
+)
 from core.authentication import request_user
 from core.pagination import NewestFirstCursor
 
@@ -74,6 +80,16 @@ class NewsListView(generics.ListAPIView[NewsItem]):
                 raise ValidationError({"tagStatus": f"One of {NewsItem.TagStatus.values}."})
             rows = rows.filter(tag_status=status)
         return rows
+
+
+class NewsItemView(APIView):
+    @extend_schema(request=NewsFeedbackSerializer, responses=NewsItemSerializer, operation_id="rateNewsItem")
+    def patch(self, request: Request, pk: int) -> Response:
+        """The "useful / not useful" button: `feedback` is useful, not_useful or null (clears the rating)."""
+        item = get_object_or_404(services.news(request_user(request)), pk=pk)
+        body = NewsFeedbackSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        return Response(NewsItemSerializer(services.set_feedback(item, body.validated_data["feedback"])).data)
 
 
 def _brief(request: Request, day: dt.date) -> Response:

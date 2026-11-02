@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from brief.models import NewsItem, Source
@@ -19,6 +20,7 @@ class NewsItemSerializer(serializers.ModelSerializer[NewsItem]):
         source="tag_status", choices=NewsItem.TagStatus.choices, read_only=True
     )
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
+    feedback = serializers.SerializerMethodField()
 
     class Meta:
         model = NewsItem
@@ -35,8 +37,21 @@ class NewsItemSerializer(serializers.ModelSerializer[NewsItem]):
             "relevance",
             "tagStatus",
             "createdAt",
+            "feedback",
         ]
         read_only_fields = fields
+
+    @extend_schema_field(
+        serializers.ChoiceField(
+            choices=NewsItem.Feedback.choices, allow_null=True, help_text="null: not rated."
+        )
+    )
+    def get_feedback(self, item: NewsItem) -> str | None:
+        return item.feedback or None
+
+
+class NewsFeedbackSerializer(serializers.Serializer[object]):
+    feedback = serializers.ChoiceField(choices=NewsItem.Feedback.choices, allow_null=True)
 
 
 class DailyBriefSerializer(serializers.Serializer[object]):

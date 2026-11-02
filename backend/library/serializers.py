@@ -13,6 +13,8 @@ class ItemSerializer(serializers.ModelSerializer[Item]):
     updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
     startedAt = serializers.DateTimeField(source="started_at", required=False, allow_null=True)
     finishedAt = serializers.DateTimeField(source="finished_at", required=False, allow_null=True)
+    # Annotated by services.items() (no per-row query); a new Item has none yet.
+    noteCount = serializers.IntegerField(source="note_count", read_only=True, default=0)
 
     class Meta:
         model = Item
@@ -28,6 +30,7 @@ class ItemSerializer(serializers.ModelSerializer[Item]):
             "updatedAt",
             "startedAt",
             "finishedAt",
+            "noteCount",
         ]
 
     def validate_tags(self, value: list[str]) -> list[str]:

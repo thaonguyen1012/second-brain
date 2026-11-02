@@ -10,6 +10,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/me", core_views.MeView.as_view()),
+    path("api/status", core_views.StatusView.as_view()),
     path("", include("progress.urls")),
     path("", include("library.urls")),
     path("", include("inbox.urls")),

@@ -51,42 +51,53 @@ web/
   lib/utils.ts                   cn()
   scripts/                       import-gitbook, build-search, prepare-assets, extract-courses,
                                  backfill-images, smoke-test, prepare-vendor, postbuild-standalone,
-                                 dev-proxy (:8080, routes like nginx: Django paths -> :8000, rest -> Next)
+                                 dev-proxy (:8080, routes like nginx: Django paths -> :8000, rest -> Next; add new
+                                 /api/<prefix> to its DJANGO regex)
   data/search.sqlite             search index (gitignored, rebuild with npm run search:rebuild)
   public/original/, lo-trinh.pdf, files/ (gitignored attachments), vendor/ (gitignored mermaid copy)
 backend/                         Django 5.2 + DRF + Postgres, managed with uv (pyproject.toml, uv.lock)
   config/                        settings (all from backend/.env, example: .env.example), urls, JSON logging
-  core/                          /healthz, /api/me, /files/ (X-Accel-Redirect), single-owner auth middleware
-                                 (AUTH_MODE dev|cf_access; cf_access verifies Cf-Access-Jwt-Assertion)
+  core/                          /healthz, /api/me, /api/status (services/status.py: LLM month cost vs budget, calls,
+                                 last brief, pending/failed jobs by kind; no secrets), /files/ (X-Accel-Redirect),
+                                 single-owner auth middleware (AUTH_MODE dev|cf_access; cf_access verifies
+                                 Cf-Access-Jwt-Assertion); `manage.py export --out <dir>` (services/export.py: notes
+                                 as .md with front matter + every owned model as JSON; never User, Job, LlmCall,
+                                 LlmCache; a test catches unlisted models); services/search.py (`?q=` normaliser)
   progress/                      progress API (API_CONTRACT.md); logic in services.py, thin views
-  library/                       Item (type, status, tags ArrayField, rating) + Note (markdown, M2M Item; never sent
-                                 to an LLM); /api/items*, /api/notes* (?q= title/markdown, ?item=)
+  library/                       Item (type, status, tags ArrayField, rating; noteCount annotated by services.items) +
+                                 Note (markdown, M2M Item; never sent to an LLM); /api/items* (?q= title/source/exact
+                                 tag; DELETE: links set null, 409 for a project with time entries), /api/notes* (?q=
+                                 title/markdown, ?item=). Every owned row has a DELETE (204; 404 for another owner)
   inbox/                         InboxEntry (url|text, triage status + archived_at set/cleared by triage_entry, OG
-                                 unfurl fields, LLM suggestions); /api/inbox
+                                 unfurl fields, LLM suggestions); /api/inbox (?q= og title/text/url; DELETE also drops
+                                 an unused thumbnail)
   weeks/                         Week (Monday start, Europe/Prague; planning journal, 6 review questions) +
                                  Objective (open|done|dropped, carried_from); /api/weeks*, review = body of work per day
                                  (inbox by archived_at) + minutes for objectives vs other (from work.TimeEntry) +
                                  the week's growth.Achievement rows
   work/                          ProjectDetails (1:1 on Item type=project: client, fixed|hourly, price/rate, currency)
-                                 + TimeEntry (minutes, billable, optional Objective; timer = started_at, minutes null,
+                                 + TimeEntry (project FK is PROTECT; minutes, billable, optional Objective; timer =
+                                 started_at, minutes null,
                                  one running per user); /api/projects* (effective rate), /api/time-entries* (timer, summary,
                                  DELETE also discards a running timer)
   opportunities/                 Opportunity (hypothesis, why now, next action, decide_by, open|keep|drop|build) + Evidence
                                  (inbox|item|note link or conversation|link record, supports|contradicts) + ScoreSnapshot
-                                 (4 scores 1-10, append-only); /api/opportunities*; stale = no evidence for 4 weeks
+                                 (4 scores 1-10, append-only); /api/opportunities* (?q= title/hypothesis); stale = no evidence for 4 weeks
                                  (computed); week review lists opportunities with new evidence and stale ones;
                                  fit = M2M to growth.Skill
   growth/                        Skill (name, normalised key + aliases, no self-rating) + SkillEvidence (item|note|link,
                                  dated); freshness fresh|aging|faded computed from the newest evidence date (3/6 months);
                                  JobAd (pasted JD, month) -> `jd_skills` job (extraction.py, prompts/jd_skills.md, 4000
-                                 chars sent); /api/skills*, /api/market/job-ads*, /api/market/report (frequency, gaps,
+                                 chars sent); /api/skills* (?q= name/aliases), /api/market/job-ads*, /api/market/report (frequency, gaps,
                                  newTools from brief); Achievement (brag document: date, title, impact with numbers,
                                  optional project Item + Skills) /api/achievements* (?week=); Prediction (check_on =
                                  made_on + 6 months, outcome open|right|wrong|partial, scored_at) /api/predictions*
                                  (?due=true)
   brief/                         Source (feed, area of 6.2, active; admin or `manage.py brief_sources`) + NewsItem (dedupe
                                  sha256 title+URL, 500-char nh3 excerpt, LLM tags/summary/new_tool/relevance, tag_status)
-                                 + DailyBrief (one per day, BriefEntry order, LLM intro). feeds.py (stdlib XML, no
+                                 + DailyBrief (one per day, BriefEntry order, LLM intro). NewsItem.feedback
+                                 (useful|not_useful|"", PATCH /api/news/{id}) -> `manage.py export_brief_feedback`
+                                 writes evals/news_tag/fb-<id>.json. feeds.py (stdlib XML, no
                                  DOCTYPE), services.py (jobs.periodic scheduler, `feeds`/`brief` jobs, daily tag cap),
                                  tagging.py (`news_tag`, `brief_intro`); /api/news*, /api/brief/*;
                                  POST /api/opportunities/{id}/evidence/news (the "evidence for" button)
@@ -103,9 +114,13 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  pydantic schema + `tag` job
   docker-compose.yml             dev Postgres (the laptop uses Homebrew Postgres 16 instead)
 deploy/                          nginx/ (site.conf + header snippets), docker-compose.prod.yml, .env.example, README (Cloudflare Tunnel +
-                                 Access setup); config only, not deployed
+                                 Access setup; laptop use: make dev, launchd); launchd/com.example.brain.jobs.plist
+                                 (run_jobs every 300 s, not installed); config only, not deployed
 Makefile                         make check = web types+lint, backend ruff+mypy+migrations+pytest, smoke test
-                                 (needs a web server at SMOKE_BASE, default :3000); make api-types, backend-dev
+                                 (needs a web server at SMOKE_BASE, default :3000); make api-types, backend-dev;
+                                 make jobs (run_jobs loop, 300 s); make dev (build with NEXT_PUBLIC_PROGRESS_STORE=api,
+                                 Django :8000 + Next prod :3100 + proxy :8080 + jobs; never :3000; no $(MAKE) inside
+                                 so `make -n dev` stays a dry run)
 ```
 
 ## Server mode rules

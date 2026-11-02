@@ -15,12 +15,13 @@ from typing import Any
 
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
-from django.db.models import Case, CharField, Count, Max, Prefetch, Q, QuerySet, Value, When
+from django.db.models import Case, CharField, Count, F, Func, Max, Prefetch, Q, QuerySet, Value, When
 from django.utils import timezone
 
 from brief.services import new_tools
 from core.models import Job
 from core.services import jobs
+from core.services.search import normalize_query
 from growth.models import Achievement, Freshness, JobAd, Prediction, Skill, SkillEvidence
 
 AGING_AFTER_MONTHS = 3
@@ -75,8 +76,14 @@ def with_freshness[Q: QuerySet[Skill]](rows: Q, today: dt.date | None = None) ->
     return annotated
 
 
-def skills(user: User | int, today: dt.date | None = None) -> QuerySet[Skill]:
-    rows = with_freshness(Skill.objects.filter(user=user), today)
+def skills(user: User | int, today: dt.date | None = None, query: str = "") -> QuerySet[Skill]:
+    """With freshness and evidence count; `query` matches the name or an alias (case-insensitive)."""
+    rows = Skill.objects.filter(user=user)
+    if query := normalize_query(query):
+        alias_text = Func(F("aliases"), Value(" "), function="array_to_string", output_field=CharField())
+        rows = rows.alias(alias_text=alias_text)
+        rows = rows.filter(Q(name__icontains=query) | Q(alias_text__icontains=query))
+    rows = with_freshness(rows, today)
     return rows.annotate(evidence_count=Count("evidence"))
 
 

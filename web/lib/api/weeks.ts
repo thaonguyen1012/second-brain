@@ -43,6 +43,8 @@ export const weeksApi = {
     send<ApiObjective>('POST', `${base(start)}/objectives`, { title } satisfies Schemas['ObjectiveCreateRequest']),
   updateObjective: (start: string, id: number, body: ApiObjectivePatch) =>
     send<ApiObjective>('PATCH', `${base(start)}/objectives/${id}`, body),
+  /** Objectives carried from it stay (their carriedFrom becomes null). */
+  deleteObjective: (start: string, id: number) => send<void>('DELETE', `${base(start)}/objectives/${id}`),
 
   /** One brag-document line (only `title` required; `date` defaults to today on the server). */
   addAchievement: (body: ApiAchievementCreate) => send<ApiAchievement>('POST', '/api/achievements', body),

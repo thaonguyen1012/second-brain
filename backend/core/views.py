@@ -13,6 +13,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.authentication import request_user
+from core.serializers import StatusSerializer
+from core.services import status
 from core.services.files import attachments_root, resolve_attachment
 
 
@@ -37,6 +40,14 @@ class MeView(APIView):
         assert isinstance(user, User)  # IsAuthenticated ran
         name = user.get_full_name() or user.email.split("@")[0]
         return Response({"id": user.pk, "email": user.email, "name": name})
+
+
+class StatusView(APIView):
+    @extend_schema(responses=StatusSerializer, operation_id="getStatus")
+    def get(self, request: Request) -> Response:
+        """This month's LLM cost at paid prices vs the budget, calls this month, the last morning brief and
+        the background jobs waiting or failed, by kind."""
+        return Response(StatusSerializer(status.snapshot(request_user(request))).data)
 
 
 # Types a browser may show inline; everything else (HTML, SVG, XML, office files...) downloads.

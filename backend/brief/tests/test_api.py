@@ -74,6 +74,7 @@ def test_list_news_with_filters_without_n_plus_one(client: Client) -> None:
         "relevance": 5,
         "tagStatus": "tagged",
         "createdAt": data[0]["createdAt"],
+        "feedback": None,
     }
 
     def titles(query: str) -> list[str]:

@@ -129,6 +129,12 @@ class ObjectiveListView(APIView):
         return Response(ObjectiveSerializer(objective).data, status=status.HTTP_201_CREATED)
 
 
+def _objective(request: Request, start: dt.date, pk: int) -> Objective:
+    return get_object_or_404(
+        Objective, pk=pk, week__user=request_user(request), week__start_date=_monday(start)
+    )
+
+
 class ObjectiveView(APIView):
     @extend_schema(
         request=ObjectiveUpdateSerializer,
@@ -137,10 +143,15 @@ class ObjectiveView(APIView):
         parameters=[START],
     )
     def patch(self, request: Request, start: dt.date, pk: int) -> Response:
-        objective = get_object_or_404(
-            Objective, pk=pk, week__user=request_user(request), week__start_date=_monday(start)
-        )
+        objective = _objective(request, start, pk)
         body = ObjectiveUpdateSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         objective = services.update_objective(objective, dict(body.validated_data))
         return Response(ObjectiveSerializer(objective).data)
+
+    @extend_schema(responses={204: None}, operation_id="deleteObjective", parameters=[START])
+    def delete(self, request: Request, start: dt.date, pk: int) -> Response:
+        """Objectives carried from it keep their title (carriedFrom becomes null); time entries linked to it
+        stay and count as other work."""
+        _objective(request, start, pk).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

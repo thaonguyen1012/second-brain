@@ -4,7 +4,7 @@ from django.http import FileResponse, Http404, HttpResponse
 from django.http.response import HttpResponseBase
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
@@ -21,7 +21,10 @@ from inbox.serializers import InboxEntrySerializer, InboxTriageSerializer
 @extend_schema_view(
     get=extend_schema(
         operation_id="listInbox",
-        parameters=[OpenApiParameter("status", str, enum=InboxEntry.Status.values)],
+        parameters=[
+            OpenApiParameter("status", str, enum=InboxEntry.Status.values),
+            OpenApiParameter("q", str, description="Case-insensitive match in the OG title, text or URL."),
+        ],
     ),
     post=extend_schema(operation_id="createInboxEntry"),
 )
@@ -30,10 +33,8 @@ class InboxListView(generics.ListCreateAPIView[InboxEntry]):
     pagination_class = NewestFirstCursor
 
     def get_queryset(self) -> QuerySet[InboxEntry]:
-        entries = InboxEntry.objects.filter(user=request_user(self.request)).select_related("item")
-        if status := self.request.query_params.get("status"):
-            entries = entries.filter(status=status)
-        return entries
+        params = self.request.query_params
+        return services.entries(request_user(self.request), params.get("status"), params.get("q", ""))
 
     def perform_create(self, serializer: BaseSerializer[InboxEntry]) -> None:
         data = serializer.validated_data
@@ -53,6 +54,12 @@ class InboxEntryView(APIView):
         body.is_valid(raise_exception=True)
         entry = services.triage_entry(entry, dict(body.validated_data))
         return Response(InboxEntrySerializer(entry).data)
+
+    @extend_schema(responses={204: None}, operation_id="deleteInboxEntry")
+    def delete(self, request: Request, pk: int) -> Response:
+        """Evidence made from it keeps its title snapshot."""
+        services.delete_entry(get_object_or_404(InboxEntry, pk=pk, user=request_user(request)))
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class InboxThumbnailView(APIView):

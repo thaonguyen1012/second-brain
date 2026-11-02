@@ -181,6 +181,7 @@ SPECTACULAR_SETTINGS = {
         "PredictionOutcomeEnum": "growth.models.Prediction.Outcome",
         "NewsAreaEnum": "brief.models.Area",
         "NewsTagStatusEnum": "brief.models.NewsItem.TagStatus",
+        "NewsFeedbackEnum": "brief.models.NewsItem.Feedback",
     },
 }
 

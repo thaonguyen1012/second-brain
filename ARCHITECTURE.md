@@ -157,8 +157,27 @@ DRF `fieldErrors`). The pages are static shells; data loads in the browser throu
 (`components/brain/api-state.tsx`). Cards and status colours are shared: `components/brain/brain-card.tsx`,
 `lib/labels.ts`.
 
-Local end to end: `make backend-dev`, a web server (e.g. `npm start` with `PORT=3100`), then
-`node web/scripts/dev-proxy.mjs --web http://127.0.0.1:3100` and open http://localhost:8080.
+Daily use (backend and tooling step): every owned row can be deleted (`DELETE` on items, notes, inbox entries,
+achievements, predictions, job ads, opportunity evidence and week objectives; another owner's row answers 404).
+Links follow the models' `on_delete`: inbox entries, evidence, skill evidence and achievements keep their row with
+the link set to null (evidence keeps its title snapshot), notes lose the link, a carried objective keeps its title
+with `carried_from` null, time entries lose their objective. `TimeEntry.project` is `PROTECT`: deleting a project
+Item with logged time answers 409, the time entries go first. Deleting an inbox entry also removes its thumbnail
+file when no other entry uses it (content addressed). Lists of items, inbox, opportunities and skills take `?q=`
+(`core/services/search.py`: icontains on titles and short fields, never note markdown); `Item` carries an annotated
+`noteCount`. Morning-brief feedback lives on `NewsItem` (`feedback` useful/not_useful/"" + `feedback_at`, `PATCH
+/api/news/{id}`); `manage.py export_brief_feedback` writes rated items into `backend/evals/news_tag/fb-<id>.json`
+(title + first 500 characters). `GET /api/status` (`core/services/status.py`): month cost at paid prices from
+`llm.month_paid_cost` vs `LLM_MONTHLY_BUDGET_USD`, LLM calls this month, last DailyBrief date, pending/failed Job
+counts by kind, never keys or error texts. `manage.py export --out <dir>` (`core/services/export.py`, DECISIONS
+4.7): `notes/<id>-<slug>.md` with YAML front matter (id, title, items, created, updated) and `data/<table>.json`
+(Django serializer) for every other owned model, plus `manifest.json`; never the User row, sessions, `Job`,
+`LlmCall` or `LlmCache`; a test fails when a new model is neither exported nor excluded.
+
+Local end to end: `make dev` (deploy/README.md, "Laptop: daily use without Docker") builds the web app with
+`NEXT_PUBLIC_PROGRESS_STORE=api` and runs Django :8000, a Next production server :3100, the dev proxy :8080 and
+the jobs loop (`make jobs`); it never touches :3000. `deploy/launchd/com.example.brain.jobs.plist` (not installed)
+runs `run_jobs` every 300 s as a launchd user agent.
 
 ```
                 Cloudflare Access (login: email OTP / Google, JWT on every request)

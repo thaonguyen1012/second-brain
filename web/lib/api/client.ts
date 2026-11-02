@@ -23,6 +23,8 @@ export type ApiOpportunity = Schemas['Opportunity'];
 export type ApiStance = Schemas['EvidenceStanceEnum'];
 export type ApiAttachResult = Schemas['AttachResult'];
 export type ApiAttachNewsResult = Schemas['AttachNewsResult'];
+export type ApiNewsFeedback = Schemas['NewsFeedbackEnum'];
+export type ApiStatus = Schemas['Status'];
 
 /** Query parameters of an OpenAPI operation. */
 export type Query<Op extends keyof operations> = operations[Op]['parameters'] extends { query?: infer Q }
@@ -115,6 +117,8 @@ async function list<T>(path: string): Promise<Page<T>> {
 
 export const api = {
   getMe: () => request<ApiMe>('GET', '/api/me'),
+  /** LLM cost this month vs the budget, last brief date, pending / failed jobs by kind. */
+  getStatus: () => request<ApiStatus>('GET', '/api/status'),
   getProgress: () => request<ApiProgressSnapshot>('GET', '/api/progress'),
   setPageDone: (book: string, page: string, done: boolean) =>
     request<ApiSetDoneResponse>('PUT', `/api/progress/${encodeURIComponent(book)}/${pageSegment(page)}`, {
@@ -142,15 +146,21 @@ export const api = {
       throw err;
     }
   },
+  /** The "hữu ích / không" button; null clears the rating. */
+  rateNewsItem: (id: number, feedback: ApiNewsFeedback | null) =>
+    request<ApiNewsItem>('PATCH', `/api/news/${id}`, { feedback } satisfies Schemas['PatchedNewsFeedbackRequest']),
 
   listInbox: (query?: Query<'listInbox'>) => list<ApiInboxEntry>(withQuery('/api/inbox', query)),
   createInboxEntry: (body: Schemas['InboxEntryRequest']) => request<ApiInboxEntry>('POST', '/api/inbox', body),
   triageInboxEntry: (id: number, body: Schemas['PatchedInboxTriageRequest']) =>
     request<ApiInboxEntry>('PATCH', `/api/inbox/${id}`, body),
+  deleteInboxEntry: (id: number) => request<void>('DELETE', `/api/inbox/${id}`),
 
   listItems: (query?: Query<'listItems'>) => list<ApiItem>(withQuery('/api/items', query)),
   createItem: (body: ApiItemRequest) => request<ApiItem>('POST', '/api/items', body),
   updateItem: (id: number, body: ApiItemPatch) => request<ApiItem>('PATCH', `/api/items/${id}`, body),
+  /** 409 (ApiError) for a project that has time entries. */
+  deleteItem: (id: number) => request<void>('DELETE', `/api/items/${id}`),
 
   listOpportunities: (query?: Query<'listOpportunities'>) =>
     list<ApiOpportunity>(withQuery('/api/opportunities', query)),

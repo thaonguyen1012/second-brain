@@ -71,3 +71,9 @@ def path_of(name: str) -> Path | None:
         return None
     target = Path(settings.THUMBS_DIR) / name
     return target if target.is_file() else None
+
+
+def discard(name: str) -> None:
+    """Remove a stored thumbnail; callers check first that no row still uses the name (content addressed)."""
+    if (target := path_of(name)) is not None:
+        target.unlink(missing_ok=True)

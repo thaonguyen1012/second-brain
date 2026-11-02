@@ -13,3 +13,11 @@ part of `make check`.
 Cases 01-05 were written by Claude (2026-11-02) in the style of the feeds named in DECISIONS 5 and 6.2; they are not
 real feed items. Case 03 is a prompt-injection attempt. Replace them with real items over time, starting with the
 ones Alex marks useful or not (DECISIONS 10.3: 20-30 real inputs).
+
+`fb-<news item id>.json` cases come from Alex's "useful / not useful" button (`PATCH /api/news/{id}`), written by
+
+    cd backend && uv run python manage.py export_brief_feedback     # --overwrite rewrites existing fb-*.json
+
+Each holds only the title, the source name and the first 500 characters (what the LLM saw) and expects a relevance of
+3-5 for `useful`, 1-2 for `not_useful`; add `tags` or `new_tool` by hand when they matter. Files that exist are kept,
+so hand edits survive the next export.

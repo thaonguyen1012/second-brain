@@ -1,8 +1,10 @@
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.db.models import Q, QuerySet
 from django.utils import timezone
 
-from core.services import jobs
+from core.services import jobs, thumbnails
+from core.services.search import normalize_query
 from inbox import tagging
 from inbox.models import InboxEntry
 
@@ -18,6 +20,27 @@ def add_entry(user: User, url: str, text: str) -> InboxEntry:
         else:
             tagging.enqueue(entry)
     return entry
+
+
+def entries(user: User, status: str | None = None, query: str = "") -> QuerySet[InboxEntry]:
+    """The owner's entries with their linked Item; `query` matches the OG title, the text or the URL
+    (case-insensitive substring)."""
+    rows = InboxEntry.objects.filter(user=user).select_related("item")
+    if status:
+        rows = rows.filter(status=status)
+    if query := normalize_query(query):
+        rows = rows.filter(Q(og_title__icontains=query) | Q(text__icontains=query) | Q(url__icontains=query))
+    return rows
+
+
+def delete_entry(entry: InboxEntry) -> None:
+    """Evidence made from the entry keeps its title snapshot (link set to null); pending unfurl and tag jobs
+    find nothing and stop. The thumbnail file goes too unless another entry has the same image."""
+    image = entry.og_image_path
+    with transaction.atomic():
+        entry.delete()
+        if image and not InboxEntry.objects.filter(og_image_path=image).exists():
+            transaction.on_commit(lambda: thumbnails.discard(image))
 
 
 def set_status(entry: InboxEntry, status: str) -> None:
