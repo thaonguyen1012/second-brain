@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { useInboxCount } from '../inbox-count';
 import { type BookIndex, BodyOfWork } from './body-of-work';
 import { ObjectivesEditor, type ObjectivesUpdate } from './objectives-editor';
-import { ReviewAchievements, ReviewOpportunities } from './review-extras';
+import { ReviewAchievements, ReviewOpportunities, ReviewPredictions } from './review-extras';
 import { ReviewJournal } from './review-journal';
 import { TimeChart } from './time-chart';
 import { WeekSection } from './week-section';
@@ -114,6 +114,7 @@ export function ReviewPanel({
           <BodyOfWork days={review.days} books={books} />
           <ReviewOpportunities opportunities={review.opportunities} onDecided={onOpportunity} />
           <ReviewAchievements start={start} achievements={review.achievements} onAdded={onAchievement} />
+          <ReviewPredictions />
         </div>
         <div className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:rounded-3xl">
           <ReviewJournal start={start} week={week} opportunities={review.opportunities} onSaved={onWeek} />

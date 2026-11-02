@@ -19,7 +19,11 @@ export function DoneCheckbox({ url }: { url: string }) {
         onChange={(e) => getProgressStore().setDone(bookSlug, pageSlug, e.target.checked)}
       />
       Đã học xong
-      {done && <span className="ms-auto text-xs font-normal text-muted-foreground">Đã lưu trên trình duyệt này</span>}
+      {done && (
+        <span className="ms-auto text-xs font-normal text-muted-foreground">
+          {process.env.NEXT_PUBLIC_PROGRESS_STORE === 'api' ? 'Đã lưu trên server' : 'Đã lưu trên trình duyệt này'}
+        </span>
+      )}
     </label>
   );
 }

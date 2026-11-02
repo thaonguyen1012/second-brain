@@ -34,7 +34,8 @@ Progress API (API_CONTRACT.md) is implemented in `backend/progress/` (models `Pa
 unknown books = not a directory under `CONTENT_DIR/<track>/`). drf-spectacular serves OpenAPI at `/api/schema/`;
 `make api-types` writes `web/lib/api/openapi.yaml` and `schema.ts`. Build the web app with
 `NEXT_PUBLIC_PROGRESS_STORE=api` to use `ApiProgressStore` (optimistic writes, last-visited debounced 1.5 s,
-reload on tab focus; on first load against an empty account it copies this browser's localStorage progress once).
+reload on tab focus). The old localStorage progress is never copied silently: `lib/progress/migration.ts` +
+`components/progress-migration.tsx` (see "Switching your own dev server to the API store" below).
 Second brain, step 1 (DECISIONS 9.4): `backend/library/` has `Item` (course/book/film/article/project, status
 planned/active/done/dropped, tags as a Postgres array, rating 1-10) and `Note` (markdown, M2M to Item; API since
 the UI step: `GET/POST /api/notes` with `?q=` (icontains on title or markdown) and `?item=`, `GET/PATCH
@@ -174,10 +175,56 @@ counts by kind, never keys or error texts. `manage.py export --out <dir>` (`core
 (Django serializer) for every other owned model, plus `manifest.json`; never the User row, sessions, `Job`,
 `LlmCall` or `LlmCache`; a test fails when a new model is neither exported nor excluded.
 
+Web UI, part C (daily use in the UI): "Hôm nay" adds, per brief card, "Đưa vào Inbox" (`POST /api/inbox` with the
+URL; sent ids remembered per browser in localStorage `brain:brief-sent-to-inbox`, since the API has no link from
+news to inbox) and "Hữu ích / Không hữu ích" (`PATCH /api/news/{id}`, pressing the active one clears it), a "Dự
+đoán cần chấm lại" panel (`components/brain/due-predictions.tsx`, also in the week review) and the "AI và tác vụ
+nền" status line (`GET /api/status`; warnings for failed jobs, a brief older than a day, cost >= 80% of the
+budget). These pieces load with `next/dynamic` (`today-extras.tsx`, `brief-actions.tsx`) to keep the home page
+under the 220 kB budget. Cmd+K (`components/search-dialog.tsx`, a lazy copy of the Fumadocs dialog registered in
+`provider.tsx`) shows a "Bộ não thứ hai" group above the handbook results: `lib/api/search.ts` queries items,
+notes, inbox, opportunities and skills (`?q=`, 5 each, 200 ms debounce, 2+ characters, one failing kind does not
+hide the others, 60 s pause when Django is unreachable). Results deep link with query parameters handled by
+`lib/use-open-from-url.ts` (opens once, then removes the parameter): `/thu-vien/?item=N`, `/thu-vien/ghi-chu/?id=N`,
+`/inbox/?status=S&id=N`, `/co-hoi/?id=N`, `/phat-trien/ky-nang/?id=N`. Every delete goes through
+`components/brain/confirm-delete.tsx` (Space UI alert dialog, focus starts on "Hủy", 404 = already gone, 409 shows
+the backend message, page shortcuts are blocked while it is open); no `window.confirm` anywhere. A done Item with no
+note (a film also without a rating) shows "Xong rồi, nhưng chưa có đầu ra" (`components/brain/library/done-output.tsx`)
+on its Thư viện card and in the item dialog, with "Viết ghi chú" (new linked note with a template) and "Chấm điểm"
+(opens the dialog on the rating field).
+
 Local end to end: `make dev` (deploy/README.md, "Laptop: daily use without Docker") builds the web app with
 `NEXT_PUBLIC_PROGRESS_STORE=api` and runs Django :8000, a Next production server :3100, the dev proxy :8080 and
 the jobs loop (`make jobs`); it never touches :3000. `deploy/launchd/com.example.brain.jobs.plist` (not installed)
 runs `run_jobs` every 300 s as a launchd user agent.
+
+### Switching your own dev server to the API store
+
+`NEXT_PUBLIC_PROGRESS_STORE` is inlined when Next compiles, so it is chosen when `next dev` (or `next build`) starts;
+without it the pages keep using the localStorage store. localStorage belongs to one origin (scheme, host and
+port): the phase 1 progress lives in `http://localhost:3000`, and a page served from :8080 or :3100 cannot see it.
+To keep that origin and move the old progress once:
+
+1. Stop your `next dev` on :3000 (Ctrl-C in its terminal). Postgres must be running.
+2. `make dev-hot` from the repo root. It runs `migrate`, Django on :8000, `next dev` on :3001
+   (`DEV_HOT_PORT`) with `NEXT_PUBLIC_PROGRESS_STORE=api`, and `web/scripts/dev-proxy.mjs` on :3000 in front of
+   both (Django paths -> :8000, the rest -> :3001, WebSocket upgrades too, so hot reload keeps working). It refuses
+   to start while :3000, :8000 or :3001 is in use. `make jobs` in another terminal adds the background jobs.
+3. Open http://localhost:3000. "Hôm nay" shows "Chuyển tiến độ học cũ lên server" when this browser has done pages
+   the server does not have yet. "Chuyển lên server" PUTs each of them (`PUT /api/progress/{book}/{page}`, 4 at
+   a time), copies the old "last visited" page when the server has none, reloads the store and writes the marker
+   `alex-brain:progress:api-migration` = `{status: "migrated"}`. "Bỏ qua" writes `{status: "dismissed"}`. Either
+   way the offer never comes back in this browser, and the old data under `alex-brain:progress:v1` is kept.
+   Pages of books the server no longer knows (400) are skipped; a network, 401 or 5xx error stops the move
+   without the marker, and "Thử lại" sends only what is still missing. Moved pages get today's `updated_at`, so
+   the week review counts them as done this week.
+
+To make the API store permanent for a plain `next dev` (without the proxy, `/api/progress` would reach Next and
+fail), put `NEXT_PUBLIC_PROGRESS_STORE=api` in `web/.env.local` yourself and restart `next dev`; keep using the
+proxy in front of it (`node web/scripts/dev-proxy.mjs --web http://127.0.0.1:<next port>`). To go back, remove
+the variable and restart: the localStorage store reads its old data again (changes made in API mode are not
+copied back). `make dev` (:8080) always builds with `=api`; with `DEV_BUILD=0` it refuses a build that `make dev`
+did not make (`web/.next/progress-store-api` holds the BUILD_ID of the last API build).
 
 ```
                 Cloudflare Access (login: email OTP / Google, JWT on every request)
@@ -201,8 +248,8 @@ runs `run_jobs` every 300 s as a launchd user agent.
 * **Same origin:** `brain.example.com` serves both Next.js and Django paths, so the browser sends the
   session cookie and `csrftoken` automatically; the UI uses the endpoints in API_CONTRACT.md.
 * **Progress:** `getProgressStore()` in `web/lib/progress/index.ts` returns an API-backed store calling
-  `GET /api/progress`, `PUT /api/progress/{book}/{page}`, `PUT /api/progress/last-visited`; it can import
-  the localStorage state once on first login.
+  `GET /api/progress`, `PUT /api/progress/{book}/{page}`, `PUT /api/progress/last-visited`; the home page
+  offers once to move this browser's localStorage progress to the server.
 * **Attachments (`/files/`):** ~1.8 GB of course PDFs, spreadsheets and Power BI files. In production they
   live in their own directory (copied from `raw/tai-lieu-so-tay-*`), are not packaged with the Next build,
   and are served by nginx after `auth_request` to Django succeeds (X-Accel-Redirect to an internal location).

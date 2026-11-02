@@ -1,10 +1,8 @@
 import { api, type ApiProgressSnapshot } from '@/lib/api/client';
 import type { LastVisited, ProgressListener, ProgressSnapshot, ProgressStore } from './store';
-import { LocalStorageProgressStore } from './local-storage-store';
 
 const EMPTY: ProgressSnapshot = { done: {}, lastVisited: null };
 const LAST_VISITED_DEBOUNCE_MS = 1500;
-const IMPORTED_KEY = 'alex-brain:progress:imported-to-api';
 
 function fromApi(s: ApiProgressSnapshot): ProgressSnapshot {
   const done: ProgressSnapshot['done'] = {};
@@ -33,30 +31,15 @@ export class ApiProgressStore implements ProgressStore {
   private async reload() {
     try {
       this.snapshot = fromApi(await api.getProgress());
-      await this.importFromThisBrowserOnce();
     } catch (err) {
       console.error('progress: load failed', err);
     }
     this.emit();
   }
 
-  /** First run against an empty account: copy the phase 1 localStorage progress of this browser. */
-  private async importFromThisBrowserOnce() {
-    try {
-      if (window.localStorage.getItem(IMPORTED_KEY)) return;
-      const empty = Object.keys(this.snapshot.done).length === 0 && !this.snapshot.lastVisited;
-      const local = new LocalStorageProgressStore().getAll();
-      if (empty) {
-        for (const [book, pages] of Object.entries(local.done))
-          for (const page of Object.keys(pages)) await api.setPageDone(book, page, true);
-        const lv = local.lastVisited;
-        if (lv) await api.setLastVisited(lv.bookSlug, lv.pageSlug, lv.title);
-        if (Object.keys(local.done).length || lv) this.snapshot = fromApi(await api.getProgress());
-      }
-      window.localStorage.setItem(IMPORTED_KEY, new Date().toISOString());
-    } catch (err) {
-      console.error('progress: import from this browser failed', err);
-    }
+  /** Reload from the server now (after the one-time move of the old localStorage progress, migration.ts). */
+  refresh(): Promise<void> {
+    return this.reload();
   }
 
   private emit() {

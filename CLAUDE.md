@@ -33,10 +33,13 @@ web/
   lib/content/                   CONTENT_DIR scan, on-demand MDX compile, MDX plugin chain
   lib/mdx/                       rehype-safe-html (placeholders, safe raw HTML), rehype-code-classes (R4)
   lib/progress/                  ProgressStore interface; localStorage store (default) or ApiProgressStore when
-                                 NEXT_PUBLIC_PROGRESS_STORE=api at build time; UI only uses the interface
+                                 NEXT_PUBLIC_PROGRESS_STORE=api at build time; UI only uses the interface;
+                                 migration.ts = one-time offer on "Hôm nay" to move old localStorage progress
   lib/api/                       the only backend caller: client.ts (exported request(): CSRF, ApiError, DELETE;
                                  cursor pages) + one module per area (weeks, opportunities, work, growth, library)
-                                 + schema.ts/openapi.yaml (make api-types); use-api.ts = client-side loading hook
+                                 + schema.ts/openapi.yaml (make api-types); use-api.ts = client-side loading hook;
+                                 search.ts = Cmd+K second-brain group (?q= on items, notes, inbox, opportunities, skills)
+  lib/use-open-from-url.ts       deep links (?item=, ?id=) open a row once, then drop the parameter (needs Suspense)
   lib/dates.ts                   Europe/Prague today, mondayOf, addDays, formatDay (date-only, UTC arithmetic)
   lib/labels.ts                  shared labels and status colours (item, inbox, objective, opportunity decision)
                                  for every card, plus fieldErrors() for DRF 400 bodies
@@ -47,7 +50,10 @@ web/
                                  (search, Inbox button with count, theme)
   components/brain/              second-brain UI (client): BrainCard, api-state (empty/error states), today,
                                  inbox-page, library-page, dialogs; per area: tuan/, opportunities/, work/,
-                                 growth/, library/. Data loads in the browser, never at build
+                                 growth/, library/. Data loads in the browser, never at build. Deletes only through
+                                 confirm-delete.tsx (alert dialog, never window.confirm); today-extras/brief-actions
+                                 load with next/dynamic (home First Load JS budget 220 kB)
+  components/search-dialog.tsx   Cmd+K: handbooks (/api/search) + second-brain group, lazy, registered in provider.tsx
   lib/utils.ts                   cn()
   scripts/                       import-gitbook, build-search, prepare-assets, extract-courses,
                                  backfill-images, smoke-test, prepare-vendor, postbuild-standalone,
@@ -120,7 +126,8 @@ Makefile                         make check = web types+lint, backend ruff+mypy+
                                  (needs a web server at SMOKE_BASE, default :3000); make api-types, backend-dev;
                                  make jobs (run_jobs loop, 300 s); make dev (build with NEXT_PUBLIC_PROGRESS_STORE=api,
                                  Django :8000 + Next prod :3100 + proxy :8080 + jobs; never :3000; no $(MAKE) inside
-                                 so `make -n dev` stays a dry run)
+                                 so `make -n dev` stays a dry run); make dev-hot (next dev :3001 with the API store
+                                 behind the proxy on :3000, after the owner stops their own next dev)
 ```
 
 ## Server mode rules

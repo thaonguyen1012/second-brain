@@ -14,6 +14,12 @@ export function getProgressStore(): ProgressStore {
   return store;
 }
 
+/** Re-reads the server's progress when the API store is active; no-op for the localStorage store. */
+export async function refreshProgress(): Promise<void> {
+  const s = getProgressStore();
+  if (s instanceof ApiProgressStore) await s.refresh();
+}
+
 const EMPTY: ProgressSnapshot = { done: {}, lastVisited: null };
 
 /** Current progress snapshot; re-renders on every change (also from other tabs). */

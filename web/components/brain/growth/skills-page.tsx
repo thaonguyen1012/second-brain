@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
+import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { ApiErrorState, ApiStaleAlert, EmptyState } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { freshness, freshnessOrder } from './labels';
@@ -77,6 +78,8 @@ export function SkillsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  // ?id=N (Cmd+K result): open that skill's sheet.
+  useOpenFromUrl('id', setOpenId);
 
   const all = useMemo(() => skills.data ?? [], [skills.data]);
   const counts = useMemo(() => {

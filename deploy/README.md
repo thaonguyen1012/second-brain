@@ -59,6 +59,9 @@ cd backend && uv run python manage.py brief_sources seed     # the feeds DECISIO
   production server on :3100 (`DEV_WEB_PORT`), the dev proxy on :8080 and the jobs loop. Open
   http://localhost:8080. It refuses to start when :8000, :8080 or :3100 is taken and never touches :3000 (`next
   dev`). Ctrl-C stops all four.
+* `make dev-hot`: hot reload with the API store on http://localhost:3000, the origin that holds the old
+  localStorage progress. Stop your own `next dev` first; it runs Django :8000, `next dev` :3001 and the dev proxy
+  on :3000 (ARCHITECTURE.md, "Switching your own dev server to the API store").
 * `make jobs`: only the jobs loop (`manage.py run_jobs` every 300 s, `JOBS_INTERVAL`), for when Django runs elsewhere.
 * `GET /api/status` (or http://localhost:8080/api/status) shows this month's LLM cost against the budget, the last
   morning brief and the jobs waiting or failed.

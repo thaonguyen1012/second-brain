@@ -7,8 +7,9 @@ BUDGET_KB ?= 220
 JOBS_INTERVAL ?= 300
 DEV_WEB_PORT ?= 3100
 DEV_BUILD ?= 1
+DEV_HOT_PORT ?= 3001
 
-.PHONY: check web-check backend-check smoke budget api-types backend-dev build jobs dev
+.PHONY: check web-check backend-check smoke budget api-types backend-dev build jobs dev dev-hot
 
 check: web-check backend-check smoke budget
 
@@ -51,19 +52,43 @@ jobs:
 
 # The whole app on one origin, as in production: http://localhost:8080 (dev proxy) -> Django :8000 and a Next
 # production server on DEV_WEB_PORT (3100), built with NEXT_PUBLIC_PROGRESS_STORE=api, plus `make jobs`.
-# Never touches :3000 (the owner's `next dev`). DEV_BUILD=0 reuses the last build. Ctrl-C stops everything.
+# Never touches :3000 (the owner's `next dev`). DEV_BUILD=0 reuses the last build, only when that build was made
+# by `make dev` (web/.next/progress-store-api holds its BUILD_ID), so the pages always use the API store.
+# Ctrl-C stops everything.
 # (No $(MAKE) in the recipe on purpose: `make -n dev` must only print, not start the servers.)
 dev:
 	@if [ "$(DEV_WEB_PORT)" = "3000" ]; then echo "DEV_WEB_PORT must not be 3000 (next dev runs there)"; exit 1; fi
 	@for port in 8000 8080 $(DEV_WEB_PORT); do \
 	  if lsof -nP -iTCP:$$port -sTCP:LISTEN >/dev/null 2>&1; then echo "port $$port is in use, stop it first"; exit 1; fi; \
 	done
-	@if [ "$(DEV_BUILD)" = "1" ]; then cd web && NEXT_PUBLIC_PROGRESS_STORE=api npm run build; fi
+	@if [ "$(DEV_BUILD)" = "1" ]; then \
+	  cd web && NEXT_PUBLIC_PROGRESS_STORE=api npm run build && cp .next/BUILD_ID .next/progress-store-api; \
+	elif ! cmp -s web/.next/BUILD_ID web/.next/progress-store-api; then \
+	  echo "the last web build was not made with NEXT_PUBLIC_PROGRESS_STORE=api: run make dev without DEV_BUILD=0"; exit 1; \
+	fi
 	$(UV) python manage.py migrate --no-input
 	@trap 'trap - INT TERM EXIT; kill 0' INT TERM EXIT; \
 	(cd backend && exec uv run python manage.py runserver 127.0.0.1:8000) & \
-	(cd web && PORT=$(DEV_WEB_PORT) HOSTNAME=127.0.0.1 exec npm start) & \
+	(cd web && NEXT_PUBLIC_PROGRESS_STORE=api PORT=$(DEV_WEB_PORT) HOSTNAME=127.0.0.1 exec npm start) & \
 	node web/scripts/dev-proxy.mjs --port 8080 --web http://127.0.0.1:$(DEV_WEB_PORT) & \
 	($(JOBS_LOOP)) & \
 	echo "make dev: open http://localhost:8080 (Ctrl-C stops Django, Next :$(DEV_WEB_PORT), proxy and jobs)"; \
+	wait
+
+# Hot reload with the API store on the owner's usual origin http://localhost:3000, which still holds the old
+# localStorage progress (the "Hôm nay" page then offers to move it to the server once): Django :8000, `next dev`
+# on DEV_HOT_PORT (3001) with NEXT_PUBLIC_PROGRESS_STORE=api, and the dev proxy on :3000 in front of both.
+# Stop your own `next dev` on :3000 first: this refuses to start while :3000, :8000 or DEV_HOT_PORT is in use and
+# never stops anything it did not start. Jobs are not included (`make jobs` in another terminal). Ctrl-C stops all.
+dev-hot:
+	@if [ "$(DEV_HOT_PORT)" = "3000" ]; then echo "DEV_HOT_PORT must not be 3000 (the proxy listens there)"; exit 1; fi
+	@for port in 3000 8000 $(DEV_HOT_PORT); do \
+	  if lsof -nP -iTCP:$$port -sTCP:LISTEN >/dev/null 2>&1; then echo "port $$port is in use, stop it first"; exit 1; fi; \
+	done
+	$(UV) python manage.py migrate --no-input
+	@trap 'trap - INT TERM EXIT; kill 0' INT TERM EXIT; \
+	(cd backend && exec uv run python manage.py runserver 127.0.0.1:8000) & \
+	(cd web && NEXT_PUBLIC_PROGRESS_STORE=api exec npx next dev --port $(DEV_HOT_PORT) --hostname 127.0.0.1) & \
+	node web/scripts/dev-proxy.mjs --port 3000 --web http://127.0.0.1:$(DEV_HOT_PORT) & \
+	echo "make dev-hot: open http://localhost:3000 (Ctrl-C stops Django, next dev :$(DEV_HOT_PORT) and the proxy)"; \
 	wait

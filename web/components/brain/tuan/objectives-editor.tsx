@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, CornerDownLeft, Info, Pencil, Plus } from 'lucide-react';
+import { ArrowDown, ArrowUp, CornerDownLeft, Info, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { ApiObjective } from '@/lib/api/client';
 import { type ApiObjectiveStatus, weeksApi } from '@/lib/api/weeks';
 import { objectiveStatuses } from '@/lib/labels';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { StatusBadge } from '../brain-card';
+import { ConfirmDelete } from '../confirm-delete';
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WriteError } from './week-section';
 import { minutesShort } from './week-utils';
@@ -88,7 +89,7 @@ export type ObjectivesUpdate = (current: ApiObjective[]) => ApiObjective[];
 const byPosition = (list: ApiObjective[]) => [...list].sort((a, b) => a.position - b.position || a.id - b.id);
 
 /**
- * The week's objectives: add, rename, change status and reorder. Updates are optimistic: `onChange` applies
+ * The week's objectives: add, rename, change status, reorder and delete (with confirmation). Updates are optimistic: `onChange` applies
  * the change at once; if Django refuses, only the rows of that call go back (and only if no later write
  * touched them), and a failed reorder reloads the order from the server. Moves are sent one after another.
  * `minutes` (review) shows the time logged per objective.
@@ -110,6 +111,7 @@ export function ObjectivesEditor({
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<{ id: number; title: string } | null>(null);
+  const [deleting, setDeleting] = useState<ApiObjective | null>(null);
   // Row to focus after the next render (after a move or an edit), so the keyboard cursor follows the row.
   const focusId = useRef<number | null>(null);
   const setFocusId = (id: number) => {
@@ -223,6 +225,9 @@ export function ObjectivesEditor({
     } else if (e.key === 'Enter' || e.key === 'F2') {
       e.preventDefault();
       setEditing({ id: o.id, title: o.title });
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      setDeleting(o);
     } else if (!e.altKey && !e.shiftKey && statusKeys[e.key]) {
       e.preventDefault();
       if (o.status !== statusKeys[e.key]) patch(o, { status: statusKeys[e.key] });
@@ -322,6 +327,15 @@ export function ObjectivesEditor({
                   >
                     <ArrowDown aria-hidden />
                   </Button>
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    className="text-destructive-foreground"
+                    aria-label={`Xóa: ${o.title}`}
+                    onClick={() => setDeleting(o)}
+                  >
+                    <Trash2 aria-hidden />
+                  </Button>
                 </div>
               </li>
             );
@@ -354,11 +368,31 @@ export function ObjectivesEditor({
 
       <WriteError error={error} />
 
+      <ConfirmDelete
+        open={deleting !== null}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title="Xóa mục tiêu?"
+        description={
+          deleting
+            ? `"${deleting.title}" bị xóa khỏi tuần này. Giờ đã ghi cho nó vẫn giữ, chỉ không còn gắn với mục tiêu nào; mục tiêu đã chuyển sang tuần sau vẫn giữ tên. Không hoàn tác được.`
+            : undefined
+        }
+        action={() => (deleting ? weeksApi.deleteObjective(start, deleting.id) : Promise.resolve())}
+        onDeleted={() => {
+          if (!deleting) return;
+          const gone = deleting.id;
+          const index = objectives.findIndex((x) => x.id === gone);
+          const neighbour = objectives[index + 1] ?? objectives[index - 1];
+          if (neighbour) setFocusId(neighbour.id);
+          onChange((list) => list.filter((x) => x.id !== gone));
+        }}
+      />
+
       {objectives.length > 0 && (
         <p className="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:flex">
           <span>Chọn một dòng rồi:</span>
           <span>
-            <Kbd>D</Kbd> xong · <Kbd>X</Kbd> bỏ · <Kbd>O</Kbd> mở lại
+            <Kbd>D</Kbd> xong · <Kbd>X</Kbd> bỏ · <Kbd>O</Kbd> mở lại · <Kbd>Del</Kbd> xóa
           </span>
           <span>
             <Kbd>

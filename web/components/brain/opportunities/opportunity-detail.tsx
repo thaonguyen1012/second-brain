@@ -16,6 +16,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiErrorState, EmptyState, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
+import { ConfirmDelete, DeleteButton } from '../confirm-delete';
 import { DecideByBadge, FitBadges } from './bits';
 import { EvidenceDialog, type EvidenceTarget } from './evidence-dialog';
 import { STALE_LABEL, decisionOf, decisions, evidenceKinds, formatDay, stanceOf } from './labels';
@@ -53,7 +54,17 @@ function Section({
 /** Only http(s) links become anchors; they open in a new tab and send no referrer. */
 const safeUrl = (u: string) => (/^https?:\/\//i.test(u) ? u : null);
 
-function EvidenceRow({ e, onEdit }: { e: ApiEvidence; onEdit: () => void }) {
+function EvidenceRow({
+  e,
+  opportunityId,
+  onEdit,
+  onDeleted,
+}: {
+  e: ApiEvidence;
+  opportunityId: number;
+  onEdit: () => void;
+  onDeleted: () => void;
+}) {
   const s = stanceOf(e.stance);
   const href = safeUrl(e.url);
   return (
@@ -72,6 +83,13 @@ function EvidenceRow({ e, onEdit }: { e: ApiEvidence; onEdit: () => void }) {
           <Pencil aria-hidden />
           Sửa
         </Button>
+        <ConfirmDelete
+          title="Xóa bằng chứng?"
+          description={`"${e.title || e.url}" bị gỡ khỏi cơ hội này. Mục inbox, item hay ghi chú gốc vẫn giữ nguyên. Không hoàn tác được.`}
+          action={() => opportunitiesApi.deleteEvidence(opportunityId, e.id)}
+          onDeleted={onDeleted}
+          trigger={<DeleteButton aria-label={`Xóa bằng chứng "${e.title}"`} />}
+        />
       </div>
       <p className="text-sm font-medium break-words">
         {href ? (
@@ -330,7 +348,18 @@ export function OpportunityDetail({ id }: { id: number }) {
         ) : (
           <ul className="flex flex-col gap-2">
             {shown.map((e) => (
-              <EvidenceRow key={e.id} e={e} onEdit={() => setEvidence({ mode: 'edit', evidence: e })} />
+              <EvidenceRow
+                key={e.id}
+                e={e}
+                opportunityId={o.id}
+                onEdit={() => setEvidence({ mode: 'edit', evidence: e })}
+                onDeleted={() => {
+                  opp.mutate((d) => d && { ...d, evidence: d.evidence.filter((x) => x.id !== e.id) });
+                  setNotice('Đã xóa bằng chứng');
+                  // counts, last evidence date and "stale" are computed by the server
+                  opp.reload();
+                }}
+              />
             ))}
           </ul>
         )}

@@ -2,13 +2,14 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowRight, CalendarRange, Inbox, Newspaper } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { api, type ApiNewsFeedback } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import { formatDate, hostOf, objectiveStatuses } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { ApiErrorState, EmptyState, LoadingCards } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
 import { useInboxCount } from './inbox-count';
@@ -19,21 +20,37 @@ const EvidenceMenu = dynamic(() => import('./evidence-menu'), {
   loading: () => <Skeleton className="h-7 w-44 rounded-md" />,
 });
 
-function Panel({
+// Inbox and feedback buttons of a brief card, the due predictions and the status line: also loaded on demand.
+const BriefActions = dynamic(() => import('./brief-actions'), {
+  ssr: false,
+  loading: () => <Skeleton className="h-7 w-72 rounded-md" />,
+});
+export const TodayPredictions = dynamic(() => import('./today-extras').then((m) => m.TodayPredictions), {
+  ssr: false,
+  loading: () => <Skeleton className="h-36 rounded-3xl md:col-span-2 xl:col-span-1" />,
+});
+export const TodayStatus = dynamic(() => import('./today-extras').then((m) => m.TodayStatus), {
+  ssr: false,
+  loading: () => <Skeleton className="h-4 w-72 rounded" />,
+});
+
+export function Panel({
   icon: Icon,
   title,
   href,
   linkLabel,
   children,
+  className,
 }: {
   icon: typeof Inbox;
   title: string;
   href: string;
   linkLabel: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <Card className="flex flex-col gap-3 rounded-3xl border p-4 shadow-depth-1">
+    <Card className={cn('flex flex-col gap-3 rounded-3xl border p-4 shadow-depth-1', className)}>
       <div className="flex items-center gap-2">
         <Icon className="size-4 text-muted-foreground" aria-hidden />
         <h2 className="font-heading text-[15px] font-semibold tracking-tight">{title}</h2>
@@ -101,6 +118,8 @@ export function TodayInbox() {
 /** Today's morning brief (GET /api/brief/today; 404 before 06:30 is an empty state). */
 export function TodayBrief() {
   const brief = useApi('brief-today', api.getTodayBrief);
+  const onRated = (id: number, feedback: ApiNewsFeedback | null) =>
+    brief.mutate((d) => d && { ...d, items: d.items.map((n) => (n.id === id ? { ...n, feedback } : n)) });
   return (
     <section className="flex flex-col gap-4" aria-labelledby="today-brief">
       <div className="flex items-center gap-2">
@@ -144,7 +163,12 @@ export function TodayBrief() {
                   </a>
                 }
                 meta={[hostOf(n.url), formatDate(n.published)].filter(Boolean).join(' · ')}
-                actions={<EvidenceMenu newsItem={n.id} />}
+                actions={
+                  <>
+                    <BriefActions item={n} onRated={onRated} />
+                    <EvidenceMenu newsItem={n.id} />
+                  </>
+                }
               >
                 {(n.summary || n.excerpt) && (
                   <p className="line-clamp-4 text-[13px] leading-relaxed text-muted-foreground">

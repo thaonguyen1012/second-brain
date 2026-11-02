@@ -81,7 +81,7 @@ function AppSidebar() {
   );
 }
 
-/** Opens the site search dialog (Fumadocs, SQLite FTS). */
+/** Opens the search dialog (components/search-dialog.tsx): handbooks and the second brain. */
 function SearchButton() {
   const { setOpenSearch } = useSearchContext();
   return (
@@ -91,7 +91,7 @@ function SearchButton() {
       className="flex h-9 w-full max-w-[280px] items-center gap-2 rounded-lg border border-input bg-popover pr-2 pl-3 text-sm text-muted-foreground transition-colors hover:bg-accent/50 dark:bg-input/32"
     >
       <Search className="size-4 opacity-80" aria-hidden />
-      <span className="flex-1 text-left">Tìm bài học...</span>
+      <span className="flex-1 truncate text-left">Tìm mọi thứ...</span>
       <Kbd>⌘ K</Kbd>
     </button>
   );

@@ -11,6 +11,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
+import { ConfirmDelete, DeleteButton } from '../confirm-delete';
 import { AchievementDialog } from './achievement-dialog';
 import { addDays, formatDay, mondayOf, outcomeOf, outcomes, today, weekLabel } from './labels';
 import { PredictionDialog, type PredictionMode } from './prediction-dialog';
@@ -18,7 +19,15 @@ import { PeriodStepper, SectionTitle, useShortcuts } from './shared';
 
 // --- Brag document -----------------------------------------------------------------------------------
 
-function AchievementCard({ a, onEdit }: { a: ApiAchievement; onEdit: () => void }) {
+function AchievementCard({
+  a,
+  onEdit,
+  onDeleted,
+}: {
+  a: ApiAchievement;
+  onEdit: () => void;
+  onDeleted: () => void;
+}) {
   return (
     <BrainCard
       badges={
@@ -29,10 +38,19 @@ function AchievementCard({ a, onEdit }: { a: ApiAchievement; onEdit: () => void 
       }
       title={a.title}
       actions={
-        <Button size="xs" variant="outline" onClick={onEdit}>
-          <Pencil aria-hidden />
-          Sửa
-        </Button>
+        <>
+          <Button size="xs" variant="outline" onClick={onEdit}>
+            <Pencil aria-hidden />
+            Sửa
+          </Button>
+          <ConfirmDelete
+            title="Xóa dòng thành tựu?"
+            description={`"${a.title}" bị xóa khỏi nhật ký thành tựu. Không hoàn tác được.`}
+            action={() => growthApi.deleteAchievement(a.id)}
+            onDeleted={onDeleted}
+            trigger={<DeleteButton className="ms-auto" aria-label={`Xóa thành tựu "${a.title}"`} />}
+          />
+        </>
       }
     >
       {a.impact && (
@@ -161,6 +179,10 @@ function BragSection() {
                 setEditing(a);
                 setOpen(true);
               }}
+              onDeleted={() => {
+                list.mutate((d) => d && { ...d, results: d.results.filter((x) => x.id !== a.id) });
+                setNotice(`Đã xóa "${a.title}"`);
+              }}
             />
           ))}
         </div>
@@ -199,10 +221,12 @@ function PredictionCard({
   p,
   onScore,
   onEdit,
+  onDeleted,
 }: {
   p: ApiPrediction;
   onScore: () => void;
   onEdit: () => void;
+  onDeleted: () => void;
 }) {
   const o = outcomeOf(p.outcome);
   const due = p.outcome === 'open' && p.checkOn <= today();
@@ -236,6 +260,13 @@ function PredictionCard({
             <Pencil aria-hidden />
             Sửa
           </Button>
+          <ConfirmDelete
+            title="Xóa dự đoán?"
+            description={`"${p.statement}" bị xóa, kể cả kết quả đã chấm. Không hoàn tác được.`}
+            action={() => growthApi.deletePrediction(p.id)}
+            onDeleted={onDeleted}
+            trigger={<DeleteButton className="ms-auto" aria-label="Xóa dự đoán" />}
+          />
         </>
       }
     >
@@ -336,7 +367,17 @@ function PredictionsSection() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {rows.map((p) => (
-            <PredictionCard key={p.id} p={p} onScore={() => show(p, 'score')} onEdit={() => show(p, 'edit')} />
+            <PredictionCard
+              key={p.id}
+              p={p}
+              onScore={() => show(p, 'score')}
+              onEdit={() => show(p, 'edit')}
+              onDeleted={() => {
+                list.mutate((d) => d && { ...d, results: d.results.filter((x) => x.id !== p.id) });
+                due.reload();
+                setNotice('Đã xóa dự đoán');
+              }}
+            />
           ))}
         </div>
       )}

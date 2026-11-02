@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Lightbulb, Plus, Trophy } from 'lucide-react';
+import { ArrowRight, Hourglass, Lightbulb, Plus, Trophy } from 'lucide-react';
 import { opportunitiesApi } from '@/lib/api/opportunities';
 import { type ApiAchievement, type ApiOpportunityDecision, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
 import { decisionOf, formatDate, opportunityHref } from '@/lib/labels';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '../brain-card';
+import { DuePredictionList, PREDICTIONS_HREF, useDuePredictions } from '../due-predictions';
 import { WeekSection, WriteError } from './week-section';
 import { addDays, shortDate, todayPrague } from './week-utils';
 
@@ -247,6 +248,26 @@ export function ReviewAchievements({
         </Button>
       </form>
       <WriteError error={error} />
+    </WeekSection>
+  );
+}
+
+/** Predictions whose 6 months are up (GET /api/predictions?due=true): scored on Thành tựu (DECISIONS 4.8). */
+export function ReviewPredictions() {
+  const due = useDuePredictions();
+  return (
+    <WeekSection
+      icon={Hourglass}
+      id="week-predictions"
+      title="Dự đoán đến hạn chấm lại"
+      action={
+        <Button size="xs" variant="ghost" render={<Link href={PREDICTIONS_HREF} />}>
+          Chấm lại
+          <ArrowRight aria-hidden />
+        </Button>
+      }
+    >
+      <DuePredictionList due={due} />
     </WeekSection>
   );
 }

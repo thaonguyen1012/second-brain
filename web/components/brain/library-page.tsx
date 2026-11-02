@@ -3,14 +3,20 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Library, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
 import { api, type ApiItem, type ApiItemStatus, type ApiItemType, type Page } from '@/lib/api/client';
+import { loadAllItems, type ApiNote } from '@/lib/api/library';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate, itemStatusOf, itemStatuses, itemTypeLabel, itemTypes } from '@/lib/labels';
+import { noteTitle } from '@/lib/library-labels';
+import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
 import { ChoiceSelect } from './choice-select';
 import { ItemDialog } from './item-dialog';
+import { DoneOutputHint, missingOutput, noteDraftForItem } from './library/done-output';
+import { NoteDialog } from './library/note-dialog';
+import { useItemIndex } from './library/use-item-index';
 
 type TypeFilter = ApiItemType | 'all';
 type StatusFilter = ApiItemStatus | 'all';
@@ -28,12 +34,17 @@ function ItemCard({
   item,
   onEdit,
   onStep,
+  onWriteNote,
+  onRate,
 }: {
   item: ApiItem;
   onEdit: () => void;
   onStep: (to: ApiItemStatus) => void;
+  onWriteNote: () => void;
+  onRate: () => void;
 }) {
   const s = itemStatusOf(item.status);
+  const gap = missingOutput(item);
   const step = nextStep[item.status ?? 'planned'];
   const dates = [
     item.startedAt && `bắt đầu ${formatDate(item.startedAt)}`,
@@ -73,6 +84,7 @@ function ItemCard({
         </>
       }
     >
+      {gap && <DoneOutputHint type={item.type} gap={gap} onWriteNote={onWriteNote} onRate={onRate} />}
       {item.tags && item.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {item.tags.map((t) => (
@@ -92,7 +104,11 @@ export function LibraryPage() {
   const [status, setStatus] = useState<StatusFilter>('all');
   const [editing, setEditing] = useState<ApiItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [focusRating, setFocusRating] = useState(false);
+  const [noteFor, setNoteFor] = useState<ApiItem | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // The full Item list is only for the note dialog's item picker.
+  const index = useItemIndex(noteFor !== null);
   const [loadingMore, setLoadingMore] = useState(false);
 
   const items = useApi<Page<ApiItem>>(`items:${type}:${status}`, () =>
@@ -103,6 +119,21 @@ export function LibraryPage() {
     }),
   );
   const list = items.loading ? [] : (items.data?.results ?? []);
+
+  // ?item=N (Cmd+K result): open that Item's dialog; there is no GET /api/items/{id}, so look it up in the list.
+  useOpenFromUrl('item', (id) => {
+    const shownItem = items.data?.results.find((i) => i.id === id);
+    const found = shownItem ? Promise.resolve(shownItem) : loadAllItems().then((all) => all.find((i) => i.id === id));
+    found.then(
+      (item) => {
+        if (!item) return setNotice(`Không tìm thấy item #${id}, có thể đã bị xóa.`);
+        setEditing(item);
+        setFocusRating(false);
+        setDialogOpen(true);
+      },
+      (err: unknown) => setNotice(describeApiError(toApiError(err)).title),
+    );
+  });
   const matches = (i: ApiItem) => (type === 'all' || i.type === type) && (status === 'all' || i.status === status);
 
   const upsert = (saved: ApiItem, created: boolean) =>
@@ -115,6 +146,16 @@ export function LibraryPage() {
         results: created ? [saved, ...rest] : d.results.map((i) => (i.id === saved.id ? saved : i)),
       };
     });
+
+  const removeItem = (id: number) =>
+    items.mutate((d) => d && { ...d, results: d.results.filter((i) => i.id !== id) });
+
+  /** A new note linked to Items: their noteCount goes up here too, so the "chưa có đầu ra" hint goes away. */
+  const noteCreated = (note: ApiNote) => {
+    const bump = (i: ApiItem) => (note.items.includes(i.id) ? { ...i, noteCount: i.noteCount + 1 } : i);
+    items.mutate((d) => d && { ...d, results: d.results.map(bump) });
+    setEditing((e) => e && bump(e));
+  };
 
   const step = async (item: ApiItem, to: ApiItemStatus) => {
     try {
@@ -153,6 +194,7 @@ export function LibraryPage() {
           className="ms-auto"
           onClick={() => {
             setEditing(null);
+            setFocusRating(false);
             setDialogOpen(true);
           }}
         >
@@ -190,9 +232,16 @@ export function LibraryPage() {
               item={item}
               onEdit={() => {
                 setEditing(item);
+                setFocusRating(false);
+                setDialogOpen(true);
+              }}
+              onRate={() => {
+                setEditing(item);
+                setFocusRating(true);
                 setDialogOpen(true);
               }}
               onStep={(to) => void step(item, to)}
+              onWriteNote={() => setNoteFor(item)}
             />
           ))}
         </div>
@@ -206,11 +255,41 @@ export function LibraryPage() {
       <ItemDialog
         open={dialogOpen}
         item={editing}
-        onOpenChange={setDialogOpen}
+        focusRating={focusRating}
+        onOpenChange={(o) => {
+          setDialogOpen(o);
+          if (!o) setFocusRating(false);
+        }}
         onSaved={(saved, created) => {
           upsert(saved, created);
           setDialogOpen(false);
           setNotice(created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`);
+        }}
+        onDeleted={(deleted) => {
+          removeItem(deleted.id);
+          setDialogOpen(false);
+          setEditing(null);
+          setNotice(`Đã xóa "${deleted.title}"`);
+        }}
+        onWriteNote={(item) => {
+          setDialogOpen(false);
+          setNoteFor(item);
+        }}
+      />
+
+      <NoteDialog
+        open={noteFor !== null}
+        note={null}
+        draft={noteFor ? noteDraftForItem(noteFor) : undefined}
+        description={noteFor ? `Đầu ra cho: ${noteFor.title}` : undefined}
+        items={index.items}
+        byId={noteFor && !index.byId.has(noteFor.id) ? new Map([...index.byId, [noteFor.id, noteFor]]) : index.byId}
+        itemsStatus={index.loading && index.items.length === 0 ? 'Đang tải danh sách item…' : undefined}
+        onOpenChange={(o) => !o && setNoteFor(null)}
+        onSaved={(note) => {
+          setNoteFor(null);
+          noteCreated(note);
+          setNotice(`Đã tạo ghi chú "${noteTitle(note)}"`);
         }}
       />
     </div>

@@ -12,6 +12,7 @@ export type ApiNoteQuery = NonNullable<operations['listNotes']['parameters']['qu
 export const notesApi = {
   /** Newest created first; `q` matches title or markdown, `item` keeps notes linked to that Item. */
   list: (query?: ApiNoteQuery): Promise<Page<ApiNote>> => api.page<ApiNote>(withQuery('/api/notes', query)),
+  get: (id: number) => request<ApiNote>('GET', `/api/notes/${id}`),
   create: (body: ApiNoteCreate) => request<ApiNote>('POST', '/api/notes', body),
   /** `items` replaces the links (`[]` removes them). */
   update: (id: number, body: ApiNotePatch) => request<ApiNote>('PATCH', `/api/notes/${id}`, body),

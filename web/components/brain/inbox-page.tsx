@@ -15,12 +15,14 @@ import { linkInboxItem } from '@/lib/api/library';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { destinations, formatDate, hostOf, inboxStatuses, inboxStatusOf, itemTypeLabel } from '@/lib/labels';
 import { itemDraftFromEntry, noteTitle } from '@/lib/library-labels';
+import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
+import { ConfirmDelete, DeleteButton } from './confirm-delete';
 import { refreshInboxCount } from './inbox-count';
 import { ItemDialog } from './item-dialog';
 import { NoteDialog, type NoteDraft } from './library/note-dialog';
@@ -135,6 +137,7 @@ function EntryCard({
   onOpportunity,
   onItem,
   onNote,
+  onDelete,
 }: {
   entry: ApiInboxEntry;
   /** Title and type of the linked Item, when the Item list has loaded. */
@@ -145,6 +148,7 @@ function EntryCard({
   onOpportunity: () => void;
   onItem: () => void;
   onNote: () => void;
+  onDelete: () => void;
 }) {
   const s = inboxStatusOf(entry.status);
   const site = entry.ogSiteName || hostOf(entry.url);
@@ -230,6 +234,9 @@ function EntryCard({
               Mở <Kbd>I</Kbd>
             </Button>
           )}
+          <DeleteButton className="ms-auto" onClick={onDelete}>
+            Xóa <Kbd>X</Kbd>
+          </DeleteButton>
         </>
       }
     >
@@ -258,6 +265,7 @@ const keyHelp: [string, string][] = [
   ['T', 'thành item'],
   ['N', 'ghi chú'],
   ['I', 'mở link'],
+  ['X', 'xóa'],
   ['C', 'thu thập'],
 ];
 
@@ -268,18 +276,37 @@ export function InboxPage() {
   const [pickFor, setPickFor] = useState<ApiInboxEntry | null>(null);
   const [itemFor, setItemFor] = useState<ApiInboxEntry | null>(null);
   const [noteFor, setNoteFor] = useState<ApiInboxEntry | null>(null);
+  const [deleteFor, setDeleteFor] = useState<ApiInboxEntry | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const captureRef = useRef<HTMLTextAreaElement>(null);
   const inbox = useApi<Page<ApiInboxEntry>>(`inbox:${status}`, () => api.listInbox({ status, limit: PAGE }));
   const shown = inbox.loading ? [] : (inbox.data?.results ?? []);
+
+  // ?status=S&id=N (Cmd+K result): switch to that tab, then select the entry once the tab's list has loaded.
+  const [focusId, setFocusId] = useState<number | null>(null);
+  useOpenFromUrl(
+    'id',
+    (id, params) => {
+      const tab = inboxStatuses.find((x) => x.value === params.get('status'));
+      if (tab) setStatus(tab.value);
+      setFocusId(id);
+    },
+    ['status'],
+  );
+  if (focusId !== null && !inbox.loading && inbox.dataKey === `inbox:${status}`) {
+    const at = shown.findIndex((e) => e.id === focusId);
+    setFocusId(null);
+    if (at >= 0) setCursor(at);
+    else if (!inbox.error) setNotice('Không thấy mục này trong danh sách: có thể ở trang sau hoặc đã bị xóa.');
+  }
   const selected = Math.min(cursor, Math.max(0, shown.length - 1));
   const current = shown[selected];
   const { mutate, reload } = inbox;
   // Cards label linked Items from `itemTitle`/`itemType`; the full list is only for the note dialog's picker.
   const index = useItemIndex(noteFor !== null);
   const { put: putItem } = index;
-  const dialogOpen = pickFor !== null || itemFor !== null || noteFor !== null;
+  const dialogOpen = pickFor !== null || itemFor !== null || noteFor !== null || deleteFor !== null;
 
   const replace = useCallback(
     (entry: ApiInboxEntry) =>
@@ -359,6 +386,8 @@ export function InboxPage() {
           t: () => !current.item && setItemFor(current),
           n: () => setNoteFor(current),
           i: () => current.url && window.open(current.url, '_blank', 'noopener'),
+          x: () => setDeleteFor(current),
+          delete: () => setDeleteFor(current),
         }),
       };
       const run = act[k];
@@ -449,6 +478,7 @@ export function InboxPage() {
               linkedItem={e.item && e.itemTitle !== null ? { title: e.itemTitle, type: e.itemType ?? '' } : undefined}
               onItem={() => setItemFor(e)}
               onNote={() => setNoteFor(e)}
+              onDelete={() => setDeleteFor(e)}
             />
           ))}
           {inbox.data?.next && (
@@ -458,6 +488,24 @@ export function InboxPage() {
           )}
         </div>
       )}
+
+      <ConfirmDelete
+        open={deleteFor !== null}
+        onOpenChange={(o) => !o && setDeleteFor(null)}
+        title="Xóa mục inbox?"
+        description={
+          deleteFor
+            ? `"${titleOf(deleteFor)}" bị xóa hẳn, kể cả ảnh thu nhỏ. Item và ghi chú đã tạo từ mục này vẫn giữ nguyên. Không hoàn tác được.`
+            : undefined
+        }
+        action={() => (deleteFor ? api.deleteInboxEntry(deleteFor.id) : Promise.resolve())}
+        onDeleted={() => {
+          if (!deleteFor) return;
+          remove(deleteFor.id);
+          setNotice(`Đã xóa "${titleOf(deleteFor)}"`);
+          void refreshInboxCount();
+        }}
+      />
 
       <OpportunityDialog
         open={pickFor !== null}

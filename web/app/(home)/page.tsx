@@ -2,10 +2,14 @@ import Link from 'next/link';
 import { books } from '@/lib/books';
 import { Button } from '@/components/ui/button';
 import { ContinueReading } from '@/components/progress';
+import { ProgressMigrationOffer } from '@/components/progress-migration';
 import { PageHeader } from '@/components/brain/page-header';
-import { TodayBrief, TodayInbox, TodayWeek } from '@/components/brain/today';
+import { TodayBrief, TodayInbox, TodayPredictions, TodayStatus, TodayWeek } from '@/components/brain/today';
 
-/** "Hôm nay" (DECISIONS 4.4, 9.3): continue learning, the week's objectives, inbox count, today's brief. */
+/**
+ * "Hôm nay" (DECISIONS 4.4, 9.3): continue learning, the week's objectives, inbox count, predictions due for
+ * re-scoring, today's brief and the background status line.
+ */
 export default function HomePage() {
   return (
     <div className="flex w-full flex-col">
@@ -19,15 +23,21 @@ export default function HomePage() {
           </Button>
         </div>
         <ContinueReading books={books.map(({ slug, title, track }) => ({ slug, title, track }))} />
+        <ProgressMigrationOffer />
       </PageHeader>
 
-      <section className="grid gap-3 px-4 pb-8 sm:px-8 md:grid-cols-2" aria-label="Tuần và inbox">
+      <section className="grid gap-3 px-4 pb-8 sm:px-8 md:grid-cols-2 xl:grid-cols-3" aria-label="Tuần, inbox và dự đoán">
         <TodayWeek />
         <TodayInbox />
+        <TodayPredictions className="md:col-span-2 xl:col-span-1" />
       </section>
 
       <div className="border-t px-4 py-10 sm:px-8">
         <TodayBrief />
+      </div>
+
+      <div className="border-t px-4 py-4 sm:px-8">
+        <TodayStatus />
       </div>
     </div>
   );

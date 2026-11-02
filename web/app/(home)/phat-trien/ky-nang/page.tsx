@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { PageHeader } from '@/components/brain/page-header';
 import { SkillsPage } from '@/components/brain/growth/skills-page';
@@ -11,7 +12,10 @@ export default function Page() {
         title="Kỹ năng"
         description="Ma trận kỹ năng có bằng chứng. Không tự chấm điểm: kỹ năng sáng lên khi có bằng chứng mới và tự mờ dần khi 6 tháng không có."
       />
-      <SkillsPage />
+      {/* useSearchParams (?id=, Cmd+K results) needs a Suspense boundary for the static shell */}
+      <Suspense fallback={null}>
+        <SkillsPage />
+      </Suspense>
     </div>
   );
 }

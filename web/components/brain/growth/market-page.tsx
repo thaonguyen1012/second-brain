@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Kbd } from '@/components/ui/kbd';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
+import { ConfirmDelete, DeleteButton } from '../confirm-delete';
 import { JobAdDialog } from './job-ad-dialog';
 import { MarketSkillTable, MatchedSkill } from './market-chart';
 import { addMonths, formatDay, monthLabel, seniority, thisMonth, twoQuestions } from './labels';
@@ -24,7 +25,7 @@ function adState(ad: ApiJobAd): { label: string; tone: 'success' | 'info' | 'err
   return { label: 'Đang chờ phân tích', tone: 'info' };
 }
 
-function JobAdCard({ ad, onEdit }: { ad: ApiJobAd; onEdit: () => void }) {
+function JobAdCard({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void; onDeleted: () => void }) {
   const s = adState(ad);
   const host = hostOf(ad.url);
   return (
@@ -53,6 +54,13 @@ function JobAdCard({ ad, onEdit }: { ad: ApiJobAd; onEdit: () => void }) {
               Mở tin
             </Button>
           )}
+          <ConfirmDelete
+            title="Xóa tin tuyển dụng?"
+            description={`"${ad.title}" bị xóa và không còn tính vào báo cáo thị trường tháng này. Không hoàn tác được.`}
+            action={() => growthApi.deleteJobAd(ad.id)}
+            onDeleted={onDeleted}
+            trigger={<DeleteButton className="ms-auto" aria-label={`Xóa tin "${ad.title}"`} />}
+          />
         </>
       }
     >
@@ -318,6 +326,11 @@ export function MarketPage() {
                 onEdit={() => {
                   setEditing(ad);
                   setDialogOpen(true);
+                }}
+                onDeleted={() => {
+                  ads.mutate((d) => d && { ...d, results: d.results.filter((x) => x.id !== ad.id) });
+                  report.reload();
+                  setNotice(`Đã xóa "${ad.title}"`);
                 }}
               />
             ))}

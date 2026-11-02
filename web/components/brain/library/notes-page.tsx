@@ -8,12 +8,14 @@ import { notesApi, type ApiNote } from '@/lib/api/library';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate, itemTypeLabel } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
+import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
 import { BrainCard } from '../brain-card';
+import { ConfirmDelete, DeleteButton } from '../confirm-delete';
 import { NoteDialog } from './note-dialog';
 import type { ItemLabel } from './item-picker';
 import { useItemIndex } from './use-item-index';
@@ -47,6 +49,7 @@ function NoteCard({
   onSelect,
   onEdit,
   onToggle,
+  onDelete,
 }: {
   note: ApiNote;
   itemTitle: (id: number) => { title: string; type?: string };
@@ -55,6 +58,7 @@ function NoteCard({
   onSelect: () => void;
   onEdit: () => void;
   onToggle: () => void;
+  onDelete: () => void;
 }) {
   const id = `note-${note.id}`;
   const long = isLong(note.markdown);
@@ -102,6 +106,9 @@ function NoteCard({
               {expanded ? 'Thu gọn' : 'Xem đầy đủ'} <Kbd>V</Kbd>
             </Button>
           )}
+          <DeleteButton className="ms-auto" onClick={onDelete}>
+            Xóa <Kbd>X</Kbd>
+          </DeleteButton>
         </>
       }
     >
@@ -122,6 +129,7 @@ const keyHelp: [string, string][] = [
   ['J / K', 'xuống / lên'],
   ['E', 'sửa'],
   ['V', 'xem đủ'],
+  ['X', 'xóa'],
   ['N', 'ghi chú mới'],
   ['/', 'tìm'],
 ];
@@ -139,6 +147,7 @@ export function NotesPage() {
   const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
   const [editing, setEditing] = useState<ApiNote | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState<ApiNote | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -171,6 +180,17 @@ export function NotesPage() {
     setEditing(note);
     setDialogOpen(true);
   }, []);
+  // ?id=N (Cmd+K result): open that note in the dialog, wherever it sits in the list.
+  useOpenFromUrl('id', (id) =>
+    notesApi.get(id).then(openEditor, (err: unknown) => {
+      const e = toApiError(err);
+      setNotice(
+        e.status === 404 && e.reachable
+          ? `Không tìm thấy ghi chú #${id}, có thể đã bị xóa.`
+          : describeApiError(e).title,
+      );
+    }),
+  );
   const toggle = useCallback(
     (id: number) =>
       setExpanded((s) => {
@@ -199,7 +219,7 @@ export function NotesPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (dialogOpen || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (dialogOpen || deleting || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
       const act: Record<string, () => void> = {
         j: () => setCursor(Math.min(selected + 1, shown.length - 1)),
         arrowdown: () => setCursor(Math.min(selected + 1, shown.length - 1)),
@@ -211,6 +231,8 @@ export function NotesPage() {
           e: () => openEditor(current),
           enter: () => openEditor(current),
           v: () => isLong(current.markdown) && toggle(current.id),
+          x: () => setDeleting(current),
+          delete: () => setDeleting(current),
         }),
       };
       const run = act[e.key.toLowerCase()];
@@ -222,7 +244,7 @@ export function NotesPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [dialogOpen, selected, shown.length, current, openEditor, toggle]);
+  }, [dialogOpen, deleting, selected, shown.length, current, openEditor, toggle]);
 
   const loadMore = async () => {
     const next = notes.data?.next;
@@ -338,6 +360,7 @@ export function NotesPage() {
               onSelect={() => setCursor(i)}
               onEdit={() => openEditor(n)}
               onToggle={() => toggle(n.id)}
+              onDelete={() => setDeleting(n)}
             />
           ))}
         </div>
@@ -347,6 +370,24 @@ export function NotesPage() {
           Tải thêm
         </Button>
       )}
+
+      <ConfirmDelete
+        open={deleting !== null}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title="Xóa ghi chú?"
+        description={
+          deleting
+            ? `"${noteTitle(deleting)}" bị xóa hẳn. Item liên kết vẫn giữ nguyên. Không hoàn tác được.`
+            : undefined
+        }
+        action={() => (deleting ? notesApi.delete(deleting.id) : Promise.resolve())}
+        onDeleted={() => {
+          if (!deleting) return;
+          const gone = deleting.id;
+          notes.mutate((d) => d && { ...d, results: d.results.filter((n) => n.id !== gone) });
+          setNotice(`Đã xóa "${noteTitle(deleting)}"`);
+        }}
+      />
 
       <NoteDialog
         open={dialogOpen}

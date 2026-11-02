@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { PageHeader } from '@/components/brain/page-header';
+import { LoadingCards } from '@/components/brain/api-state';
 import { LibraryPage } from '@/components/brain/library-page';
 import { LibraryTabs } from '@/components/brain/library/library-tabs';
 
@@ -14,7 +16,16 @@ export default function Page() {
       >
         <LibraryTabs current="items" />
       </PageHeader>
-      <LibraryPage />
+      {/* useSearchParams (?item=, Cmd+K results) needs a Suspense boundary for the static shell */}
+      <Suspense
+        fallback={
+          <div className="px-4 sm:px-8">
+            <LoadingCards />
+          </div>
+        }
+      >
+        <LibraryPage />
+      </Suspense>
     </div>
   );
 }

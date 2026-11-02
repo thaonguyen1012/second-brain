@@ -4,6 +4,15 @@ import { Loader2 } from 'lucide-react';
 import type { ApiItem } from '@/lib/api/client';
 import { notesApi, type ApiNote } from '@/lib/api/library';
 import { toApiError } from '@/lib/api/use-api';
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -197,10 +206,19 @@ export function NoteDialog({
   onSaved: (note: ApiNote, created: boolean) => void;
 }) {
   const dirty = useRef(false);
+  const [askDiscard, setAskDiscard] = useState(false);
   const change = (next: boolean) => {
-    if (!next && dirty.current && !window.confirm('Bỏ các thay đổi chưa lưu?')) return;
+    if (!next && dirty.current) {
+      setAskDiscard(true);
+      return;
+    }
     if (!next) dirty.current = false;
     onOpenChange(next);
+  };
+  const discard = () => {
+    setAskDiscard(false);
+    dirty.current = false;
+    onOpenChange(false);
   };
   return (
     <Dialog open={open} onOpenChange={change}>
@@ -227,6 +245,21 @@ export function NoteDialog({
             }}
           />
         )}
+        {/* Nested in the popup, so Base UI treats it as a child dialog (focus returns to the note). */}
+        <AlertDialog open={askDiscard} onOpenChange={setAskDiscard}>
+          <AlertDialogPopup>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Bỏ các thay đổi chưa lưu?</AlertDialogTitle>
+              <AlertDialogDescription>Nội dung vừa gõ trong ghi chú này sẽ mất.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogClose render={<Button variant="ghost" type="button" />}>Tiếp tục sửa</AlertDialogClose>
+              <Button variant="destructive" type="button" onClick={discard}>
+                Bỏ thay đổi
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogPopup>
+        </AlertDialog>
       </DialogPopup>
     </Dialog>
   );
