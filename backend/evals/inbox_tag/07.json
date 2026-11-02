@@ -1,0 +1,13 @@
+{
+  "input": {
+    "title": "OWASP Server-Side Request Forgery Prevention Cheat Sheet",
+    "site": "OWASP Cheat Sheet Series",
+    "text": "This cheat sheet focuses on providing advice on how to protect against SSRF attacks: validate input, use allowlists for domains and IP addresses, and block requests to internal networks."
+  },
+  "expect": {
+    "tags": [
+      "security"
+    ],
+    "destination": "read_later"
+  }
+}

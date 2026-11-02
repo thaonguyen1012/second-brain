@@ -1,0 +1,13 @@
+{
+  "input": {
+    "title": "Django 5.2 release notes",
+    "site": "Django documentation",
+    "text": "Django 5.2 is a long-term support release. It adds composite primary keys, automatic model imports in the shell, and simpler ways to override BoundField."
+  },
+  "expect": {
+    "tags": [
+      "programming"
+    ],
+    "destination": "read_later"
+  }
+}

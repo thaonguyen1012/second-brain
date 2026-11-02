@@ -1,0 +1,13 @@
+{
+  "input": {
+    "title": "The Mom Test",
+    "site": "Rob Fitzpatrick",
+    "text": "Book about how to talk to customers and learn if your business is a good idea when everyone is lying to you. Ask about their life, not your idea."
+  },
+  "expect": {
+    "tags": [
+      "business"
+    ],
+    "destination": "book"
+  }
+}

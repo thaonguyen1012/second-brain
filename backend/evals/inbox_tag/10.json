@@ -1,0 +1,13 @@
+{
+  "input": {
+    "title": "Curso de español – nivel B1",
+    "site": "",
+    "text": "Curso de español para extranjeros, nivel B1, dos tardes por semana. Preparación para el examen DELE."
+  },
+  "expect": {
+    "tags": [
+      "czech",
+      "learning"
+    ]
+  }
+}

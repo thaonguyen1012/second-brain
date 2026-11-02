@@ -1,0 +1,13 @@
+{
+  "input": {
+    "title": "Building effective agents",
+    "site": "Anthropic",
+    "text": "Over the past year we have worked with dozens of teams building LLM agents across industries. The most successful implementations use simple, composable patterns rather than complex frameworks."
+  },
+  "expect": {
+    "tags": [
+      "ai"
+    ],
+    "destination": "read_later"
+  }
+}

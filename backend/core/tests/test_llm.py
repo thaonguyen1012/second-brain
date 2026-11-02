@@ -128,3 +128,12 @@ def test_gemini_needs_a_key(settings: Any) -> None:
     settings.LLM_PROVIDER, settings.GEMINI_API_KEY = "gemini", ""
     with pytest.raises(llm.LlmError, match="GEMINI_API_KEY"):
         llm.get_provider()
+
+
+@pytest.mark.parametrize("code, status", [(429, "RESOURCE_EXHAUSTED"), (503, "UNAVAILABLE")])
+def test_gemini_quota_and_overload_are_retryable(code: int, status: str) -> None:
+    from google.genai import errors
+
+    exc = errors.APIError(code, {"error": {"code": code, "status": status, "message": "m"}})
+    assert isinstance(llm._error(exc), llm.RateLimited)
+    assert not isinstance(llm._error(errors.APIError(400, {"error": {"code": 400}})), llm.RateLimited)

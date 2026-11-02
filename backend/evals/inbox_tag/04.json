@@ -1,0 +1,14 @@
+{
+  "input": {
+    "title": "",
+    "site": "",
+    "text": "Ý tưởng: các nhà hàng nhỏ trong thành phố vẫn nhận đặt bàn qua điện thoại, chủ quán than mất khách giờ cao điểm. Thử hỏi 5 quán xem có trả tiền cho trợ lý AI nghe điện thoại không."
+  },
+  "expect": {
+    "tags": [
+      "ai",
+      "business"
+    ],
+    "destination": "opportunity"
+  }
+}

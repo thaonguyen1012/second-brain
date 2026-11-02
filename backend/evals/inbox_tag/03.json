@@ -1,0 +1,12 @@
+{
+  "input": {
+    "title": "Product Engineer (AI) – Praha / hybrid",
+    "site": "jobs.cz",
+    "text": "Hledáme Product Engineera se zkušenostmi s Pythonem, TypeScriptem a LLM API. Budete navrhovat a stavět AI funkce od nápadu po produkci. Hybridní práce v Praze."
+  },
+  "expect": {
+    "tags": [
+      "career"
+    ]
+  }
+}

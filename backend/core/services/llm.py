@@ -205,6 +205,7 @@ class GeminiProvider:
             response_json_schema=schema.model_json_schema(),
             max_output_tokens=max_output_tokens,
             temperature=0,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),  # no tools, ever
         )
         try:
             response = self.client.models.generate_content(model=model, contents=user, config=config)
@@ -223,6 +224,6 @@ class GeminiProvider:
 
 def _error(exc: errors.APIError) -> LlmError:
     message = f"{exc.code} {exc.status}"  # never the request, which could echo content or the key
-    if exc.code == 429 or exc.status == "RESOURCE_EXHAUSTED":
-        return RateLimited(message)
+    if exc.code in (429, 503) or exc.status in ("RESOURCE_EXHAUSTED", "UNAVAILABLE"):
+        return RateLimited(message)  # quota or overload: try again on a later run
     return LlmError(message)

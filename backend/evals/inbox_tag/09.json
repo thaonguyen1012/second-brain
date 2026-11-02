@@ -1,0 +1,12 @@
+{
+  "input": {
+    "title": "",
+    "site": "",
+    "text": "Freelance: một khách SME hỏi làm dashboard Power BI cho kho hàng, giá đề nghị 1 600 EUR. Cần quyết nhận hay không trước thứ Sáu."
+  },
+  "expect": {
+    "tags": [
+      "freelance"
+    ]
+  }
+}

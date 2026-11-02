@@ -1,0 +1,13 @@
+{
+  "input": {
+    "title": "",
+    "site": "",
+    "text": "Ghi chú: viết một bài blog về cách mình dùng Claude Code để xây Alex's Brain với Django và Next.js, kèm số liệu thời gian và chi phí."
+  },
+  "expect": {
+    "tags": [
+      "ai"
+    ],
+    "destination": "note"
+  }
+}
