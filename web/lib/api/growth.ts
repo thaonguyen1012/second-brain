@@ -57,18 +57,21 @@ export const growthApi = {
     send<void>('DELETE', `${skillPath(id)}/evidence/${evidenceId}`),
 
   listJobAds: (query?: Query<'listJobAds'>) => list<ApiJobAd>('/api/market/job-ads', query),
+  getJobAd: (id: number) => send<ApiJobAd>('GET', `/api/market/job-ads/${id}`),
   createJobAd: (body: ApiJobAdWrite) => send<ApiJobAd>('POST', '/api/market/job-ads', body),
   updateJobAd: (id: number, body: ApiJobAdPatch) => send<ApiJobAd>('PATCH', `/api/market/job-ads/${id}`, body),
   deleteJobAd: (id: number) => send<void>('DELETE', `/api/market/job-ads/${id}`),
   getMarketReport: (month?: string) => send<ApiMarketReport>('GET', withQuery('/api/market/report', { month })),
 
   listAchievements: (query?: Query<'listAchievements'>) => list<ApiAchievement>('/api/achievements', query),
+  getAchievement: (id: number) => send<ApiAchievement>('GET', `/api/achievements/${id}`),
   createAchievement: (body: ApiAchievementWrite) => send<ApiAchievement>('POST', '/api/achievements', body),
   updateAchievement: (id: number, body: ApiAchievementPatch) =>
     send<ApiAchievement>('PATCH', `/api/achievements/${id}`, body),
   deleteAchievement: (id: number) => send<void>('DELETE', `/api/achievements/${id}`),
 
   listPredictions: (query?: Query<'listPredictions'>) => list<ApiPrediction>('/api/predictions', query),
+  getPrediction: (id: number) => send<ApiPrediction>('GET', `/api/predictions/${id}`),
   createPrediction: (body: ApiPredictionWrite) => send<ApiPrediction>('POST', '/api/predictions', body),
   updatePrediction: (id: number, body: ApiPredictionPatch) =>
     send<ApiPrediction>('PATCH', `/api/predictions/${id}`, body),

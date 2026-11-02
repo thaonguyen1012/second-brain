@@ -21,6 +21,7 @@ from brief.serializers import (
 )
 from core.authentication import request_user
 from core.pagination import NewestFirstCursor
+from core.services.search import normalize_query
 
 BOOLEAN = {"true": True, "false": False}
 MAX_WEEKS = 52
@@ -52,6 +53,7 @@ def _date(raw: str, name: str) -> dt.date:
             OpenApiParameter("minRelevance", int, description="1-5."),
             OpenApiParameter("source", int),
             OpenApiParameter("tagStatus", str, enum=NewsItem.TagStatus.values),
+            OpenApiParameter("q", str, description="Case-insensitive match in the title."),
         ],
     )
 )
@@ -79,17 +81,22 @@ class NewsListView(generics.ListAPIView[NewsItem]):
             if status not in NewsItem.TagStatus.values:
                 raise ValidationError({"tagStatus": f"One of {NewsItem.TagStatus.values}."})
             rows = rows.filter(tag_status=status)
+        if query := normalize_query(params.get("q", "")):
+            rows = rows.filter(title__icontains=query)
         return rows
 
 
 class NewsItemView(APIView):
     @extend_schema(request=NewsFeedbackSerializer, responses=NewsItemSerializer, operation_id="rateNewsItem")
     def patch(self, request: Request, pk: int) -> Response:
-        """The "useful / not useful" button: `feedback` is useful, not_useful or null (clears the rating)."""
+        """The "useful / not useful" button: `feedback` is useful, not_useful or null (clears the rating). A
+        body without `feedback` changes nothing (PATCH semantics, as the schema documents it)."""
         item = get_object_or_404(services.news(request_user(request)), pk=pk)
-        body = NewsFeedbackSerializer(data=request.data)
+        body = NewsFeedbackSerializer(data=request.data, partial=True)
         body.is_valid(raise_exception=True)
-        return Response(NewsItemSerializer(services.set_feedback(item, body.validated_data["feedback"])).data)
+        if "feedback" in body.validated_data:
+            item = services.set_feedback(item, body.validated_data["feedback"])
+        return Response(NewsItemSerializer(item).data)
 
 
 def _brief(request: Request, day: dt.date) -> Response:

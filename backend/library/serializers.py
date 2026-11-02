@@ -77,3 +77,16 @@ class NoteWriteSerializer(serializers.Serializer[object]):
         if len(items) != len(set(value)):
             raise serializers.ValidationError("Không phải item của bạn.")
         return items
+
+
+class NoteSearchHitSerializer(serializers.Serializer[object]):
+    """A note in Cmd+K: `title` is the title or the first line ("" when the note has neither)."""
+
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    excerpt = serializers.CharField()
+    updatedAt = serializers.DateTimeField()
+
+
+class NoteSearchSerializer(serializers.Serializer[object]):
+    results = NoteSearchHitSerializer(many=True)

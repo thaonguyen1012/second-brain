@@ -5,6 +5,7 @@ from django.http.response import HttpResponseBase
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
@@ -15,7 +16,7 @@ from core.pagination import NewestFirstCursor
 from core.services import thumbnails
 from inbox import services
 from inbox.models import InboxEntry
-from inbox.serializers import InboxEntrySerializer, InboxTriageSerializer
+from inbox.serializers import InboxCountSerializer, InboxEntrySerializer, InboxTriageSerializer
 
 
 @extend_schema_view(
@@ -41,6 +42,23 @@ class InboxListView(generics.ListCreateAPIView[InboxEntry]):
         serializer.instance = services.add_entry(
             request_user(self.request), data.get("url", ""), data.get("text", "")
         )
+
+
+class InboxCountView(APIView):
+    @extend_schema(
+        responses=InboxCountSerializer,
+        operation_id="countInbox",
+        parameters=[
+            OpenApiParameter("status", str, enum=InboxEntry.Status.values, description="Default inbox.")
+        ],
+    )
+    def get(self, request: Request) -> Response:
+        """How many entries have the status (the Inbox badge in the top bar and on Hôm nay), one COUNT."""
+        state = request.query_params.get("status", InboxEntry.Status.INBOX)
+        if state not in InboxEntry.Status.values:
+            raise ValidationError({"status": f"One of {InboxEntry.Status.values}."})
+        count = InboxEntry.objects.filter(user=request_user(request), status=state).count()
+        return Response(InboxCountSerializer({"count": count}).data)
 
 
 class InboxEntryView(APIView):

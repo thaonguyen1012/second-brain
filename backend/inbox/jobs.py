@@ -23,28 +23,34 @@ def unfurl_entry(payload: dict[str, Any]) -> None:
         logger.warning("unfurl refused", extra={"entry": entry.pk, "reason": str(exc)})
         entry.error = f"unfurl refused: {exc}"[:500]
         entry.unfurled_at = timezone.now()  # final: the entry is tagged from its URL and text only
-        entry.save(update_fields=["error", "unfurled_at", "updated_at"])
-        tagging.enqueue(entry)
+        if _save(entry, "error", "unfurled_at"):
+            tagging.enqueue(entry)
         return
     except safe_fetch.FetchError as exc:
         entry.error = f"unfurl failed: {exc}"[:500]
-        entry.save(update_fields=["error", "updated_at"])
-        raise  # transient: the job runner retries
+        if _save(entry, "error"):
+            raise  # transient: the job runner retries
+        return
     entry.og_title, entry.og_description, entry.og_site_name = card.title, card.description, card.site_name
     entry.og_image_path = _thumbnail(entry, card.image_url)
     entry.unfurled_at, entry.error = timezone.now(), ""
-    entry.save(
-        update_fields=[
-            "og_title",
-            "og_description",
-            "og_site_name",
-            "og_image_path",
-            "unfurled_at",
-            "error",
-            "updated_at",
-        ]
-    )
+    if not _save(
+        entry, "og_title", "og_description", "og_site_name", "og_image_path", "unfurled_at", "error"
+    ):
+        # deleted while the page or image was fetched: the new file has no row to refer to it
+        image = entry.og_image_path
+        if image and not InboxEntry.objects.filter(og_image_path=image).exists():
+            thumbnails.discard(image)
+        return
     tagging.enqueue(entry)
+
+
+def _save(entry: InboxEntry, *fields: str) -> bool:
+    """Write the fields if the entry still exists. The fetches can take seconds and the owner may delete the
+    entry meanwhile (DELETE /api/inbox/{id}); a plain save(update_fields=...) would then raise and count a
+    failed attempt."""
+    values = {f: getattr(entry, f) for f in fields}
+    return InboxEntry.objects.filter(pk=entry.pk).update(**values, updated_at=timezone.now()) > 0
 
 
 def _thumbnail(entry: InboxEntry, image_url: str) -> str:

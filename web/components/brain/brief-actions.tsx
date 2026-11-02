@@ -1,6 +1,6 @@
 'use client';
 import { useState, useSyncExternalStore } from 'react';
-import { Check, Inbox, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Check, Inbox, Loader2, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { api, type ApiNewsFeedback, type ApiNewsItem } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
 import { firstFieldError } from '@/lib/labels';
@@ -85,26 +85,30 @@ function ToInbox({ item }: { item: ApiNewsItem }) {
     }
   };
 
+  // One button in every state, never natively disabled: a removed or disabled button drops keyboard focus to
+  // <body>. While sending and once sent it is aria-disabled (send() ignores presses); the live region
+  // announces the new text.
   return (
     <>
       <span aria-live="polite" className="inline-flex">
-        {sent ? (
-          <span className="inline-flex h-7 items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground sm:h-6">
-            <Check className="size-3.5 text-primary" aria-hidden />
-            Đã vào Inbox
-          </span>
-        ) : (
-          <Button
-            size="xs"
-            variant="outline"
-            loading={busy}
-            aria-label={`Đưa vào Inbox: ${item.title}`}
-            onClick={() => void send()}
-          >
+        <Button
+          size="xs"
+          variant={sent ? 'ghost' : 'outline'}
+          aria-disabled={sent || busy || undefined}
+          aria-busy={busy || undefined}
+          aria-label={sent ? `Đã vào Inbox: ${item.title}` : `Đưa vào Inbox: ${item.title}`}
+          className={sent ? 'cursor-default text-muted-foreground hover:bg-transparent' : undefined}
+          onClick={() => void send()}
+        >
+          {sent ? (
+            <Check className="text-primary" aria-hidden />
+          ) : busy ? (
+            <Loader2 className="animate-spin" aria-hidden />
+          ) : (
             <Inbox aria-hidden />
-            Đưa vào Inbox
-          </Button>
-        )}
+          )}
+          {sent ? 'Đã vào Inbox' : 'Đưa vào Inbox'}
+        </Button>
       </span>
       {error && (
         <span role="alert" className="text-xs text-destructive-foreground">
@@ -159,7 +163,7 @@ function Feedback({
 
   return (
     <>
-      <div role="group" aria-label="Tin này có hữu ích không?" className="flex items-center gap-1">
+      <div role="group" aria-label={`Tin "${item.title}" có hữu ích không?`} className="flex items-center gap-1">
         {ratings.map(({ value, label, icon: Icon }) => {
           const on = current === value;
           return (

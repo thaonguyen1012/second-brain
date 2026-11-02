@@ -72,3 +72,7 @@ class InboxTriageSerializer(serializers.Serializer[object]):
         if item is not None and item.user_id != self.context["user"].pk:
             raise serializers.ValidationError("Không tìm thấy item.")
         return item
+
+
+class InboxCountSerializer(serializers.Serializer[object]):
+    count = serializers.IntegerField()

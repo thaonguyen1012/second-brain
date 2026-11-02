@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react';
 import { CircleAlert, Inbox, PlugZap } from 'lucide-react';
 import type { ApiError } from '@/lib/api/client';
+import { toApiError } from '@/lib/api/use-api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -20,6 +21,12 @@ export function describeApiError(error: ApiError): { title: string; text: string
       text: 'Phiên đăng nhập đã hết hoặc chưa có. Mở lại trang qua Cloudflare Access rồi thử lại.',
     };
   return { title: 'Không tải được dữ liệu', text: `Máy chủ trả lỗi ${error.status}. Thử lại sau ít phút.` };
+}
+
+/** Notice for a deep link (Cmd+K result) whose record could not be loaded: `notFound` for a 404. */
+export function openError(err: unknown, notFound: string): string {
+  const e = toApiError(err);
+  return e.reachable && e.status === 404 ? notFound : describeApiError(e).title;
 }
 
 export function ApiErrorState({ error, onRetry }: { error: ApiError; onRetry?: () => void }) {

@@ -8,11 +8,15 @@ export type ApiNote = Schemas['Note'];
 export type ApiNoteCreate = Schemas['NoteWriteRequest'];
 export type ApiNotePatch = Schemas['PatchedNoteWriteRequest'];
 export type ApiNoteQuery = NonNullable<operations['listNotes']['parameters']['query']>;
+export type ApiNoteSearchHit = Schemas['NoteSearchHit'];
 
 export const notesApi = {
   /** Newest created first; `q` matches title or markdown, `item` keeps notes linked to that Item. */
   list: (query?: ApiNoteQuery): Promise<Page<ApiNote>> => api.page<ApiNote>(withQuery('/api/notes', query)),
   get: (id: number) => request<ApiNote>('GET', `/api/notes/${id}`),
+  /** Cmd+K: newest matching notes as title + ~120-character excerpt (never the whole markdown). */
+  search: (q: string, limit = 5, signal?: AbortSignal) =>
+    request<Schemas['NoteSearch']>('GET', withQuery('/api/notes/search', { q, limit }), undefined, signal),
   create: (body: ApiNoteCreate) => request<ApiNote>('POST', '/api/notes', body),
   /** `items` replaces the links (`[]` removes them). */
   update: (id: number, body: ApiNotePatch) => request<ApiNote>('PATCH', `/api/notes/${id}`, body),
@@ -22,7 +26,7 @@ export const notesApi = {
 /** Upper bound for loadAllItems(): 10 pages of 200 (the backend's max page size). */
 const ITEM_PAGES = 10;
 
-/** Every Item of the owner, for pickers and id -> title lookups (there is no GET /api/items/{id}). */
+/** Every Item of the owner, for pickers and id -> title lookups (one Item: api.getItem). */
 export async function loadAllItems(): Promise<ApiItem[]> {
   let page = await api.listItems({ limit: 200 });
   const out = [...page.results];

@@ -89,3 +89,16 @@ def test_delete_entry_requires_csrf(client: Client) -> None:
 
 def test_delete_entry_requires_auth(anon_client: Client) -> None:
     assert anon_client.delete("/api/inbox/1").status_code == 401
+
+
+def test_count_inbox_entries_by_status(client: Client) -> None:
+    user = owner(client)
+    InboxEntry.objects.create(user=user, text="a")
+    InboxEntry.objects.create(user=user, text="b")
+    InboxEntry.objects.create(user=user, text="c", status="later")
+    InboxEntry.objects.create(user=stranger(), text="theirs")
+    with CaptureQueriesContext(connection) as queries:
+        assert client.get("/api/inbox/count").json() == {"count": 2}
+    assert len(queries) <= 3
+    assert client.get("/api/inbox/count", {"status": "later"}).json() == {"count": 1}
+    assert client.get("/api/inbox/count", {"status": "nope"}).status_code == 400

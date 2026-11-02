@@ -29,7 +29,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** @description One brag-document line (Cmd+K deep link /phat-trien/thanh-tuu/?achievement=N). */
+        get: operations["getAchievement"];
         put?: never;
         post?: never;
         /** @description The linked project Item and skills stay. */
@@ -106,6 +107,23 @@ export interface paths {
         patch: operations["updateInboxEntry"];
         trace?: never;
     };
+    "/api/inbox/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description How many entries have the status (the Inbox badge in the top bar and on Hôm nay): one COUNT query. */
+        get: operations["countInbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/items": {
         parameters: {
             query?: never;
@@ -129,7 +147,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** @description One Item with its noteCount (Cmd+K deep link /thu-vien/?item=N). */
+        get: operations["getItem"];
         put?: never;
         post?: never;
         /**
@@ -166,7 +185,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** @description One ad (Cmd+K deep link /phat-trien/thi-truong/?jobAd=N). */
+        get: operations["getJobAd"];
         put?: never;
         post?: never;
         /** @description The market report counts without it; a pending extraction job finds nothing and stops. */
@@ -239,7 +259,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** @description The "useful / not useful" button: `feedback` is useful, not_useful or null (clears the rating). */
+        /**
+         * @description The "useful / not useful" button: `feedback` is useful, not_useful or null (clears the rating). A
+         *     body without `feedback` changes nothing (PATCH semantics, as the schema documents it).
+         */
         patch: operations["rateNewsItem"];
         trace?: never;
     };
@@ -291,6 +314,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["updateNote"];
+        trace?: never;
+    };
+    "/api/notes/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Cmd+K: the newest matching notes with an excerpt around the match, never the whole markdown. */
+        get: operations["searchNotes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/opportunities": {
@@ -444,7 +484,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** @description One prediction (Cmd+K deep link /phat-trien/thanh-tuu/?prediction=N). */
+        get: operations["getPrediction"];
         put?: never;
         post?: never;
         delete: operations["deletePrediction"];
@@ -974,6 +1015,9 @@ export interface components {
             name: string;
             freshness: components["schemas"]["SkillFreshnessEnum"];
         };
+        InboxCount: {
+            count: number;
+        };
         InboxEntry: {
             readonly id: number;
             url?: string;
@@ -1214,6 +1258,17 @@ export interface components {
             readonly createdAt: string;
             /** Format: date-time */
             readonly updatedAt: string;
+        };
+        NoteSearch: {
+            results: components["schemas"]["NoteSearchHit"][];
+        };
+        /** @description A note in Cmd+K: `title` is the title or the first line ("" when the note has neither). */
+        NoteSearchHit: {
+            id: number;
+            title: string;
+            excerpt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         /**
          * @description Create (markdown required) or partial update; `items` replaces the links with ids of the owner's Items
@@ -2027,6 +2082,8 @@ export interface operations {
                 cursor?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
+                /** @description Case-insensitive match in the title, impact or description. */
+                q?: string;
                 /** @description Only that week: its Monday, YYYY-MM-DD. */
                 week?: string;
             };
@@ -2060,6 +2117,27 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Achievement"];
+                };
+            };
+        };
+    };
+    getAchievement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2249,6 +2327,28 @@ export interface operations {
             };
         };
     };
+    countInbox: {
+        parameters: {
+            query?: {
+                /** @description Default inbox. */
+                status?: "archived" | "inbox" | "later";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxCount"];
+                };
+            };
+        };
+    };
     listItems: {
         parameters: {
             query?: {
@@ -2291,6 +2391,27 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+        };
+    };
+    getItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2362,6 +2483,8 @@ export interface operations {
                 limit?: number;
                 /** @description YYYY-MM; default: this month (Europe/Prague). */
                 month?: string;
+                /** @description Case-insensitive match in the title or company. */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -2393,6 +2516,27 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAd"];
+                };
+            };
+        };
+    };
+    getJobAd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2501,6 +2645,8 @@ export interface operations {
                 minRelevance?: number;
                 /** @description true: only "new tool/skill" items. */
                 newTool?: boolean;
+                /** @description Case-insensitive match in the title. */
+                q?: string;
                 source?: number;
                 /** @description Only items with this topic tag. */
                 tag?: string;
@@ -2682,6 +2828,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Note"];
+                };
+            };
+        };
+    };
+    searchNotes: {
+        parameters: {
+            query: {
+                /** @description 1-20, default 5. */
+                limit?: number;
+                /** @description Case-insensitive match in title or markdown. */
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteSearch"];
                 };
             };
         };
@@ -2957,6 +3127,8 @@ export interface operations {
                 /** @description Number of results to return per page. */
                 limit?: number;
                 outcome?: "open" | "partial" | "right" | "wrong";
+                /** @description Case-insensitive match in the statement or note. */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -2988,6 +3160,27 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prediction"];
+                };
+            };
+        };
+    };
+    getPrediction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

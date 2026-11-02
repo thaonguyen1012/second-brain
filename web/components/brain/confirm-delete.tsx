@@ -1,5 +1,5 @@
 'use client';
-import { useState, type ReactElement, type ReactNode } from 'react';
+import { useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import { toApiError } from '@/lib/api/use-api';
 import { firstFieldError } from '@/lib/labels';
@@ -29,10 +29,46 @@ function deleteError(err: unknown): string {
 }
 
 /**
+ * Where focus goes after a card deleted from its own trigger has unmounted: the first control of the next card,
+ * else of the previous one, else the first control of the section (e.g. "Thêm"), else its heading or the page's.
+ * Candidates are collected before the delete; the first one still in the document wins.
+ */
+function focusCandidates(trigger: HTMLElement | null): HTMLElement[] {
+  const card = trigger?.closest<HTMLElement>('article, li');
+  if (!card) return [];
+  const control = 'button:not([disabled]), a[href]';
+  const first = (el: Element | null | undefined) => el?.querySelector<HTMLElement>(control) ?? null;
+  const section = card.closest('section');
+  const sectionControl = section
+    ? (Array.from(section.querySelectorAll<HTMLElement>(control)).find((el) => !card.contains(el)) ?? null)
+    : null;
+  const heading = section?.querySelector<HTMLElement>('h1, h2, h3') ?? null;
+  const pageHeading = document.querySelector<HTMLElement>('main h1, h1');
+  const all = [first(card.nextElementSibling), first(card.previousElementSibling), sectionControl, heading, pageHeading];
+  return all.filter(
+    (el): el is HTMLElement => el !== null,
+  );
+}
+
+function focusFirstConnected(candidates: HTMLElement[]) {
+  // after React has removed the card and Base UI has given up returning focus to the vanished trigger
+  requestAnimationFrame(() =>
+    window.setTimeout(() => {
+      const el = candidates.find((c) => c.isConnected);
+      if (!el) return;
+      if (el.tabIndex < 0 && !el.matches('button, a[href]')) el.tabIndex = -1;
+      el.focus();
+    }, 0),
+  );
+}
+
+/**
  * Confirmation before a DELETE (Space UI alert dialog; never window.confirm). `action` runs the request; on
  * success, or on 404 (already gone, e.g. deleted in another tab), `onDeleted` updates the page and the dialog
  * closes. Errors stay in the dialog. Either controlled (`open`/`onOpenChange`, for keyboard shortcuts) or with a
  * `trigger` element that opens it. Cancel has the initial focus, so Enter alone never deletes.
+ * `focusNeighbour` (trigger mode, trigger inside the card that onDeleted removes): moves focus to the next card,
+ * since the trigger Base UI would return focus to is gone.
  */
 export function ConfirmDelete({
   title,
@@ -43,6 +79,7 @@ export function ConfirmDelete({
   open,
   onOpenChange,
   trigger,
+  focusNeighbour = false,
 }: {
   title: string;
   description?: ReactNode;
@@ -53,17 +90,37 @@ export function ConfirmDelete({
   onOpenChange?: (open: boolean) => void;
   /** Rendered as the trigger (e.g. a Button); omit when controlled. */
   trigger?: ReactElement;
+  focusNeighbour?: boolean;
 }) {
   const [innerOpen, setInnerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Text shown while the popup animates out: controlled callers clear their target as soon as it closes.
+  const [closing, setClosing] = useState<{ title: string; description: ReactNode } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const isOpen = open ?? innerOpen;
+
+  // Every opening starts clean, also a controlled one (Base UI calls onOpenChange only for its own trigger).
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) {
+      setError(null);
+      setClosing(null);
+    }
+  }
+
+  const close = () => {
+    setClosing({ title, description });
+    setInnerOpen(false);
+    onOpenChange?.(false);
+  };
 
   const change = (next: boolean) => {
     if (busy) return;
-    if (next) setError(null);
-    setInnerOpen(next);
-    onOpenChange?.(next);
+    if (!next) return close();
+    setInnerOpen(true);
+    onOpenChange?.(true);
   };
 
   const confirm = async () => {
@@ -81,19 +138,22 @@ export function ConfirmDelete({
       }
     }
     setBusy(false);
+    const candidates = focusNeighbour ? focusCandidates(triggerRef.current) : [];
     onDeleted();
-    setInnerOpen(false);
-    onOpenChange?.(false);
+    close();
+    if (candidates.length > 0) focusFirstConnected(candidates);
   };
 
+  const shown = !isOpen && closing ? closing : { title, description };
+
   return (
-    <AlertDialog open={isOpen} onOpenChange={change}>
-      {trigger && <AlertDialogTrigger render={trigger} />}
+    <AlertDialog open={isOpen} onOpenChange={change} onOpenChangeComplete={(o) => !o && setClosing(null)}>
+      {trigger && <AlertDialogTrigger ref={triggerRef} render={trigger} />}
       {/* Page shortcuts listen on window: keys typed here (J, E, [ ...) must not reach them. */}
       <AlertDialogPopup onKeyDown={(e) => e.stopPropagation()}>
         <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description ?? 'Không hoàn tác được.'}</AlertDialogDescription>
+          <AlertDialogTitle>{shown.title}</AlertDialogTitle>
+          <AlertDialogDescription>{shown.description ?? 'Không hoàn tác được.'}</AlertDialogDescription>
           {error && (
             <p className="whitespace-pre-line text-sm text-destructive-foreground" role="alert">
               {error}

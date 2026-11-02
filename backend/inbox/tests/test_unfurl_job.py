@@ -103,3 +103,26 @@ def test_fetch_guard_is_used_for_images(net: FakeNet) -> None:
     net.dns["cdn.test"] = ["127.0.0.1"]
     with pytest.raises(safe_fetch.FetchBlocked):
         safe_fetch.fetch("https://cdn.test/cover.png", safe_fetch.IMAGE_TYPES)
+
+
+def test_entry_deleted_during_unfurl_leaves_no_thumbnail(
+    client: Client, net: FakeNet, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from inbox import jobs as inbox_jobs
+
+    entry_id = send(client, "post", "/api/inbox", {"url": "https://blog.test/p"}, csrf(client)).json()["id"]
+    real = inbox_jobs._thumbnail
+
+    def thumbnail_then_delete(entry: InboxEntry, image_url: str) -> str:
+        name = real(entry, image_url)
+        assert (tmp_path / name).is_file()
+        assert send(client, "delete", f"/api/inbox/{entry_id}", None, csrf(client)).status_code == 204
+        return name
+
+    monkeypatch.setattr(inbox_jobs, "_thumbnail", thumbnail_then_delete)
+    call_command("run_jobs", stdout=io.StringIO())
+    job = Job.objects.get(kind="unfurl")
+    assert job.status == "done" and job.attempts <= 1
+    assert not InboxEntry.objects.filter(pk=entry_id).exists()
+    assert list(tmp_path.glob("*.webp")) == []
+    assert not Job.objects.filter(kind="tag").exists()

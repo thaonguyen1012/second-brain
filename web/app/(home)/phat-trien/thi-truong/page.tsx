@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { LoadingCards } from '@/components/brain/api-state';
 import { PageHeader } from '@/components/brain/page-header';
 import { MarketPage } from '@/components/brain/growth/market-page';
 
@@ -11,7 +13,10 @@ export default function Page() {
         title="Thị trường"
         description="Mình so với thị trường theo thời gian: mỗi tháng dán vài tin tuyển dụng của vai trò nhắm tới, xem kỹ năng nào được đòi nhiều lên và kỹ năng nào mình chưa có bằng chứng."
       />
-      <MarketPage />
+      {/* useSearchParams (?jobAd=, Cmd+K results) needs a Suspense boundary for the static shell */}
+      <Suspense fallback={<LoadingCards />}>
+        <MarketPage />
+      </Suspense>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 """Library: Items and Notes (DECISIONS 4.1). Note bodies are private: they are never sent to an LLM."""
 
+import re
 from collections.abc import Iterable
 from typing import Any
 
@@ -12,6 +13,10 @@ from library.models import Item, Note
 
 MAX_TAGS = 30
 NOTE_FIELDS = ("title", "markdown")
+EXCERPT_CHARS = 120
+EXCERPT_BEFORE = 40
+_MARKS = re.compile(r"[#>*_`~\[\]]+")
+_LINE_PREFIX = re.compile(r"^\s*(#{1,6}\s+|>\s*|[-*+]\s+)")
 
 
 def normalize_tags(tags: Iterable[str]) -> list[str]:
@@ -58,6 +63,45 @@ def notes(user: User, query: str = "", item: int | None = None) -> QuerySet[Note
     if item is not None:
         rows = rows.filter(items__id=item)
     return rows
+
+
+def note_label(note: Note) -> str:
+    """The title, else the first non-empty markdown line without its heading/quote/list mark (as the web's
+    noteTitle), else ""."""
+    if title := note.title.strip():
+        return title
+    for line in note.markdown.split("\n"):
+        if clean := _LINE_PREFIX.sub("", line).strip():
+            return clean[:EXCERPT_CHARS]
+    return ""
+
+
+def note_excerpt(markdown: str, query: str) -> str:
+    """About EXCERPT_CHARS characters around the first match of `query` (markdown marks dropped), else the
+    start of the note."""
+    flat = " ".join(_MARKS.sub(" ", markdown).split())
+    at = flat.lower().find(query.lower()) if query else -1
+    if at < 0:
+        return flat[:EXCERPT_CHARS]
+    start = max(0, at - EXCERPT_BEFORE)
+    return ("…" if start > 0 else "") + flat[start : start + EXCERPT_CHARS]
+
+
+def search_notes(user: User, query: str, limit: int) -> list[dict[str, Any]]:
+    """Cmd+K hits: newest matching notes as label + excerpt, so the browser never downloads whole bodies.
+    Note bodies stay on the server (and are never sent to an LLM)."""
+    if not (query := normalize_query(query)):
+        return []
+    rows = notes(user, query).only("id", "title", "markdown", "updated_at").order_by("-created_at", "-id")
+    return [
+        {
+            "id": n.pk,
+            "title": note_label(n),
+            "excerpt": note_excerpt(n.markdown, query),
+            "updatedAt": n.updated_at,
+        }
+        for n in rows[:limit]
+    ]
 
 
 def save_note(note: Note, data: dict[str, Any]) -> Note:

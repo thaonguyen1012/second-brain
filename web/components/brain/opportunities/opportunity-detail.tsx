@@ -88,6 +88,7 @@ function EvidenceRow({
           description={`"${e.title || e.url}" bị gỡ khỏi cơ hội này. Mục inbox, item hay ghi chú gốc vẫn giữ nguyên. Không hoàn tác được.`}
           action={() => opportunitiesApi.deleteEvidence(opportunityId, e.id)}
           onDeleted={onDeleted}
+          focusNeighbour
           trigger={<DeleteButton aria-label={`Xóa bằng chứng "${e.title}"`} />}
         />
       </div>

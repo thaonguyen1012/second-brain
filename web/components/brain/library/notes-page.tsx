@@ -107,7 +107,7 @@ function NoteCard({
             </Button>
           )}
           <DeleteButton className="ms-auto" onClick={onDelete}>
-            Xóa <Kbd>X</Kbd>
+            Xóa <Kbd>Del</Kbd>
           </DeleteButton>
         </>
       }
@@ -129,7 +129,7 @@ const keyHelp: [string, string][] = [
   ['J / K', 'xuống / lên'],
   ['E', 'sửa'],
   ['V', 'xem đủ'],
-  ['X', 'xóa'],
+  ['Del', 'xóa'],
   ['N', 'ghi chú mới'],
   ['/', 'tìm'],
 ];
@@ -231,8 +231,9 @@ export function NotesPage() {
           e: () => openEditor(current),
           enter: () => openEditor(current),
           v: () => isLong(current.markdown) && toggle(current.id),
-          x: () => setDeleting(current),
+          // Del / Backspace delete, as on the week page (X there means "bỏ" an objective)
           delete: () => setDeleting(current),
+          backspace: () => setDeleting(current),
         }),
       };
       const run = act[e.key.toLowerCase()];

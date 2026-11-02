@@ -51,7 +51,19 @@ def test_rate_news_item_and_see_it_in_todays_brief(client: Client) -> None:
     item.refresh_from_db()
     assert item.feedback == "" and item.feedback_at is None
     assert send(client, "patch", f"/api/news/{item.pk}", {"feedback": "meh"}, headers).status_code == 400
-    assert send(client, "patch", f"/api/news/{item.pk}", {}, headers).status_code == 400
+    # no `feedback` key: nothing changes (the schema documents the PATCH body as partial)
+    send(client, "patch", f"/api/news/{item.pk}", {"feedback": "useful"}, headers)
+    unchanged = send(client, "patch", f"/api/news/{item.pk}", {}, headers)
+    assert unchanged.status_code == 200 and unchanged.json()["feedback"] == "useful"
+
+
+def test_search_news_by_title(client: Client) -> None:
+    user = owner(client)
+    news(user, "Claude agents ship")
+    news(user, "Pricing update", excerpt="agents in the excerpt are not searched")
+    news(User.objects.create(username="other@x", email="other@x"), "Agents of someone else")
+    titles = [r["title"] for r in client.get("/api/news", {"q": "  AGENTS "}).json()["results"]]
+    assert titles == ["Claude agents ship"]
 
 
 def test_rate_another_owners_item_answers_404(client: Client) -> None:

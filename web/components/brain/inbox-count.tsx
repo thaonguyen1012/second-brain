@@ -7,10 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 // One shared count of entries with status "inbox" for the top bar and "Hôm nay"; refreshed on mount, on tab
-// focus and after every capture or triage (refreshInboxCount). null = unknown (API absent or not signed in).
-const LIMIT = 200;
+// focus and after every capture or triage (refreshInboxCount: GET /api/inbox/count, one COUNT on the server,
+// no rows). null = unknown (API absent or not signed in).
 let count: number | null = null;
-let more = false;
 let inflight: Promise<void> | null = null;
 let started = false;
 const listeners = new Set<() => void>();
@@ -21,11 +20,10 @@ function emit() {
 
 export function refreshInboxCount(): Promise<void> {
   inflight ??= api
-    .listInbox({ status: 'inbox', limit: LIMIT })
+    .countInbox({ status: 'inbox' })
     .then(
-      (page) => {
-        count = page.results.length;
-        more = page.next !== null;
+      (r) => {
+        count = r.count;
       },
       () => {
         count = null;
@@ -52,9 +50,9 @@ function subscribe(cb: () => void) {
   };
 }
 
-const snapshot = () => (count === null ? null : more ? `${LIMIT}+` : String(count));
+const snapshot = () => (count === null ? null : String(count));
 
-/** "12", "200+", or null while unknown. */
+/** "12", or null while unknown. */
 export function useInboxCount(): string | null {
   return useSyncExternalStore(subscribe, snapshot, () => null);
 }

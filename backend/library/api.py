@@ -13,7 +13,12 @@ from core.pagination import NewestFirstCursor
 from core.serializers import ErrorSerializer
 from library import services
 from library.models import Item, Note
-from library.serializers import ItemSerializer, NoteSerializer, NoteWriteSerializer
+from library.serializers import (
+    ItemSerializer,
+    NoteSearchSerializer,
+    NoteSerializer,
+    NoteWriteSerializer,
+)
 
 
 @extend_schema_view(
@@ -45,6 +50,11 @@ class ItemListView(generics.ListCreateAPIView[Item]):
 
 
 class ItemView(APIView):
+    @extend_schema(responses=ItemSerializer, operation_id="getItem")
+    def get(self, request: Request, pk: int) -> Response:
+        """One Item with its noteCount (Cmd+K deep link /thu-vien/?item=N)."""
+        return Response(ItemSerializer(get_object_or_404(services.items(request_user(request)), pk=pk)).data)
+
     @extend_schema(request=ItemSerializer, responses=ItemSerializer, operation_id="updateItem")
     def patch(self, request: Request, pk: int) -> Response:
         item = get_object_or_404(services.items(request_user(request)), pk=pk)
@@ -98,6 +108,29 @@ class NoteListView(generics.ListAPIView[Note]):
         body.is_valid(raise_exception=True)
         note = services.save_note(Note(user=user), dict(body.validated_data))
         return Response(NoteSerializer(_note(request, note.pk)).data, status=status.HTTP_201_CREATED)
+
+
+SEARCH_LIMIT = 20
+
+
+class NoteSearchView(APIView):
+    @extend_schema(
+        responses=NoteSearchSerializer,
+        operation_id="searchNotes",
+        parameters=[
+            OpenApiParameter(
+                "q", str, required=True, description="Case-insensitive match in title or markdown."
+            ),
+            OpenApiParameter("limit", int, description=f"1-{SEARCH_LIMIT}, default 5."),
+        ],
+    )
+    def get(self, request: Request) -> Response:
+        """Cmd+K: the newest matching notes with an excerpt around the match, never the whole markdown."""
+        raw = request.query_params.get("limit", "5")
+        if not raw.isdigit() or not 1 <= int(raw) <= SEARCH_LIMIT:
+            raise ValidationError({"limit": f"A number from 1 to {SEARCH_LIMIT}."})
+        hits = services.search_notes(request_user(request), request.query_params.get("q", ""), int(raw))
+        return Response(NoteSearchSerializer({"results": hits}).data)
 
 
 class NoteView(APIView):

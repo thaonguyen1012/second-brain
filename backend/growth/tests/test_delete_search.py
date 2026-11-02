@@ -89,3 +89,40 @@ def test_delete_another_owners_rows_answers_404(client: Client) -> None:
 def test_deletes_require_auth(anon_client: Client) -> None:
     for url in ("/api/achievements/1", "/api/predictions/1", "/api/market/job-ads/1"):
         assert anon_client.delete(url).status_code == 401
+
+
+def test_search_achievements_predictions_and_job_ads(client: Client) -> None:
+    user = owner(client)
+    Achievement.objects.create(user=user, title="Shipped checkout", impact="40 s -> 12 s")
+    Achievement.objects.create(user=user, title="Talk", impact="Checkout story for 30 people")
+    Achievement.objects.create(user=user, title="Other")
+    Achievement.objects.create(user=stranger(), title="checkout of someone else")
+    Prediction.objects.create(user=user, statement="Agents replace RPA", made_on=MONTH, check_on=MONTH)
+    Prediction.objects.create(
+        user=user, statement="x", note="agents were early", made_on=MONTH, check_on=MONTH
+    )
+    Prediction.objects.create(user=user, statement="Rates fall", made_on=MONTH, check_on=MONTH)
+    JobAd.objects.create(user=user, title="Data engineer", company="Rohlik", text="t", month=MONTH)
+    JobAd.objects.create(user=user, title="Analyst", company="ROHLIK group", text="t", month=MONTH)
+    JobAd.objects.create(user=user, title="Analyst", company="Other", text="rohlik in the text", month=MONTH)
+
+    def titles(path: str, key: str, q: str) -> list[str]:
+        return sorted(r[key] for r in client.get(path, {"q": q}).json()["results"])
+
+    assert titles("/api/achievements", "title", "checkout") == ["Shipped checkout", "Talk"]
+    assert titles("/api/predictions", "statement", "agents") == ["Agents replace RPA", "x"]
+    assert titles("/api/market/job-ads", "company", "rohlik") == ["ROHLIK group", "Rohlik"]
+    assert len(client.get("/api/market/job-ads", {"q": ""}).json()["results"]) == 3
+
+
+def test_get_one_achievement_prediction_and_job_ad(client: Client) -> None:
+    user = owner(client)
+    win = Achievement.objects.create(user=user, title="Shipped")
+    guess = Prediction.objects.create(user=user, statement="Agents", made_on=MONTH, check_on=MONTH)
+    ad = JobAd.objects.create(user=user, title="Data engineer", text="t", month=MONTH)
+    assert client.get(f"/api/achievements/{win.pk}").json()["title"] == "Shipped"
+    assert client.get(f"/api/predictions/{guess.pk}").json()["statement"] == "Agents"
+    assert client.get(f"/api/market/job-ads/{ad.pk}").json()["title"] == "Data engineer"
+    other = stranger()
+    theirs = Achievement.objects.create(user=other, title="theirs")
+    assert client.get(f"/api/achievements/{theirs.pk}").status_code == 404

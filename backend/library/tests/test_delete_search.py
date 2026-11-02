@@ -131,3 +131,29 @@ def test_deletes_require_auth(anon_client: Client) -> None:
     for url in ("/api/items/1", "/api/notes/1"):
         assert anon_client.delete(url).status_code == 401
     assert anon_client.get("/api/items?q=x").status_code == 401
+
+
+def test_get_one_item_with_its_note_count(client: Client) -> None:
+    user = owner(client)
+    deep = Item.objects.create(user=user, type="book", title="Deep Work")
+    Note.objects.create(user=user, markdown="x").items.add(deep)
+    theirs = Item.objects.create(user=stranger(), type="book", title="theirs")
+    data = client.get(f"/api/items/{deep.pk}").json()
+    assert (data["title"], data["noteCount"]) == ("Deep Work", 1)
+    assert client.get(f"/api/items/{theirs.pk}").status_code == 404
+
+
+def test_note_search_sends_an_excerpt_not_the_body(client: Client) -> None:
+    user = owner(client)
+    body = "# Heading\n\n" + "lorem " * 2000 + "the **focus** block " + "ipsum " * 2000
+    Note.objects.create(user=user, markdown=body)
+    Note.objects.create(user=user, title="Focus list", markdown="short")
+    Note.objects.create(user=user, markdown="nothing here")
+    Note.objects.create(user=stranger(), title="focus of someone else", markdown="x")
+    hits = client.get("/api/notes/search?q=FOCUS&limit=5").json()["results"]
+    assert [h["title"] for h in hits] == ["Focus list", "Heading"]
+    long = hits[1]
+    assert long["excerpt"].startswith("…") and "the focus block" in long["excerpt"]
+    assert len(long["excerpt"]) <= 121 and set(long) == {"id", "title", "excerpt", "updatedAt"}
+    assert client.get("/api/notes/search", {"q": " "}).json()["results"] == []
+    assert client.get("/api/notes/search?q=focus&limit=21").status_code == 400

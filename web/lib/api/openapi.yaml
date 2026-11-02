@@ -21,6 +21,11 @@ paths:
         schema:
           type: integer
       - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive match in the title, impact or description.
+      - in: query
         name: week
         schema:
           type: string
@@ -58,6 +63,26 @@ paths:
                 $ref: '#/components/schemas/Achievement'
           description: ''
   /api/achievements/{id}:
+    get:
+      operationId: getAchievement
+      description: One brag-document line (Cmd+K deep link /phat-trien/thanh-tuu/?achievement=N).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - achievements
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Achievement'
+          description: ''
     patch:
       operationId: updateAchievement
       parameters:
@@ -235,6 +260,32 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/inbox/count:
+    get:
+      operationId: countInbox
+      description: 'How many entries have the status (the Inbox badge in the top bar
+        and on Hôm nay): one COUNT query.'
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - archived
+          - inbox
+          - later
+        description: Default inbox.
+      tags:
+      - inbox
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxCount'
+          description: ''
   /api/items:
     get:
       operationId: listItems
@@ -306,6 +357,26 @@ paths:
                 $ref: '#/components/schemas/Item'
           description: ''
   /api/items/{id}:
+    get:
+      operationId: getItem
+      description: One Item with its noteCount (Cmd+K deep link /thu-vien/?item=N).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - items
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: ''
     patch:
       operationId: updateItem
       parameters:
@@ -375,6 +446,11 @@ paths:
         schema:
           type: string
         description: 'YYYY-MM; default: this month (Europe/Prague).'
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive match in the title or company.
       tags:
       - market
       security:
@@ -408,6 +484,26 @@ paths:
                 $ref: '#/components/schemas/JobAd'
           description: ''
   /api/market/job-ads/{id}:
+    get:
+      operationId: getJobAd
+      description: One ad (Cmd+K deep link /phat-trien/thi-truong/?jobAd=N).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - market
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAd'
+          description: ''
     patch:
       operationId: updateJobAd
       description: Changed title, company or text re-runs the extraction; `skills`
@@ -519,6 +615,11 @@ paths:
           type: boolean
         description: 'true: only "new tool/skill" items.'
       - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive match in the title.
+      - in: query
         name: source
         schema:
           type: integer
@@ -550,8 +651,9 @@ paths:
   /api/news/{id}:
     patch:
       operationId: rateNewsItem
-      description: 'The "useful / not useful" button: `feedback` is useful, not_useful
-        or null (clears the rating).'
+      description: |-
+        The "useful / not useful" button: `feedback` is useful, not_useful or null (clears the rating). A
+        body without `feedback` changes nothing (PATCH semantics, as the schema documents it).
       parameters:
       - in: path
         name: id
@@ -712,6 +814,34 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/notes/search:
+    get:
+      operationId: searchNotes
+      description: 'Cmd+K: the newest matching notes with an excerpt around the match,
+        never the whole markdown.'
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: 1-20, default 5.
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive match in title or markdown.
+        required: true
+      tags:
+      - notes
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteSearch'
+          description: ''
   /api/opportunities:
     get:
       operationId: listOpportunities
@@ -1036,6 +1166,11 @@ paths:
           - partial
           - right
           - wrong
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive match in the statement or note.
       tags:
       - predictions
       security:
@@ -1067,6 +1202,26 @@ paths:
                 $ref: '#/components/schemas/Prediction'
           description: ''
   /api/predictions/{id}:
+    get:
+      operationId: getPrediction
+      description: One prediction (Cmd+K deep link /phat-trien/thanh-tuu/?prediction=N).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - predictions
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prediction'
+          description: ''
     patch:
       operationId: updatePrediction
       description: Re-score with `outcome` (right, wrong, partial; open again clears
@@ -2248,6 +2403,13 @@ components:
       - freshness
       - id
       - name
+    InboxCount:
+      type: object
+      properties:
+        count:
+          type: integer
+      required:
+      - count
     InboxEntry:
       type: object
       properties:
@@ -2930,6 +3092,34 @@ components:
       - itemLabels
       - items
       - markdown
+      - title
+      - updatedAt
+    NoteSearch:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteSearchHit'
+      required:
+      - results
+    NoteSearchHit:
+      type: object
+      description: 'A note in Cmd+K: `title` is the title or the first line ("" when
+        the note has neither).'
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        excerpt:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - excerpt
+      - id
       - title
       - updatedAt
     NoteWriteRequest:

@@ -3,14 +3,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Library, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
 import { api, type ApiItem, type ApiItemStatus, type ApiItemType, type Page } from '@/lib/api/client';
-import { loadAllItems, type ApiNote } from '@/lib/api/library';
+import type { ApiNote } from '@/lib/api/library';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate, itemStatusOf, itemStatuses, itemTypeLabel, itemTypes } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from './api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError, openError } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
 import { ChoiceSelect } from './choice-select';
 import { ItemDialog } from './item-dialog';
@@ -120,18 +120,15 @@ export function LibraryPage() {
   );
   const list = items.loading ? [] : (items.data?.results ?? []);
 
-  // ?item=N (Cmd+K result): open that Item's dialog; there is no GET /api/items/{id}, so look it up in the list.
+  // ?item=N (Cmd+K result): open that Item's dialog (one GET /api/items/{id}, not the whole library).
   useOpenFromUrl('item', (id) => {
-    const shownItem = items.data?.results.find((i) => i.id === id);
-    const found = shownItem ? Promise.resolve(shownItem) : loadAllItems().then((all) => all.find((i) => i.id === id));
-    found.then(
+    api.getItem(id).then(
       (item) => {
-        if (!item) return setNotice(`Không tìm thấy item #${id}, có thể đã bị xóa.`);
         setEditing(item);
         setFocusRating(false);
         setDialogOpen(true);
       },
-      (err: unknown) => setNotice(describeApiError(toApiError(err)).title),
+      (err: unknown) => setNotice(openError(err, `Không tìm thấy item #${id}, có thể đã bị xóa.`)),
     );
   });
   const matches = (i: ApiItem) => (type === 'all' || i.type === type) && (status === 'all' || i.status === status);

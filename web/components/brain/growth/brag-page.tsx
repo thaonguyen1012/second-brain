@@ -4,11 +4,12 @@ import { CalendarCheck, Pencil, Plus, Scale, Trophy } from 'lucide-react';
 import type { Page } from '@/lib/api/client';
 import { growthApi, type ApiAchievement, type ApiOutcome, type ApiPrediction } from '@/lib/api/growth';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
+import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
-import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError, openError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
 import { ConfirmDelete, DeleteButton } from '../confirm-delete';
@@ -48,6 +49,7 @@ function AchievementCard({
             description={`"${a.title}" bị xóa khỏi nhật ký thành tựu. Không hoàn tác được.`}
             action={() => growthApi.deleteAchievement(a.id)}
             onDeleted={onDeleted}
+            focusNeighbour
             trigger={<DeleteButton className="ms-auto" aria-label={`Xóa thành tựu "${a.title}"`} />}
           />
         </>
@@ -101,6 +103,19 @@ function BragSection() {
     setOpen(true);
   };
   useShortcuts({ n: create });
+
+  // ?achievement=N (Cmd+K result): show the line's week and open it.
+  useOpenFromUrl('achievement', (id) => {
+    growthApi.getAchievement(id).then(
+      (a) => {
+        setScope('week');
+        setWeek(mondayOf(a.date));
+        setEditing(a);
+        setOpen(true);
+      },
+      (err: unknown) => setNotice(openError(err, `Không tìm thấy thành tựu #${id}, có thể đã bị xóa.`)),
+    );
+  });
 
   const loadMore = async () => {
     const next = list.data?.next;
@@ -265,6 +280,7 @@ function PredictionCard({
             description={`"${p.statement}" bị xóa, kể cả kết quả đã chấm. Không hoàn tác được.`}
             action={() => growthApi.deletePrediction(p.id)}
             onDeleted={onDeleted}
+            focusNeighbour
             trigger={<DeleteButton className="ms-auto" aria-label="Xóa dự đoán" />}
           />
         </>
@@ -301,6 +317,14 @@ function PredictionsSection() {
     setMode(m);
     setOpen(true);
   };
+
+  // ?prediction=N (Cmd+K result): open it in the edit dialog.
+  useOpenFromUrl('prediction', (id) => {
+    growthApi.getPrediction(id).then(
+      (p) => show(p, 'edit'),
+      (err: unknown) => setNotice(openError(err, `Không tìm thấy dự đoán #${id}, có thể đã bị xóa.`)),
+    );
+  });
   useShortcuts({ p: () => show(null, 'edit') });
 
   const loadMore = async () => {

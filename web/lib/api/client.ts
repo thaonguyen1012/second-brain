@@ -67,9 +67,10 @@ type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /**
  * The one sender for every backend call (lib/api/* modules use it): same origin, CSRF header on writes,
- * ApiError on failure, undefined for 204.
+ * ApiError on failure, undefined for 204. An aborted `signal` rejects with the fetch AbortError (not an
+ * ApiError), so callers can tell "cancelled" from "offline" (isAbort).
  */
-export async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+export async function request<T>(method: Method, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (method !== 'GET') headers['X-CSRFToken'] = csrfToken();
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -80,8 +81,10 @@ export async function request<T>(method: Method, path: string, body?: unknown): 
       headers,
       credentials: 'same-origin',
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
     });
-  } catch {
+  } catch (err) {
+    if (signal?.aborted) throw err;
     throw new ApiError(0, `${method} ${path}: network error`, false);
   }
   const json = (res.headers.get('content-type') ?? '').includes('application/json');
@@ -110,8 +113,13 @@ function samePath(url: string | null | undefined): string | null {
   return u.pathname + u.search;
 }
 
-async function list<T>(path: string): Promise<Page<T>> {
-  const page = await request<{ results: T[]; next?: string | null }>('GET', path);
+/** True for the rejection of a request whose AbortSignal fired (a superseded search, not an error). */
+export function isAbort(err: unknown): boolean {
+  return err instanceof DOMException && err.name === 'AbortError';
+}
+
+async function list<T>(path: string, signal?: AbortSignal): Promise<Page<T>> {
+  const page = await request<{ results: T[]; next?: string | null }>('GET', path, undefined, signal);
   return { results: page.results, next: samePath(page.next) };
 }
 
@@ -131,8 +139,8 @@ export const api = {
       ...(title ? { title } : {}),
     } satisfies Schemas['SetLastVisitedRequest']),
 
-  /** Next page of any list (the `next` of a previous Page). */
-  page: <T>(next: string) => list<T>(next),
+  /** Next page of any list (the `next` of a previous Page), or a first page from a path with its query. */
+  page: <T>(next: string, signal?: AbortSignal) => list<T>(next, signal),
 
   /** This week (Europe/Prague), created empty on first access. */
   getCurrentWeek: () => request<ApiWeek>('GET', '/api/weeks/current'),
@@ -151,12 +159,16 @@ export const api = {
     request<ApiNewsItem>('PATCH', `/api/news/${id}`, { feedback } satisfies Schemas['PatchedNewsFeedbackRequest']),
 
   listInbox: (query?: Query<'listInbox'>) => list<ApiInboxEntry>(withQuery('/api/inbox', query)),
+  /** One COUNT query on the server (the Inbox badge), never the rows. */
+  countInbox: (query?: Query<'countInbox'>) =>
+    request<Schemas['InboxCount']>('GET', withQuery('/api/inbox/count', query)),
   createInboxEntry: (body: Schemas['InboxEntryRequest']) => request<ApiInboxEntry>('POST', '/api/inbox', body),
   triageInboxEntry: (id: number, body: Schemas['PatchedInboxTriageRequest']) =>
     request<ApiInboxEntry>('PATCH', `/api/inbox/${id}`, body),
   deleteInboxEntry: (id: number) => request<void>('DELETE', `/api/inbox/${id}`),
 
   listItems: (query?: Query<'listItems'>) => list<ApiItem>(withQuery('/api/items', query)),
+  getItem: (id: number) => request<ApiItem>('GET', `/api/items/${id}`),
   createItem: (body: ApiItemRequest) => request<ApiItem>('POST', '/api/items', body),
   updateItem: (id: number, body: ApiItemPatch) => request<ApiItem>('PATCH', `/api/items/${id}`, body),
   /** 409 (ApiError) for a project that has time entries. */

@@ -6,11 +6,12 @@ import type { Page } from '@/lib/api/client';
 import { growthApi, type ApiJobAd, type ApiMarketReport, type ApiMarketSkill } from '@/lib/api/growth';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { hostOf } from '@/lib/labels';
+import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Kbd } from '@/components/ui/kbd';
-import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError, openError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
 import { ConfirmDelete, DeleteButton } from '../confirm-delete';
 import { JobAdDialog } from './job-ad-dialog';
@@ -59,6 +60,7 @@ function JobAdCard({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void
             description={`"${ad.title}" bị xóa và không còn tính vào báo cáo thị trường tháng này. Không hoàn tác được.`}
             action={() => growthApi.deleteJobAd(ad.id)}
             onDeleted={onDeleted}
+            focusNeighbour
             trigger={<DeleteButton className="ms-auto" aria-label={`Xóa tin "${ad.title}"`} />}
           />
         </>
@@ -244,6 +246,18 @@ export function MarketPage() {
     report.reload();
     ads.reload();
   };
+
+  // ?jobAd=N (Cmd+K result): show the ad's month and open the ad.
+  useOpenFromUrl('jobAd', (id) => {
+    growthApi.getJobAd(id).then(
+      (ad) => {
+        setMonth(ad.month);
+        setEditing(ad);
+        setDialogOpen(true);
+      },
+      (err: unknown) => setNotice(openError(err, `Không tìm thấy tin tuyển dụng #${id}, có thể đã bị xóa.`)),
+    );
+  });
 
   const loadMore = async () => {
     const next = ads.data?.next;

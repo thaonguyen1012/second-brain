@@ -31,6 +31,8 @@ import { OpportunityDialog } from './opportunity-dialog';
 import { SaveKeys } from './save-keys';
 
 const PAGE = 100;
+/** A Cmd+K deep link pages through at most this many pages of a tab to find its entry. */
+const FOCUS_MAX_PAGES = 10;
 
 function titleOf(e: ApiInboxEntry): string {
   return e.ogTitle || e.url || (e.text ?? '').split('\n')[0].slice(0, 140) || `Mục #${e.id}`;
@@ -235,7 +237,7 @@ function EntryCard({
             </Button>
           )}
           <DeleteButton className="ms-auto" onClick={onDelete}>
-            Xóa <Kbd>X</Kbd>
+            Xóa <Kbd>Del</Kbd>
           </DeleteButton>
         </>
       }
@@ -265,7 +267,7 @@ const keyHelp: [string, string][] = [
   ['T', 'thành item'],
   ['N', 'ghi chú'],
   ['I', 'mở link'],
-  ['X', 'xóa'],
+  ['Del', 'xóa'],
   ['C', 'thu thập'],
 ];
 
@@ -284,22 +286,50 @@ export function InboxPage() {
   const shown = inbox.loading ? [] : (inbox.data?.results ?? []);
 
   // ?status=S&id=N (Cmd+K result): switch to that tab, then select the entry once the tab's list has loaded.
+  // Cmd+K finds old archived entries too, so the list pages forward ("Tải thêm") until the entry shows up.
   const [focusId, setFocusId] = useState<number | null>(null);
+  const [focusPages, setFocusPages] = useState(0);
   useOpenFromUrl(
     'id',
     (id, params) => {
       const tab = inboxStatuses.find((x) => x.value === params.get('status'));
       if (tab) setStatus(tab.value);
       setFocusId(id);
+      setFocusPages(0);
     },
     ['status'],
   );
-  if (focusId !== null && !inbox.loading && inbox.dataKey === `inbox:${status}`) {
-    const at = shown.findIndex((e) => e.id === focusId);
+  const nextUrl = inbox.data?.next ?? null;
+  const seeking = focusId !== null && !inbox.loading && inbox.dataKey === `inbox:${status}`;
+  const focusAt = seeking ? shown.findIndex((e) => e.id === focusId) : -1;
+  const pageForFocus = seeking && focusAt < 0 && !inbox.error && nextUrl !== null && focusPages < FOCUS_MAX_PAGES;
+  if (seeking && !pageForFocus) {
     setFocusId(null);
-    if (at >= 0) setCursor(at);
-    else if (!inbox.error) setNotice('Không thấy mục này trong danh sách: có thể ở trang sau hoặc đã bị xóa.');
+    if (focusAt >= 0) setCursor(focusAt);
+    else if (!inbox.error)
+      setNotice(
+        nextUrl
+          ? `Không thấy mục này trong ${FOCUS_MAX_PAGES * PAGE} mục mới nhất của tab: bấm "Tải thêm" để xem tiếp.`
+          : 'Không thấy mục này: có thể đã bị xóa hoặc đổi trạng thái.',
+      );
   }
+  useEffect(() => {
+    if (!pageForFocus) return;
+    let alive = true;
+    appendNextPage(inbox).then(
+      () => alive && setFocusPages((n) => n + 1),
+      (err: unknown) => {
+        if (!alive) return;
+        setFocusId(null);
+        setNotice(describeApiError(toApiError(err)).title);
+      },
+    );
+    return () => {
+      alive = false;
+    };
+    // `inbox` changes identity every render; the page to load is identified by nextUrl
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageForFocus, nextUrl]);
   const selected = Math.min(cursor, Math.max(0, shown.length - 1));
   const current = shown[selected];
   const { mutate, reload } = inbox;
@@ -386,8 +416,9 @@ export function InboxPage() {
           t: () => !current.item && setItemFor(current),
           n: () => setNoteFor(current),
           i: () => current.url && window.open(current.url, '_blank', 'noopener'),
-          x: () => setDeleteFor(current),
+          // Del / Backspace delete, as on the week page (X there means "bỏ" an objective)
           delete: () => setDeleteFor(current),
+          backspace: () => setDeleteFor(current),
         }),
       };
       const run = act[k];

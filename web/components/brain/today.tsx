@@ -25,6 +25,10 @@ const BriefActions = dynamic(() => import('./brief-actions'), {
   ssr: false,
   loading: () => <Skeleton className="h-7 w-72 rounded-md" />,
 });
+// Fetch the today-extras chunk as soon as this module runs in the browser (before hydration), so the two panels'
+// API requests do not wait for a chunk request that only starts when they first render. Still a separate chunk:
+// nothing is added to the first-load JS.
+if (typeof window !== 'undefined') void import('./today-extras');
 export const TodayPredictions = dynamic(() => import('./today-extras').then((m) => m.TodayPredictions), {
   ssr: false,
   loading: () => <Skeleton className="h-36 rounded-3xl md:col-span-2 xl:col-span-1" />,

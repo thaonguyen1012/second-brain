@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { LoadingCards } from '@/components/brain/api-state';
 import { PageHeader } from '@/components/brain/page-header';
 import { BragPage } from '@/components/brain/growth/brag-page';
 
@@ -11,7 +13,10 @@ export default function Page() {
         title="Nhật ký thành tựu"
         description="Những việc đã làm được, cập nhật mỗi tuần, kèm kết quả bằng số cho hồ sơ đi làm. Bên dưới là các dự đoán, 6 tháng sau chấm lại."
       />
-      <BragPage />
+      {/* useSearchParams (?achievement=, ?prediction=, Cmd+K results) needs a Suspense boundary for the static shell */}
+      <Suspense fallback={<LoadingCards />}>
+        <BragPage />
+      </Suspense>
     </div>
   );
 }

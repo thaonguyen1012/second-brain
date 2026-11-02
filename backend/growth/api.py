@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 
 from core.authentication import request_user
 from core.pagination import NewestFirstCursor
+from core.services.search import normalize_query
 from growth import services
 from growth.models import Achievement, Freshness, JobAd, Prediction, Skill, SkillEvidence
 from growth.serializers import (
@@ -37,6 +38,20 @@ from growth.serializers import (
 
 BOOLEAN = {"true": True, "false": False}
 MONTH_PARAM = OpenApiParameter("month", str, description="YYYY-MM; default: this month (Europe/Prague).")
+
+
+def _search(request: Request, *fields: str) -> Q | None:
+    """The `?q=` filter (Cmd+K): case-insensitive substring in any of `fields`; None without a query."""
+    if not (query := normalize_query(request.query_params.get("q", ""))):
+        return None
+    match = Q()
+    for field in fields:
+        match |= Q(**{f"{field}__icontains": query})
+    return match
+
+
+def _q_param(fields: str) -> OpenApiParameter:
+    return OpenApiParameter("q", str, description=f"Case-insensitive match in {fields}.")
 
 
 class ByNameCursor(CursorPagination):
@@ -156,7 +171,9 @@ class SkillEvidenceView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@extend_schema_view(get=extend_schema(operation_id="listJobAds", parameters=[MONTH_PARAM]))
+@extend_schema_view(
+    get=extend_schema(operation_id="listJobAds", parameters=[MONTH_PARAM, _q_param("the title or company")])
+)
 class JobAdListView(generics.ListAPIView[JobAd]):
     serializer_class = JobAdSerializer
     pagination_class = NewestFirstCursor
@@ -168,6 +185,8 @@ class JobAdListView(generics.ListAPIView[JobAd]):
                 rows = rows.filter(month=parse_month(month))
             except ValueError as error:
                 raise ValidationError({"month": str(error)}) from error
+        if (match := _search(self.request, "title", "company")) is not None:
+            rows = rows.filter(match)
         return rows
 
     @extend_schema(request=JobAdWriteSerializer, responses={201: JobAdSerializer}, operation_id="createJobAd")
@@ -180,6 +199,11 @@ class JobAdListView(generics.ListAPIView[JobAd]):
 
 
 class JobAdView(APIView):
+    @extend_schema(responses=JobAdSerializer, operation_id="getJobAd")
+    def get(self, request: Request, pk: int) -> Response:
+        """One ad (Cmd+K deep link /phat-trien/thi-truong/?jobAd=N)."""
+        return Response(JobAdSerializer(get_object_or_404(JobAd, pk=pk, user=request_user(request))).data)
+
     @extend_schema(request=JobAdWriteSerializer, responses=JobAdSerializer, operation_id="updateJobAd")
     def patch(self, request: Request, pk: int) -> Response:
         """Changed title, company or text re-runs the extraction; `skills` corrects it by hand."""
@@ -239,7 +263,10 @@ def _achievement(request: Request, pk: int) -> Achievement:
     get=extend_schema(
         operation_id="listAchievements",
         parameters=[
-            OpenApiParameter("week", OpenApiTypes.DATE, description="Only that week: its Monday, YYYY-MM-DD.")
+            OpenApiParameter(
+                "week", OpenApiTypes.DATE, description="Only that week: its Monday, YYYY-MM-DD."
+            ),
+            _q_param("the title, impact or description"),
         ],
     )
 )
@@ -250,7 +277,10 @@ class AchievementListView(generics.ListAPIView[Achievement]):
     pagination_class = NewestDateFirst
 
     def get_queryset(self) -> QuerySet[Achievement]:
-        return services.achievements(request_user(self.request), _week(self.request))
+        rows = services.achievements(request_user(self.request), _week(self.request))
+        if (match := _search(self.request, "title", "impact", "description")) is not None:
+            rows = rows.filter(match)
+        return rows
 
     @extend_schema(
         request=AchievementWriteSerializer,
@@ -268,6 +298,11 @@ class AchievementListView(generics.ListAPIView[Achievement]):
 
 
 class AchievementView(APIView):
+    @extend_schema(responses=AchievementSerializer, operation_id="getAchievement")
+    def get(self, request: Request, pk: int) -> Response:
+        """One brag-document line (Cmd+K deep link /phat-trien/thanh-tuu/?achievement=N)."""
+        return Response(AchievementSerializer(_achievement(request, pk)).data)
+
     @extend_schema(
         request=AchievementWriteSerializer, responses=AchievementSerializer, operation_id="updateAchievement"
     )
@@ -306,6 +341,7 @@ def _save_prediction(prediction: Prediction, data: dict[str, object]) -> Predict
                 description="true: open ones whose checkOn has come (Europe/Prague); false: the others.",
             ),
             OpenApiParameter("outcome", str, enum=Prediction.Outcome.values),
+            _q_param("the statement or note"),
         ],
     )
 )
@@ -323,6 +359,8 @@ class PredictionListView(generics.ListAPIView[Prediction]):
             if outcome not in Prediction.Outcome.values:
                 raise ValidationError({"outcome": f"One of {Prediction.Outcome.values}."})
             rows = rows.filter(outcome=outcome)
+        if (match := _search(self.request, "statement", "note")) is not None:
+            rows = rows.filter(match)
         return rows
 
     @extend_schema(
@@ -338,6 +376,13 @@ class PredictionListView(generics.ListAPIView[Prediction]):
 
 
 class PredictionView(APIView):
+    @extend_schema(responses=PredictionSerializer, operation_id="getPrediction")
+    def get(self, request: Request, pk: int) -> Response:
+        """One prediction (Cmd+K deep link /phat-trien/thanh-tuu/?prediction=N)."""
+        return Response(
+            PredictionSerializer(get_object_or_404(Prediction, pk=pk, user=request_user(request))).data
+        )
+
     @extend_schema(
         request=PredictionWriteSerializer, responses=PredictionSerializer, operation_id="updatePrediction"
     )
