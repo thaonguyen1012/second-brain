@@ -178,6 +178,7 @@ SPECTACULAR_SETTINGS = {
         "SkillEvidenceKindEnum": "growth.models.SkillEvidence.Kind",
         "SkillFreshnessEnum": "growth.models.Freshness",
         "SeniorityEnum": "growth.models.JobAd.Seniority",
+        "PredictionOutcomeEnum": "growth.models.Prediction.Outcome",
         "NewsAreaEnum": "brief.models.Area",
         "NewsTagStatusEnum": "brief.models.NewsItem.TagStatus",
     },

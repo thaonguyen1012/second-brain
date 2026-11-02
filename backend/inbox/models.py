@@ -31,6 +31,7 @@ class InboxEntry(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    archived_at = models.DateTimeField(null=True, blank=True)  # set on triage to archived (services.py)
     processed = models.BooleanField(default=False)
     processed_at = models.DateTimeField(null=True, blank=True)
     error = models.CharField(max_length=500, blank=True)

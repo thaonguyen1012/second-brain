@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/achievements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The brag document, newest date first. */
+        get: operations["listAchievements"];
+        put?: never;
+        /** @description The brag document, newest date first. */
+        post: operations["createAchievement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/achievements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateAchievement"];
+        trace?: never;
+    };
     "/api/brief/{day}": {
         parameters: {
             query?: never;
@@ -202,6 +236,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listNotes"];
+        put?: never;
+        post: operations["createNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getNote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateNote"];
+        trace?: never;
+    };
     "/api/opportunities": {
         parameters: {
             query?: never;
@@ -327,6 +393,39 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/predictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPredictions"];
+        put?: never;
+        post: operations["createPrediction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/predictions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Re-score with `outcome` (right, wrong, partial; open again clears `scoredAt`) and `note`. */
+        patch: operations["updatePrediction"];
         trace?: never;
     };
     "/api/progress": {
@@ -503,7 +602,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** @description Remove an entry typed by mistake; a running timer is discarded without being stopped. */
+        delete: operations["deleteTimeEntry"];
         options?: never;
         head?: never;
         patch: operations["updateTimeEntry"];
@@ -680,6 +780,35 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description `project` is the project Item id, `skills` the linked skills by name (prefetch both). */
+        Achievement: {
+            readonly id: number;
+            /** Format: date */
+            readonly date: string;
+            readonly title: string;
+            readonly description: string;
+            readonly impact: string;
+            readonly project: number | null;
+            readonly projectTitle: string | null;
+            readonly skills: components["schemas"]["SkillRef"][];
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+        };
+        /**
+         * @description Create (title required) or partial update. `project` is a project Item and `skills` (replaces the
+         *     links) are skill ids, both of the owner in context["user"]; anything else answers 400.
+         */
+        AchievementWriteRequest: {
+            /** Format: date */
+            date?: string;
+            title: string;
+            description?: string;
+            impact?: string;
+            project?: number | null;
+            skills?: number[];
+        };
         /** @description Resolves linked ids against the owner in context["user"]; another user's row answers 400. */
         AttachInboxRequest: {
             inboxEntry: number;
@@ -799,6 +928,8 @@ export interface components {
             readonly item: number | null;
             /** Format: date-time */
             readonly createdAt: string;
+            /** Format: date-time */
+            readonly archivedAt: string | null;
             readonly processed: boolean;
             /** Format: date-time */
             readonly processedAt: string | null;
@@ -969,6 +1100,26 @@ export interface components {
          * @enum {string}
          */
         NewsTagStatusEnum: "queued" | "tagged" | "failed" | "skipped";
+        /** @description `items` are the ids of the linked Items (prefetch them). */
+        Note: {
+            readonly id: number;
+            readonly title: string;
+            readonly markdown: string;
+            readonly items: number[];
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+        };
+        /**
+         * @description Create (markdown required) or partial update; `items` replaces the links with ids of the owner's Items
+         *     (context["user"]); another user's Item answers 400.
+         */
+        NoteWriteRequest: {
+            title?: string;
+            markdown: string;
+            items?: number[];
+        };
         Objective: {
             readonly id: number;
             title: string;
@@ -1077,6 +1228,19 @@ export interface components {
             book: string;
             page: string;
         };
+        PaginatedAchievementList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["Achievement"][];
+        };
         PaginatedInboxEntryList: {
             /**
              * Format: uri
@@ -1129,6 +1293,19 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["NewsItem"][];
         };
+        PaginatedNoteList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["Note"][];
+        };
         PaginatedOpportunityList: {
             /**
              * Format: uri
@@ -1141,6 +1318,19 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Opportunity"][];
+        };
+        PaginatedPredictionList: {
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cD00ODY%3D"
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+             */
+            previous?: string | null;
+            results: components["schemas"]["Prediction"][];
         };
         PaginatedProjectList: {
             /**
@@ -1194,6 +1384,19 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Week"][];
         };
+        /**
+         * @description Create (title required) or partial update. `project` is a project Item and `skills` (replaces the
+         *     links) are skill ids, both of the owner in context["user"]; anything else answers 400.
+         */
+        PatchedAchievementWriteRequest: {
+            /** Format: date */
+            date?: string;
+            title?: string;
+            description?: string;
+            impact?: string;
+            project?: number | null;
+            skills?: number[];
+        };
         /** @description Used with partial=True; the kind and the linked row do not change. */
         PatchedEvidenceUpdateRequest: {
             stance?: components["schemas"]["EvidenceStanceEnum"];
@@ -1228,6 +1431,15 @@ export interface components {
             month?: string;
             skills?: string[];
         };
+        /**
+         * @description Create (markdown required) or partial update; `items` replaces the links with ids of the owner's Items
+         *     (context["user"]); another user's Item answers 400.
+         */
+        PatchedNoteWriteRequest: {
+            title?: string;
+            markdown?: string;
+            items?: number[];
+        };
         PatchedObjectiveUpdateRequest: {
             title?: string;
             status?: components["schemas"]["ObjectiveStatusEnum"];
@@ -1246,6 +1458,17 @@ export interface components {
             decideBy?: string | null;
             decision?: components["schemas"]["OpportunityDecisionEnum"];
             fit?: number[];
+        };
+        /** @description Create (statement required) or partial update. `checkOn` defaults to `madeOn` + 6 months. */
+        PatchedPredictionWriteRequest: {
+            statement?: string;
+            /** Format: date */
+            madeOn?: string;
+            /** Format: date */
+            checkOn?: string;
+            confidence?: number | null;
+            outcome?: components["schemas"]["PredictionOutcomeEnum"];
+            note?: string;
         };
         /** @description Create (title required) or partial update; context["details"] is the current details on update. */
         PatchedProjectWriteRequest: {
@@ -1304,6 +1527,42 @@ export interface components {
         PlanView: {
             week: components["schemas"]["Week"];
             carryCandidates: components["schemas"]["CarryCandidate"][];
+        };
+        Prediction: {
+            readonly id: number;
+            readonly statement: string;
+            /** Format: date */
+            readonly madeOn: string;
+            /** Format: date */
+            readonly checkOn: string;
+            readonly confidence: number | null;
+            readonly outcome: components["schemas"]["PredictionOutcomeEnum"];
+            readonly note: string;
+            /** Format: date-time */
+            readonly scoredAt: string | null;
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+        };
+        /**
+         * @description * `open` - Open
+         *     * `right` - Right
+         *     * `wrong` - Wrong
+         *     * `partial` - Partial
+         * @enum {string}
+         */
+        PredictionOutcomeEnum: "open" | "right" | "wrong" | "partial";
+        /** @description Create (statement required) or partial update. `checkOn` defaults to `madeOn` + 6 months. */
+        PredictionWriteRequest: {
+            statement: string;
+            /** Format: date */
+            madeOn?: string;
+            /** Format: date */
+            checkOn?: string;
+            confidence?: number | null;
+            outcome?: components["schemas"]["PredictionOutcomeEnum"];
+            note?: string;
         };
         ProgressSnapshot: {
             done: {
@@ -1375,6 +1634,8 @@ export interface components {
             days: components["schemas"]["DayWork"][];
             time: components["schemas"]["WeekTime"];
             opportunities: components["schemas"]["WeekOpportunities"];
+            /** @description The week's brag-document lines, oldest first. */
+            achievements: components["schemas"]["Achievement"][];
         };
         ScoreSnapshot: {
             readonly id: number;
@@ -1502,6 +1763,10 @@ export interface components {
          * @enum {string}
          */
         SkillFreshnessEnum: "fresh" | "aging" | "faded";
+        SkillRef: {
+            id: number;
+            name: string;
+        };
         /** @description Create (name required) or partial update; there is no self-rating to type (DECISIONS 9.1). */
         SkillWriteRequest: {
             name: string;
@@ -1640,6 +1905,80 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listAchievements: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description Only that week: its Monday, YYYY-MM-DD. */
+                week?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAchievementList"];
+                };
+            };
+        };
+    };
+    createAchievement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AchievementWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Achievement"];
+                };
+            };
+        };
+    };
+    updateAchievement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAchievementWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Achievement"];
+                };
+            };
+        };
+    };
     getBrief: {
         parameters: {
             query?: never;
@@ -1998,6 +2337,103 @@ export interface operations {
             };
         };
     };
+    listNotes: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                /** @description Only notes linked to this Item id. */
+                item?: number;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description Case-insensitive match in title or markdown. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedNoteList"];
+                };
+            };
+        };
+    };
+    createNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
+                };
+            };
+        };
+    };
+    getNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
+                };
+            };
+        };
+    };
+    updateNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedNoteWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
+                };
+            };
+        };
+    };
     listOpportunities: {
         parameters: {
             query?: {
@@ -2232,6 +2668,81 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScoreSnapshot"];
+                };
+            };
+        };
+    };
+    listPredictions: {
+        parameters: {
+            query?: {
+                /** @description The pagination cursor value. */
+                cursor?: string;
+                /** @description true: open ones whose checkOn has come (Europe/Prague); false: the others. */
+                due?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                outcome?: "open" | "partial" | "right" | "wrong";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPredictionList"];
+                };
+            };
+        };
+    };
+    createPrediction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prediction"];
+                };
+            };
+        };
+    };
+    updatePrediction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPredictionWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prediction"];
                 };
             };
         };
@@ -2615,6 +3126,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TimeEntry"];
                 };
+            };
+        };
+    };
+    deleteTimeEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

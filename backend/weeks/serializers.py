@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from growth.serializers import AchievementSerializer
 from opportunities.serializers import WeekOpportunitiesSerializer
 from weeks.models import Objective, Week
 
@@ -143,3 +144,4 @@ class ReviewViewSerializer(serializers.Serializer[object]):
     days = DayWorkSerializer(many=True)
     time = WeekTimeSerializer()
     opportunities = WeekOpportunitiesSerializer()
+    achievements = AchievementSerializer(many=True, help_text="The week's brag-document lines, oldest first.")

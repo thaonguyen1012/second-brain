@@ -36,7 +36,9 @@ unknown books = not a directory under `CONTENT_DIR/<track>/`). drf-spectacular s
 `NEXT_PUBLIC_PROGRESS_STORE=api` to use `ApiProgressStore` (optimistic writes, last-visited debounced 1.5 s,
 reload on tab focus; on first load against an empty account it copies this browser's localStorage progress once).
 Second brain, step 1 (DECISIONS 9.4): `backend/library/` has `Item` (course/book/film/article/project, status
-planned/active/done/dropped, tags as a Postgres array, rating 1-10) and `Note` (markdown, M2M to Item, admin only);
+planned/active/done/dropped, tags as a Postgres array, rating 1-10) and `Note` (markdown, M2M to Item; API since
+the UI step: `GET/POST /api/notes` with `?q=` (icontains on title or markdown) and `?item=`, `GET/PATCH
+/api/notes/{id}`, `items` = ids of the owner's Items; note bodies are never sent to an LLM);
 `backend/inbox/` has `InboxEntry` (url or text, triage status inbox/later/archived, optional linked Item, OG unfurl
 fields, LLM suggestions, `processed` + `error`). Endpoints `GET/POST /api/items`, `PATCH /api/items/{id}`,
 `GET/POST /api/inbox`, `PATCH /api/inbox/{id}` (cursor pagination, newest first). Django admin is the first UI.
@@ -55,7 +57,9 @@ that it is a Monday; planning journal, the six review questions as text, `planne
 `Objective` (title, open/done/dropped, position, `carried_from` self FK; one carry per source and week). Planning:
 `GET /api/weeks/{start}/plan` lists the open objectives of the latest earlier week, `POST` carries the chosen ones
 (idempotent) and saves the journal. Review: `GET /api/weeks/{start}/review` counts objectives by status and lists
-the body of work per day from existing rows (inbox entries archived = status archived by `updated_at`, Items by
+the body of work per day from existing rows (inbox entries archived = status archived by `archived_at`, which
+`inbox/services.triage_entry` sets on the change to archived and clears when the entry leaves the archive; the
+migration backfilled older archived rows from `updated_at`; Items by
 `finished_at`, `PageProgress` done by `updated_at`) plus the minutes of time entries per day, split into "for this
 week's objectives" and "other", with minutes per objective (the review chart). No tasks.
 Step 3 (DECISIONS 9.4): `backend/work/`. A project stays an `Item` with type=project; `ProjectDetails` is a OneToOne
@@ -66,7 +70,8 @@ minutes, billable, note, optional `weeks.Objective`) is typed in or timed: a run
 `minutes` null, a partial unique constraint allows one per user, starting a new one stops it (whole minutes, at
 least 1). `GET /api/projects` annotates minute totals in one query; `work/services.py` computes `earned` (price, or
 billable hours x rate) and the Harvest-style effective rate = earned / all hours including non-billable.
-`GET /api/time-entries/summary?week=` gives billable vs non-billable minutes per project. No invoices, no CRM, no
+`GET /api/time-entries/summary?week=` gives billable vs non-billable minutes per project. `DELETE
+/api/time-entries/{id}` removes an owner's entry (a running timer is discarded). No invoices, no CRM, no
 Kimai rate tiers yet (DECISIONS 4.5).
 Step 4 (DECISIONS 9.4): `backend/opportunities/`. `Opportunity` (title, one-sentence hypothesis, why now, next
 action, `decide_by`, decision open/keep/drop/build, `decided_at`) is Alex's own niche hypothesis. `Evidence` (kind
@@ -94,6 +99,13 @@ Skills can be corrected by hand (`skills` in PATCH skips the job). `GET /api/mar
 skill, the processed ads of the month that ask for it (once per ad) and of the previous month, matched to `Skill` by
 exact normalised name or alias (no fuzzy matching, DECISIONS 4.5); a gap is a requested skill with no Skill row or
 a faded one. `manage.py eval jd` runs `backend/evals/jd_skills/`. No RSS from job boards yet.
+Brag document and predictions (DECISIONS 4.8) also live in `backend/growth/`. `Achievement` (date, title,
+description, impact text with numbers, optional project `Item` (type project, owner checked), M2M `Skill`):
+`GET/POST /api/achievements` (`?week=<Monday>`, newest date first), `PATCH /api/achievements/{id}`; the week review
+adds `achievements` (dated in the week, oldest first). `Prediction` (statement, `made_on`, `check_on` default
+`made_on` + 6 months via `services.months_after`, DB checks: check_on >= made_on, confidence 1-10 or null; outcome
+open/right/wrong/partial; `scored_at` follows the outcome): `GET/POST /api/predictions` (`?due=true` = open and
+`check_on` <= today in Prague, `?outcome=`), `PATCH /api/predictions/{id}` to re-score. No LLM involved.
 Step 6 (DECISIONS 9.4, 5): `backend/brief/`. `Source` (name, feed URL, area of DECISIONS 6.2, active; added in the
 admin or with `manage.py brief_sources add|seed|list|activate|deactivate`; `seed` adds only feeds of sources 6.2
 names). `run_jobs` first calls the `jobs.periodic` schedulers: when an active source exists it enqueues the latest

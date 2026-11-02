@@ -9,6 +9,7 @@ from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
 
+from growth.services import achievements
 from inbox.models import InboxEntry
 from library.models import Item
 from opportunities.services import week_activity
@@ -133,10 +134,11 @@ def _next_position(week: Week) -> int:
 def review(week: Week) -> dict[str, Any]:
     """Objective progress and the body of work per day, from data that already exists.
 
-    Body of work: inbox entries archived that day (their last update), Items finished that day and
-    handbook pages marked done that day. Time: minutes of time entries linked to this week's objectives
-    vs other minutes, per day and per objective (the review chart, DECISIONS 9.2). Opportunities: those that
-    got evidence recorded this week ("which opportunity got more evidence") and the stale ones.
+    Body of work: inbox entries archived that day (`archived_at`), Items finished that day and
+    handbook pages marked done that day; achievements of the brag document dated in the week. Time:
+    minutes of time entries linked to this week's objectives vs other minutes, per day and per objective
+    (the review chart, DECISIONS 9.2). Opportunities: those that got evidence recorded this week ("which
+    opportunity got more evidence") and the stale ones.
     """
     tz = timezone.get_current_timezone()
     first = dt.datetime.combine(week.start_date, dt.time.min, tzinfo=tz)
@@ -148,10 +150,11 @@ def review(week: Week) -> dict[str, Any]:
 
     user_id = week.user_id
     archived = InboxEntry.objects.filter(
-        user_id=user_id, status=InboxEntry.Status.ARCHIVED, updated_at__gte=first, updated_at__lt=after
-    ).order_by("updated_at")
-    for entry in archived.only("id", "url", "text", "og_title", "updated_at"):
-        day_of(entry.updated_at)["inboxArchived"].append({"id": entry.pk, "title": str(entry)})
+        user_id=user_id, status=InboxEntry.Status.ARCHIVED, archived_at__gte=first, archived_at__lt=after
+    ).order_by("archived_at", "id")
+    for entry in archived.only("id", "url", "text", "og_title", "archived_at"):
+        assert entry.archived_at is not None
+        day_of(entry.archived_at)["inboxArchived"].append({"id": entry.pk, "title": str(entry)})
     finished = Item.objects.filter(user_id=user_id, finished_at__gte=first, finished_at__lt=after)
     for item in finished.order_by("finished_at").only("id", "title", "type", "finished_at"):
         assert item.finished_at is not None
@@ -190,6 +193,7 @@ def review(week: Week) -> dict[str, Any]:
             "byObjective": by_objective,
         },
         "opportunities": week_activity(user_id, first, after),
+        "achievements": list(achievements(user_id, week.start_date).order_by("date", "id")),
     }
 
 

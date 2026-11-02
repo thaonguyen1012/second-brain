@@ -200,6 +200,27 @@ def test_update_time_entry(client: Client) -> None:
     assert send(client, "patch", f"/api/time-entries/{foreign.pk}", {"note": "x"}, headers).status_code == 404
 
 
+def test_delete_time_entry(client: Client) -> None:
+    user = owner(client)
+    headers = csrf(client)
+    item = project(user)
+    done = entry(user, item, 30)
+    keep = entry(user, item, 15)
+    response = send(client, "delete", f"/api/time-entries/{done.pk}", {}, headers)
+    assert response.status_code == 204
+    assert list(TimeEntry.objects.values_list("pk", flat=True)) == [keep.pk]
+    assert send(client, "delete", f"/api/time-entries/{done.pk}", {}, headers).status_code == 404
+    # A running timer may be discarded: nothing runs afterwards and no minutes were recorded.
+    running = TimeEntry.objects.create(user=user, project=item, date=MON, started_at=timezone.now())
+    assert send(client, "delete", f"/api/time-entries/{running.pk}", {}, headers).status_code == 204
+    assert client.get("/api/time-entries/timer").json() == {"running": None}
+    assert client.get(f"/api/projects/{item.pk}").json()["minutesTotal"] == 15
+    other = User.objects.create(username="other@x", email="other@x")
+    foreign = entry(other, project(other), 10)
+    assert send(client, "delete", f"/api/time-entries/{foreign.pk}", {}, headers).status_code == 404
+    assert TimeEntry.objects.filter(pk=foreign.pk).exists()
+
+
 def test_get_timer(client: Client) -> None:
     user = owner(client)
     assert client.get("/api/time-entries/timer").json() == {"running": None}
@@ -339,6 +360,7 @@ def test_work_requires_auth(anon_client: Client) -> None:
         ("patch", "/api/projects/1"),
         ("post", "/api/time-entries"),
         ("patch", "/api/time-entries/1"),
+        ("delete", "/api/time-entries/1"),
         ("post", "/api/time-entries/timer/start"),
         ("post", "/api/time-entries/timer/stop"),
     ]
@@ -357,6 +379,7 @@ def test_work_requires_csrf(client: Client) -> None:
         ("patch", f"/api/projects/{item.pk}", {"client": "x"}),
         ("post", "/api/time-entries", {"project": item.pk, "date": "2026-10-26", "minutes": 5}),
         ("patch", f"/api/time-entries/{done.pk}", {"minutes": 5}),
+        ("delete", f"/api/time-entries/{done.pk}", {}),
         ("post", "/api/time-entries/timer/start", {"project": item.pk}),
         ("post", "/api/time-entries/timer/stop", {}),
     ]

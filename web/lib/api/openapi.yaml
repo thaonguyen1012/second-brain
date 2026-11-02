@@ -3,6 +3,85 @@ info:
   title: Alex's Brain API
   version: 0.1.0
 paths:
+  /api/achievements:
+    get:
+      operationId: listAchievements
+      description: The brag document, newest date first.
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: week
+        schema:
+          type: string
+          format: date
+        description: 'Only that week: its Monday, YYYY-MM-DD.'
+      tags:
+      - achievements
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAchievementList'
+          description: ''
+    post:
+      operationId: createAchievement
+      description: The brag document, newest date first.
+      tags:
+      - achievements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AchievementWriteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Achievement'
+          description: ''
+  /api/achievements/{id}:
+    patch:
+      operationId: updateAchievement
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - achievements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAchievementWriteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Achievement'
+          description: ''
   /api/brief/{day}:
     get:
       operationId: getBrief
@@ -407,6 +486,106 @@ paths:
               schema:
                 $ref: '#/components/schemas/TopicCounts'
           description: ''
+  /api/notes:
+    get:
+      operationId: listNotes
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - in: query
+        name: item
+        schema:
+          type: integer
+        description: Only notes linked to this Item id.
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive match in title or markdown.
+      tags:
+      - notes
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNoteList'
+          description: ''
+    post:
+      operationId: createNote
+      tags:
+      - notes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteWriteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+          description: ''
+  /api/notes/{id}:
+    get:
+      operationId: getNote
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - notes
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+          description: ''
+    patch:
+      operationId: updateNote
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - notes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNoteWriteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+          description: ''
   /api/opportunities:
     get:
       operationId: listOpportunities
@@ -672,6 +851,94 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScoreSnapshot'
+          description: ''
+  /api/predictions:
+    get:
+      operationId: listPredictions
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - in: query
+        name: due
+        schema:
+          type: boolean
+        description: 'true: open ones whose checkOn has come (Europe/Prague); false:
+          the others.'
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: outcome
+        schema:
+          type: string
+          enum:
+          - open
+          - partial
+          - right
+          - wrong
+      tags:
+      - predictions
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPredictionList'
+          description: ''
+    post:
+      operationId: createPrediction
+      tags:
+      - predictions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictionWriteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prediction'
+          description: ''
+  /api/predictions/{id}:
+    patch:
+      operationId: updatePrediction
+      description: Re-score with `outcome` (right, wrong, partial; open again clears
+        `scoredAt`) and `note`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - predictions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPredictionWriteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prediction'
           description: ''
   /api/progress:
     get:
@@ -1105,6 +1372,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/TimeEntry'
           description: ''
+    delete:
+      operationId: deleteTimeEntry
+      description: Remove an entry typed by mistake; a running timer is discarded
+        without being stopped.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - time-entries
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/time-entries/summary:
     get:
       operationId: getTimeSummary
@@ -1383,6 +1667,88 @@ paths:
           description: ''
 components:
   schemas:
+    Achievement:
+      type: object
+      description: '`project` is the project Item id, `skills` the linked skills by
+        name (prefetch both).'
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        date:
+          type: string
+          format: date
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        impact:
+          type: string
+          readOnly: true
+        project:
+          type: integer
+          readOnly: true
+          nullable: true
+        projectTitle:
+          type: string
+          nullable: true
+          readOnly: true
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillRef'
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - createdAt
+      - date
+      - description
+      - id
+      - impact
+      - project
+      - projectTitle
+      - skills
+      - title
+      - updatedAt
+    AchievementWriteRequest:
+      type: object
+      description: |-
+        Create (title required) or partial update. `project` is a project Item and `skills` (replaces the
+        links) are skill ids, both of the owner in context["user"]; anything else answers 400.
+      properties:
+        date:
+          type: string
+          format: date
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        description:
+          type: string
+          maxLength: 20000
+        impact:
+          type: string
+          maxLength: 5000
+        project:
+          type: integer
+          nullable: true
+        skills:
+          type: array
+          items:
+            type: integer
+          maxItems: 30
+      required:
+      - title
     AttachInboxRequest:
       type: object
       description: Resolves linked ids against the owner in context["user"]; another
@@ -1687,6 +2053,11 @@ components:
           type: string
           format: date-time
           readOnly: true
+        archivedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         processed:
           type: boolean
           readOnly: true
@@ -1723,6 +2094,7 @@ components:
           type: string
           readOnly: true
       required:
+      - archivedAt
       - createdAt
       - error
       - id
@@ -2176,6 +2548,59 @@ components:
         * `tagged` - Tagged
         * `failed` - Failed
         * `skipped` - Skipped
+    Note:
+      type: object
+      description: '`items` are the ids of the linked Items (prefetch them).'
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        markdown:
+          type: string
+          readOnly: true
+        items:
+          type: array
+          items:
+            type: integer
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - createdAt
+      - id
+      - items
+      - markdown
+      - title
+      - updatedAt
+    NoteWriteRequest:
+      type: object
+      description: |-
+        Create (markdown required) or partial update; `items` replaces the links with ids of the owner's Items
+        (context["user"]); another user's Item answers 400.
+      properties:
+        title:
+          type: string
+          maxLength: 300
+        markdown:
+          type: string
+          minLength: 1
+          maxLength: 200000
+        items:
+          type: array
+          items:
+            type: integer
+          maxItems: 50
+      required:
+      - markdown
     Objective:
       type: object
       properties:
@@ -2453,6 +2878,25 @@ components:
       required:
       - book
       - page
+    PaginatedAchievementList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Achievement'
     PaginatedInboxEntryList:
       type: object
       required:
@@ -2529,6 +2973,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NewsItem'
+    PaginatedNoteList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Note'
     PaginatedOpportunityList:
       type: object
       required:
@@ -2548,6 +3011,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Opportunity'
+    PaginatedPredictionList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prediction'
     PaginatedProjectList:
       type: object
       required:
@@ -2624,6 +3106,33 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Week'
+    PatchedAchievementWriteRequest:
+      type: object
+      description: |-
+        Create (title required) or partial update. `project` is a project Item and `skills` (replaces the
+        links) are skill ids, both of the owner in context["user"]; anything else answers 400.
+      properties:
+        date:
+          type: string
+          format: date
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        description:
+          type: string
+          maxLength: 20000
+        impact:
+          type: string
+          maxLength: 5000
+        project:
+          type: integer
+          nullable: true
+        skills:
+          type: array
+          items:
+            type: integer
+          maxItems: 30
     PatchedEvidenceUpdateRequest:
       type: object
       description: Used with partial=True; the kind and the linked row do not change.
@@ -2722,6 +3231,24 @@ components:
             minLength: 1
             maxLength: 60
           maxItems: 30
+    PatchedNoteWriteRequest:
+      type: object
+      description: |-
+        Create (markdown required) or partial update; `items` replaces the links with ids of the owner's Items
+        (context["user"]); another user's Item answers 400.
+      properties:
+        title:
+          type: string
+          maxLength: 300
+        markdown:
+          type: string
+          minLength: 1
+          maxLength: 200000
+        items:
+          type: array
+          items:
+            type: integer
+          maxItems: 50
     PatchedObjectiveUpdateRequest:
       type: object
       properties:
@@ -2766,6 +3293,31 @@ components:
           items:
             type: integer
           maxItems: 50
+    PatchedPredictionWriteRequest:
+      type: object
+      description: Create (statement required) or partial update. `checkOn` defaults
+        to `madeOn` + 6 months.
+      properties:
+        statement:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        madeOn:
+          type: string
+          format: date
+        checkOn:
+          type: string
+          format: date
+        confidence:
+          type: integer
+          maximum: 10
+          minimum: 1
+          nullable: true
+        outcome:
+          $ref: '#/components/schemas/PredictionOutcomeEnum'
+        note:
+          type: string
+          maxLength: 20000
     PatchedProjectWriteRequest:
       type: object
       description: Create (title required) or partial update; context["details"] is
@@ -2919,6 +3471,97 @@ components:
       required:
       - carryCandidates
       - week
+    Prediction:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        statement:
+          type: string
+          readOnly: true
+        madeOn:
+          type: string
+          format: date
+          readOnly: true
+        checkOn:
+          type: string
+          format: date
+          readOnly: true
+        confidence:
+          type: integer
+          readOnly: true
+          nullable: true
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/PredictionOutcomeEnum'
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        scoredAt:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - checkOn
+      - confidence
+      - createdAt
+      - id
+      - madeOn
+      - note
+      - outcome
+      - scoredAt
+      - statement
+      - updatedAt
+    PredictionOutcomeEnum:
+      enum:
+      - open
+      - right
+      - wrong
+      - partial
+      type: string
+      description: |-
+        * `open` - Open
+        * `right` - Right
+        * `wrong` - Wrong
+        * `partial` - Partial
+    PredictionWriteRequest:
+      type: object
+      description: Create (statement required) or partial update. `checkOn` defaults
+        to `madeOn` + 6 months.
+      properties:
+        statement:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        madeOn:
+          type: string
+          format: date
+        checkOn:
+          type: string
+          format: date
+        confidence:
+          type: integer
+          maximum: 10
+          minimum: 1
+          nullable: true
+        outcome:
+          $ref: '#/components/schemas/PredictionOutcomeEnum'
+        note:
+          type: string
+          maxLength: 20000
+      required:
+      - statement
     ProgressSnapshot:
       type: object
       properties:
@@ -3105,7 +3748,13 @@ components:
           $ref: '#/components/schemas/WeekTime'
         opportunities:
           $ref: '#/components/schemas/WeekOpportunities'
+        achievements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Achievement'
+          description: The week's brag-document lines, oldest first.
       required:
+      - achievements
       - days
       - objectiveCounts
       - opportunities
@@ -3439,6 +4088,16 @@ components:
         * `fresh` - Fresh
         * `aging` - Aging
         * `faded` - Faded
+    SkillRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+      - id
+      - name
     SkillWriteRequest:
       type: object
       description: Create (name required) or partial update; there is no self-rating

@@ -125,6 +125,11 @@ def update_entry(entry: TimeEntry, data: dict[str, Any]) -> TimeEntry:
     return entry
 
 
+def delete_entry(entry: TimeEntry) -> None:
+    """Finished or running (a timer discarded): the minutes simply stop counting."""
+    entry.delete()
+
+
 def running_entry(user: User) -> TimeEntry | None:
     return TimeEntry.objects.select_related("project").filter(user=user, minutes__isnull=True).first()
 

@@ -1,7 +1,8 @@
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
@@ -9,8 +10,9 @@ from rest_framework.views import APIView
 
 from core.authentication import request_user
 from core.pagination import NewestFirstCursor
-from library.models import Item
-from library.serializers import ItemSerializer
+from library import services
+from library.models import Item, Note
+from library.serializers import ItemSerializer, NoteSerializer, NoteWriteSerializer
 
 
 @extend_schema_view(
@@ -46,3 +48,51 @@ class ItemView(APIView):
         body.is_valid(raise_exception=True)
         body.save()
         return Response(body.data)
+
+
+def _note(request: Request, pk: int) -> Note:
+    return get_object_or_404(Note.objects.prefetch_related("items"), pk=pk, user=request_user(request))
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="listNotes",
+        parameters=[
+            OpenApiParameter("q", str, description="Case-insensitive match in title or markdown."),
+            OpenApiParameter("item", int, description="Only notes linked to this Item id."),
+        ],
+    )
+)
+class NoteListView(generics.ListAPIView[Note]):
+    serializer_class = NoteSerializer
+    pagination_class = NewestFirstCursor
+
+    def get_queryset(self) -> QuerySet[Note]:
+        raw = self.request.query_params.get("item")
+        if raw is not None and not raw.isdigit():
+            raise ValidationError({"item": "A positive integer."})
+        query = self.request.query_params.get("q", "")
+        rows = services.notes(request_user(self.request), query, int(raw) if raw is not None else None)
+        return rows.prefetch_related("items")
+
+    @extend_schema(request=NoteWriteSerializer, responses={201: NoteSerializer}, operation_id="createNote")
+    def post(self, request: Request) -> Response:
+        user = request_user(request)
+        body = NoteWriteSerializer(data=request.data, context={"user": user})
+        body.is_valid(raise_exception=True)
+        note = services.save_note(Note(user=user), dict(body.validated_data))
+        return Response(NoteSerializer(_note(request, note.pk)).data, status=status.HTTP_201_CREATED)
+
+
+class NoteView(APIView):
+    @extend_schema(responses=NoteSerializer, operation_id="getNote")
+    def get(self, request: Request, pk: int) -> Response:
+        return Response(NoteSerializer(_note(request, pk)).data)
+
+    @extend_schema(request=NoteWriteSerializer, responses=NoteSerializer, operation_id="updateNote")
+    def patch(self, request: Request, pk: int) -> Response:
+        note = get_object_or_404(Note, pk=pk, user=request_user(request))
+        body = NoteWriteSerializer(data=request.data, partial=True, context={"user": request_user(request)})
+        body.is_valid(raise_exception=True)
+        services.save_note(note, dict(body.validated_data))
+        return Response(NoteSerializer(_note(request, pk)).data)

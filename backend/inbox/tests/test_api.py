@@ -72,3 +72,20 @@ def test_inbox_requires_auth(anon_client: Client) -> None:
 def test_inbox_requires_csrf(client: Client) -> None:
     client.get("/api/me")
     assert send(client, "post", "/api/inbox", {"text": "x"}, {}).status_code == 403
+
+
+def test_triage_sets_and_clears_archived_at(client: Client) -> None:
+    headers = csrf(client)
+    entry_id = send(client, "post", "/api/inbox", {"text": "read later"}, headers).json()["id"]
+    assert client.get("/api/inbox").json()["results"][0]["archivedAt"] is None
+    data = send(client, "patch", f"/api/inbox/{entry_id}", {"status": "archived"}, headers).json()
+    archived_at = data["archivedAt"]
+    assert archived_at
+    # Staying archived (or only relinking) keeps the first archive time; leaving the archive clears it.
+    item_id = send(client, "post", "/api/items", {"type": "article", "title": "A"}, headers).json()["id"]
+    data = send(client, "patch", f"/api/inbox/{entry_id}", {"status": "archived", "item": item_id}, headers)
+    assert data.json()["archivedAt"] == archived_at
+    data = send(client, "patch", f"/api/inbox/{entry_id}", {"status": "later"}, headers).json()
+    assert (data["status"], data["archivedAt"]) == ("later", None)
+    data = send(client, "patch", f"/api/inbox/{entry_id}", {"status": "archived"}, headers).json()
+    assert data["archivedAt"] and data["archivedAt"] >= archived_at

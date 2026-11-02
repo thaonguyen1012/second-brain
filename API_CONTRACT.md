@@ -82,6 +82,22 @@ response 201 { "id": 1, "type": "book", "status": "planned", "title": "Deep Work
 `type`: course, book, film, article, project. `status`: planned, active, done, dropped. Tags are lowercased and
 deduplicated; `rating` is 1-10 or null.
 
+## Notes (`/api/notes`)
+
+A note is markdown linked to any number of the owner's Items (DECISIONS 4.1). Note bodies stay private: they are
+never sent to an LLM.
+
+```json
+request  { "title": "Deep Work: 3 ý chính", "markdown": "# ...", "items": [1, 4] }   (markdown required)
+response 201 { "id": 3, "title": "Deep Work: 3 ý chính", "markdown": "# ...", "items": [1, 4],
+               "createdAt": "...", "updatedAt": "..." }
+```
+
+`GET /api/notes?q=focus&item=1` lists notes (cursor pagination, newest first; both filters optional): `q` matches
+title or markdown (case-insensitive substring), `item` keeps notes linked to that Item id. `GET /api/notes/{id}`
+reads one; `PATCH /api/notes/{id}` accepts `title`, `markdown` and `items` (replaces the links; `[]` removes them).
+`items` are sorted ids; an Item that is not the owner's answers `400`. Markdown is up to 200,000 characters.
+
 ## Inbox (`/api/inbox`)
 
 `POST /api/inbox` stores a capture and answers at once with `processed: false`; unfurl and AI tagging run later
@@ -90,13 +106,15 @@ in a background job, never inside the request.
 ```json
 request  { "url": "https://example.com/post" }          (or { "text": "an idea" }; at least one is required)
 response 201 { "id": 7, "url": "https://example.com/post", "text": "", "status": "inbox", "item": null,
-               "createdAt": "...", "processed": false, "processedAt": null, "error": "",
+               "createdAt": "...", "archivedAt": null, "processed": false, "processedAt": null, "error": "",
                "ogTitle": "", "ogDescription": "", "ogSiteName": "", "thumbnailUrl": null,
                "suggestedTags": [], "summary": "", "suggestedDestination": "" }
 ```
 
 Only `http` and `https` URLs are accepted. `GET /api/inbox?status=inbox` lists entries. `PATCH /api/inbox/{id}`
 records the weekly triage and accepts only `{ "status": "inbox|later|archived", "item": <item id>|null }`.
+`archivedAt` is set when the status becomes archived, kept while it stays
+archived and cleared (`null`) when it leaves the archive.
 `suggestedDestination` is one of read_later, book, opportunity, note (or empty until processed).
 
 ## Weeks (`/api/weeks`)
@@ -139,7 +157,7 @@ Review. `PATCH /api/weeks/{start}/review` saves any of `reviewWin`, `reviewDistr
                   "pagesDone": [ { "book": "handbook-08", "page": "c5-m3-..." } ] }, ... 7 days ] }
 ```
 
-Body of work per day: inbox entries with status archived (by their last update), Items by `finishedAt`,
+Body of work per day: inbox entries with status archived (by `archivedAt`), Items by `finishedAt`,
 handbook pages marked done (by their last update). Each day also has `minutesForObjectives` and `minutesOther`
 (finished time entries of that date; "for objectives" = linked to one of this week's objectives), and the review
 has a week total for the chart:
@@ -157,6 +175,8 @@ and lists the stale ones as of the end of the week (or now for the current week)
                                        "contradicts": 1 } ],
                    "stale": [ { "id": 5, "title": "...", "decision": "open", "lastEvidenceAt": null } ] }
 ```
+
+`achievements` lists the brag-document lines dated in the week, oldest first (shape as in `/api/achievements`).
 
 ## Projects and time (`/api/projects`, `/api/time-entries`)
 
@@ -188,8 +208,10 @@ Time entries:
 `GET /api/time-entries?project=4&from=2026-11-02&to=2026-11-08` lists entries, newest `date` first (cursor
 pagination; all filters optional, dates inclusive). `POST /api/time-entries` `{ "project": 4, "date": "2026-11-02",
 "minutes": 90, "note": "", "billable": true, "objective": 9 }` (`201`; `minutes` 1–1440, `objective` optional)
-records time by hand; `PATCH /api/time-entries/{id}` accepts the same fields. A project or objective that is not the
-owner's answers `400`. Minutes of a running entry cannot be patched (`400`, stop it first).
+records time by hand; `PATCH /api/time-entries/{id}` accepts the same fields. A project or objective that is not
+the owner's answers `400`. Minutes of a running entry cannot be patched (`400`, stop it first).
+`DELETE /api/time-entries/{id}` (`204`) removes one of the owner's entries; a running timer is discarded (no
+minutes recorded). Another owner's or an unknown id answers `404`.
 
 Timer. `GET /api/time-entries/timer` answers `{ "running": <entry>|null }`. `POST /api/time-entries/timer/start`
 `{ "project": 4, "note": "", "billable": true, "objective": 9 }` (only `project` required) stops a running timer and
@@ -290,6 +312,41 @@ case study online) needs `title` and `url`. `date` (when it was shipped or writt
 that is not the owner's or a link that does not match the kind answers `400`.
 `PATCH /api/skills/{id}/evidence/{evidenceId}` accepts `title`, `url`, `note`, `date`;
 `DELETE /api/skills/{id}/evidence/{evidenceId}` answers `204`.
+
+## Brag document (`/api/achievements`)
+
+One line per thing done, written every week (DECISIONS 4.8, 6.5), with the impact in numbers for the CV.
+
+```json
+request  { "title": "Ship checkout", "impact": "Checkout 40 s -> 12 s", "description": "...", "date": "2026-10-28",
+           "project": 4, "skills": [3, 7] }                  (only title required; date defaults to today)
+response 201 { "id": 2, "date": "2026-10-28", "title": "Ship checkout", "description": "...",
+               "impact": "Checkout 40 s -> 12 s", "project": 4, "projectTitle": "Eshop",
+               "skills": [ { "id": 3, "name": "Django" } ], "createdAt": "...", "updatedAt": "..." }
+```
+
+`GET /api/achievements?week=2026-10-26` lists achievements, newest `date` first (cursor pagination); `week` (a
+Monday; another weekday `400`) keeps that week's dates. `PATCH /api/achievements/{id}` accepts the same fields;
+`skills` replaces the links, `project: null` removes it. `project` must be an Item of type project of the owner and
+`skills` the owner's skill ids (skills sorted by name in the answer), otherwise `400`.
+
+## Predictions (`/api/predictions`)
+
+Write a prediction, score it again after 6 months (DECISIONS 4.8, 6.2).
+
+```json
+request  { "statement": "Gemini 4 ships before June", "madeOn": "2026-08-31", "confidence": 7 }
+response 201 { "id": 5, "statement": "Gemini 4 ships before June", "madeOn": "2026-08-31",
+               "checkOn": "2027-02-28", "confidence": 7, "outcome": "open", "note": "", "scoredAt": null,
+               "createdAt": "...", "updatedAt": "..." }
+```
+
+`statement` is required; `madeOn` defaults to today, `checkOn` to `madeOn` + 6 months (clamped to the month's last
+day), `confidence` is 1-10 or null, `outcome` is open, right, wrong or partial. `checkOn` before `madeOn` answers
+`400`. `GET /api/predictions` lists them (cursor pagination, newest first); `?due=true` keeps the open ones whose
+`checkOn` is today or earlier (Europe/Prague), `?due=false` the others, `?outcome=` filters by outcome.
+`PATCH /api/predictions/{id}` accepts the same fields: re-scoring sets `outcome` and `note`; `scoredAt` is set when
+the outcome leaves `open` and cleared when it goes back.
 
 ## Market (`/api/market`)
 

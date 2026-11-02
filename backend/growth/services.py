@@ -1,4 +1,5 @@
-"""Development (DECISIONS 9.2, step 5 of 9.4): the skills matrix with fading evidence and the market mirror.
+"""Development (DECISIONS 9.2, step 5 of 9.4): the skills matrix with fading evidence and the market mirror,
+plus the brag document and the predictions list (DECISIONS 4.8).
 
 "Not falling behind" is a mirror, not numbers (9.1): a skill is fresh, aging or faded by the date of its
 newest evidence (3 and 6 months), and the monthly market report lists the skills the pasted job ads ask for
@@ -14,13 +15,13 @@ from typing import Any
 
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
-from django.db.models import Case, CharField, Count, Max, QuerySet, Value, When
+from django.db.models import Case, CharField, Count, Max, Prefetch, Q, QuerySet, Value, When
 from django.utils import timezone
 
 from brief.services import new_tools
 from core.models import Job
 from core.services import jobs
-from growth.models import Freshness, JobAd, Skill, SkillEvidence
+from growth.models import Achievement, Freshness, JobAd, Prediction, Skill, SkillEvidence
 
 AGING_AFTER_MONTHS = 3
 FADED_AFTER_MONTHS = 6  # "no new evidence for 6 months: the skill fades" (DECISIONS 9.2)
@@ -28,6 +29,9 @@ SKILL_FIELDS = ("name", "aliases", "note")
 EVIDENCE_FIELDS = ("title", "url", "note", "date")
 JOB_AD_FIELDS = ("title", "company", "url", "text", "month")
 JD_JOB = "jd_skills"
+ACHIEVEMENT_FIELDS = ("date", "title", "description", "impact", "project")
+PREDICTION_FIELDS = ("statement", "made_on", "check_on", "confidence", "note")
+RESCORE_AFTER_MONTHS = 6  # "score predictions again after 6 months" (DECISIONS 4.8)
 
 
 class SkillConflict(Exception):
@@ -44,8 +48,13 @@ def month_start(day: dt.date) -> dt.date:
 
 
 def months_before(day: dt.date, months: int) -> dt.date:
+    """Same day `months` earlier (negative: later), clamped to the month's last day."""
     year, month = divmod(day.year * 12 + day.month - 1 - months, 12)
     return dt.date(year, month + 1, min(day.day, calendar.monthrange(year, month + 1)[1]))
+
+
+def months_after(day: dt.date, months: int) -> dt.date:
+    return months_before(day, -months)
 
 
 # --- Skills -----------------------------------------------------------------------------------------
@@ -265,3 +274,66 @@ def market_report(user: User | int, month: dt.date, today: dt.date | None = None
         "gaps": [line for line in lines if line["gap"]],
         "newTools": new_tools(user, month),  # morning-brief items flagged "new tool/skill" (9.2)
     }
+
+
+# --- Brag document ----------------------------------------------------------------------------------
+
+
+def achievements(user: User | int, week: dt.date | None = None) -> QuerySet[Achievement]:
+    """The owner's achievements, with project and skills loaded; `week` (a Monday) keeps that week's dates."""
+    rows = (
+        Achievement.objects.filter(user=user)
+        .select_related("project")
+        .prefetch_related(Prefetch("skills", queryset=Skill.objects.order_by("key")))
+    )
+    if week is not None:
+        rows = rows.filter(date__gte=week, date__lt=week + dt.timedelta(days=7))
+    return rows
+
+
+def save_achievement(achievement: Achievement, data: dict[str, Any]) -> Achievement:
+    """Create (unsaved `achievement`) or update; `skills` (owner checked by the serializer) replaces the
+    links."""
+    for field in ACHIEVEMENT_FIELDS:
+        if field in data:
+            setattr(achievement, field, data[field])
+    with transaction.atomic():
+        achievement.save()
+        if "skills" in data:
+            achievement.skills.set(data["skills"])
+    return achievement
+
+
+# --- Predictions ------------------------------------------------------------------------------------
+
+
+class PredictionDates(ValueError):
+    """check_on would fall before made_on."""
+
+
+def predictions(
+    user: User | int, due: bool | None = None, today: dt.date | None = None
+) -> QuerySet[Prediction]:
+    """due=True: still open and `check_on` reached (as of `today`, Prague); due=False: the others."""
+    rows = Prediction.objects.filter(user=user)
+    if due is not None:
+        is_due = Q(outcome=Prediction.Outcome.OPEN, check_on__lte=today or timezone.localdate())
+        rows = rows.filter(is_due) if due else rows.exclude(is_due)
+    return rows
+
+
+def save_prediction(prediction: Prediction, data: dict[str, Any]) -> Prediction:
+    """Create (unsaved `prediction`) or update. A new prediction without `check_on` is due 6 months after
+    `made_on`; `scored_at` follows the outcome. Raises PredictionDates."""
+    for field in PREDICTION_FIELDS:
+        if field in data:
+            setattr(prediction, field, data[field])
+    if prediction.check_on is None:
+        prediction.check_on = months_after(prediction.made_on, RESCORE_AFTER_MONTHS)
+    if prediction.check_on < prediction.made_on:
+        raise PredictionDates("check_on is before made_on.")
+    if "outcome" in data and data["outcome"] != prediction.outcome:
+        prediction.outcome = data["outcome"]
+        prediction.scored_at = None if prediction.outcome == Prediction.Outcome.OPEN else timezone.now()
+    prediction.save()
+    return prediction

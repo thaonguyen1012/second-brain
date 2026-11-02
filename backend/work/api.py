@@ -155,6 +155,12 @@ class TimeEntryView(APIView):
         entry = services.update_entry(entry, dict(body.validated_data))
         return Response(TimeEntrySerializer(entry).data)
 
+    @extend_schema(responses={204: None}, operation_id="deleteTimeEntry")
+    def delete(self, request: Request, pk: int) -> Response:
+        """Remove an entry typed by mistake; a running timer is discarded without being stopped."""
+        services.delete_entry(get_object_or_404(TimeEntry, pk=pk, user=request_user(request)))
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class TimerView(APIView):
     @extend_schema(responses=TimerSerializer, operation_id="getTimer")

@@ -1,10 +1,14 @@
+import datetime as dt
+
 from django.contrib.auth.models import User
 from django.db.models import Prefetch, Q, QuerySet
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
+from rest_framework.fields import DateField
 from rest_framework.pagination import CursorPagination
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -13,11 +17,15 @@ from rest_framework.views import APIView
 from core.authentication import request_user
 from core.pagination import NewestFirstCursor
 from growth import services
-from growth.models import Freshness, JobAd, Skill, SkillEvidence
+from growth.models import Achievement, Freshness, JobAd, Prediction, Skill, SkillEvidence
 from growth.serializers import (
+    AchievementSerializer,
+    AchievementWriteSerializer,
     JobAdSerializer,
     JobAdWriteSerializer,
     MarketReportSerializer,
+    PredictionSerializer,
+    PredictionWriteSerializer,
     SkillDetailSerializer,
     SkillEvidenceCreateSerializer,
     SkillEvidenceSerializer,
@@ -27,6 +35,7 @@ from growth.serializers import (
     parse_month,
 )
 
+BOOLEAN = {"true": True, "false": False}
 MONTH_PARAM = OpenApiParameter("month", str, description="YYYY-MM; default: this month (Europe/Prague).")
 
 
@@ -188,3 +197,138 @@ class MarketReportView(APIView):
             raise ValidationError({"month": str(error)}) from error
         report = services.market_report(request_user(request), month)
         return Response(MarketReportSerializer(report).data)
+
+
+# --- Brag document ----------------------------------------------------------------------------------
+
+
+class NewestDateFirst(CursorPagination):
+    ordering = ("-date", "-id")
+    page_size = 50
+    max_page_size = 200
+    page_size_query_param = "limit"
+
+
+def _week(request: Request) -> dt.date | None:
+    raw = request.query_params.get("week")
+    if raw is None:
+        return None
+    try:
+        start: dt.date = DateField().to_internal_value(raw)
+    except ValidationError as error:
+        raise ValidationError({"week": error.detail}) from error
+    if start.weekday() != 0:
+        raise ValidationError({"week": "A week starts on a Monday."})
+    return start
+
+
+def _achievement(request: Request, pk: int) -> Achievement:
+    return get_object_or_404(services.achievements(request_user(request)), pk=pk)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="listAchievements",
+        parameters=[
+            OpenApiParameter("week", OpenApiTypes.DATE, description="Only that week: its Monday, YYYY-MM-DD.")
+        ],
+    )
+)
+class AchievementListView(generics.ListAPIView[Achievement]):
+    """The brag document, newest date first."""
+
+    serializer_class = AchievementSerializer
+    pagination_class = NewestDateFirst
+
+    def get_queryset(self) -> QuerySet[Achievement]:
+        return services.achievements(request_user(self.request), _week(self.request))
+
+    @extend_schema(
+        request=AchievementWriteSerializer,
+        responses={201: AchievementSerializer},
+        operation_id="createAchievement",
+    )
+    def post(self, request: Request) -> Response:
+        user = request_user(request)
+        body = AchievementWriteSerializer(data=request.data, context={"user": user})
+        body.is_valid(raise_exception=True)
+        row = services.save_achievement(Achievement(user=user), dict(body.validated_data))
+        return Response(
+            AchievementSerializer(_achievement(request, row.pk)).data, status=status.HTTP_201_CREATED
+        )
+
+
+class AchievementView(APIView):
+    @extend_schema(
+        request=AchievementWriteSerializer, responses=AchievementSerializer, operation_id="updateAchievement"
+    )
+    def patch(self, request: Request, pk: int) -> Response:
+        user = request_user(request)
+        row = get_object_or_404(Achievement, pk=pk, user=user)
+        body = AchievementWriteSerializer(data=request.data, partial=True, context={"user": user})
+        body.is_valid(raise_exception=True)
+        services.save_achievement(row, dict(body.validated_data))
+        return Response(AchievementSerializer(_achievement(request, pk)).data)
+
+
+# --- Predictions ------------------------------------------------------------------------------------
+
+
+def _save_prediction(prediction: Prediction, data: dict[str, object]) -> Prediction:
+    try:
+        return services.save_prediction(prediction, data)
+    except services.PredictionDates as error:
+        raise ValidationError({"checkOn": "Not before madeOn."}) from error
+
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id="listPredictions",
+        parameters=[
+            OpenApiParameter(
+                "due",
+                bool,
+                description="true: open ones whose checkOn has come (Europe/Prague); false: the others.",
+            ),
+            OpenApiParameter("outcome", str, enum=Prediction.Outcome.values),
+        ],
+    )
+)
+class PredictionListView(generics.ListAPIView[Prediction]):
+    serializer_class = PredictionSerializer
+    pagination_class = NewestFirstCursor
+
+    def get_queryset(self) -> QuerySet[Prediction]:
+        params = self.request.query_params
+        due = params.get("due")
+        if due is not None and due not in BOOLEAN:
+            raise ValidationError({"due": "true or false."})
+        rows = services.predictions(request_user(self.request), BOOLEAN[due] if due is not None else None)
+        if outcome := params.get("outcome"):
+            if outcome not in Prediction.Outcome.values:
+                raise ValidationError({"outcome": f"One of {Prediction.Outcome.values}."})
+            rows = rows.filter(outcome=outcome)
+        return rows
+
+    @extend_schema(
+        request=PredictionWriteSerializer,
+        responses={201: PredictionSerializer},
+        operation_id="createPrediction",
+    )
+    def post(self, request: Request) -> Response:
+        body = PredictionWriteSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        row = _save_prediction(Prediction(user=request_user(request)), dict(body.validated_data))
+        return Response(PredictionSerializer(row).data, status=status.HTTP_201_CREATED)
+
+
+class PredictionView(APIView):
+    @extend_schema(
+        request=PredictionWriteSerializer, responses=PredictionSerializer, operation_id="updatePrediction"
+    )
+    def patch(self, request: Request, pk: int) -> Response:
+        """Re-score with `outcome` (right, wrong, partial; open again clears `scoredAt`) and `note`."""
+        row = get_object_or_404(Prediction, pk=pk, user=request_user(request))
+        body = PredictionWriteSerializer(data=request.data, partial=True)
+        body.is_valid(raise_exception=True)
+        return Response(PredictionSerializer(_save_prediction(row, dict(body.validated_data))).data)

@@ -16,6 +16,7 @@ class InboxEntrySerializer(serializers.ModelSerializer[InboxEntry]):
     )
     text = serializers.CharField(max_length=MAX_TEXT, required=False, allow_blank=True)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
+    archivedAt = serializers.DateTimeField(source="archived_at", read_only=True, allow_null=True)
     processedAt = serializers.DateTimeField(source="processed_at", read_only=True, allow_null=True)
     ogTitle = serializers.CharField(source="og_title", read_only=True)
     ogDescription = serializers.CharField(source="og_description", read_only=True)
@@ -35,6 +36,7 @@ class InboxEntrySerializer(serializers.ModelSerializer[InboxEntry]):
             "status",
             "item",
             "createdAt",
+            "archivedAt",
             "processed",
             "processedAt",
             "error",

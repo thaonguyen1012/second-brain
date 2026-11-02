@@ -54,14 +54,18 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
   core/                          /healthz, /api/me, /files/ (X-Accel-Redirect), single-owner auth middleware
                                  (AUTH_MODE dev|cf_access; cf_access verifies Cf-Access-Jwt-Assertion)
   progress/                      progress API (API_CONTRACT.md); logic in services.py, thin views
-  library/                       Item (type, status, tags ArrayField, rating) + Note (admin only); /api/items
-  inbox/                         InboxEntry (url|text, triage status, OG unfurl fields, LLM suggestions); /api/inbox
+  library/                       Item (type, status, tags ArrayField, rating) + Note (markdown, M2M Item; never sent
+                                 to an LLM); /api/items*, /api/notes* (?q= title/markdown, ?item=)
+  inbox/                         InboxEntry (url|text, triage status + archived_at set/cleared by triage_entry, OG
+                                 unfurl fields, LLM suggestions); /api/inbox
   weeks/                         Week (Monday start, Europe/Prague; planning journal, 6 review questions) +
                                  Objective (open|done|dropped, carried_from); /api/weeks*, review = body of work per day
-                                 + minutes for objectives vs other (from work.TimeEntry)
+                                 (inbox by archived_at) + minutes for objectives vs other (from work.TimeEntry) +
+                                 the week's growth.Achievement rows
   work/                          ProjectDetails (1:1 on Item type=project: client, fixed|hourly, price/rate, currency)
                                  + TimeEntry (minutes, billable, optional Objective; timer = started_at, minutes null,
-                                 one running per user); /api/projects* (effective rate), /api/time-entries* (timer, summary)
+                                 one running per user); /api/projects* (effective rate), /api/time-entries* (timer, summary,
+                                 DELETE also discards a running timer)
   opportunities/                 Opportunity (hypothesis, why now, next action, decide_by, open|keep|drop|build) + Evidence
                                  (inbox|item|note link or conversation|link record, supports|contradicts) + ScoreSnapshot
                                  (4 scores 1-10, append-only); /api/opportunities*; stale = no evidence for 4 weeks
@@ -71,7 +75,10 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  dated); freshness fresh|aging|faded computed from the newest evidence date (3/6 months);
                                  JobAd (pasted JD, month) -> `jd_skills` job (extraction.py, prompts/jd_skills.md, 4000
                                  chars sent); /api/skills*, /api/market/job-ads*, /api/market/report (frequency, gaps,
-                                 newTools from brief)
+                                 newTools from brief); Achievement (brag document: date, title, impact with numbers,
+                                 optional project Item + Skills) /api/achievements* (?week=); Prediction (check_on =
+                                 made_on + 6 months, outcome open|right|wrong|partial, scored_at) /api/predictions*
+                                 (?due=true)
   brief/                         Source (feed, area of 6.2, active; admin or `manage.py brief_sources`) + NewsItem (dedupe
                                  sha256 title+URL, 500-char nh3 excerpt, LLM tags/summary/new_tool/relevance, tag_status)
                                  + DailyBrief (one per day, BriefEntry order, LLM intro). feeds.py (stdlib XML, no

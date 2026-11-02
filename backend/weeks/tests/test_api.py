@@ -102,8 +102,11 @@ def test_get_review_lists_body_of_work_per_day(client: Client) -> None:
     sunday_late = dt.datetime(2026, 11, 1, 23, 30, tzinfo=PRAGUE)
     archived = InboxEntry.objects.create(user=user, text="read it", status="archived")
     InboxEntry.objects.create(user=user, text="still inbox")
-    InboxEntry.objects.create(user=other, text="not mine", status="archived")
-    InboxEntry.objects.filter(pk=archived.pk).update(updated_at=tuesday_early)
+    InboxEntry.objects.create(user=other, text="not mine", status="archived", archived_at=tuesday_early)
+    # Archived on Tuesday, edited again on Wednesday: the archive day counts, not the last update.
+    InboxEntry.objects.filter(pk=archived.pk).update(
+        archived_at=tuesday_early, updated_at=tuesday_early + dt.timedelta(days=1)
+    )
     Item.objects.create(user=user, type="book", title="Deep Work", finished_at=sunday_late)
     Item.objects.create(
         user=user, type="film", title="later", finished_at=sunday_late + dt.timedelta(hours=1)
