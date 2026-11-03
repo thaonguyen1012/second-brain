@@ -1,0 +1,12 @@
+# Git hooks (DECISIONS.md 10.3). lefthook is a devDependency of web/; install or refresh the hook with
+#   web/node_modules/.bin/lefthook install
+# (npm install in web/ also runs it). Skip once with LEFTHOOK=0 git commit ...
+#
+# pre-commit runs the whole `make check`: web types + lint + Vitest, backend ruff + mypy + migrations + pytest,
+# the smoke test and the home JS budget. The smoke test needs a web server at SMOKE_BASE (default
+# http://localhost:3000, the owner's `next dev`; or `SMOKE_BASE=http://127.0.0.1:8080 git commit` with make dev).
+# Playwright (`make e2e`) is not part of it: it needs the whole :8080 stack.
+pre-commit:
+  jobs:
+    - name: make check
+      run: make check

@@ -1,6 +1,7 @@
 # One command for the whole repo: make check (DECISIONS.md 10.3).
 SMOKE_BASE ?= http://localhost:3000
 SMOKE_SAMPLE ?= 20
+E2E_BASE ?= http://127.0.0.1:8080
 UV := cd backend && uv run
 
 BUDGET_KB ?= 220
@@ -9,13 +10,14 @@ DEV_WEB_PORT ?= 3100
 DEV_BUILD ?= 1
 DEV_HOT_PORT ?= 3001
 
-.PHONY: check web-check backend-check smoke budget api-types backend-dev build jobs dev dev-hot backup restore-check audit
+.PHONY: check web-check backend-check smoke budget e2e api-types backend-dev build jobs dev dev-hot backup restore-check audit
 
 check: web-check backend-check smoke budget
 
 web-check:
 	cd web && npm run --silent types:check
 	cd web && npm run --silent lint
+	cd web && npm run --silent test
 
 backend-check:
 	$(UV) ruff check .
@@ -24,13 +26,19 @@ backend-check:
 	$(UV) python manage.py makemigrations --check --dry-run
 	$(UV) pytest
 
-# Needs a running web server (owner's dev server or `npm start`) at SMOKE_BASE.
+# Needs a running web server (owner's dev server or `npm start`) at SMOKE_BASE; so does the lefthook pre-commit hook.
 smoke:
 	node web/scripts/smoke-test.mjs --base $(SMOKE_BASE) --sample $(SMOKE_SAMPLE)
 
 # Home First Load JS (gzip) of the last `npm run build`; skipped when there is no build (DECISIONS 10.2, 10.3).
 budget:
 	node web/scripts/check-budget.mjs --max-kb $(BUDGET_KB)
+
+# Playwright flows (DECISIONS 10.3: home, lesson, search, dark mode) in the installed Google Chrome, against the
+# whole stack at E2E_BASE (default: the make dev proxy on :8080). Read-only: a flow that sends a write to /api/
+# fails. Not part of make check, because it needs Django, Next and the proxy running.
+e2e:
+	cd web && E2E_BASE=$(E2E_BASE) npm run --silent e2e
 
 # Known vulnerabilities in the web app's production dependencies (DECISIONS 10.5: npm audit every month).
 # Needs the network (registry.npmjs.org); not part of make check. Exits non-zero when it finds any.

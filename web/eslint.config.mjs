@@ -11,6 +11,10 @@ const eslintConfig = defineConfig([
     '.source/**',
     // Vendored mermaid copy (scripts/prepare-vendor.mjs), gitignored, not our code.
     'public/vendor/**',
+    // Playwright output (gitignored).
+    'test-results/**',
+    'playwright-report/**',
+    'blob-report/**',
   ]),
 ]);
 

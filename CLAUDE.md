@@ -141,8 +141,10 @@ deploy/                          nginx/ (site.conf + header snippets), docker-co
                                  Access setup; laptop use: make dev, launchd); launchd/com.example.brain.jobs.plist
                                  (run_jobs every 300 s) and com.example.brain.backup.plist (make backup at 02:30), not
                                  installed; config only, not deployed
-Makefile                         make check = web types+lint, backend ruff+mypy+migrations+pytest, smoke test
-                                 (needs a web server at SMOKE_BASE, default :3000); make api-types, backend-dev; make audit
+Makefile                         make check = web types+lint+Vitest (web/lib/**/*.test.ts), backend ruff+mypy+migrations+pytest,
+                                 smoke test (needs a web server at SMOKE_BASE, default :3000); runs as the lefthook pre-commit
+                                 hook (lefthook.yml); make e2e = Playwright flows in web/e2e/ (installed Chrome, read-only, needs
+                                 the :8080 stack, not in check); make api-types, backend-dev; make audit
                                  (npm audit --omit=dev in web/, not part of check);
                                  make jobs (run_jobs loop, 300 s); make dev (build with NEXT_PUBLIC_PROGRESS_STORE=api,
                                  Django :8000 + Next prod :3100 + proxy :8080 + jobs; never :3000; no $(MAKE) inside
