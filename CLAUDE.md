@@ -3,6 +3,15 @@
 Alex's Brain: Fumadocs study site built from 15 handbooks; later a second brain with Django.
 Read DECISIONS.md (owner's decisions), PLAN.md (v2), ARCHITECTURE.md and API_CONTRACT.md before changing things.
 
+## Project status (several sessions work in parallel)
+
+* STATUS.md says what is done, what is in progress (and by whom) and what is open. This file is only read at
+  session start and goes stale: re-read STATUS.md and `git log main --oneline -20` before starting a piece of
+  work and before telling the owner what exists or is missing.
+* Before you start: add your line under "In progress" (date, session/branch, task, files). In the commit that
+  finishes it: move it to "Done" with the commit subject. Keep STATUS.md short; details belong in commits.
+* Work in a worktree or branch only from current main, and look at main again before reporting.
+
 ## Communication and conventions
 
 * Talk to the owner in Vietnamese. Code, comments, commit messages, file/folder names, slugs: English, ASCII.
