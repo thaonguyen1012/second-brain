@@ -69,8 +69,11 @@ function AppSidebar() {
                       <SidebarMenuSub>
                         {item.children.map((child) => (
                           <SidebarMenuSubItem key={child.href}>
+                            {/* 32px row like the parent (§3), and the label on the parent label's edge (D10):
+                                the registry geometry puts it 1px right, -translate-x-0.5 instead of -px fixes that */}
                             <SidebarMenuSubButton
                               isActive={pathname === child.href}
+                              className="-translate-x-0.5 sm:h-8"
                               render={<Link href={child.href} />}
                             >
                               <span>{child.title}</span>

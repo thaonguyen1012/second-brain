@@ -88,6 +88,34 @@ function excerpt(text: string, q: string): string {
   return `${start > 0 ? '…' : ''}${flat.slice(start, start + 120)}`;
 }
 
+/** Accent- and case-free form of one character, so "khach" finds "khách" (đ -> d). */
+const fold = (c: string) => c.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase().charAt(0) || c;
+
+/**
+ * The excerpt row shows one line, and the FTS snippet starts several words before the match: at 390 px the match
+ * fell past the clamp, so the row did not show why it matched. Start the line a few words before the first query
+ * term (accent-free comparison), at a word start, with a leading "…". Table residue ("--- ---") is dropped.
+ */
+function clipToMatch(text: string, query: string, lead = 24): string {
+  const flat = oneLine(text.replace(/(?:\s*\|?\s*-{3,}\s*\|?)+/g, ' '));
+  const terms = query
+    .split(/\s+/)
+    .map((t) => Array.from(t).map(fold).join(''))
+    .filter((t) => t.length >= 2);
+  if (terms.length === 0) return flat;
+  const folded = Array.from(flat).map(fold).join('');
+  let at = -1;
+  for (const t of terms) {
+    const i = folded.indexOf(t);
+    if (i >= 0 && (at < 0 || i < at)) at = i;
+  }
+  if (at <= lead) return flat;
+  const chars = Array.from(flat);
+  let start = at - lead;
+  while (start < at && chars[start - 1] !== ' ') start++;
+  return `…${chars.slice(start).join('').replace(/^…/, '')}`;
+}
+
 function toHits(r: BrainSearchResults, q: string): BrainHit[] {
   return [
     ...r.items.map((it) => ({
@@ -372,7 +400,9 @@ function ResultRow({
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="truncate text-sm font-medium">{title}</div>
           {meta && <div className="truncate text-xs text-muted-foreground">{meta}</div>}
-          {excerpt && <div className="line-clamp-1 text-[13px] text-muted-foreground">{excerpt}</div>}
+          {excerpt && (
+            <div className="line-clamp-1 text-[13px] text-muted-foreground">{clipToMatch(excerpt, query)}</div>
+          )}
         </div>
       </div>
     </SearchDialogListItem>

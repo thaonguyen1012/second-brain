@@ -123,10 +123,14 @@ export function ReviewJournal({
           );
         })}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => void save(dirtyFields)} disabled={!dirty} loading={state === 'saving'}>
-          Lưu nhìn lại
-        </Button>
+      {/* Same as Kế hoạch's save (DESIGN.md D2, §1.5): outline, shown only while there is something to save; each
+          field also saves on blur and with Cmd/Ctrl+Enter, so nothing blue sits idle at the end of the journal. */}
+      <div className="flex min-h-8 flex-wrap items-center gap-2">
+        {(dirty || state === 'saving') && (
+          <Button variant="outline" size="sm" onClick={() => void save(dirtyFields)} loading={state === 'saving'}>
+            Lưu nhìn lại
+          </Button>
+        )}
         <span className="text-xs text-muted-foreground" aria-live="polite">
           {state === 'saving' ? (
             'Đang lưu…'

@@ -65,7 +65,7 @@ export function BookmarkletHelp() {
         type="button"
         size="sm"
         variant="ghost"
-        className="-ms-2.5 text-muted-foreground"
+        className="-ms-2.5 text-sm text-muted-foreground"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((o) => !o)}

@@ -51,8 +51,9 @@ Numbers that line up or change in place get `tabular-nums`. Dates are `formatDat
   the next record.
 - **Insets:** words keep 12px from any container edge (`px-3`), 16px in cards and dialogs. Edges either align
   exactly or sit 8px+ apart; 1-3px near-misses are bugs. A button keeps 8px+ from the field above it.
-- **Row heights:** 32px menu/sidebar row (`h-8`); 40px one-line list row (`h-10 px-3`); 56px two-line row (title +
-  meta). Touch targets reach 44px via the components' own `pointer-coarse` rules; never shrink below them.
+- **Row heights:** 32px menu/sidebar row (`h-8`; sidebar sub-items too, their label on the parent label's edge);
+  40px one-line list row (`h-10 px-3`); 56px two-line row (title + meta). Touch targets reach 44px via the
+  components' own `pointer-coarse` rules; never shrink below them.
 - **Columns:** rows of one list share one grid template with fixed tracks (status, title flexible, meta, actions);
   optional content keeps its track empty so columns stay aligned.
 - **List row beats card** when items are homogeneous and scanned or triaged (items, notes, projects, time entries,
@@ -94,12 +95,15 @@ Tokens only (`bg-background`, `bg-card`, `bg-muted`, `bg-secondary`, `bg-accent`
     show on it. Form controls (Input, Textarea, Select, Checkbox, Radio) are painted `bg-popover` like the
     outline Button, so a filter or search field on the grey page is white too, never a grey box; a surface
     also re-declares `--background` (global.css) for the rest (outline badges, ring offsets).
-  - The keyboard cursor on a card list (Inbox) is a darker border (`foreground/40`), not a grey fill: in light
-    a selected card stays white; dark adds the lighter `accent` step.
+  - The keyboard cursor on a card list (Inbox) is a stronger border (`foreground/40` light, `foreground/50`
+    dark), never a fill: the selected card keeps `bg-card` in both themes, because `Kbd` chips are `bg-accent`
+    and would vanish on an accent-filled card.
   - Stageshow wells (guides, /gioi-thieu/ tiles) keep their `secondary` ground and add the 1px `--border`.
   - Blue stays the accent for the one primary action, links and focus only; surfaces never get a blue tint.
   - Focus ring (`--ring`) opaque, >= 3:1 against the page and every surface (WCAG 1.4.11): light `#3582ff` is
     3.3:1 on the page and 3.6:1 on white; dark `#6aa5ff` 7:1 or more. Never lower it with `/50` or alpha.
+    Form controls use it too: a focused Input, Textarea or Select gets `border-ring` + a 1px `ring-ring` in light
+    (Space UI's default `foreground/10` halo was 1.2:1); dark keeps Space UI's `foreground/70` border.
   - Text stays AA on page, surface and fill: `muted-foreground` is >= 5.6:1 on every one of them.
 - **Border plus fill:** a surface is border + `bg-card` (the surface rule above), plus at most `shadow-depth-1`
   (the focal block). Inside a surface, a nested element gets a fill or a divider, never another bordered box
@@ -121,7 +125,8 @@ Tokens only (`bg-background`, `bg-card`, `bg-muted`, `bg-secondary`, `bg-accent`
 
 - **Buttons** (`components/ui/button`): `default` (filled blue) = the one primary action per view region (page
   toolbar, dialog footer, empty state); `outline` = secondary actions, at most 2-3 visible together; `ghost` =
-  toolbar, row and icon actions; `link` = inline navigation; `destructive-outline`/`DeleteButton` = delete
+  toolbar, row and icon actions; `link` = inline navigation, blue (`text-primary`, set once in the variant;
+  a deliberately quiet jump-link row may override it with `text-muted-foreground`); `destructive-outline`/`DeleteButton` = delete
   entry point; filled `destructive` only as the confirm button inside `confirm-delete.tsx`. Sizes: `default` in
   page toolbars, `sm` in cards and dialogs, `xs` / `icon-sm` in rows. Label = Vietnamese verb + object.
 - **Row actions:** at most 3 visible (primary verb first); the rest go in a `Menu` behind a ghost `icon-sm`

@@ -63,7 +63,10 @@ function phaseLabel(title: string, index: number): { title: string; date: string
   return { title, date: /^giai đoạn \d/i.test(title) ? null : `Giai đoạn ${index + 1}` };
 }
 
-/** Phases and stages are read-only here, so no step is "completed" (defaultValue 0). */
+/**
+ * Phases and stages are read-only here, so no step is "completed" (defaultValue 0). The Space UI indicator and line
+ * are tinted primary by default; here they are neutral, since blue is only for actions, links and focus (D29).
+ */
 export default function RoadmapPage() {
   return (
     <div className="flex w-full flex-col">
@@ -84,10 +87,10 @@ export default function RoadmapPage() {
             return (
               <TimelineItem key={phase.title} step={i + 1}>
                 <TimelineHeader>
-                  <TimelineSeparator />
+                  <TimelineSeparator className="bg-border" />
                   {label.date && <TimelineDate>{label.date}</TimelineDate>}
                   <TimelineTitle className="font-heading font-semibold">{label.title}</TimelineTitle>
-                  <TimelineIndicator />
+                  <TimelineIndicator className="border-border" />
                 </TimelineHeader>
                 <TimelineContent>
                   <ul className="mt-3 flex flex-col divide-y rounded-xl border bg-card px-3">
@@ -110,14 +113,17 @@ export default function RoadmapPage() {
             {itStages.map((s, i) => (
               <TimelineItem key={s.months} step={i + 1}>
                 <TimelineHeader>
-                  <TimelineSeparator />
+                  <TimelineSeparator className="bg-border" />
                   <TimelineDate>{/^\d/.test(s.months) ? `Tháng ${s.months}` : s.months}</TimelineDate>
                   <TimelineTitle className="font-heading font-semibold">{s.study}</TimelineTitle>
-                  <TimelineIndicator />
+                  <TimelineIndicator className="border-border" />
                 </TimelineHeader>
-                <TimelineContent className="flex flex-col gap-1">
-                  <span className="text-sm text-muted-foreground">Sản phẩm kết giai đoạn: {s.outcome}</span>
-                  <RowMeta slugs={s.books} links={s.links} />
+                <TimelineContent>
+                  {/* Same surface and row anatomy as the business phases above (DESIGN.md §1.5, D29). */}
+                  <div className="mt-3 flex flex-col gap-1 rounded-xl border bg-card px-3 py-3">
+                    <span className="text-sm text-muted-foreground">Sản phẩm kết giai đoạn: {s.outcome}</span>
+                    <RowMeta slugs={s.books} links={s.links} />
+                  </div>
                 </TimelineContent>
               </TimelineItem>
             ))}

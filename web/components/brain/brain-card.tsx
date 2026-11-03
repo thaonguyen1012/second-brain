@@ -49,7 +49,7 @@ export function BrainCard({
       aria-current={selected ? 'true' : undefined}
       className={cn(
         'flex flex-col gap-3 rounded-xl border p-4 transition-colors duration-150',
-        'data-selected:border-foreground/40 dark:data-selected:bg-accent',
+        'data-selected:border-foreground/40 dark:data-selected:border-foreground/50',
         className,
       )}
     >

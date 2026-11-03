@@ -8,8 +8,17 @@ export const metadata: Metadata = { title: 'Hướng dẫn' };
 
 // Every guide also shows in its page's empty state. Here each one is always open (`hideable={false}`: the hidden
 // choice made under an empty state does not apply) with the same anatomy: section title, guide, link to the page.
-const guides: { guide: EmptyGuideName; href: string; label: string }[] = [
-  { guide: 'inbox', href: '/inbox/', label: 'Mở Inbox' },
+// The Inbox guide's legend shows J/K, L, A and O only; ⌘↵ and Esc are written out under it (a still poster under
+// reduced motion shows no keys at all).
+const guides: { guide: EmptyGuideName; href: string; label: string; text?: string }[] = [
+  {
+    guide: 'inbox',
+    href: '/inbox/',
+    label: 'Mở Inbox',
+    text:
+      'Dán link vào ô Thu thập nhanh, nhấn ⌘↵. Thẻ hiện ngay, ảnh thu nhỏ và tag được thêm sau trong nền. Esc để ' +
+      'rời ô nhập, rồi mỗi phím là một quyết định: J/K đi xuống/lên, L đọc sau, A lưu trữ, O gắn làm bằng chứng cho một cơ hội.',
+  },
   { guide: 'week', href: '/tuan/', label: 'Mở Tuần' },
   { guide: 'opportunity', href: '/co-hoi/', label: 'Mở Cơ hội' },
   { guide: 'work', href: '/cong-viec/gio/', label: 'Mở Giờ' },
@@ -29,6 +38,7 @@ export default function Page() {
         {guides.map((g) => (
           <div key={g.guide} className="flex flex-col gap-2">
             <EmptyStateGuide guide={g.guide} variant="page" hideable={false} open />
+            {g.text && <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{g.text}</p>}
             <Button variant="link" size="sm" className="self-start px-0" render={<Link href={g.href} />}>
               {g.label}
             </Button>

@@ -96,9 +96,10 @@ export function ReviewPanel({
   return (
     <div className="flex flex-col gap-4">
       <ReviewChecklist objectives={week.objectives} rhythm={rhythm} onNextWeek={onNextWeek} />
-      {/* One surface: the sections to read on the left, divided by hairlines, the six questions on the right */}
-      <div className="grid rounded-xl border bg-card lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col divide-y">
+      {/* Two surfaces side by side, each sized to its content (no empty band under the shorter one, §7): the
+          sections to read on the left, divided by hairlines, the six questions on the right */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start">
+        <div className="flex min-w-0 flex-col divide-y rounded-xl border bg-card">
           <WeekSection id="week-review-objectives" title="Tiến độ mục tiêu">
             {week.objectives.length === 0 ? (
               <p className="text-sm text-muted-foreground">Tuần này không có mục tiêu nào.</p>
@@ -122,7 +123,7 @@ export function ReviewPanel({
           {(rhythm?.predictionsDue ?? 1) > 0 && <ReviewPredictions />}
         </div>
         {/* The journal scrolls with the page (no inner scroll area): 'Lưu nhìn lại' is always reachable */}
-        <div id="week-review-journal" className="min-w-0 scroll-mt-20 border-t lg:border-t-0 lg:border-l">
+        <div id="week-review-journal" className="min-w-0 scroll-mt-20 rounded-xl border bg-card">
           <ReviewJournal start={start} week={week} opportunities={review.opportunities} onSaved={onWeek} />
         </div>
       </div>

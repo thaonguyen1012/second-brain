@@ -37,7 +37,7 @@ export const buttonVariants = cva(
           'border-input bg-popover not-dark:bg-clip-padding text-destructive-foreground hover:border-destructive/32 hover:bg-destructive/4 data-pressed:border-destructive/32 data-pressed:bg-destructive/4 *:data-[slot=button-loading-indicator]:text-foreground dark:bg-input/32 [:disabled,:active,[data-pressed]]:shadow-none',
         ghost:
           'border-transparent text-foreground hover:bg-accent data-pressed:bg-accent *:data-[slot=button-loading-indicator]:text-foreground',
-        link: 'border-transparent text-foreground underline-offset-4 hover:underline data-pressed:underline *:data-[slot=button-loading-indicator]:text-foreground',
+        link: 'border-transparent text-primary underline-offset-4 hover:underline data-pressed:underline *:data-[slot=button-loading-indicator]:text-primary',
         outline:
           'border-input bg-popover not-dark:bg-clip-padding text-foreground hover:bg-accent/50 data-pressed:bg-accent/50 *:data-[slot=button-loading-indicator]:text-foreground dark:bg-input/32 dark:data-pressed:bg-input/64 dark:hover:bg-input/64 [:disabled,:active,[data-pressed]]:shadow-none',
         secondary:

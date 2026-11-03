@@ -247,6 +247,8 @@ export function TimePage() {
             Thêm dự án
           </Button>
         </EmptyState>
+        {/* Without a project the "Chưa có giờ nào" branch is never reached: the timer guide shows here instead */}
+        <EmptyStateGuide guide="work" />
       </div>
     );
 

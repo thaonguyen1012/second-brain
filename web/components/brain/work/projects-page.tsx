@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
+import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
@@ -229,16 +230,20 @@ export function ProjectsPage() {
           </Button>
         </p>
       ) : list.length === 0 ? (
-        <EmptyState
-          icon={<Briefcase aria-hidden />}
-          title="Chưa có dự án nào"
-          description="Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế."
-        >
-          <Button onClick={openNew}>
-            <Plus aria-hidden />
-            Thêm dự án
-          </Button>
-        </EmptyState>
+        <>
+          <EmptyState
+            icon={<Briefcase aria-hidden />}
+            title="Chưa có dự án nào"
+            description="Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế."
+          >
+            <Button onClick={openNew}>
+              <Plus aria-hidden />
+              Thêm dự án
+            </Button>
+          </EmptyState>
+          {/* The how under the unfiltered empty list (D26, stageshow README: Dự án with no status filter) */}
+          {projects.data && !projects.error && <EmptyStateGuide guide="work" />}
+        </>
       ) : (
         <div className="flex flex-col gap-2">
           {anyMinutes && <BillableLegend className="justify-end" />}

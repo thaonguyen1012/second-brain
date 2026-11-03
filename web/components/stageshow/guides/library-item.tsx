@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { NotebookPen, Pencil, Plus, Sparkles } from 'lucide-react';
+import { CircleAlert, NotebookPen, Pencil, Plus } from 'lucide-react';
 import { formatDay, todayPrague } from '@/lib/dates';
 import { Stage } from '../kit/stage';
 import type { Act } from '../kit/act';
@@ -165,7 +165,7 @@ export default function LibraryItemGuide({ className }: { className?: string }) 
                           <Collapse open={s.done && !s.noted}>
                             <div className="lb-hint">
                               <span className="lb-hint__text">
-                                <Sparkles size={13} strokeWidth={2} aria-hidden />
+                                <CircleAlert size={13} strokeWidth={2} aria-hidden />
                                 <span>
                                   <b>Xong rồi, nhưng chưa có đầu ra.</b>{' '}
                                   <span className="lb-muted">Ghi highlights và 3 ý chính.</span>

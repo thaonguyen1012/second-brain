@@ -25,7 +25,9 @@ export function CheckLink({ href, children }: { href: string; children: ReactNod
 
 /**
  * One row of the review checklist (DESIGN.md §3 list rows): a check mark, the question, an optional detail line,
- * then the short answer and at most one action at the end of the row.
+ * then the short answer and at most one action. From sm every row shares one grid template (icon | question |
+ * answer | action track of fixed width, empty when there is no action), so the answers line up down the list
+ * (§3 Columns); the answer is muted meta next to the medium question (D7). Below sm they wrap under the question.
  */
 export function CheckRow({
   done,
@@ -42,16 +44,20 @@ export function CheckRow({
 }) {
   const Icon = done ? CircleCheck : Circle;
   return (
-    <li className="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+    <li className="grid min-h-10 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_8.5rem]">
       <Icon className={cn('size-4 shrink-0', done ? 'text-success-foreground' : 'text-muted-foreground')} aria-hidden />
-      <div className="flex min-w-0 flex-1 basis-48 flex-col gap-0.5">
+      <div className="flex min-w-0 flex-col gap-0.5">
         <span className="text-sm font-medium">{question}</span>
         {detail && <span className="text-xs leading-relaxed text-muted-foreground">{detail}</span>}
       </div>
       {(value || action) && (
-        <div className="ms-auto flex shrink-0 items-center gap-3">
-          {value && <span className="text-sm font-medium tabular-nums">{value}</span>}
-          {action}
+        <div className="col-start-2 flex flex-wrap items-center gap-3 sm:contents">
+          {value && (
+            <span className="text-sm text-muted-foreground tabular-nums sm:col-start-3 sm:justify-self-end">
+              {value}
+            </span>
+          )}
+          {action && <div className="flex sm:col-start-4 sm:justify-self-start">{action}</div>}
         </div>
       )}
     </li>

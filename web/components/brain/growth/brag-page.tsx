@@ -140,7 +140,7 @@ function BragSection() {
   };
 
   return (
-    <section className="flex flex-col gap-4" aria-label="Thành tựu">
+    <section className="flex flex-col gap-6" aria-label="Thành tựu">
       {/* One toolbar: period and stepper left, "Ghi thành tựu" right; at 390 px the stepper takes row 2 */}
       <div className="flex flex-wrap items-center gap-2">
         <ChoiceSelect label="Phạm vi" value={scope} onChange={setScope} choices={scopeChoices} className="w-auto" />
