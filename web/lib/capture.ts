@@ -38,7 +38,11 @@ export function draftFromParams(params: URLSearchParams): CaptureDraft {
     const found = text.match(/https?:\/\/[^\s<>"]+/i)?.[0];
     if (found) {
       url = found;
-      text = text.replace(found, ' ').replace(/[ \t]{2,}/g, ' ').trim();
+      text = text
+        .replace(found, ' ')
+        .replace(/[ \t]*\n[ \t]*/g, '\n')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
     }
   }
   const parts: string[] = [];

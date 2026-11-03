@@ -1,5 +1,6 @@
 # One command for the whole repo: make check (DECISIONS.md 10.3).
-SMOKE_BASE ?= http://localhost:3000
+SMOKE_BASE ?= auto
+SMOKE_FLAGS ?=
 SMOKE_SAMPLE ?= 20
 E2E_BASE ?= http://127.0.0.1:8080
 UV := cd backend && uv run
@@ -26,17 +27,19 @@ backend-check:
 	$(UV) python manage.py makemigrations --check --dry-run
 	$(UV) pytest
 
-# Needs a running web server (owner's dev server or `npm start`) at SMOKE_BASE; so does the lefthook pre-commit hook.
+# Needs a running web server at SMOKE_BASE (auto = the owner's next dev on :3000, else make dev on :8080).
+# The pre-commit hook passes SMOKE_FLAGS=--optional: with no server it warns and skips instead of failing.
 smoke:
-	node web/scripts/smoke-test.mjs --base $(SMOKE_BASE) --sample $(SMOKE_SAMPLE)
+	node web/scripts/smoke-test.mjs --base $(SMOKE_BASE) --sample $(SMOKE_SAMPLE) $(SMOKE_FLAGS)
 
 # Home First Load JS (gzip) of the last `npm run build`; skipped when there is no build (DECISIONS 10.2, 10.3).
+# Only as fresh as that build: it warns when app/, components/ or lib/ sources are newer than it.
 budget:
 	node web/scripts/check-budget.mjs --max-kb $(BUDGET_KB)
 
 # Playwright flows (DECISIONS 10.3: home, lesson, search, dark mode) in the installed Google Chrome, against the
-# whole stack at E2E_BASE (default: the make dev proxy on :8080). Read-only: a flow that sends a write to /api/
-# fails. Not part of make check, because it needs Django, Next and the proxy running.
+# whole stack at E2E_BASE (default: the make dev proxy on :8080). Read-only: every write to /api/ is aborted in the
+# browser before it is sent (e2e/fixtures.ts), and an unexpected one fails the flow. Not part of make check, because it needs Django, Next and the proxy running.
 e2e:
 	cd web && E2E_BASE=$(E2E_BASE) npm run --silent e2e
 

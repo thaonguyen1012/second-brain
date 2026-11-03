@@ -54,10 +54,11 @@ export default function RoadmapPage() {
         </Badge>
         <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Thứ tự học gợi ý</h1>
         <p className="max-w-[70ch] leading-relaxed text-muted-foreground">{roadmapIntro}</p>
-        <div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <Button variant="outline" size="sm" render={<a href="/lo-trinh.pdf" target="_blank" rel="noreferrer" />}>
-            Mở bản PDF đầy đủ (chi phí, mô tả từng khóa, thuế và luật) ↗
+            Mở bản PDF đầy đủ ↗
           </Button>
+          <span className="text-xs text-muted-foreground">Chi phí, mô tả từng khóa, thuế và luật</span>
         </div>
       </header>
 

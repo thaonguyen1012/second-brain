@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { MessageSquareText } from 'lucide-react';
 import type { ApiWeek } from '@/lib/api/client';
 import { type ApiReviewField, type ApiReviewPatch, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
 import { Button } from '@/components/ui/button';
@@ -86,7 +85,6 @@ export function ReviewJournal({
 
   return (
     <WeekSection
-      icon={MessageSquareText}
       id="week-review-journal"
       title="Nhật ký nhìn lại"
       description="Sáu câu, mỗi câu vài dòng. Câu trả lời tự lưu khi chuyển sang câu khác."

@@ -46,11 +46,29 @@ const emptyGuides = {
 export type EmptyGuideName = keyof typeof emptyGuides;
 
 /**
- * A how-to guide under a page's empty state, with "Ẩn hướng dẫn" remembered per guide (localStorage).
+ * A how-to guide under a page's empty state, closed until "Xem hướng dẫn" (`open` starts it open, as /huong-dan/
+ * does); the open or hidden choice is remembered per guide (localStorage).
  * Render it only when the list is loaded, without error, and truly empty (no filter), never while loading.
  * The Inbox guide loops; the others play once when scrolled into view and offer "Xem lại".
  */
-export function EmptyStateGuide({ guide, className }: { guide: EmptyGuideName; className?: string }) {
+export function EmptyStateGuide({
+  guide,
+  open = false,
+  className,
+}: {
+  guide: EmptyGuideName;
+  open?: boolean;
+  className?: string;
+}) {
   const g = emptyGuides[guide];
-  return <GuideFrame id={guide} title={g.title} Guide={g.Guide} replay={g.replay} className={className} />;
+  return (
+    <GuideFrame
+      id={guide}
+      title={g.title}
+      Guide={g.Guide}
+      replay={g.replay}
+      defaultHidden={!open}
+      className={className}
+    />
+  );
 }

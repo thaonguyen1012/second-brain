@@ -237,7 +237,7 @@ export function ObjectivesEditor({
   return (
     <div className="flex flex-col gap-3">
       {objectives.length > 0 && (
-        <ol className="flex flex-col gap-1.5" aria-label="Mục tiêu tuần">
+        <ol className="-mx-2 flex flex-col" aria-label="Mục tiêu tuần">
           {objectives.map((o, i) => {
             const status = o.status ?? 'open';
             const s = objectiveStatuses[status] ?? objectiveStatuses.open;
@@ -252,7 +252,7 @@ export function ObjectivesEditor({
                 tabIndex={0}
                 aria-label={`${i + 1}. ${o.title}, ${s.label}`}
                 onKeyDown={(e) => onRowKey(e, o, i)}
-                className="group flex flex-wrap items-center gap-2 rounded-xl border bg-background px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group flex min-h-10 flex-wrap items-center gap-2 rounded-md px-2 py-1.5 outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="w-5 shrink-0 text-sm text-muted-foreground tabular-nums">{i + 1}.</span>
                 {editing?.id === o.id ? (

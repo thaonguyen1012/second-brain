@@ -27,8 +27,10 @@ Guides today (all 600 x 452 wide, 358 x 470 compact below 560 px):
 | `library-item` | add a book, Xong asks for an output, write the note, the reminder leaves | once, ~12 s | Thư viện empty, no filter |
 
 Pages use `EmptyStateGuide guide="..."` from `lazy.tsx`: it wraps the guide in `guides/guide-frame.tsx`, a header
-with "Xem lại" (guides that play once) and "Ẩn hướng dẫn" / "Hiện hướng dẫn", remembered per guide in
-localStorage (`alex-brain:guide-hidden:<guide>`, every access in try/catch, in-memory fallback). Render it only
+with "Xem lại" (guides that play once) and "Ẩn hướng dẫn" / "Xem hướng dẫn". Under an empty state a guide starts
+closed (one line under the empty state, which stays the focal point: web/DESIGN.md D1, D26); `/huong-dan/` passes
+`open`. The owner's choice ("1" hidden, "0" shown) is remembered per guide in localStorage
+(`alex-brain:guide-hidden:<guide>`, every access in try/catch, in-memory fallback) and wins everywhere. Render it only
 when the list is loaded, has no error and is empty without a filter. `/huong-dan/` shows every guide, the Inbox
 one too, each through the same frame (so the looping Inbox guide can be hidden there, WCAG 2.2.2); the sidebar
 footer and `/gioi-thieu/` link to it. The lazy placeholder switches on its container's width like the Stage

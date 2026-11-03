@@ -85,7 +85,8 @@ export function EmptyState({
   children?: ReactNode;
 }) {
   return (
-    <Empty className="rounded-3xl border border-dashed md:py-12">
+    // Sized to its content (DESIGN.md D26): a solid hairline, no tall dashed void
+    <Empty className="flex-none gap-4 rounded-xl border px-6 py-8 md:py-8">
       <EmptyHeader>
         <EmptyMedia variant="icon">{icon ?? <Inbox aria-hidden />}</EmptyMedia>
         <EmptyTitle>{title}</EmptyTitle>
@@ -100,7 +101,7 @@ export function LoadingCards({ count = 3 }: { count?: number }) {
   return (
     <div className="flex flex-col gap-3" aria-busy="true" aria-label="Đang tải">
       {Array.from({ length: count }, (_, i) => (
-        <Skeleton key={i} className="h-24 rounded-3xl" />
+        <Skeleton key={i} className="h-24 rounded-xl" />
       ))}
     </div>
   );

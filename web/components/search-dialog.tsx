@@ -287,7 +287,7 @@ function BrainRow({ hit, item, onClick }: { hit: BrainHit; item: SearchItemType;
         </div>
         <span
           data-highlight-ignore=""
-          className="shrink-0 rounded-md border px-1.5 py-0.5 text-[11px] leading-none text-fd-muted-foreground"
+          className="shrink-0 rounded-md border px-1.5 py-0.5 text-xs leading-none text-fd-muted-foreground"
         >
           {kind.label}
         </span>

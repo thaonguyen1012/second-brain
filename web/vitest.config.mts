@@ -11,7 +11,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['lib/**/*.test.ts'],
-    // Unit tests never read the handbook content: an empty CONTENT_DIR keeps them independent of it.
-    env: { CONTENT_DIR: '/nonexistent/alex-brain-unit-tests' },
+    // Unit tests never read the handbook content: an empty CONTENT_DIR keeps them independent of it. The base path
+    // is pinned too, so an exported NEXT_PUBLIC_BASE_PATH in the shell does not change expected URLs.
+    env: { CONTENT_DIR: '/nonexistent/alex-brain-unit-tests', NEXT_PUBLIC_BASE_PATH: '' },
   },
 });

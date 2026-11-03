@@ -14,25 +14,28 @@ export default function HomePage() {
   return (
     <div className="flex w-full flex-col">
       <PageHeader title="Hôm nay" description="Học tiếp, giữ 3 ưu tiên của tuần, dọn inbox và đọc bản tin sáng.">
+        <ContinueReading books={books.map(({ slug, title, track }) => ({ slug, title, track }))} />
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" render={<Link href="/phat-trien/" />}>
+          <Button size="sm" variant="outline" render={<Link href="/phat-trien/" />}>
             Tất cả sổ tay
           </Button>
-          <Button variant="outline" render={<Link href="/lo-trinh/" />}>
+          <Button size="sm" variant="outline" render={<Link href="/lo-trinh/" />}>
             Lộ trình học
           </Button>
         </div>
-        <ContinueReading books={books.map(({ slug, title, track }) => ({ slug, title, track }))} />
         <ProgressMigrationOffer />
       </PageHeader>
 
-      <section className="grid gap-3 px-4 pb-8 sm:px-8 md:grid-cols-2 xl:grid-cols-3" aria-label="Tuần, inbox và dự đoán">
+      <section
+        className="grid gap-x-10 gap-y-8 px-4 pt-2 pb-10 sm:px-8 md:grid-cols-2 xl:grid-cols-3"
+        aria-label="Tuần, inbox và dự đoán"
+      >
         <TodayWeek />
         <TodayInbox />
         <TodayPredictions className="md:col-span-2 xl:col-span-1" />
       </section>
 
-      <div className="border-t px-4 py-10 sm:px-8">
+      <div className="border-t px-4 py-8 sm:px-8">
         <TodayBrief />
       </div>
 

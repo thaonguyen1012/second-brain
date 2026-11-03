@@ -1,6 +1,6 @@
 'use client';
 // "Hôm nay" panels loaded with next/dynamic (today.tsx), so they stay outside the home page's first JS.
-import { CircleAlert, Cpu, Hourglass } from 'lucide-react';
+import { CircleAlert } from 'lucide-react';
 import { api, type ApiStatus } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import { daysBetween, formatDay, todayPrague } from '@/lib/dates';
@@ -15,7 +15,6 @@ export function TodayPredictions({ className }: { className?: string }) {
   const due = useDuePredictions();
   return (
     <Panel
-      icon={Hourglass}
       title="Dự đoán cần chấm lại"
       href={PREDICTIONS_HREF}
       linkLabel="Thành tựu"
@@ -93,10 +92,12 @@ export function TodayStatus({ className }: { className?: string }) {
   return (
     <section
       aria-labelledby="today-status"
-      className={cn('flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground', className)}
+      className={cn(
+        'flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3',
+        className,
+      )}
     >
-      <h2 id="today-status" className="inline-flex items-center gap-1.5 font-medium text-foreground">
-        <Cpu className="size-3.5" aria-hidden />
+      <h2 id="today-status" className="font-medium text-foreground">
         AI và tác vụ nền
       </h2>
       {status.data ? (

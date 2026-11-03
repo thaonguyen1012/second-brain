@@ -33,7 +33,7 @@ export default function Page() {
       />
       {guides.map((g) => (
         <section key={g.guide} className="flex flex-col gap-2 px-4 pb-12 sm:px-8">
-          <EmptyStateGuide guide={g.guide} className="mx-0" />
+          <EmptyStateGuide guide={g.guide} open className="mx-0" />
           {g.text && <p className="max-w-[600px] text-sm leading-relaxed text-muted-foreground">{g.text}</p>}
           <Link href={g.href} className="text-sm text-primary underline-offset-4 hover:underline">
             {g.label}

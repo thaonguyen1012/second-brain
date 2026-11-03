@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { CalendarCheck, CalendarRange, ChevronLeft, ChevronRight, NotebookPen } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ApiWeek } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import {
@@ -186,20 +186,14 @@ export function WeekPage({ books }: { books: BookIndex }) {
         </Button>
         <h2 className="flex flex-wrap items-baseline gap-x-2 font-heading text-lg font-semibold tracking-tight" aria-live="polite">
           <span>Tuần {isoWeek(start)}</span>
-          <span className="text-sm font-normal text-muted-foreground tabular-nums">{weekRange(start)}</span>
+          <span className="text-sm font-normal text-muted-foreground tabular-nums">
+            {weekRange(start)}
+            {name ? ` · ${name}` : ''}
+          </span>
         </h2>
-        {name && <Badge variant={start === current ? 'info' : 'secondary'}>{name}</Badge>}
-        {wk?.plannedAt && (
-          <Badge variant="success">
-            <NotebookPen aria-hidden />
-            Đã lên kế hoạch
-          </Badge>
-        )}
-        {wk?.reviewedAt && (
-          <Badge variant="success">
-            <CalendarCheck aria-hidden />
-            Đã nhìn lại
-          </Badge>
+        {/* One status badge (DESIGN.md D25): the furthest step of the ritual this week has reached */}
+        {(wk?.reviewedAt || wk?.plannedAt) && (
+          <Badge variant="success">{wk?.reviewedAt ? 'Đã nhìn lại' : 'Đã lên kế hoạch'}</Badge>
         )}
         <div className="ms-auto flex items-center gap-2">
           {start !== current && (

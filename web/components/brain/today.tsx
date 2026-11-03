@@ -1,16 +1,15 @@
 'use client';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { ArrowRight, CalendarRange, Inbox, Newspaper } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { api, type ApiNewsFeedback } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import { formatDate, hostOf, objectiveStatuses } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { ApiErrorState, EmptyState, LoadingCards } from './api-state';
+import { ApiErrorState, LoadingCards } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
 import { useInboxCount } from './inbox-count';
 
@@ -31,22 +30,24 @@ const BriefActions = dynamic(() => import('./brief-actions'), {
 if (typeof window !== 'undefined') void import('./today-extras');
 export const TodayPredictions = dynamic(() => import('./today-extras').then((m) => m.TodayPredictions), {
   ssr: false,
-  loading: () => <Skeleton className="h-36 rounded-3xl md:col-span-2 xl:col-span-1" />,
+  loading: () => <Skeleton className="h-24 rounded-xl md:col-span-2 xl:col-span-1" />,
 });
 export const TodayStatus = dynamic(() => import('./today-extras').then((m) => m.TodayStatus), {
   ssr: false,
   loading: () => <Skeleton className="h-4 w-72 rounded" />,
 });
 
+/**
+ * A "Hôm nay" tile: an unboxed block with a heading and a link to its page, quieter than "Tiếp tục học" (the one
+ * filled surface of the page; DESIGN.md §1.2, D1).
+ */
 export function Panel({
-  icon: Icon,
   title,
   href,
   linkLabel,
   children,
   className,
 }: {
-  icon: typeof Inbox;
   title: string;
   href: string;
   linkLabel: string;
@@ -54,17 +55,16 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <Card className={cn('flex flex-col gap-3 rounded-3xl border p-4 shadow-depth-1', className)}>
-      <div className="flex items-center gap-2">
-        <Icon className="size-4 text-muted-foreground" aria-hidden />
+    <section className={cn('flex min-w-0 flex-col gap-3', className)}>
+      <div className="flex items-center gap-2 border-b pb-2">
         <h2 className="font-heading text-[15px] font-semibold tracking-tight">{title}</h2>
-        <Button size="xs" variant="ghost" className="ms-auto" render={<Link href={href} />}>
+        <Button size="xs" variant="ghost" className="ms-auto -me-2" render={<Link href={href} />}>
           {linkLabel}
           <ArrowRight aria-hidden />
         </Button>
       </div>
       {children}
-    </Card>
+    </section>
   );
 }
 
@@ -73,11 +73,11 @@ export function TodayWeek() {
   const week = useApi('week', api.getCurrentWeek);
   const objectives = week.data?.objectives ?? [];
   return (
-    <Panel icon={CalendarRange} title="3 ưu tiên tuần" href="/tuan/" linkLabel="Tuần">
+    <Panel title="3 ưu tiên tuần" href="/tuan/" linkLabel="Tuần">
       {week.error && !week.data ? (
         <ApiErrorState error={week.error} onRetry={week.reload} />
       ) : !week.data ? (
-        <Skeleton className="h-20 rounded-xl" />
+        <Skeleton className="h-20 rounded-md" />
       ) : objectives.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Tuần từ {formatDate(week.data.startDate)} chưa có mục tiêu. Chọn 3 việc ở trang Tuần.
@@ -104,12 +104,12 @@ export function TodayWeek() {
 export function TodayInbox() {
   const n = useInboxCount();
   return (
-    <Panel icon={Inbox} title="Inbox" href="/inbox/" linkLabel="Xử lý">
+    <Panel title="Inbox" href="/inbox/" linkLabel="Xử lý">
       {n === null ? (
         <p className="text-sm text-muted-foreground">Chưa đọc được inbox (cần kết nối máy chủ).</p>
       ) : (
         <p className="flex items-baseline gap-2">
-          <span className="font-heading text-3xl font-semibold tabular-nums">{n}</span>
+          <span className="font-heading text-2xl font-semibold tabular-nums">{n}</span>
           <span className="text-sm text-muted-foreground">
             {n === '0' ? 'mục, inbox đã về 0' : 'mục chờ xử lý trong buổi nhìn lại tuần'}
           </span>
@@ -127,8 +127,7 @@ export function TodayBrief() {
   return (
     <section className="flex flex-col gap-4" aria-labelledby="today-brief">
       <div className="flex items-center gap-2">
-        <Newspaper className="size-4 text-muted-foreground" aria-hidden />
-        <h2 id="today-brief" className="font-heading text-xl font-semibold tracking-tight">
+        <h2 id="today-brief" className="font-heading text-lg font-semibold tracking-tight">
           Bản tin hôm nay
         </h2>
         {brief.data && <Badge variant="outline">{formatDate(brief.data.date)}</Badge>}
@@ -138,11 +137,11 @@ export function TodayBrief() {
       ) : brief.data === undefined ? (
         <LoadingCards count={2} />
       ) : brief.data === null || brief.data.items.length === 0 ? (
-        <EmptyState
-          icon={<Newspaper aria-hidden />}
-          title="Chưa có bản tin hôm nay"
-          description="Bản tin được dựng lúc 6:30 sáng giờ Praha. Quay lại sau nhé."
-        />
+        // Sized to its content (DESIGN.md D26): one line, no empty box
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Chưa có bản tin hôm nay.</span> Bản tin được dựng lúc 6:30
+          sáng giờ Praha. Quay lại sau nhé.
+        </p>
       ) : (
         <>
           {brief.data.intro && <p className="max-w-3xl text-sm leading-relaxed">{brief.data.intro}</p>}

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Request a random sample of pages from a running server and check status 200 + expected title.
-// Usage: node scripts/smoke-test.mjs [--base http://localhost:3000] [--sample 100] [--book slug ...]
+// Usage: node scripts/smoke-test.mjs [--base http://localhost:3000|auto] [--sample 100] [--book slug ...] [--optional]
+// --base auto uses the first server that answers: the owner's next dev (:3000), then make dev (:8080).
+// --optional (the pre-commit hook) prints a warning and exits 0 when no server answers instead of failing.
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -11,8 +13,38 @@ const { values } = parseArgs({
     base: { type: 'string', default: 'http://localhost:3000' },
     sample: { type: 'string', default: '100' },
     book: { type: 'string', multiple: true, default: [] },
+    optional: { type: 'boolean', default: false },
   },
 });
+
+const AUTO_BASES = ['http://localhost:3000', 'http://127.0.0.1:8080'];
+async function answers(base) {
+  try {
+    await fetch(base + '/', { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+    return true;
+  } catch {
+    return false;
+  }
+}
+const candidates = values.base === 'auto' ? AUTO_BASES : [values.base];
+let liveBase = null;
+for (const base of candidates) {
+  if (await answers(base)) {
+    liveBase = base;
+    break;
+  }
+}
+if (!liveBase) {
+  const msg = `smoke: no web server answers at ${candidates.join(' or ')}`;
+  if (values.optional) {
+    console.warn(`${msg}; smoke test SKIPPED (start next dev or make dev to run it)`);
+    process.exit(0);
+  }
+  console.error(msg);
+  process.exit(1);
+}
+values.base = liveBase;
+if (candidates.length > 1) console.log(`smoke: using ${liveBase}`);
 
 const pages = [];
 for (const track of fs.readdirSync(CONTENT_DIR, { withFileTypes: true })) {

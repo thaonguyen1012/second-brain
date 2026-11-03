@@ -16,7 +16,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Tuần"
-        description="Đầu tuần lên kế hoạch: kéo mục tiêu chưa xong sang, chọn 3–5 mục tiêu, viết kỳ vọng. Cuối tuần nhìn lại trong 15 phút: giờ đi đâu, làm được gì, cơ hội nào có thêm bằng chứng."
+        description="Đầu tuần chọn 3–5 mục tiêu, cuối tuần nhìn lại trong 15 phút."
       />
       {/* The week comes from ?w= (useSearchParams): rendered in the browser, never during next build. */}
       <Suspense

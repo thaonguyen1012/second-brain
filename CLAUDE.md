@@ -142,9 +142,10 @@ deploy/                          nginx/ (site.conf + header snippets), docker-co
                                  (run_jobs every 300 s) and com.example.brain.backup.plist (make backup at 02:30), not
                                  installed; config only, not deployed
 Makefile                         make check = web types+lint+Vitest (web/lib/**/*.test.ts), backend ruff+mypy+migrations+pytest,
-                                 smoke test (needs a web server at SMOKE_BASE, default :3000); runs as the lefthook pre-commit
-                                 hook (lefthook.yml); make e2e = Playwright flows in web/e2e/ (installed Chrome, read-only, needs
-                                 the :8080 stack, not in check); make api-types, backend-dev; make audit
+                                 smoke test (SMOKE_BASE=auto: :3000, else :8080), home JS budget (warns on a stale build);
+                                 runs as the lefthook pre-commit hook (lefthook.yml; smoke skipped with a warning when no server
+                                 answers); make e2e = Playwright flows in web/e2e/ (installed Chrome, every /api/ write aborted
+                                 in the browser, needs the :8080 stack, not in check); make api-types, backend-dev; make audit
                                  (npm audit --omit=dev in web/, not part of check);
                                  make jobs (run_jobs loop, 300 s); make dev (build with NEXT_PUBLIC_PROGRESS_STORE=api,
                                  Django :8000 + Next prod :3100 + proxy :8080 + jobs; never :3000; no $(MAKE) inside
@@ -162,6 +163,7 @@ Makefile                         make check = web types+lint+Vitest (web/lib/**/
 * `BUILD_SUBSET=slug,slug` limits loaded books in dev; the home page still lists all books.
 * Theme: Space UI tokens in `app/global.css` are the source of truth (`--background`, `--primary`...); the Fumadocs
   `--color-fd-*` tokens are mapped onto them. Blue primary, red-orange `bw-red` highlight. Fonts via next/font only.
+* App UI rubric: `web/DESIGN.md` (rules D1-D28); screenshots for a design pass: `node web/scripts/screens.mjs`.
 * No runtime requests to external domains: no CDN, no Google Fonts, no analytics. Mermaid loads from
   `/vendor/mermaid/` (copied by `scripts/prepare-vendor.mjs`), `securityLevel: 'strict'`, only on pages with diagrams.
 * Raw HTML in content goes through `rehype-safe-html`: unknown tags become text, images become placeholders

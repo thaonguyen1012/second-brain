@@ -1,11 +1,10 @@
 'use client';
 import Link from 'next/link';
-import { ArrowRight, CalendarPlus, Inbox, Target } from 'lucide-react';
+import { ArrowRight, CalendarPlus, Inbox } from 'lucide-react';
 import type { ApiObjective, ApiWeek } from '@/lib/api/client';
 import type { ApiAchievement, ApiOpportunityDecision, ApiReviewView } from '@/lib/api/weeks';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useInboxCount } from '../inbox-count';
 import { type BookIndex, BodyOfWork } from './body-of-work';
 import { ObjectivesEditor, type ObjectivesUpdate } from './objectives-editor';
@@ -17,7 +16,7 @@ import { WeekSection } from './week-section';
 
 function Step({ label, value, done, children }: { label: string; value: string; done: boolean; children?: React.ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1 rounded-2xl bg-secondary p-3">
+    <div className="flex min-w-0 flex-col gap-1 p-4">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className={cn('font-heading text-xl font-semibold tabular-nums', done && 'text-success-foreground')}>
         {value}
@@ -33,8 +32,8 @@ function ReviewChecklist({ objectives, onNextWeek }: { objectives: ApiObjective[
   const counted = objectives.filter((o) => o.status !== 'dropped');
   const done = counted.filter((o) => o.status === 'done').length;
   return (
-    <Card className="flex flex-col gap-3 rounded-3xl border p-2 shadow-depth-1">
-      <div className="flex flex-wrap gap-2">
+    <div className="rounded-xl border">
+      <div className="grid divide-y sm:auto-cols-fr sm:grid-flow-col sm:divide-x sm:divide-y-0">
         <Step label="Inbox về 0 chưa?" value={inbox === null ? '–' : inbox === '0' ? 'Đã về 0' : `Còn ${inbox}`} done={inbox === '0'}>
           {inbox !== null && inbox !== '0' && (
             <Button size="xs" variant="outline" className="self-start" render={<Link href="/inbox/" />}>
@@ -58,7 +57,7 @@ function ReviewChecklist({ objectives, onNextWeek }: { objectives: ApiObjective[
           </Step>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -91,10 +90,10 @@ export function ReviewPanel({
   return (
     <div className="flex flex-col gap-4">
       <ReviewChecklist objectives={week.objectives} onNextWeek={onNextWeek} />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start">
-        <div className="flex flex-col gap-4">
+      {/* One surface: the sections to read on the left, divided by hairlines, the six questions on the right */}
+      <div className="grid rounded-xl border lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col divide-y">
           <WeekSection
-            icon={Target}
             id="week-review-objectives"
             title="Tiến độ mục tiêu"
             description="Đánh dấu xong hoặc bỏ. Cái còn mở sẽ được đề nghị kéo sang tuần sau."
@@ -121,8 +120,10 @@ export function ReviewPanel({
           <ReviewAchievements start={start} achievements={review.achievements} onAdded={onAchievement} />
           <ReviewPredictions />
         </div>
-        <div className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:rounded-3xl">
-          <ReviewJournal start={start} week={week} opportunities={review.opportunities} onSaved={onWeek} />
+        <div className="border-t lg:border-t-0 lg:border-l">
+          <div className="lg:sticky lg:top-16 lg:max-h-[calc(100dvh-4rem)] lg:overflow-y-auto">
+            <ReviewJournal start={start} week={week} opportunities={review.opportunities} onSaved={onWeek} />
+          </div>
         </div>
       </div>
     </div>

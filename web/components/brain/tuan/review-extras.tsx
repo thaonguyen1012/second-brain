@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Hourglass, Lightbulb, Plus, Trophy } from 'lucide-react';
+import { ArrowRight, Plus } from 'lucide-react';
 import { opportunitiesApi } from '@/lib/api/opportunities';
 import { type ApiAchievement, type ApiOpportunityDecision, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
 import { decisionOf, formatDate, opportunityHref } from '@/lib/labels';
@@ -84,7 +84,6 @@ export function ReviewOpportunities({
   const { withEvidence, stale } = opportunities;
   return (
     <WeekSection
-      icon={Lightbulb}
       id="week-opportunities"
       title="Cơ hội"
       action={
@@ -99,11 +98,11 @@ export function ReviewOpportunities({
         {withEvidence.length === 0 ? (
           <p className="text-sm text-muted-foreground">Tuần này chưa có bằng chứng mới cho cơ hội nào.</p>
         ) : (
-          <ul className="flex flex-col gap-1.5">
+          <ul className="flex flex-col divide-y">
             {withEvidence.map((o) => {
               const d = decisionOf(o.decision);
               return (
-                <li key={o.id} className="flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-sm">
+                <li key={o.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                   <Link
                     href={opportunityHref(o.id)}
                     className="min-w-0 flex-1 font-medium hover:underline focus-visible:underline"
@@ -125,11 +124,11 @@ export function ReviewOpportunities({
           <h3 className="text-xs font-medium text-muted-foreground">
             4 tuần không có bằng chứng mới: giữ hay bỏ?
           </h3>
-          <ul className="flex flex-col gap-1.5">
+          <ul className="flex flex-col divide-y">
             {stale.map((o) => {
               const d = decisionOf(o.decision);
               return (
-                <li key={o.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm">
+                <li key={o.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                   <Link href={opportunityHref(o.id)} className="min-w-0 flex-1 hover:underline focus-visible:underline">
                     {o.title}
                   </Link>
@@ -185,7 +184,6 @@ export function ReviewAchievements({
 
   return (
     <WeekSection
-      icon={Trophy}
       id="week-achievements"
       title="Nhật ký thành tựu"
       description="Mỗi tuần ít nhất một dòng, có số nếu được: dữ liệu cho CV và case study."
@@ -197,9 +195,9 @@ export function ReviewAchievements({
       }
     >
       {achievements.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="flex flex-col divide-y">
           {achievements.map((a) => (
-            <li key={a.id} className="flex flex-col gap-1 rounded-xl border px-3 py-2">
+            <li key={a.id} className="flex flex-col gap-1 py-2">
               <div className="flex flex-wrap items-baseline gap-2">
                 <span className="text-sm font-medium">{a.title}</span>
                 <span className="ms-auto text-xs text-muted-foreground tabular-nums">{shortDate(a.date)}</span>
@@ -257,7 +255,6 @@ export function ReviewPredictions() {
   const due = useDuePredictions();
   return (
     <WeekSection
-      icon={Hourglass}
       id="week-predictions"
       title="Dự đoán đến hạn chấm lại"
       action={

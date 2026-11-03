@@ -80,7 +80,7 @@ function JobAdCard({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void
           <p>AI không trả về kết quả hợp lệ. Sửa tin để phân tích lại, hoặc tự điền kỹ năng.</p>
           <details>
             <summary className="w-fit cursor-pointer select-none">Chi tiết kỹ thuật</summary>
-            <p className="mt-1 break-words font-mono text-[11px]" lang="en">
+            <p className="mt-1 break-words font-mono text-xs" lang="en">
               {ad.error}
             </p>
           </details>

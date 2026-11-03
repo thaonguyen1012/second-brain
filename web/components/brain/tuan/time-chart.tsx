@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Clock } from 'lucide-react';
 import type { ApiDayWork, ApiWeekTime } from '@/lib/api/weeks';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -239,7 +238,6 @@ export function TimeChart({ days, time }: { days: ApiDayWork[]; time: ApiWeekTim
   const total = time.minutesForObjectives + time.minutesOther;
   return (
     <WeekSection
-      icon={Clock}
       id="week-time"
       title="Giờ cho mục tiêu và giờ khác"
       action={

@@ -55,7 +55,7 @@ describe('draftFromParams', () => {
   it('keeps line breaks of the shared text while removing the link', () => {
     expect(draftFromParams(params({ text: 'Dòng một\nhttps://a.cz/x\nDòng hai' }))).toEqual({
       url: 'https://a.cz/x',
-      note: 'Dòng một\n \nDòng hai',
+      note: 'Dòng một\n\nDòng hai',
     });
   });
 

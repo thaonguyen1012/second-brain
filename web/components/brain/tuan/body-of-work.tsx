@@ -84,7 +84,6 @@ export function BodyOfWork({ days, books }: { days: ApiDayWork[]; books: BookInd
   const shown = days.filter((d) => d.date <= today);
   return (
     <WeekSection
-      icon={Layers}
       id="week-body"
       title="Đã làm được gì, theo ngày"
       description="Item xong, trang sổ tay học xong và mục inbox đã xử lý. Dùng để trả lời câu thắng lớn nhất."

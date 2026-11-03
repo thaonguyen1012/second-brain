@@ -191,14 +191,7 @@ export function OpportunityList() {
                 ? 'Đổi bộ lọc để xem các cơ hội khác.'
                 : 'Ghi một giả thuyết: ai, đau gì, trả tiền cho gì. Tin trong bản tin sáng và mục inbox sẽ thành bằng chứng.'
             }
-          >
-            {!filtered && (
-              <Button onClick={openNew}>
-                <Plus aria-hidden />
-                Cơ hội mới
-              </Button>
-            )}
-          </EmptyState>
+          />
           {!filtered && opps.data && !opps.error && <EmptyStateGuide guide="opportunity" />}
         </>
       ) : (

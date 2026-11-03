@@ -15,8 +15,9 @@ function isLocal(src: string | null | undefined): src is string {
 }
 
 /**
- * The second-brain card (inbox entries, library items, brief stories), after BookCard: a tinted header panel
- * with badges and the title, then body and actions. `selected` marks the keyboard cursor.
+ * The second-brain card (inbox entries, library items, brief stories): one bordered container per record
+ * (DESIGN.md D12, D15), thumbnail beside badges, title and meta, then body and actions. Hierarchy comes from type
+ * weight and colour, not from an inner panel. `selected` marks the keyboard cursor.
  */
 export function BrainCard({
   badges,
@@ -44,28 +45,24 @@ export function BrainCard({
       {...rest}
       data-selected={selected || undefined}
       className={cn(
-        'flex flex-col gap-2 rounded-3xl border p-2 shadow-depth-1 transition-shadow duration-200 hover:shadow-popover',
-        'data-selected:border-primary/70 data-selected:ring-2 data-selected:ring-primary/30',
+        'flex flex-col gap-3 rounded-xl border p-4 transition-colors duration-150',
+        'data-selected:border-primary/70 data-selected:ring-1 data-selected:ring-primary/40',
         className,
       )}
     >
-      <div className="flex gap-3 rounded-2xl bg-secondary p-3 sm:p-4">
+      <div className="flex gap-3">
         {isLocal(thumbnail) && (
           // eslint-disable-next-line @next/next/no-img-element -- local webp thumbnail, already sized at ingest
-          <img src={thumbnail} alt="" loading="lazy" className="size-16 shrink-0 rounded-xl object-cover sm:size-20" />
+          <img src={thumbnail} alt="" loading="lazy" className="size-14 shrink-0 rounded-lg object-cover sm:size-16" />
         )}
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          {badges && <div className="flex flex-wrap items-center gap-1.5">{badges}</div>}
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          {badges && <div className="flex flex-wrap items-center gap-1.5 pb-0.5">{badges}</div>}
           <h3 className="font-heading text-[15px] font-semibold leading-5 tracking-tight break-words">{title}</h3>
           {meta && <p className="text-xs text-muted-foreground">{meta}</p>}
         </div>
       </div>
-      {(children || actions) && (
-        <div className="flex flex-col gap-3 px-3 pt-1 pb-2">
-          {children}
-          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-        </div>
-      )}
+      {children}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </Card>
   );
 }

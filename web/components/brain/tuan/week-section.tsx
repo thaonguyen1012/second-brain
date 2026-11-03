@@ -1,18 +1,18 @@
 'use client';
 import type { ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
 import { CircleAlert } from 'lucide-react';
 import type { ApiError } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
 import { firstFieldError } from '@/lib/labels';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Card } from '@/components/ui/card';
 import { describeApiError } from '../api-state';
 
-/** One block of the planning or review ritual: same card style as the "Hôm nay" panels. */
+/**
+ * One block of the planning or review ritual: a plain headed block, no card of its own. The panel puts its
+ * sections in one bordered surface with dividers between them (DESIGN.md D12: no box inside a box).
+ */
 export function WeekSection({
-  icon: Icon,
   title,
   id,
   action,
@@ -20,7 +20,6 @@ export function WeekSection({
   children,
   className,
 }: {
-  icon: LucideIcon;
   title: string;
   id: string;
   action?: ReactNode;
@@ -29,12 +28,8 @@ export function WeekSection({
   className?: string;
 }) {
   return (
-    <Card
-      render={<section aria-labelledby={id} />}
-      className={cn('flex flex-col gap-3 rounded-3xl border p-4 shadow-depth-1 sm:p-5', className)}
-    >
+    <section aria-labelledby={id} className={cn('flex min-w-0 flex-col gap-3 p-4 sm:p-5', className)}>
       <div className="flex flex-wrap items-center gap-2">
-        <Icon className="size-4 text-muted-foreground" aria-hidden />
         <h2 id={id} className="font-heading text-[15px] font-semibold tracking-tight">
           {title}
         </h2>
@@ -42,7 +37,7 @@ export function WeekSection({
       </div>
       {description && <p className="text-[13px] leading-relaxed text-muted-foreground">{description}</p>}
       {children}
-    </Card>
+    </section>
   );
 }
 

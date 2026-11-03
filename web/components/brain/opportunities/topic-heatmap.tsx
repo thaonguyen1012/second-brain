@@ -1,10 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { TrendingUp } from 'lucide-react';
 import { opportunitiesApi, type ApiTopicCounts } from '@/lib/api/opportunities';
 import { useApi } from '@/lib/api/use-api';
 import { cn } from '@/lib/utils';
-import { ApiErrorState, ApiStaleAlert, EmptyState } from '../api-state';
+import { ApiErrorState, ApiStaleAlert } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { formatDay } from './labels';
 
@@ -106,7 +105,7 @@ function Heatmap({ m }: { m: Matrix }) {
         >
           <span aria-hidden />
           {m.weeks.map((w, c) => (
-            <span key={w.week} aria-hidden className="pb-1 text-center text-[10px] text-muted-foreground tabular-nums">
+            <span key={w.week} aria-hidden className="pb-1 text-center text-[11px] text-muted-foreground tabular-nums">
               {c % every === (nCols - 1) % every ? shortWeek(w.week) : ''}
             </span>
           ))}
@@ -138,11 +137,11 @@ function Heatmap({ m }: { m: Matrix }) {
               })}
             </div>
           ))}
-          <span className="pt-1 pe-3 text-[10px] text-muted-foreground" aria-hidden>
+          <span className="pt-1 pe-3 text-[11px] text-muted-foreground" aria-hidden>
             số tin đã gắn tag
           </span>
           {m.weeks.map((w) => (
-            <span key={w.week} aria-hidden className="pt-1 text-center text-[10px] text-muted-foreground tabular-nums">
+            <span key={w.week} aria-hidden className="pt-1 text-center text-[11px] text-muted-foreground tabular-nums">
               {w.items}
             </span>
           ))}
@@ -225,15 +224,15 @@ export function TopicHeatmap() {
       ) : !m ? (
         <div className="h-48 animate-pulse rounded-2xl bg-muted" aria-busy="true" aria-label="Đang tải" />
       ) : m.rows.length === 0 ? (
-        <EmptyState
-          icon={<TrendingUp aria-hidden />}
-          title="Chưa có tin nào được gắn tag"
-          description="Bản tin sáng gắn tag chủ đề mỗi ngày; số đếm sẽ hiện ở đây."
-        />
+        // A secondary block of the page: one line, not a second empty box (DESIGN.md D26)
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Chưa có tin nào được gắn tag.</span> Bản tin sáng gắn tag chủ đề
+          mỗi ngày; số đếm sẽ hiện ở đây.
+        </p>
       ) : (
         <div
           className={cn(
-            'rounded-3xl border bg-card p-4 shadow-depth-1 transition-opacity',
+            'rounded-xl border p-4 transition-opacity',
             topics.loading && 'opacity-60',
           )}
         >

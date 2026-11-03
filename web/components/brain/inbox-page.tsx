@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Inbox, Library, Loader2, NotebookPen, Plus } from 'lucide-react';
+import { ExternalLink, Inbox, Library, Lightbulb, Loader2, NotebookPen, Plus, Trash2 } from 'lucide-react';
 import {
   api,
   type ApiInboxEntry,
@@ -19,16 +19,20 @@ import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
+import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
+import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
-import { ConfirmDelete, DeleteButton } from './confirm-delete';
+import { ConfirmDelete } from './confirm-delete';
 import { refreshInboxCount } from './inbox-count';
 import { ItemDialog } from './item-dialog';
+import { KeyLegend } from './key-legend';
 import { NoteDialog, type NoteDraft } from './library/note-dialog';
 import { useItemIndex } from './library/use-item-index';
 import { OpportunityDialog } from './opportunity-dialog';
+import { RowMenu } from './row-menu';
 import { SaveKeys } from './save-keys';
 
 const PAGE = 100;
@@ -60,6 +64,11 @@ function isTyping(el: EventTarget | null): boolean {
   return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 }
 
+/** Key hint on a row's visible verbs: hidden on touch screens and at phone width (DESIGN.md D24). */
+function RowKey({ children }: { children: string }) {
+  return <Kbd className="max-sm:hidden pointer-coarse:hidden">{children}</Kbd>;
+}
+
 function CaptureBox({
   inputRef,
   onCaptured,
@@ -89,7 +98,7 @@ function CaptureBox({
 
   return (
     <form
-      className="flex flex-col gap-2 rounded-3xl border bg-card p-3 shadow-depth-1"
+      className="flex flex-col gap-2 rounded-xl border bg-card p-3"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
@@ -204,42 +213,61 @@ function EntryCard({
       meta={[site, formatDate(entry.createdAt)].filter(Boolean).join(' · ')}
       actions={
         <>
-          {entry.status !== 'later' && (
+          {entry.status === 'inbox' && (
             <Button size="xs" variant="outline" onClick={() => onTriage('later')}>
-              Đọc sau <Kbd>L</Kbd>
+              Đọc sau <RowKey>L</RowKey>
             </Button>
           )}
           {entry.status !== 'archived' && (
             <Button size="xs" variant="outline" onClick={() => onTriage('archived')}>
-              Lưu trữ <Kbd>A</Kbd>
+              Lưu trữ <RowKey>A</RowKey>
             </Button>
           )}
           {entry.status !== 'inbox' && (
             <Button size="xs" variant="outline" onClick={() => onTriage('inbox')}>
-              Về inbox <Kbd>U</Kbd>
+              Về inbox <RowKey>U</RowKey>
             </Button>
           )}
-          <Button size="xs" variant="outline" onClick={onOpportunity}>
-            Cơ hội <Kbd>O</Kbd>
-          </Button>
-          {!entry.item && (
-            <Button size="xs" variant="outline" onClick={onItem}>
-              <Plus aria-hidden />
-              Thành item <Kbd>T</Kbd>
-            </Button>
-          )}
-          <Button size="xs" variant="outline" onClick={onNote}>
-            <NotebookPen aria-hidden />
-            Ghi chú <Kbd>N</Kbd>
-          </Button>
-          {entry.url && (
+          {entry.url ? (
             <Button size="xs" variant="ghost" render={<a href={entry.url} target="_blank" rel="noreferrer" />}>
-              Mở <Kbd>I</Kbd>
+              <ExternalLink aria-hidden />
+              Mở <RowKey>I</RowKey>
+            </Button>
+          ) : (
+            <Button size="xs" variant="ghost" onClick={onNote}>
+              <NotebookPen aria-hidden />
+              Ghi chú <RowKey>N</RowKey>
             </Button>
           )}
-          <DeleteButton className="ms-auto" onClick={onDelete}>
-            Xóa <Kbd>Del</Kbd>
-          </DeleteButton>
+          <span className="ms-auto">
+            <RowMenu>
+              <MenuItem onClick={onOpportunity}>
+                <Lightbulb aria-hidden />
+                Bằng chứng cho cơ hội
+                <MenuShortcut>O</MenuShortcut>
+              </MenuItem>
+              {!entry.item && (
+                <MenuItem onClick={onItem}>
+                  <Plus aria-hidden />
+                  Thành item
+                  <MenuShortcut>T</MenuShortcut>
+                </MenuItem>
+              )}
+              {entry.url && (
+                <MenuItem onClick={onNote}>
+                  <NotebookPen aria-hidden />
+                  Ghi chú
+                  <MenuShortcut>N</MenuShortcut>
+                </MenuItem>
+              )}
+              <MenuSeparator />
+              <MenuItem variant="destructive" onClick={onDelete}>
+                <Trash2 aria-hidden />
+                Xóa
+                <MenuShortcut>Del</MenuShortcut>
+              </MenuItem>
+            </RowMenu>
+          </span>
         </>
       }
     >
@@ -270,6 +298,7 @@ const keyHelp: [string, string][] = [
   ['I', 'mở link'],
   ['Del', 'xóa'],
   ['C', 'thu thập'],
+  ['?', 'bảng phím tắt này'],
 ];
 
 /** Inbox (DECISIONS 9.2): capture, OG cards, keyboard triage with one key per decision. */
@@ -402,6 +431,8 @@ export function InboxPage() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (dialogOpen || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      // The key legend dialog and a row's overflow menu handle their own keys
+      if (document.querySelector('[role="dialog"], [role="menu"]')) return;
       const k = e.key.toLowerCase();
       const act: Record<string, () => void> = {
         j: () => setCursor(Math.min(selected + 1, shown.length - 1)),
@@ -455,29 +486,25 @@ export function InboxPage() {
         }}
       />
 
-      <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Trạng thái">
-        {inboxStatuses.map((s) => (
-          <Button
-            key={s.value}
-            role="tab"
-            aria-selected={status === s.value}
-            size="sm"
-            variant={status === s.value ? 'default' : 'outline'}
-            onClick={() => {
-              setStatus(s.value);
-              setCursor(0);
-            }}
-          >
-            {s.label}
-          </Button>
-        ))}
-        <p className="ms-auto hidden flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground lg:flex">
-          {keyHelp.map(([k, label]) => (
-            <span key={k}>
-              <Kbd>{k}</Kbd> {label}
-            </span>
-          ))}
-        </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Tabs
+          value={status}
+          onValueChange={(v) => {
+            setStatus(v as ApiInboxStatus);
+            setCursor(0);
+          }}
+        >
+          <TabsList aria-label="Trạng thái">
+            {inboxStatuses.map((s) => (
+              <TabsTab key={s.value} value={s.value}>
+                {s.label}
+              </TabsTab>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="ms-auto">
+          <KeyLegend keys={keyHelp} title="Phím tắt của Inbox" />
+        </div>
       </div>
 
       {notice && (

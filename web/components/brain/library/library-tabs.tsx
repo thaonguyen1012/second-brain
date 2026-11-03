@@ -1,28 +1,31 @@
 'use client';
 import Link from 'next/link';
-import { Library, NotebookPen } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 
 const tabs = [
-  { key: 'items', href: '/thu-vien/', label: 'Item', icon: Library },
-  { key: 'notes', href: '/thu-vien/ghi-chu/', label: 'Ghi chú', icon: NotebookPen },
+  { key: 'items', href: '/thu-vien/', label: 'Item' },
+  { key: 'notes', href: '/thu-vien/ghi-chu/', label: 'Ghi chú' },
 ] as const;
 
-/** Switch between the two halves of Thư viện (DECISIONS 9.3: item + ghi chú). */
+/**
+ * Switch between the two halves of Thư viện (DECISIONS 9.3: item + ghi chú): the same segmented Tabs as Tuần and
+ * Inbox (DESIGN.md §6, D23), each tab a link to its route.
+ */
 export function LibraryTabs({ current }: { current: (typeof tabs)[number]['key'] }) {
   return (
-    <nav aria-label="Thư viện" className="flex flex-wrap gap-2">
-      {tabs.map(({ key, href, label, icon: Icon }) => (
-        <Button
-          key={key}
-          size="sm"
-          variant={current === key ? 'default' : 'outline'}
-          render={<Link href={href} aria-current={current === key ? 'page' : undefined} />}
-        >
-          <Icon aria-hidden />
-          {label}
-        </Button>
-      ))}
-    </nav>
+    <Tabs value={current}>
+      <TabsList aria-label="Thư viện">
+        {tabs.map(({ key, href, label }) => (
+          <TabsTab
+            key={key}
+            value={key}
+            nativeButton={false}
+            render={<Link href={href} aria-current={current === key ? 'page' : undefined} />}
+          >
+            {label}
+          </TabsTab>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }

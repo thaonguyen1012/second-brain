@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { getProgressStore, pageIdentity, useProgress } from '@/lib/progress';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress';
 
 /** "Đã học xong" checkbox at the bottom of every lesson page. */
@@ -48,7 +47,7 @@ export function BookProgress({ book, total }: { book: string; total: number }) {
           <ProgressIndicator className="bg-bw-red" />
         </ProgressTrack>
       </Progress>
-      <p className="text-[11px] font-medium leading-4 text-muted-foreground">
+      <p className="text-xs text-muted-foreground tabular-nums">
         {done > 0 ? `${done}/${total} bài · ${pct}%` : `${total} bài · chưa bắt đầu`}
       </p>
     </div>
@@ -67,22 +66,22 @@ export function ContinueReading({ books }: { books: BookLink[] }) {
   const book = last && books.find((b) => b.slug === last.bookSlug);
   if (!last || !book) return null;
   const href = `/docs/${book.track}/${book.slug}/${last.pageSlug ? `${last.pageSlug}/` : ''}`;
+  // The focal block of "Hôm nay" (DESIGN.md §1.2): the one filled surface on the page, the largest title.
   return (
-    <Card
-      render={<Link href={href} />}
-      className="group mt-4 flex max-w-4xl flex-col gap-2 rounded-3xl border p-2 shadow-depth-1 transition-shadow hover:shadow-popover sm:flex-row sm:items-center sm:gap-4"
+    <Link
+      href={href}
+      className="group mt-2 flex max-w-4xl flex-col gap-4 rounded-xl bg-secondary p-4 transition-colors duration-150 hover:bg-accent sm:flex-row sm:items-center sm:gap-6 sm:p-5"
     >
-      <span className="flex items-center gap-2 rounded-2xl bg-secondary px-4 py-3 text-xs font-semibold">
-        <span className="size-1.5 rounded-full bg-bw-red" aria-hidden />
-        Tiếp tục học
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <span className="size-1.5 shrink-0 rounded-full bg-bw-red" aria-hidden />
+          <span className="truncate">Tiếp tục học · {book.title}</span>
+        </span>
+        <span className="line-clamp-2 font-heading text-xl font-semibold tracking-tight">{last.title ?? book.title}</span>
       </span>
-      <span className="flex min-w-0 flex-1 flex-col px-3 py-2 sm:px-0">
-        <span className="truncate text-sm font-semibold tracking-tight">{last.title ?? book.title}</span>
-        <span className="truncate text-xs text-muted-foreground">{book.title}</span>
-      </span>
-      <Button size="sm" render={<span />} className="m-1 self-start sm:self-auto">
+      <Button render={<span />} className="self-start sm:self-auto">
         Học tiếp →
       </Button>
-    </Card>
+    </Link>
   );
 }

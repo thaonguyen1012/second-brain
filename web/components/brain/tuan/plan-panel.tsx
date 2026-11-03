@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import { ArrowRightLeft, NotebookPen, Target } from 'lucide-react';
 import type { ApiWeek } from '@/lib/api/client';
 import { type ApiCarryCandidate, weeksApi } from '@/lib/api/weeks';
 import { Button } from '@/components/ui/button';
@@ -44,15 +43,14 @@ function CarryOver({
 
   return (
     <WeekSection
-      icon={ArrowRightLeft}
       id="week-carry"
       title="Kéo mục tiêu chưa xong sang"
       description={`Mục tiêu còn mở của tuần ${weekRange(candidates[0].weekStart)}. Bỏ chọn cái không còn quan trọng.`}
     >
-      <ul className="flex flex-col gap-1.5">
+      <ul className="flex flex-col divide-y">
         {candidates.map((c) => (
           <li key={c.id}>
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm has-data-disabled:cursor-default">
+            <label className="flex cursor-pointer items-center gap-2.5 py-2 text-sm has-data-disabled:cursor-default">
               <Checkbox
                 checked={c.carried || picked.has(c.id)}
                 disabled={c.carried}
@@ -118,7 +116,6 @@ function PlanJournal({
 
   return (
     <WeekSection
-      icon={NotebookPen}
       id="week-plan-journal"
       title={`Kỳ vọng cho ${weekName}`}
       description={`Vài dòng: ${weekName} mong điều gì, sợ điều gì, bận gì ngoài kế hoạch. Không lên task ở đây.`}
@@ -177,15 +174,19 @@ export function PlanPanel({
   onCarried: (week: ApiWeek, carried: number[]) => void;
 }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
-      <div className="flex flex-col gap-4">
+    // One surface for the ritual (DESIGN.md D12): objectives on the left, the journal on the right, a hairline
+    // between them; the shorter column no longer leaves a floating card above an empty band.
+    <div className="grid rounded-xl border lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="flex min-w-0 flex-col divide-y">
         {carryCandidates.length > 0 && <CarryOver start={start} weekName={weekName} candidates={carryCandidates} onCarried={onCarried} />}
-        <WeekSection icon={Target} id="week-objectives" title="Mục tiêu tuần">
+        <WeekSection id="week-objectives" title="Mục tiêu tuần">
           <ObjectiveHint objectives={week.objectives} />
           <ObjectivesEditor start={start} objectives={week.objectives} onChange={onObjectives} />
         </WeekSection>
       </div>
-      <PlanJournal start={start} weekName={weekName} week={week} onSaved={onWeek} />
+      <div className="min-w-0 border-t lg:border-t-0 lg:border-l">
+        <PlanJournal start={start} weekName={weekName} week={week} onSaved={onWeek} />
+      </div>
     </div>
   );
 }

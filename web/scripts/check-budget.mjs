@@ -21,6 +21,21 @@ if (!fs.existsSync(page)) {
   process.exit(0);
 }
 
+// The number is only as fresh as the build: warn when shipped sources changed after it (tests and docs excluded).
+const buildId = path.join(web, '.next/BUILD_ID');
+const builtAt = fs.statSync(fs.existsSync(buildId) ? buildId : page).mtimeMs;
+const newer = [];
+function scan(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) scan(file);
+    else if (/\.(tsx?|mjs|js|css)$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+      if (fs.statSync(file).mtimeMs > builtAt) newer.push(path.relative(web, file));
+    }
+  }
+}
+for (const dir of ['app', 'components', 'lib']) scan(path.join(web, dir));
+
 const html = fs.readFileSync(page, 'utf8');
 const rows = [];
 let skipped = 0;
@@ -34,14 +49,20 @@ for (const [tag, src] of html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)) 
   rows.push({ src, gzip: zlib.gzipSync(fs.readFileSync(file), { level: 9 }).length });
 }
 const total = rows.reduce((sum, r) => sum + r.gzip, 0);
-const built = fs.statSync(page).mtime.toISOString().slice(0, 16).replace('T', ' ');
+const built = new Date(builtAt).toLocaleString('sv-SE', { timeZone: 'Europe/Prague' }).slice(0, 16);
 for (const r of rows.sort((a, b) => b.gzip - a.gzip).slice(0, 5)) {
   console.log(`budget:   ${(r.gzip / 1000).toFixed(1).padStart(6)} kB  ${r.src}`);
 }
 const kb = (n) => `${(n / 1000).toFixed(1)} kB`;
 console.log(
-  `budget: home First Load JS ${kb(total)} gzip in ${rows.length} scripts (${skipped} noModule skipped; build ${built}), limit ${kb(maxBytes)}`,
+  `budget: home First Load JS ${kb(total)} gzip in ${rows.length} scripts (${skipped} noModule skipped; build ${built} Prague), limit ${kb(maxBytes)}`,
 );
+if (newer.length) {
+  console.warn(
+    `budget: WARNING the build is older than ${newer.length} source file(s) (${newer.slice(0, 3).join(', ')}` +
+      `${newer.length > 3 ? ', ...' : ''}); this number may be stale, run \`npm run build\` to measure them`,
+  );
+}
 if (total > maxBytes) {
   console.error(`budget: over the limit by ${kb(total - maxBytes)}`);
   process.exit(1);

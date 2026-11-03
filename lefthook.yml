@@ -3,10 +3,21 @@
 # (npm install in web/ also runs it). Skip once with LEFTHOOK=0 git commit ...
 #
 # pre-commit runs the whole `make check`: web types + lint + Vitest, backend ruff + mypy + migrations + pytest,
-# the smoke test and the home JS budget. The smoke test needs a web server at SMOKE_BASE (default
-# http://localhost:3000, the owner's `next dev`; or `SMOKE_BASE=http://127.0.0.1:8080 git commit` with make dev).
+# the smoke test and the home JS budget. The smoke test uses the first server that answers (the owner's next dev
+# on :3000, then make dev on :8080) and is skipped with a warning when neither runs.
+# The check runs on the working tree, not on the staged snapshot: unstaged edits and untracked files under web/
+# and backend/ are type checked and linted too. The first job lists them so a failure there is not a surprise.
+# The budget is only as fresh as the last `npm run build` (it warns when sources are newer).
 # Playwright (`make e2e`) is not part of it: it needs the whole :8080 stack.
 pre-commit:
+  piped: true
   jobs:
+    - name: not staged
+      run: |
+        files=$(git status --porcelain -- web backend | grep -v '^[MADRC] ' || true)
+        if [ -n "$files" ]; then
+          echo "pre-commit: make check also sees these unstaged or untracked files:"
+          echo "$files" | sed 's/^/  /'
+        fi
     - name: make check
-      run: make check
+      run: make check SMOKE_FLAGS=--optional
