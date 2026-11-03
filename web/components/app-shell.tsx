@@ -29,6 +29,11 @@ import { InboxButton } from '@/components/brain/inbox-count';
 import { appName } from '@/lib/shared';
 
 /** Space UI sidebar: logo, then the six items of lib/app-nav.ts with their sub-items. */
+const footerLinks = [
+  { href: '/gioi-thieu/', label: 'Giới thiệu và case study' },
+  { href: '/huong-dan/', label: 'Hướng dẫn' },
+];
+
 function AppSidebar() {
   const raw = usePathname();
   const pathname = raw.endsWith('/') ? raw : `${raw}/`;
@@ -78,15 +83,18 @@ function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      {/* Not a 7th nav item (DECISIONS 4.4): a quiet text link to the intro page and case study */}
-      <SidebarFooter className="px-4 pb-4">
-        <Link
-          href="/gioi-thieu/"
-          aria-current={pathname === '/gioi-thieu/' ? 'page' : undefined}
-          className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground"
-        >
-          Giới thiệu và case study
-        </Link>
+      {/* Not nav items (DECISIONS 4.4): quiet text links to the intro page and the animated guides */}
+      <SidebarFooter className="flex-row flex-wrap gap-x-3 gap-y-1 px-4 pb-4">
+        {footerLinks.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            aria-current={pathname === l.href ? 'page' : undefined}
+            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground"
+          >
+            {l.label}
+          </Link>
+        ))}
       </SidebarFooter>
     </Sidebar>
   );

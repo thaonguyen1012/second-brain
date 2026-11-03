@@ -10,20 +10,30 @@
   color: var(--ss-text-strong);
 }
 
-/* One column at one width, centered on the well; the list runs off the bottom (gold: stacked-cards) */
+/* One column at one width, centered on the well; the list runs on into the column's foot, which fades out
+   (a mask, gold: fade-crop) above a band of plain well kept for the keycaps (kit .ss-keys, 16 px from the
+   bottom, 28 px tall), so a keycap never sits on a card's edge. The script keeps the selected card above the
+   fade. */
 .ssg-inbox .ib-col {
   position: absolute;
   top: 24px;
-  left: 70px;
+  bottom: 48px;
+  /* 4 px of padding each side keep the selection ring inside the mask */
+  left: 66px;
   display: flex;
   flex-direction: column;
-  width: 460px;
+  width: 468px;
+  padding: 0 4px;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent);
+  mask-repeat: no-repeat;
 }
 
 .ssg-inbox .ss-stage[data-layout='compact'] .ib-col {
   top: 16px;
-  left: 16px;
-  width: 326px;
+  bottom: 48px;
+  left: 12px;
+  width: 334px;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent);
 }
 
 /* Capture box: the "Thu thập nhanh" card (rounded-3xl, border, p-3) */
@@ -246,8 +256,19 @@
   min-width: 0;
 }
 
-.ssg-inbox .ib-head--filler {
-  gap: 8px;
+/* An entry already in the inbox: title and meta, one line each, beside the thumbnail's 44 px */
+.ssg-inbox .ib-panel--entry {
+  min-height: 64px;
+}
+
+.ssg-inbox .ib-title--entry {
+  margin-top: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ssg-inbox .ib-meta-bar {
+  margin-top: 8px;
 }
 
 .ssg-inbox .ib-badges {
@@ -351,6 +372,12 @@
   border-radius: 8px;
   background: var(--ss-surface);
   color: var(--ss-text-strong);
+}
+
+.ssg-inbox .ib-empty__text {
+  color: var(--ss-text);
+  font-size: 12.5px;
+  line-height: 18px;
 }
 
 .ssg-inbox .ib-empty__title {

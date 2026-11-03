@@ -1,8 +1,13 @@
 'use client';
 import { useState } from 'react';
-import { Library, NotebookPen, Pencil, Plus, Sparkles } from 'lucide-react';
+import { NotebookPen, Pencil, Plus, Sparkles } from 'lucide-react';
 import { formatDay, todayPrague } from '@/lib/dates';
-import { Collapse, Field, Stage, Swap, type Act } from '../kit';
+import { Stage } from '../kit/stage';
+import type { Act } from '../kit/act';
+import { Bar } from '../kit/window';
+import { Collapse } from '../kit/motion/Collapse';
+import { Swap } from '../kit/motion/Swap';
+import { Field } from '../kit/controls/Field';
 import { useBrainLook } from '../brain-look';
 import { GBadge, GButton, GDialog, GRow, GScrim, GSelect, GUIDE_SIZE } from './parts';
 import './library-item.css';
@@ -10,13 +15,15 @@ import './library-item.css';
 // An Item's life in the library, played once (about 12 s). The screen is the real Thư viện page
 // (components/brain/library-page.tsx, item-dialog.tsx, library/done-output.tsx, library/note-dialog.tsx)
 // simplified: the filters and "Thêm item", the item dialog, the ItemCard, its "chưa có đầu ra" reminder and
-// the note dialog with the book template.
+// the note dialog with the book template. The library's other items are placeholder cards under the new one
+// (the list is newest first), so the list runs off the bottom on every frame.
 //
 // Beats: a book is added; "Xong" marks it finished and the card asks for its output (DECISIONS 4.2: done needs
 // a note); "Viết ghi chú" opens a note already titled and templated, a highlight is written, the note is
 // created and the reminder leaves. The poster is the reminder frame: it tells the rule on its own.
 //
-// Built from the Stageshow gold `stacked-cards` (the page's pieces in one column) with `form-error` (the
+// Built from the Stageshow gold `stacked-cards` (the page's pieces in one column pinned a gutter from the top,
+// the list off the bottom) with `form-error` (the
 // message on the thing that caused it, cleared by fixing it; play once). The book is a neutral example.
 
 type S = {
@@ -73,6 +80,28 @@ async function script(a: Act<S>) {
   await a.wait(2200);
 }
 
+/** Another item of the library, as placeholders: badges, title, dates and its actions. */
+function FillerItem({ title, meta }: { title: number; meta: number }) {
+  return (
+    <div className="g-brain lb-filler" aria-hidden>
+      <div className="g-brain__panel">
+        <span className="g-brain__badges">
+          <Bar w={54} h={18} r={6} tone={2} />
+          <Bar w={38} h={18} r={6} tone={2} />
+        </span>
+        <Bar w={title} h={9} r={3} tone={3} />
+        <Bar w={meta} h={6} tone={2} />
+      </div>
+      <div className="g-brain__body">
+        <span className="g-actions">
+          <Bar w={46} h={24} r={7} tone={1} />
+          <Bar w={52} h={24} r={7} tone={1} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
 const LABEL =
   'Hình minh họa trang Thư viện: bấm Thêm item, nhập tên một cuốn sách rồi lưu; thẻ mới hiện trong thư viện. ' +
   'Bấm Xong khi đọc xong: thẻ nhắc "Xong rồi, nhưng chưa có đầu ra" và đề nghị ghi highlights và 3 ý chính. ' +
@@ -112,66 +141,62 @@ export default function LibraryItemGuide({ className }: { className?: string }) 
 
                 <Collapse open={s.notice !== ''}>
                   <div className="lb-notice">
-                    <Swap id={s.notice}>
-                      {s.notice === 'noted' ? `Đã tạo ghi chú "${BOOK}"` : `Đã thêm "${BOOK}"`}
-                    </Swap>
+                    <Swap id={s.notice}>{s.notice === 'noted' ? `Đã tạo ghi chú "${BOOK}"` : `Đã thêm "${BOOK}"`}</Swap>
                   </div>
                 </Collapse>
 
-                <Collapse open={!s.added}>
-                  <div className="lb-empty">
-                    <span className="lb-empty__icon">
-                      <Library size={16} strokeWidth={2} aria-hidden />
-                    </span>
-                    <span className="lb-empty__title">Chưa có item nào</span>
-                    <span className="g-desc">Thêm sách, phim, khóa học, bài viết hoặc dự án. Mục từ inbox cũng có thể thành item.</span>
-                  </div>
-                </Collapse>
-
-                <Collapse open={s.added} reveal="drop">
-                  <div className="g-brain">
-                    <div className="g-brain__panel">
-                      <span className="g-brain__badges">
-                        <Swap id={status} className="lb-status">
-                          <GBadge tone={s.done ? 'success' : 'info'}>{status}</GBadge>
-                        </Swap>
-                        <GBadge tone="secondary">Sách</GBadge>
-                      </span>
-                      <span className="g-brain__title">{BOOK}</span>
-                      <Swap id={s.done ? 'done' : 'active'} className="lb-meta">
-                        {s.done ? `bắt đầu ${today} · xong ${today}` : `bắt đầu ${today}`}
-                      </Swap>
-                    </div>
-                    <div className="g-brain__body">
-                      <Collapse open={s.done && !s.noted}>
-                        <div className="lb-hint">
-                          <span className="lb-hint__text">
-                            <Sparkles size={13} strokeWidth={2} aria-hidden />
-                            <span>
-                              <b>Xong rồi, nhưng chưa có đầu ra.</b> <span className="lb-muted">Ghi highlights và 3 ý chính.</span>
-                            </span>
+                <div className="lb-list">
+                  <Collapse open={s.added} reveal="drop">
+                    <div className="lb-slot">
+                      <div className="g-brain">
+                        <div className="g-brain__panel">
+                          <span className="g-brain__badges">
+                            <Swap id={status} className="lb-status">
+                              <GBadge tone={s.done ? 'success' : 'info'}>{status}</GBadge>
+                            </Swap>
+                            <GBadge tone="secondary">Sách</GBadge>
                           </span>
-                          <GButton size="xs" variant="outline" icon={NotebookPen} name="write-note">
-                            Viết ghi chú
-                          </GButton>
+                          <span className="g-brain__title">{BOOK}</span>
+                          <Swap id={s.done ? 'done' : 'active'} className="lb-meta">
+                            {s.done ? `bắt đầu ${today} · xong ${today}` : `bắt đầu ${today}`}
+                          </Swap>
                         </div>
-                      </Collapse>
-                      <span className="g-actions">
-                        <span className="lb-step" data-gone={s.done || undefined}>
-                          <GButton size="xs" name="done">
-                            Xong
-                          </GButton>
-                        </span>
-                        <GButton size="xs" variant="outline" icon={Pencil}>
-                          Sửa
-                        </GButton>
-                        <GButton size="xs" variant="ghost" icon={NotebookPen}>
-                          Ghi chú
-                        </GButton>
-                      </span>
+                        <div className="g-brain__body">
+                          <Collapse open={s.done && !s.noted}>
+                            <div className="lb-hint">
+                              <span className="lb-hint__text">
+                                <Sparkles size={13} strokeWidth={2} aria-hidden />
+                                <span>
+                                  <b>Xong rồi, nhưng chưa có đầu ra.</b>{' '}
+                                  <span className="lb-muted">Ghi highlights và 3 ý chính.</span>
+                                </span>
+                              </span>
+                              <GButton size="xs" variant="outline" icon={NotebookPen} name="write-note">
+                                Viết ghi chú
+                              </GButton>
+                            </div>
+                          </Collapse>
+                          <span className="g-actions">
+                            <span className="lb-step" data-gone={s.done || undefined}>
+                              <GButton size="xs" name="done">
+                                Xong
+                              </GButton>
+                            </span>
+                            <GButton size="xs" variant="outline" icon={Pencil}>
+                              Sửa
+                            </GButton>
+                            <GButton size="xs" variant="ghost" icon={NotebookPen}>
+                              Ghi chú
+                            </GButton>
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </Collapse>
+                  </Collapse>
+                  <FillerItem title={200} meta={120} />
+                  <FillerItem title={150} meta={96} />
+                  <FillerItem title={180} meta={110} />
+                </div>
               </div>
 
               <GScrim show={s.dialog !== null} />

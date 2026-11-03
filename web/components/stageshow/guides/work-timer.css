@@ -1,17 +1,15 @@
 /* Work timer guide (work-timer.tsx). Scoped under .ssg-work; shared pieces are in base.css. */
 
+/* Pinned a gutter from the top (the side gutter, 40 wide and 16 compact); the summary always runs off the
+   bottom, so content changing inside it never moves the header or the timer card (gold: stacked-cards) */
 .ssg-work .ss-stage .wt-col {
+  top: 40px;
   left: 40px;
   width: 520px;
 }
 
-/* The two cards are shorter than the wide stage: centre them on the well instead of leaving its lower part empty */
-.ssg-work .ss-stage[data-layout='wide'] .wt-col {
-  top: 50%;
-  translate: 0 -50%;
-}
-
 .ssg-work .ss-stage[data-layout='compact'] .wt-col {
+  top: 16px;
   left: 16px;
   width: 326px;
 }
@@ -21,8 +19,15 @@
   padding: 0;
 }
 
-.ssg-work .ss-stage .wt-swap {
+.ssg-work .ss-stage .wt-timer {
+  position: relative;
+}
+
+/* The swap slot and both states fill the card, so the form reaches the card's right inset */
+.ssg-work .ss-stage .wt-swap,
+.ssg-work .ss-stage .wt-swap > * {
   display: block;
+  width: 100%;
 }
 
 .ssg-work .ss-stage .wt-idle {
@@ -49,34 +54,29 @@
   color: var(--ss-icon);
 }
 
+/* The form as the app lays it out at this width (timer-panel.tsx, two columns): project and note, then
+   "Tính tiền" and "Bắt đầu"; compact stacks project and note on their own rows. The note box holds its whole
+   placeholder in both. */
 .ssg-work .ss-stage .wt-form {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   gap: 8px;
 }
 
 .ssg-work .ss-stage[data-layout='compact'] .wt-form {
-  display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.ssg-work .ss-stage .wt-project {
-  flex: none;
-  width: 168px;
-}
-
 .ssg-work .ss-stage .wt-note {
-  flex: 1;
   min-width: 0;
-  overflow: hidden;
   color: var(--ss-text-faint);
-  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ssg-work .ss-stage[data-layout='compact'] .wt-project,
 .ssg-work .ss-stage[data-layout='compact'] .wt-note {
   grid-column: 1 / -1;
-  width: auto;
 }
 
 .ssg-work .ss-stage .wt-bill {
@@ -102,7 +102,7 @@
   height: 34px;
 }
 
-.ssg-work .ss-stage[data-layout='compact'] .wt-start {
+.ssg-work .ss-stage .wt-start {
   justify-self: end;
 }
 
@@ -339,17 +339,36 @@
   gap: 8px;
 }
 
+/* A bar's length is its minutes against the longest row (BillableBar); the new row draws in from the left */
 .ssg-work .ss-stage .wt-row__bar {
-  width: 82%;
+  width: calc(82% * var(--w, 1));
   height: 12px;
   border-radius: 4px;
-  scale: 0 1;
   transform-origin: left;
+  transition: width 0.7s cubic-bezier(0.3, 0.7, 0.2, 1) 0.25s;
+}
+
+.ssg-work .ss-stage .wt-row--new .wt-row__bar {
+  scale: 0 1;
   transition: scale 0.7s cubic-bezier(0.3, 0.7, 0.2, 1) 0.25s;
 }
 
-.ssg-work .ss-stage .wt-row__bar[data-on] {
+.ssg-work .ss-stage .wt-row--new .wt-row__bar[data-on] {
   scale: 1 1;
+}
+
+/* The rows' gap is each row's foot, so the closed Collapse of the new row adds nothing */
+.ssg-work .ss-stage .wt-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ssg-work .ss-stage .wt-row {
+  padding-bottom: 10px;
+}
+
+.ssg-work .ss-stage .wt-row__name .ss-bar {
+  align-self: center;
 }
 
 .ssg-work .ss-stage .wt-row__total {
@@ -359,15 +378,18 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The time-lapse note sits on the timer card's top edge, half outside (gold: corner-chip) */
+/* The time-lapse note: centred on the timer card's top edge in wide (40 px column top, so 27 px of well above
+   it); compact has only a 16 px gutter, so it sits inside the running card's margin, right of the project */
 .ssg-work .ss-stage .wt-lapse {
-  top: 11px;
-  left: 92px;
+  top: -13px;
+  left: 52px;
 }
 
 .ssg-work .ss-stage[data-layout='compact'] .wt-lapse {
-  top: 3px;
-  left: 36px;
+  top: auto;
+  right: 12px;
+  bottom: 20px;
+  left: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

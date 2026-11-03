@@ -1,9 +1,15 @@
 'use client';
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Check, ChevronLeft, ChevronRight, Play, Square, Timer } from 'lucide-react';
 import { formatWeekRange } from '@/components/brain/work/format';
 import { mondayOf, todayPrague } from '@/lib/dates';
-import { Collapse, Count, Roll, Stage, Swap, type Act } from '../kit';
+import { Stage } from '../kit/stage';
+import type { Act } from '../kit/act';
+import { Bar } from '../kit/window';
+import { Collapse } from '../kit/motion/Collapse';
+import { Count } from '../kit/motion/Count';
+import { Roll } from '../kit/motion/Roll';
+import { Swap } from '../kit/motion/Swap';
 import { useBrainLook } from '../brain-look';
 import { GButton, GSelect, GUIDE_SIZE } from './parts';
 import './work-timer.css';
@@ -14,27 +20,48 @@ import './work-timer.css';
 //
 // Beats: a project is picked and "Bắt đầu" starts the timer (the card turns into the running clock); the clock
 // ticks, then a time-lapse note skips an hour and a half; T stops it; the summary tiles roll and the project's
-// billable bar draws in. The poster is that end frame. The hours are the guide's own session (an example
-// project), never the owner's.
+// billable bar draws in at the top of "Theo dự án" (rows are sorted by hours), carrying the week's other
+// projects down. The poster is that end frame. The hours are the guide's own example week (an example project
+// and five placeholder ones, enough to run off the bottom while the timer runs), never the owner's.
 //
-// Built from the Stageshow gold `stacked-cards` (two cards of one page in a column), with the value motion of
-// `table-edit` (a total that rolls a beat after the edit that feeds it) and `form-error` (play once, hold).
+// Built from the Stageshow gold `stacked-cards` (two cards of one page in a column pinned a gutter from the top,
+// the lower one running off the bottom on every frame), with the value motion of `table-edit` (a total that
+// rolls a beat after the edit that feeds it) and `form-error` (play once, hold).
 
 type S = {
   running: boolean;
   /** Seconds on the running clock */
   clock: number;
   lapse: boolean;
-  /** Minutes recorded this week */
-  minutes: number;
+  /** The session is recorded in the week */
+  logged: boolean;
 };
 
-const initial: S = { running: false, clock: 0, lapse: false, minutes: 0 };
-const POSTER: S = { running: false, clock: 0, lapse: false, minutes: 90 };
+const initial: S = { running: false, clock: 0, lapse: false, logged: false };
+const POSTER: S = { running: false, clock: 0, lapse: false, logged: true };
 
 const PROJECT = 'Website cho tiệm bánh';
 const CLIENT = 'Tiệm bánh Hoa Mai';
-const REST = { wide: { x: 560, y: 425 }, compact: { x: 330, y: 445 } };
+const SESSION = 90;
+const REST = { wide: { x: 580, y: 420 }, compact: { x: 330, y: 445 } };
+
+/** The week's other projects, drawn as placeholders: minutes and whether they are billable. */
+const OTHERS: {
+  minutes: number;
+  kind: 'billable' | 'nonbillable';
+  name: number;
+  client: number;
+}[] = [
+  { minutes: 60, kind: 'billable', name: 118, client: 64 },
+  { minutes: 45, kind: 'nonbillable', name: 92, client: 0 },
+  { minutes: 45, kind: 'billable', name: 104, client: 52 },
+  { minutes: 30, kind: 'nonbillable', name: 84, client: 0 },
+  { minutes: 30, kind: 'billable', name: 110, client: 58 },
+];
+const BASE = {
+  billable: OTHERS.filter((o) => o.kind === 'billable').reduce((n, o) => n + o.minutes, 0),
+  nonbillable: OTHERS.filter((o) => o.kind === 'nonbillable').reduce((n, o) => n + o.minutes, 0),
+};
 
 /** formatClock (work/format.ts): h:mm:ss */
 const clockText = (s: number) =>
@@ -47,6 +74,9 @@ function hoursText(m: number) {
   if (h === 0) return `${r} phút`;
   return r ? `${h} giờ ${String(r).padStart(2, '0')}` : `${h} giờ`;
 }
+
+/** share (week-summary.tsx) */
+const share = (part: number, total: number) => `${Math.round((part / total) * 100)}% tổng giờ`;
 
 async function script(a: Act<S>) {
   await a.wait(600);
@@ -63,7 +93,7 @@ async function script(a: Act<S>) {
 
   // 2. Time passes: the note says how much, the clock rolls to it
   a.mark('lapse');
-  await a.set({ lapse: true, clock: 5400 });
+  await a.set({ lapse: true, clock: SESSION * 60 });
   await a.wait(1500);
 
   // 3. T stops it; the week's tiles and the project's bar take the session
@@ -72,7 +102,7 @@ async function script(a: Act<S>) {
   await a.key('t');
   await a.set({ running: false });
   await a.wait(350);
-  await a.set({ minutes: 90 });
+  await a.set({ logged: true });
   await a.move(REST);
   await a.wait(2400);
 }
@@ -117,12 +147,19 @@ function TimerCard({ s, compact }: { s: S; compact: boolean }) {
           </div>
         )}
       </Swap>
+      {/* The time-lapse note: on the card's top edge in wide, inside the running card's margin in compact */}
+      <span className="g-note wt-lapse" data-show={s.lapse || undefined}>
+        1 giờ 30 phút sau
+      </span>
     </div>
   );
 }
 
 function SummaryCard({ s, compact, range }: { s: S; compact: boolean; range: string }) {
-  const has = s.minutes > 0;
+  const billable = BASE.billable + (s.logged ? SESSION : 0);
+  const total = billable + BASE.nonbillable;
+  // Bars are scaled to the longest row (BillableBar), so the new, longer row rescales the others
+  const scale = Math.max(...OTHERS.map((o) => o.minutes), s.logged ? SESSION : 0);
   return (
     <div className="g-card wt-summary">
       <div className="wt-summary__head">
@@ -144,62 +181,83 @@ function SummaryCard({ s, compact, range }: { s: S; compact: boolean; range: str
       <div className="wt-tiles">
         <span className="wt-tile">
           <span className="wt-tile__label">Tổng giờ</span>
-          <Roll className="wt-tile__value">{hoursText(s.minutes)}</Roll>
+          <Roll className="wt-tile__value">{hoursText(total)}</Roll>
         </span>
         <span className="wt-tile">
           <span className="wt-tile__label">Tính tiền</span>
           <Roll className="wt-tile__value" delay={120}>
-            {hoursText(s.minutes)}
+            {hoursText(billable)}
           </Roll>
-          <Collapse open={has}>
-            <span className="wt-tile__hint">100% tổng giờ</span>
-          </Collapse>
+          <Roll className="wt-tile__hint" delay={240}>
+            {share(billable, total)}
+          </Roll>
         </span>
         <span className="wt-tile">
           <span className="wt-tile__label">Không tính tiền</span>
-          <span className="wt-tile__value">0 phút</span>
-          <Collapse open={has}>
-            <span className="wt-tile__hint">0% tổng giờ</span>
-          </Collapse>
+          <span className="wt-tile__value">{hoursText(BASE.nonbillable)}</span>
+          <Roll className="wt-tile__hint" delay={240}>
+            {share(BASE.nonbillable, total)}
+          </Roll>
         </span>
       </div>
-      <Collapse open={!has}>
-        <span className="g-desc">Chưa có giờ nào trong tuần này.</span>
-      </Collapse>
-      <Collapse open={has} reveal="drop">
-        <div className="wt-by">
-          <div className="wt-by__head">
-            <span className="wt-by__title">Theo dự án</span>
-            <span className="wt-legend">
-              <span>
-                <i data-kind="billable" />
-                Tính tiền
-              </span>
-              <span>
-                <i data-kind="nonbillable" />
-                Không tính tiền
-              </span>
+      <div className="wt-by">
+        <div className="wt-by__head">
+          <span className="wt-by__title">Theo dự án</span>
+          <span className="wt-legend">
+            <span>
+              <i data-kind="billable" />
+              Tính tiền
             </span>
-          </div>
-          <div className="wt-row">
-            <span className="wt-row__name">
-              {PROJECT}
-              {!compact && <span className="wt-row__client">{CLIENT}</span>}
+            <span>
+              <i data-kind="nonbillable" />
+              Không tính tiền
             </span>
-            <span className="wt-row__track">
-              <span className="wt-row__bar" data-kind="billable" data-on={has || undefined} />
-              <span className="wt-row__total">1 giờ 30</span>
-            </span>
-          </div>
+          </span>
         </div>
-      </Collapse>
+        <div className="wt-list">
+          <Collapse open={s.logged} reveal="drop">
+            <div className="wt-row wt-row--new">
+              <span className="wt-row__name">
+                {PROJECT}
+                {!compact && <span className="wt-row__client">{CLIENT}</span>}
+              </span>
+              <span className="wt-row__track">
+                <span
+                  className="wt-row__bar"
+                  data-kind="billable"
+                  data-on={s.logged || undefined}
+                  style={{ '--w': SESSION / scale } as CSSProperties}
+                />
+                <span className="wt-row__total">{hoursText(SESSION)}</span>
+              </span>
+            </div>
+          </Collapse>
+          {OTHERS.map((o, i) => (
+            <div className="wt-row" key={i}>
+              <span className="wt-row__name">
+                <Bar w={compact ? Math.round(o.name * 0.85) : o.name} h={7} tone={3} />
+                {o.client > 0 && !compact && <Bar w={o.client} h={6} tone={2} />}
+              </span>
+              <span className="wt-row__track">
+                <span
+                  className="wt-row__bar"
+                  data-kind={o.kind}
+                  data-on
+                  style={{ '--w': o.minutes / scale } as CSSProperties}
+                />
+                <Bar w={30} h={6} tone={2} />
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
 const LABEL =
   'Hình minh họa trang Công việc, phần Giờ: chọn dự án rồi bấm Bắt đầu để bấm giờ; đồng hồ chạy, rồi nhấn T để dừng. ' +
-  'Phiên vừa ghi hiện ngay trong tổng kết tuần: tổng giờ, giờ tính tiền và không tính tiền, và một thanh cho dự án.';
+  'Phiên vừa ghi được cộng ngay vào tổng kết tuần: tổng giờ và giờ tính tiền tăng, và dự án có một thanh mới ở đầu phần Theo dự án.';
 
 export default function WorkTimerGuide({ className }: { className?: string }) {
   const look = useBrainLook();
@@ -227,9 +285,6 @@ export default function WorkTimerGuide({ className }: { className?: string }) {
                 <TimerCard s={s} compact={compact} />
                 <SummaryCard s={s} compact={compact} range={range} />
               </div>
-              <span className="g-note wt-lapse" data-show={s.lapse || undefined}>
-                1 giờ 30 phút sau
-              </span>
             </>
           );
         }}

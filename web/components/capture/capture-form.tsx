@@ -118,7 +118,15 @@ export function CaptureForm() {
 
 function Saved({ entry }: { entry: ApiInboxEntry }) {
   const [closeFailed, setCloseFailed] = useState(false);
+  // The bookmarklet falls back to this same tab when its popup is blocked: no opener, the article one step back.
+  // Closing would lose the article (and browsers refuse it anyway), so go back to it instead. The popup and the
+  // share-target window keep "Đóng".
+  const [sameTab] = useState(() => !window.opener && window.history.length > 1);
   const close = () => {
+    if (sameTab) {
+      window.history.back();
+      return;
+    }
     window.close();
     // Only windows opened by a script (the bookmarklet's popup) can close themselves.
     window.setTimeout(() => {
@@ -138,7 +146,7 @@ function Saved({ entry }: { entry: ApiInboxEntry }) {
       <p className="truncate text-sm text-muted-foreground">{entry.url || (entry.text ?? '').split('\n')[0]}</p>
       <div className="flex flex-wrap gap-2">
         <Button type="button" onClick={close} autoFocus>
-          Đóng
+          {sameTab ? 'Quay lại trang trước' : 'Đóng'}
         </Button>
         <Button variant="outline" render={<Link href={`/inbox/?status=inbox&id=${entry.id}`} />}>
           Mở Inbox

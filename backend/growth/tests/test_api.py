@@ -99,11 +99,13 @@ def test_freshness_fades_with_the_newest_evidence(client: Client) -> None:
     }
     assert by_name["Fresh"]["lastEvidenceOn"] == str(timezone.localdate() - dt.timedelta(days=30))
     # Exactly at the edge: 6 months without evidence is faded, a day less is still aging.
-    today = dt.date(2026, 11, 2)
+    # Relative to the real today, so the API filter below (which uses today) sees the same edge.
+    today = timezone.localdate()
+    edge_day = services.months_before(today, 6)
     edge = skill(user, "Edge")
-    SkillEvidence.objects.create(skill=edge, kind="link", title="x", date=dt.date(2026, 5, 2))
+    SkillEvidence.objects.create(skill=edge, kind="link", title="x", date=edge_day)
     assert services.skills(user, today).get(pk=edge.pk).freshness == "faded"  # type: ignore[attr-defined]
-    SkillEvidence.objects.create(skill=edge, kind="link", title="x", date=dt.date(2026, 5, 3))
+    SkillEvidence.objects.create(skill=edge, kind="link", title="x", date=edge_day + dt.timedelta(days=1))
     assert services.skills(user, today).get(pk=edge.pk).freshness == "aging"  # type: ignore[attr-defined]
     assert services.months_before(dt.date(2026, 8, 31), 6) == dt.date(2026, 2, 28)
     # The filter.

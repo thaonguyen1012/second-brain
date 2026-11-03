@@ -76,7 +76,9 @@
 
 /* ------------------------------------------------------------ hero: the shell, Hôm nay */
 
-/* A sidebar window inset top and sides, running about a fifth off the bottom (gold: linear, fade-crop) */
+/* A sidebar window on the tile's gray (a coloured stage): inset 8% of the tile's width at the top and both
+   sides (set inline by HeroShell from the measured slot), running about a quarter off the bottom
+   (framing rule 14; gold: raycast's stage with gutters). These are the fallbacks before the slot is measured. */
 .ssg-intro .hs-win {
   position: absolute;
   top: var(--pad);
@@ -235,7 +237,10 @@
 }
 
 .ssg-intro .hs-desc {
-  margin-top: 10px;
+  margin-top: 6px;
+  color: var(--ss-text);
+  font-size: 13px;
+  line-height: 18px;
 }
 
 /* "Tiếp tục học": the progress card (components/progress.tsx), its red-orange dot the app's highlight */
@@ -279,6 +284,16 @@
   min-width: 0;
 }
 
+.ssg-intro .hs-continue__title {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 17px;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ssg-intro .hs-primary {
   display: inline-flex;
   flex: none;
@@ -296,7 +311,7 @@
 
 .ssg-intro .hs-panels {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 14px;
 }
@@ -309,7 +324,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 150px;
+  /* Taller than their content, so the panels cross the crop by about a quarter (framing rule 11) */
+  min-height: 210px;
   padding: 14px;
   border-radius: 20px;
   background: var(--ss-surface);
@@ -349,6 +365,13 @@
   color: var(--ss-text);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+.ssg-intro .hs-objective__title {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ssg-intro .hs-objective__badge {
@@ -507,6 +530,12 @@
   line-height: 20px;
   letter-spacing: -0.01em;
   white-space: nowrap;
+}
+
+.ssg-intro .ip-title--entry {
+  margin-top: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ssg-intro .ip-meta {
@@ -724,11 +753,21 @@
   height: 20px;
 }
 
-.ssg-intro .bf-lines {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin: 3px 0 1px;
+.ssg-intro .op-row__text {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ssg-intro .bf-title {
+  margin: 2px 0 0;
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.01em;
 }
 
 .ssg-intro .bf-body {
@@ -740,7 +779,6 @@
 
 .ssg-intro .bf-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
 }
 

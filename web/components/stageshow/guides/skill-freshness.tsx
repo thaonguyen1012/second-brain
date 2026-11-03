@@ -2,7 +2,12 @@
 import { useState } from 'react';
 import { ExternalLink, Pencil, Plus, X } from 'lucide-react';
 import { formatDay, todayPrague } from '@/lib/dates';
-import { Bar, Collapse, Field, Stage, Swap, type Act } from '../kit';
+import { Stage } from '../kit/stage';
+import type { Act } from '../kit/act';
+import { Bar } from '../kit/window';
+import { Collapse } from '../kit/motion/Collapse';
+import { Swap } from '../kit/motion/Swap';
+import { Field } from '../kit/controls/Field';
 import { useBrainLook } from '../brain-look';
 import { GBadge, GButton, GRow, GSelect, GUIDE_SIZE, target, type Tone } from './parts';
 import './skill-freshness.css';
@@ -172,7 +177,8 @@ function Sheet({ s, today }: { s: S; today: string }) {
         <span className="sk-sheet__title">Bằng chứng</span>
         <Collapse open={!s.evidence}>
           <span className="g-desc sk-sheet__none">
-            Chưa có bằng chứng: thứ đã ship, case study, bài viết công khai. Không có bằng chứng thì kỹ năng ở trạng thái mờ.
+            Chưa có bằng chứng: thứ đã ship, case study, bài viết công khai. Không có bằng chứng thì kỹ năng ở trạng
+            thái mờ.
           </span>
         </Collapse>
         <Collapse open={s.evidence} reveal="drop">

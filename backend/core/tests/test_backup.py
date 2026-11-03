@@ -60,6 +60,31 @@ def test_pg_tool_prefers_pg_bin_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         backup.pg_tool("pg_tool_that_does_not_exist", 16)
 
 
+def test_backup_files_are_owner_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A stand-in pg_dump that writes its --file argument with the umask it was given
+    tool = tmp_path / "bin" / "pg_dump"
+    tool.parent.mkdir()
+    tool.write_text(
+        '#!/bin/sh\nfor a in "$@"; do case "$a" in --file=*) echo dump > "${a#--file=}";; esac; done\n'
+    )
+    tool.chmod(0o755)
+    monkeypatch.setattr(backup, "server_major", lambda db: 16)
+    monkeypatch.setattr(backup, "pg_tool", lambda name, major=None: str(tool))
+    directory = tmp_path / "backups"
+    directory.mkdir(mode=0o755)
+    directory.chmod(0o755)
+
+    target, _ = backup.backup({"NAME": "alex_brain"}, directory, "2026-11-02", keep=3)
+    assert target.read_text() == "dump\n"
+    assert target.stat().st_mode & 0o777 == 0o600
+    assert directory.stat().st_mode & 0o777 == 0o700
+
+    fresh = tmp_path / "new" / "backups"
+    target, _ = backup.backup({"NAME": "alex_brain"}, fresh, "2026-11-02", keep=3)
+    assert target.stat().st_mode & 0o777 == 0o600
+    assert fresh.stat().st_mode & 0o777 == 0o700
+
+
 def test_restore_check_without_dumps_fails(tmp_path: Path) -> None:
     with pytest.raises(CommandError, match="no dump"):
         call_command("restore_check", dir=tmp_path)

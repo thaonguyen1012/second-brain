@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 from django.apps import apps
 from django.contrib.auth.models import User
+from django.core import serializers
 from django.core.management import call_command
 from django.db import connection
 from django.test import Client
@@ -143,3 +144,20 @@ def test_export_writes_notes_and_json_without_secrets(client: Client, tmp_path: 
     dump = "\n".join(p.read_text() for p in tmp_path.rglob("*") if p.is_file())
     for leaked in ("THEIR", "pbkdf2", "hunter2", "CACHED OUTPUT", "entry_id", "SECRET"):
         assert leaked not in dump
+
+
+def test_tables_are_written_in_batches_with_djangos_json(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user = owner(client)
+    monkeypatch.setattr(export, "TABLE_BATCH", 2)
+    InboxEntry.objects.bulk_create([InboxEntry(user=user, text=f"idea {i} ý") for i in range(5)])
+    files = {name: list(chunks) for name, chunks in export.export_files(user)}
+
+    chunks = files["data/inbox_entries.json"]
+    assert len(chunks) == 2 + 3  # "[", three batches of at most 2 rows, the closing bracket
+    rows = InboxEntry.objects.filter(user=user).order_by("pk")
+    expected = serializers.serialize("json", rows, indent=2, ensure_ascii=False)
+    assert b"".join(chunks).decode() == expected
+    assert b"".join(files["data/items.json"]).decode() == serializers.serialize("json", [], indent=2)
+    assert json.loads(b"".join(files["manifest.json"]))["counts"]["inbox_entries"] == 5

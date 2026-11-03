@@ -1,23 +1,10 @@
 /* Library item guide (library-item.tsx). Scoped under .ssg-lib; shared pieces are in base.css. */
 
+/* The column is the shared page column (base.css .g-col): pinned a gutter from the top, the list running off
+   the bottom on every frame (gold: stacked-cards), so the toolbar and the buttons the cursor presses never move
+   while cards open and close below them. */
 .ssg-lib .ss-stage .lb-col {
-  top: 48px;
-  left: 60px;
-  width: 480px;
   gap: 0;
-}
-
-.ssg-lib .ss-stage[data-layout='compact'] .lb-col {
-  top: 16px;
-  left: 16px;
-  width: 326px;
-}
-
-/* The column is much shorter than the stage in both layouts: keep it centred on the well, so no frame (the end
-   frame especially, card only) leaves an empty lower half. It moves half of each Collapse, in step with it. */
-.ssg-lib .ss-stage[data-layout] .lb-col {
-  top: 50%;
-  translate: 0 -50%;
 }
 
 .ssg-lib .ss-stage .lb-toolbar {
@@ -49,32 +36,32 @@
   white-space: nowrap;
 }
 
-.ssg-lib .ss-stage .lb-empty {
+/* The list: the new card on top (newest first), the library's other items below as placeholders */
+.ssg-lib .ss-stage .lb-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 30px 24px 32px;
-  border: 1px dashed color-mix(in srgb, var(--ss-text) 35%, transparent);
-  border-radius: 22px;
-  text-align: center;
 }
 
-.ssg-lib .ss-stage .lb-empty__icon {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  margin-bottom: 6px;
-  border: 1px solid var(--ss-line);
-  border-radius: 8px;
-  background: var(--ss-surface);
+/* The gap is each card's foot, inside the Collapse, so the closed one adds nothing */
+.ssg-lib .ss-stage .lb-list .g-brain {
+  margin-bottom: 12px;
 }
 
-.ssg-lib .ss-stage .lb-empty__title {
-  font-family: var(--ss-heading);
-  font-size: 15px;
-  font-weight: 600;
+.ssg-lib .ss-stage .lb-slot {
+  display: flow-root;
+}
+
+.ssg-lib .ss-stage .lb-filler .g-brain__panel {
+  gap: 9px;
+}
+
+/* Compact: a little taller and further apart, so the third card crosses the bottom by a full gutter or more */
+.ssg-lib .ss-stage[data-layout='compact'] .lb-filler .g-brain__panel {
+  gap: 11px;
+}
+
+.ssg-lib .ss-stage[data-layout='compact'] .lb-list .g-brain {
+  margin-bottom: 14px;
 }
 
 .ssg-lib .ss-stage .lb-status {

@@ -1,7 +1,7 @@
 'use client';
 import type { CSSProperties, ReactNode } from 'react';
 import { ChevronDown, type LucideIcon } from 'lucide-react';
-import { Popover } from '../kit';
+import { Popover } from '../kit/motion/Popover';
 import './base.css';
 
 // Shared faux pieces of the app for the page guides: the app's Badge, Button, Kbd, section card, select box,
@@ -169,12 +169,7 @@ export function GMenu({
   return (
     <Popover show={show} className={cx('g-menu', className)} style={style}>
       {items.map((it, i) => (
-        <span
-          key={i}
-          className="g-menu__item"
-          data-on={on === i || undefined}
-          {...(it.name ? target(it.name) : {})}
-        >
+        <span key={i} className="g-menu__item" data-on={on === i || undefined} {...(it.name ? target(it.name) : {})}>
           {it.label}
         </span>
       ))}

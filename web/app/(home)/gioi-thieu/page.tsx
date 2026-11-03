@@ -160,6 +160,12 @@ export default function IntroPage() {
             </Tile>
           </ul>
         </div>
+        <p className="intro-noprint text-sm text-muted-foreground">
+          Muốn xem từng trang hoạt động thế nào?{' '}
+          <Link href="/huong-dan/" className="text-primary underline-offset-4 hover:underline">
+            Xem mọi hướng dẫn
+          </Link>
+        </p>
       </section>
 
       <section
@@ -342,6 +348,9 @@ export default function IntroPage() {
         </Link>
         <Link href="/phat-trien/" className="hover:text-foreground">
           Sổ tay
+        </Link>
+        <Link href="/huong-dan/" className="hover:text-foreground">
+          Hướng dẫn
         </Link>
       </footer>
     </div>

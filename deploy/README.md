@@ -116,7 +116,10 @@ make restore-check   # restores the newest dump into a throwaway database, print
 * Restoring for real (only after a loss; this replaces the data): stop Django and the jobs, then
   `dropdb alex_brain && createdb alex_brain && pg_restore --no-owner --no-acl -d alex_brain backend/backups/<date>.dump`.
 * The dumps sit on the same disk as the database: copy `backend/backups/` to another disk or cloud folder now and then.
-  They are not encrypted (the encrypted upload to object storage belongs to the VPS, see "Still to do").
+  They are not encrypted (the encrypted upload to object storage belongs to the VPS, see "Still to do"). Each dump is
+  the whole database (password hash, sessions, every note): `manage.py backup` writes them 0600 in a 0700 folder, and
+  every copy must stay owner-only (`cp -p`, `rsync -a`, a private folder) or be encrypted (for example
+  `gpg --symmetric`) before it goes to a shared disk or a cloud folder.
 
 Nightly, without a terminal: `deploy/launchd/com.example.brain.backup.plist` runs `manage.py backup` at 02:30 (on wake
 when the laptop slept through it). Not installed; to install it:

@@ -1,6 +1,7 @@
 """`manage.py export` and GET /api/export (DECISIONS 4.7: the data is Alex's): notes as markdown files with
 front matter, every other model of the owner as JSON (Django's serializer: pk, model, fields; links are ids).
-The command writes a folder, the endpoint streams the same files as a zip.
+The command writes a folder, the endpoint streams the same files as a zip. Both read every table in batches
+(TABLE_BATCH rows), never a whole table at once.
 
 Never exported: the User row (password hash), sessions, Job and LlmCache rows, LlmCall (not owned data), and
 nothing from settings or the environment. A test checks that every model with owner data is listed here.
@@ -10,10 +11,12 @@ import json
 import re
 import zipfile
 from collections.abc import Iterator
+from itertools import batched
 from pathlib import Path
 
 from django.contrib.auth.models import User
 from django.core import serializers
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Model
 from django.utils import timezone
 from django.utils.text import slugify
@@ -73,25 +76,53 @@ def note_markdown(note: Note) -> str:
     return "\n".join(lines) + note.markdown + ("" if note.markdown.endswith("\n") else "\n")
 
 
-def export_files(user: User) -> Iterator[tuple[str, bytes]]:
-    """Every file of an export as (relative path, UTF-8 bytes): notes/*.md, data/*.json, then manifest.json.
+# Rows per query batch: a table is read, serialized and written (or zipped) batch by batch, so memory stays at
+# one batch however large a table grows (news_items has no retention).
+TABLE_BATCH = 500
+NOTE_BATCH = 200
 
-    Runs one query per table while it is consumed; the manifest (last) holds the row counts by file.
+
+def _table_json(rows: Iterator[Model], counts: dict[str, int], name: str) -> Iterator[bytes]:
+    """The same JSON as `serializers.serialize("json", rows, indent=2)`, one batch of rows at a time."""
+    n = 0
+    yield b"["
+    for batch in batched(rows, TABLE_BATCH, strict=False):
+        parts: list[str] = []
+        for obj in serializers.serialize("python", batch):
+            parts.append(("," if n else "") + "\n")
+            parts.append(
+                json.dumps(obj, indent=2, separators=(",", ": "), cls=DjangoJSONEncoder, ensure_ascii=False)
+            )
+            n += 1
+        yield "".join(parts).encode()
+    yield b"\n]\n"
+    counts[name] = n
+
+
+def _manifest(user: User, counts: dict[str, int]) -> Iterator[bytes]:
+    manifest = {"exportedAt": timezone.now().isoformat(), "owner": user.email, "counts": counts}
+    yield (json.dumps(manifest, indent=2) + "\n").encode()
+
+
+def export_files(user: User) -> Iterator[tuple[str, Iterator[bytes]]]:
+    """Every file of an export as (relative path, UTF-8 chunks): notes/*.md, data/*.json, then manifest.json.
+
+    Each file's chunks must be consumed before the next file is taken (both writers below do): the queries run
+    in batches while the chunks are read, and the manifest (last) holds the row counts gathered on the way.
     """
     counts: dict[str, int] = {}
     notes = Note.objects.filter(user=user).prefetch_related("items").order_by("pk")
-    for note in notes:
-        yield f"notes/{note_file_name(note)}", note_markdown(note).encode()
-    counts["notes"] = len(notes)
+    n = 0
+    for note in notes.iterator(chunk_size=NOTE_BATCH):
+        yield f"notes/{note_file_name(note)}", iter((note_markdown(note).encode(),))
+        n += 1
+    counts["notes"] = n
 
     for name, (model, owner) in TABLES.items():
-        rows = list(model._default_manager.filter(**{owner: user}).order_by("pk"))
-        text = serializers.serialize("json", rows, indent=2, ensure_ascii=False) + "\n"
-        yield f"data/{name}.json", text.encode()
-        counts[name] = len(rows)
+        rows = model._default_manager.filter(**{owner: user}).order_by("pk").iterator(chunk_size=TABLE_BATCH)
+        yield f"data/{name}.json", _table_json(rows, counts, name)
 
-    manifest = {"exportedAt": timezone.now().isoformat(), "owner": user.email, "counts": counts}
-    yield "manifest.json", (json.dumps(manifest, indent=2) + "\n").encode()
+    yield "manifest.json", _manifest(user, counts)
 
 
 def export(user: User, out: Path) -> dict[str, int]:
@@ -107,11 +138,11 @@ def export(user: User, out: Path) -> dict[str, int]:
         if old.is_file() and NOTE_FILE.match(old.name):
             old.unlink()
 
-    manifest = b""
-    for name, data in export_files(user):
-        (out / name).write_bytes(data)
-        manifest = data
-    counts: dict[str, int] = json.loads(manifest)["counts"]
+    for name, chunks in export_files(user):
+        with (out / name).open("wb") as f:
+            for chunk in chunks:
+                f.write(chunk)
+    counts: dict[str, int] = json.loads((out / "manifest.json").read_bytes())["counts"]
     return counts
 
 
@@ -142,7 +173,11 @@ def stream_zip(user: User, folder: str) -> Iterator[bytes]:
     """The export as a zip, yielded file by file (deflated); every path sits under `folder/`."""
     sink = _Chunks()
     with zipfile.ZipFile(sink, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for name, data in export_files(user):
-            archive.writestr(f"{folder}/{name}", data)
+        for name, chunks in export_files(user):
+            # The size is unknown up front (written batch by batch), so allow a zip64 entry
+            with archive.open(f"{folder}/{name}", "w", force_zip64=True) as entry:
+                for chunk in chunks:
+                    entry.write(chunk)
+                    yield sink.take()
             yield sink.take()
     yield sink.take()  # central directory

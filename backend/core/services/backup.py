@@ -112,8 +112,13 @@ def rotate(directory: Path, keep: int) -> list[Path]:
 
 
 def backup(db: dict[str, Any], directory: Path, day: str, keep: int) -> tuple[Path, list[Path]]:
-    """pg_dump -Fc into directory/<day>.dump; returns the dump and the rotated-out files."""
-    directory.mkdir(parents=True, exist_ok=True)
+    """pg_dump -Fc into directory/<day>.dump; returns the dump and the rotated-out files.
+
+    A dump is an unencrypted copy of the whole database (password hashes, sessions, every Note), so the
+    directory is owner-only (0700, also when it already existed) and every dump is 0600, whatever the umask.
+    """
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    directory.chmod(0o700)
     target = directory / f"{day}.dump"
     partial = target.with_name(target.name + ".partial")
     command = [
@@ -125,10 +130,13 @@ def backup(db: dict[str, Any], directory: Path, day: str, keep: int) -> tuple[Pa
         db["NAME"],
     ]
     try:
-        subprocess.run(command, env=pg_env(db), check=True, capture_output=True, text=True)  # noqa: S603
+        subprocess.run(  # noqa: S603
+            command, env=pg_env(db), check=True, capture_output=True, text=True, umask=0o077
+        )
     except subprocess.CalledProcessError as exc:
         partial.unlink(missing_ok=True)
         raise BackupError(f"pg_dump failed: {exc.stderr.strip()}") from exc
+    partial.chmod(0o600)
     partial.replace(target)
     return target, rotate(directory, keep)
 

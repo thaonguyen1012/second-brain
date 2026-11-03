@@ -29,7 +29,14 @@ Guides today (all 600 x 452 wide, 358 x 470 compact below 560 px):
 Pages use `EmptyStateGuide guide="..."` from `lazy.tsx`: it wraps the guide in `guides/guide-frame.tsx`, a header
 with "Xem lại" (guides that play once) and "Ẩn hướng dẫn" / "Hiện hướng dẫn", remembered per guide in
 localStorage (`alex-brain:guide-hidden:<guide>`, every access in try/catch, in-memory fallback). Render it only
-when the list is loaded, has no error and is empty without a filter. `/huong-dan/` shows every guide.
+when the list is loaded, has no error and is empty without a filter. `/huong-dan/` shows every guide, the Inbox
+one too, each through the same frame (so the looping Inbox guide can be hidden there, WCAG 2.2.2); the sidebar
+footer and `/gioi-thieu/` link to it. The lazy placeholder switches on its container's width like the Stage
+(compact 358 x 470 below 560 px), so the page does not jump when a guide arrives.
+
+Guides and intro pictures import each kit part from its own file (`../kit/stage`, `../kit/motion/Collapse`,
+`../kit/controls/Field`...), never from the `kit/index.ts` barrel: the barrel pulls in the CSS of every part
+(phone, messages, keyboard, code, chart...), which the bundler does not tree-shake.
 
 The page guides share `guides/parts.tsx` (the app's Badge, Button, Kbd, section card, select, dialog, menu as
 faux pieces) and `guides/base.css` (scoped under `.ssg-brain`; each Stage gets `ssg-brain ssg-<name>`). A guide's

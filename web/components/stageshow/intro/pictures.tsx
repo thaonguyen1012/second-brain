@@ -13,7 +13,10 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react';
-import { Bar, Collapse, Stage, Text, Window, type Act, type LookTokens } from '../kit';
+import { Stage, type LookTokens } from '../kit/stage';
+import type { Act } from '../kit/act';
+import { Bar, Text, Window } from '../kit/window';
+import { Collapse } from '../kit/motion/Collapse';
 import { useBrainLook } from '../brain-look';
 import './pictures.css';
 
@@ -136,19 +139,36 @@ function PanelHead({ icon, title, link }: { icon: ReactNode; title: ReactNode; l
   );
 }
 
+/** Example objectives (the same three as the week guide) and their status badges (lib/labels.ts objectiveStatuses) */
+const HERO_OBJECTIVES: { title: string; status: string; tone: 'info' | 'success' }[] = [
+  { title: 'Viết case study', status: 'Xong', tone: 'success' },
+  { title: 'Ôn lại React hooks', status: 'Đang làm', tone: 'info' },
+  { title: 'Gửi 2 báo giá', status: 'Đang làm', tone: 'info' },
+];
+
 const HERO_LABEL =
   "Màn hình Hôm nay của Alex's Brain: thanh bên với sáu mục Hôm nay, Tuần, Phát triển, Thư viện, Cơ hội, Công việc; " +
-  'thanh trên có ô Tìm mọi thứ với phím tắt Cmd K và nút Inbox có số đếm; nội dung gồm Tiếp tục học, 3 ưu tiên tuần và Inbox.';
+  'thanh trên có ô Tìm mọi thứ với phím tắt Cmd K và nút Inbox có số đếm; nội dung gồm Tiếp tục học (Nhánh và merge ' +
+  'trong Git), 3 ưu tiên tuần (Viết case study, Ôn lại React hooks, Gửi 2 báo giá) và Inbox.';
 
+// The plate is the tile's own gray (a coloured stage), so the window is inset 8% of the tile's width on the
+// top and both sides and runs off the bottom (framing rule 14). Narrow tiles keep a desktop-width window that
+// runs off the right and the bottom instead.
 export function HeroShell() {
   return (
     <Picture name="hero" label={HERO_LABEL} initial={{}}>
-      {(_, { w }) => {
+      {(_, { w, h }) => {
         const wide = w >= 600;
+        const inset = Math.round(w * 0.08);
         return (
           <Window
             className={wide ? 'hs-win' : 'hs-win hs-win--narrow'}
-            sidebarWidth={wide ? 208 : 172}
+            style={
+              wide
+                ? { top: inset, left: inset, width: w - 2 * inset, height: Math.round((h - inset) * 1.3) }
+                : undefined
+            }
+            sidebarWidth={wide ? 200 : 172}
             sidebar={<ShellSidebar />}
             lead={
               <span className="hs-search">
@@ -172,14 +192,14 @@ export function HeroShell() {
           >
             <div className="hs-body">
               <span className="hs-title">Hôm nay</span>
-              <Bar w={wide ? 360 : 150} h={7} tone={3} className="hs-desc" />
+              <span className="hs-desc">Học tiếp, giữ 3 ưu tiên của tuần, dọn inbox và đọc bản tin sáng.</span>
               <span className="hs-continue">
                 <span className="hs-continue__tag">
                   <span className="hs-dot" aria-hidden />
                   Tiếp tục học
                 </span>
                 <span className="hs-continue__text">
-                  <Bar w={wide ? 220 : 120} h={7} tone={4} />
+                  <span className="hs-continue__title">Nhánh và merge trong Git</span>
                   <Bar w={wide ? 132 : 90} h={6} tone={3} />
                 </span>
                 {wide && <span className="hs-primary">Học tiếp →</span>}
@@ -191,37 +211,28 @@ export function HeroShell() {
                     title={<span className="hs-panel__title">3 ưu tiên tuần</span>}
                     link={wide}
                   />
-                  {[132, 104, 118].map((bw, i) => (
-                    <span key={i} className="hs-objective">
+                  {HERO_OBJECTIVES.map((o, i) => (
+                    <span key={o.title} className="hs-objective">
                       <span className="hs-objective__n">{i + 1}.</span>
-                      <Bar w={bw} h={6} tone={4} />
-                      <Bar w={44} h={16} r={5} tone={2} className="hs-objective__badge" />
+                      <span className="hs-objective__title">{o.title}</span>
+                      <span className="ip-badge hs-objective__badge" data-tone={o.tone}>
+                        {o.status}
+                      </span>
                     </span>
                   ))}
                 </span>
                 {wide && (
-                  <>
-                    <span className="hs-panel">
-                      <PanelHead
-                        icon={<Inbox size={14} strokeWidth={2} aria-hidden />}
-                        title={<span className="hs-panel__title">Inbox</span>}
-                        link
-                      />
-                      <span className="hs-inbox">
-                        <span className="hs-inbox__n">3</span>
-                        <Bar w={112} h={6} tone={3} />
-                      </span>
+                  <span className="hs-panel">
+                    <PanelHead
+                      icon={<Inbox size={14} strokeWidth={2} aria-hidden />}
+                      title={<span className="hs-panel__title">Inbox</span>}
+                      link
+                    />
+                    <span className="hs-inbox">
+                      <span className="hs-inbox__n">3</span>
+                      <Bar w={112} h={6} tone={3} />
                     </span>
-                    <span className="hs-panel">
-                      <PanelHead
-                        icon={<Bar w={14} h={14} r={4} tone={3} />}
-                        title={<Bar w={96} h={7} tone={4} />}
-                        link
-                      />
-                      <Bar w={128} h={6} tone={3} />
-                      <Bar w={92} h={6} tone={2} />
-                    </span>
-                  </>
+                  </span>
                 )}
               </span>
             </div>
@@ -259,6 +270,22 @@ async function inboxScript(a: Act<InboxS>) {
   await a.set({ legend: null });
 }
 
+/** An entry the keys act on: thumbnail placeholder, a short real title and its domain (neutral examples). */
+function EntryCard({ selected, title, meta }: { selected?: boolean; title: string; meta: string }) {
+  return (
+    <span className="ip-card" data-selected={selected || undefined}>
+      <span className="ip-panel">
+        <Bar w={44} h={44} r={12} tone={3} />
+        <span className="ip-head">
+          <span className="ip-title ip-title--entry">{title}</span>
+          <span className="ip-meta">{meta}</span>
+        </span>
+      </span>
+    </span>
+  );
+}
+
+/** An entry that is not the story (below the focal card): placeholder lines. */
 function FillerCard({ selected, title, meta }: { selected?: boolean; title: number; meta: number }) {
   return (
     <span className="ip-card" data-selected={selected || undefined}>
@@ -276,7 +303,7 @@ function FillerCard({ selected, title, meta }: { selected?: boolean; title: numb
 
 const INBOX_LABEL =
   'Inbox xử lý bằng phím: hàng phím tắt J/K xuống lên, L đọc sau, A lưu trữ, O bằng chứng cho cơ hội. ' +
-  'Nhấn L rồi A, hai mục rời danh sách; mục đã được gắn tag #postgres #tim-kiem và gợi ý Đọc sau lên đầu, đang được chọn.';
+  'Nhấn L (CSS Grid: hướng dẫn đầy đủ) rồi A (Mẹo tập trung khi làm việc), hai mục rời danh sách; mục đã được gắn tag #postgres #tim-kiem và gợi ý Đọc sau lên đầu, đang được chọn.';
 
 export function InboxTile() {
   return (
@@ -293,12 +320,12 @@ export function InboxTile() {
           </span>
           <Collapse open={s.a} reveal="drop">
             <span className="ip-gap">
-              <FillerCard selected={s.sel === 'a'} title={168} meta={92} />
+              <EntryCard selected={s.sel === 'a'} title="CSS Grid: hướng dẫn đầy đủ" meta="developer.mozilla.org" />
             </span>
           </Collapse>
           <Collapse open={s.c} reveal="drop">
             <span className="ip-gap">
-              <FillerCard selected={s.sel === 'c'} title={132} meta={104} />
+              <EntryCard selected={s.sel === 'c'} title="Mẹo tập trung khi làm việc" meta="dev.to" />
             </span>
           </Collapse>
           <span className="ip-gap">
@@ -435,7 +462,7 @@ export function OpportunityTile() {
   return (
     <Picture
       name="opp"
-      label="Một cơ hội ví dụ, Đặt lịch online cho tiệm nail: bốn điểm tự chấm Cơ hội, Nỗi đau, Khả thi, Thời điểm, và hai bằng chứng, một ủng hộ, một phản bác."
+      label="Một cơ hội ví dụ, Đặt lịch online cho tiệm nail: bốn điểm tự chấm Cơ hội, Nỗi đau, Khả thi, Thời điểm, và hai bằng chứng: ủng hộ, nói chuyện với 3 tiệm nail; phản bác, đã có app đặt lịch miễn phí."
       initial={{}}
     >
       {() => (
@@ -461,17 +488,13 @@ export function OpportunityTile() {
               <span className="ip-badge" data-tone="success">
                 Ủng hộ
               </span>
-              <Bar w={132} h={6} tone={4} />
+              <span className="op-row__text">Nói chuyện với 3 tiệm nail</span>
             </span>
             <span className="op-row">
               <span className="ip-badge" data-tone="error">
                 Phản bác
               </span>
-              <Bar w={104} h={6} tone={4} />
-            </span>
-            <span className="op-row">
-              <Bar w={48} h={18} r={6} tone={2} />
-              <Bar w={118} h={6} tone={3} />
+              <span className="op-row__text">Đã có app đặt lịch miễn phí</span>
             </span>
           </span>
         </div>
@@ -543,14 +566,16 @@ export function BriefTile() {
   return (
     <Picture
       name="brief"
-      label="Một tin trong bản tin sáng, có tag Công cụ mới và #ai, với các nút Đưa vào Inbox, hữu ích hoặc không, và Bằng chứng cho cơ hội."
+      label="Một tin trong bản tin sáng, Trợ lý viết code chạy offline ra mắt, có tag Công cụ mới và #ai, với các nút Đưa vào Inbox, hữu ích hoặc không, và Bằng chứng cho cơ hội."
       initial={{}}
     >
       {(_, { w }) => (
         <div className="bf-card" data-narrow={w < 400 || undefined}>
           <span className="op-panel">
             <span className="ip-badges">
-              <Bar w={56} h={18} r={6} tone={2} />
+              <span className="ip-badge" data-tone="secondary">
+                Hacker News
+              </span>
               <span className="ip-badge" data-tone="info">
                 Công cụ mới
               </span>
@@ -558,10 +583,7 @@ export function BriefTile() {
                 #ai
               </span>
             </span>
-            <span className="bf-lines">
-              <Bar w={210} h={8} r={3} tone={5} />
-              <Bar w={150} h={8} r={3} tone={5} />
-            </span>
+            <span className="bf-title">Trợ lý viết code chạy offline ra mắt</span>
             <Bar w={96} h={6} r={3} tone={3} />
           </span>
           <span className="bf-body">
@@ -573,12 +595,17 @@ export function BriefTile() {
                 <Inbox size={14} strokeWidth={2} aria-hidden />
                 Đưa vào Inbox
               </span>
-              <span className="bf-btn bf-btn--icon" aria-hidden>
-                <ThumbsUp size={14} strokeWidth={2} />
-              </span>
-              <span className="bf-btn bf-btn--icon" aria-hidden>
-                <ThumbsDown size={14} strokeWidth={2} />
-              </span>
+              {/* The thumbs only where the four actions fit on one row */}
+              {w >= 440 && (
+                <>
+                  <span className="bf-btn bf-btn--icon" aria-hidden>
+                    <ThumbsUp size={14} strokeWidth={2} />
+                  </span>
+                  <span className="bf-btn bf-btn--icon" aria-hidden>
+                    <ThumbsDown size={14} strokeWidth={2} />
+                  </span>
+                </>
+              )}
               <span className="bf-btn">Bằng chứng cho cơ hội…</span>
             </span>
           </span>

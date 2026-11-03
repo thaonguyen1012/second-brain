@@ -1,20 +1,29 @@
 'use client';
 import { Inbox, Loader2 } from 'lucide-react';
-import { Bar, Collapse, Field, Popover, Stage, Swap, Text, type Act } from '../kit';
+import { Stage } from '../kit/stage';
+import type { Act } from '../kit/act';
+import { Bar, Text } from '../kit/window';
+import { Collapse } from '../kit/motion/Collapse';
+import { Popover } from '../kit/motion/Popover';
+import { Swap } from '../kit/motion/Swap';
+import { Field } from '../kit/controls/Field';
 import { useBrainLook } from '../brain-look';
 import './inbox-triage.css';
 
-// How the Inbox works, as a 15 s loop: a link is captured, its card unfurls with a thumbnail, AI tags and a
+// How the Inbox works, as a 16 s loop: a link is captured, its card unfurls with a thumbnail, AI tags and a
 // suggested destination (the background job's result, time compressed), Esc leaves the capture box, then the
-// keyboard triages the list down to zero (j/k move, l = đọc sau,
-// a = lưu trữ, o = bằng chứng cho cơ hội). The screen is the real Inbox page (components/brain/inbox-page.tsx)
-// simplified: the capture box, the key legend, BrainCards, the opportunity dialog and the empty state.
+// keyboard triages the list down to zero (o = bằng chứng cho cơ hội, as suggested; j/k move, l = đọc sau,
+// a = lưu trữ). The screen is the real Inbox page (components/brain/inbox-page.tsx) simplified: the capture box,
+// the key legend, BrainCards, the opportunity dialog and the empty state.
 //
 // Built from the Stageshow gold `stacked-cards` (one column of components at one width, centered on the
-// well, the list running off the bottom) with the motion of `gmail` (a card folding out of its list) and
-// the keycaps of `raycast`. No cursor: triage is keyboard only, so the keys are the story.
+// well, the list running off the bottom) with the motion of `gmail` (a card folding out of its list), the
+// keycaps of `raycast` and the foot of `fade-crop`: the column fades out above a band kept clear for the
+// keycaps, so they never land on a card's edge. No cursor: triage is keyboard only, so the keys are the story.
+// Every entry the keys act on has a short real title (neutral examples); only thumbnails and dates are
+// placeholders. The selected entry always sits above the fade.
 //
-// Loop seam: the story empties the list; two new entries then drop in as new arrivals (the inbox filling
+// Loop seam: the story empties the list; three entries then drop in as new arrivals (the inbox filling
 // again), which is the opening frame. The captured card is reset while folded away (a.snap).
 
 type Legend = 'jk' | 'l' | 'a' | 'o' | null;
@@ -26,10 +35,11 @@ type S = {
   /** The captured entry is in the list; `ready` once the background job has unfurled and tagged it */
   n: boolean;
   ready: boolean;
-  /** The two entries that were already in the inbox */
+  /** The three entries that were already in the inbox */
   a: boolean;
   b: boolean;
-  sel: 'n' | 'a' | 'b' | null;
+  c: boolean;
+  sel: 'n' | 'a' | 'b' | 'c' | null;
   legend: Legend;
   dialog: boolean;
   pick: boolean;
@@ -37,6 +47,13 @@ type S = {
 };
 
 const LINK = 'https://nextjs.org/learn';
+
+/** The entries already in the inbox: one line of title and one of meta each (a domain, or a date for a note) */
+const ENTRIES = {
+  a: { title: 'CSS Grid: hướng dẫn đầy đủ', meta: 'developer.mozilla.org', thumb: true },
+  b: { title: 'Mẹo tập trung khi làm việc', meta: 'dev.to', thumb: true },
+  c: { title: 'Ý tưởng: email nhắc trả tiền', meta: null, thumb: false },
+} as const;
 
 const initial: S = {
   typed: '',
@@ -46,6 +63,7 @@ const initial: S = {
   ready: false,
   a: true,
   b: true,
+  c: true,
   sel: 'a',
   legend: null,
   dialog: false,
@@ -85,24 +103,12 @@ async function script(a: Act<S>) {
   await a.set({ ready: true });
   await a.wait(1700);
 
-  // 3. Esc leaves the capture box (single keys are ignored while typing), then one key per decision:
-  // j down, l = đọc sau (the card leaves, the cursor stays in place), k back up
-  a.mark('triage');
+  // 3. Esc leaves the capture box (single keys are ignored while typing); o: evidence for an opportunity, as
+  // the AI suggested; 1 = ủng hộ the first one. The card leaves and the next entry takes the cursor
+  a.mark('opportunity');
   await a.key('esc');
   await a.set({ focused: false });
   await a.wait(450);
-  await a.key('j');
-  await a.set({ legend: 'jk', sel: 'a' });
-  await a.wait(800);
-  await a.key('l');
-  await a.set({ legend: 'l', a: false, sel: 'b' });
-  await a.wait(1000);
-  await a.key('k');
-  await a.set({ legend: 'jk', sel: 'n' });
-  await a.wait(700);
-
-  // 4. o: evidence for an opportunity, as the AI suggested; 1 = ủng hộ the first one
-  a.mark('opportunity');
   await a.key('o');
   await a.set({ legend: 'o', dialog: true });
   await a.wait(1400);
@@ -111,20 +117,35 @@ async function script(a: Act<S>) {
   await a.wait(260);
   await a.set({ dialog: false, legend: null });
   await a.wait(220);
-  await a.set({ n: false, sel: 'b' });
+  await a.set({ n: false, sel: 'a' });
+  await a.wait(900);
+
+  // 4. One key per decision: j down, k back up, l = đọc sau (the card leaves, the cursor stays in place)
+  a.mark('triage');
+  await a.key('j');
+  await a.set({ legend: 'jk', sel: 'b' });
+  await a.wait(700);
+  await a.key('k');
+  await a.set({ legend: 'jk', sel: 'a' });
+  await a.wait(700);
+  await a.key('l');
+  await a.set({ legend: 'l', a: false, sel: 'b' });
   await a.wait(1000);
 
-  // 5. a = lưu trữ the last one: inbox zero, the payoff, held
+  // 5. a = lưu trữ the last two: inbox zero, the payoff, held
   a.mark('zero');
   await a.key('a');
-  await a.set({ legend: 'a', b: false, sel: null, empty: true });
+  await a.set({ legend: 'a', b: false, sel: 'c' });
+  await a.wait(800);
+  await a.key('a');
+  await a.set({ c: false, sel: null, empty: true });
   await a.wait(900);
   await a.set({ legend: null });
   await a.wait(1500);
 
   // Reset: the captured card is folded away, so it resets unseen; new entries arrive and the loop reopens
   await a.snap({ ready: false, pick: false });
-  await a.set({ empty: false, a: true, b: true, sel: 'a' });
+  await a.set({ empty: false, a: true, b: true, c: true, sel: 'a' });
   await a.wait(900);
 }
 
@@ -177,16 +198,19 @@ function CapturedCard({ s }: { s: S }) {
   );
 }
 
-/** An entry that is not the story: the same card in placeholder lines. */
-function FillerCard({ selected, title, meta }: { selected: boolean; title: number; meta: number }) {
+/** An entry already in the inbox: thumbnail (a link's) and date are placeholders, the title and domain real. */
+function EntryCard({ entry, selected }: { entry: (typeof ENTRIES)[keyof typeof ENTRIES]; selected: boolean }) {
   return (
     <article className="ib-card" data-selected={selected || undefined}>
-      <div className="ib-panel">
-        <Bar w={44} h={44} r={12} tone={3} className="ib-fthumb" />
-        <div className="ib-head ib-head--filler">
-          <Bar w={40} h={14} r={5} tone={3} />
-          <Bar w={title} h={8} r={3} tone={5} />
-          <Bar w={meta} h={6} r={3} tone={3} />
+      <div className="ib-panel ib-panel--entry">
+        {entry.thumb && <Bar w={44} h={44} r={12} tone={3} className="ib-fthumb" />}
+        <div className="ib-head">
+          <span className="ib-title ib-title--entry">{entry.title}</span>
+          {entry.meta ? (
+            <span className="ib-meta">{entry.meta}</span>
+          ) : (
+            <Bar w={64} h={6} r={3} tone={3} className="ib-meta-bar" />
+          )}
         </div>
       </div>
     </article>
@@ -228,7 +252,11 @@ export default function InboxTriageGuide({ className }: { className?: string }) 
                   <Text filler w={150} className="ib-hint-text">
                     tag và tóm tắt được thêm sau, trong nền
                   </Text>
-                  <span className="ib-button" data-off={(!s.typed && !s.saving) || undefined} data-pressed={s.saving || undefined}>
+                  <span
+                    className="ib-button"
+                    data-off={(!s.typed && !s.saving) || undefined}
+                    data-pressed={s.saving || undefined}
+                  >
                     Lưu vào inbox
                   </span>
                 </div>
@@ -249,25 +277,20 @@ export default function InboxTriageGuide({ className }: { className?: string }) 
                     <CapturedCard s={s} />
                   </div>
                 </Collapse>
-                <Collapse open={s.a} reveal="drop">
-                  <div className="ib-gap">
-                    <FillerCard selected={s.sel === 'a'} title={168} meta={92} />
-                  </div>
-                </Collapse>
-                <Collapse open={s.b} reveal="drop">
-                  <div className="ib-gap">
-                    <FillerCard selected={s.sel === 'b'} title={132} meta={104} />
-                  </div>
-                </Collapse>
+                {(['a', 'b', 'c'] as const).map((k) => (
+                  <Collapse key={k} open={s[k]} reveal="drop">
+                    <div className="ib-gap">
+                      <EntryCard entry={ENTRIES[k]} selected={s.sel === k} />
+                    </div>
+                  </Collapse>
+                ))}
                 <Collapse open={s.empty} reveal="drop">
                   <div className="ib-empty">
                     <span className="ib-empty__icon">
                       <Inbox size={18} strokeWidth={2} aria-hidden />
                     </span>
                     <Text className="ib-empty__title">Inbox đã về 0</Text>
-                    <Text filler w={176} className="ib-empty__text">
-                      Mọi thứ đã được xử lý.
-                    </Text>
+                    <Text className="ib-empty__text">Mọi thứ đã được xử lý.</Text>
                   </div>
                 </Collapse>
               </div>

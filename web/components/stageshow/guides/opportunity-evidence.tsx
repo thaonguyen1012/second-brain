@@ -1,6 +1,9 @@
 'use client';
 import { Gauge, Lightbulb, Link2, MessagesSquare, Pencil, Plus, ThumbsDown, ThumbsUp } from 'lucide-react';
-import { Collapse, Field, Stage, type Act } from '../kit';
+import { Stage } from '../kit/stage';
+import type { Act } from '../kit/act';
+import { Collapse } from '../kit/motion/Collapse';
+import { Field } from '../kit/controls/Field';
 import { useBrainLook } from '../brain-look';
 import { GBadge, GButton, GCard, GDialog, GMenu, GRow, GScrim, GSelect, GUIDE_SIZE } from './parts';
 import './opportunity-evidence.css';
@@ -252,10 +255,22 @@ function DetailPage({ s, compact }: { s: S; compact: boolean }) {
         className="op-evcard"
         action={
           <>
-            <GButton size={compact ? 'xs' : 'sm'} variant="outline" icon={MessagesSquare} kbd={compact ? undefined : 'C'} name="add-conversation">
+            <GButton
+              size={compact ? 'xs' : 'sm'}
+              variant="outline"
+              icon={MessagesSquare}
+              kbd={compact ? undefined : 'C'}
+              name="add-conversation"
+            >
               Cuộc nói chuyện
             </GButton>
-            <GButton size={compact ? 'xs' : 'sm'} variant="outline" icon={Link2} kbd={compact ? undefined : 'L'} name="add-link">
+            <GButton
+              size={compact ? 'xs' : 'sm'}
+              variant="outline"
+              icon={Link2}
+              kbd={compact ? undefined : 'L'}
+              name="add-link"
+            >
               Link
             </GButton>
           </>

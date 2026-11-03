@@ -17,7 +17,7 @@
   left: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
   opacity: 0;
   translate: 8px 0;
@@ -89,11 +89,13 @@
 }
 
 /* Detail: badge, title, hypothesis */
+/* The detail page is sized so the evidence card ends a full gutter above the stage edge (24 wide, 16 compact,
+   framing rule 11): tight head, short score plots, and in compact slimmer tiles and evidence rows. */
 .ssg-opp .ss-stage .op-head {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 2px 4px 2px;
+  gap: 4px;
+  padding: 0 4px;
 }
 
 .ssg-opp .ss-stage .op-title {
@@ -161,7 +163,8 @@
 /* Narrow tiles: side padding kept small so "Thời điểm" fits whole instead of ending in an ellipsis */
 .ssg-opp .ss-stage[data-layout='compact'] .op-score {
   grid-template-columns: minmax(0, 1fr);
-  padding: 8px 6px;
+  row-gap: 4px;
+  padding: 6px 6px;
 }
 
 .ssg-opp .ss-stage[data-layout='compact'] .op-score__label {
@@ -171,9 +174,14 @@
 .ssg-opp .ss-stage .op-score__plot {
   position: relative;
   grid-column: 1 / -1;
-  height: 26px;
+  height: 16px;
   background-image: linear-gradient(var(--ss-line) 1px, transparent 1px);
-  background-size: 100% 12.5px;
+  background-size: 100% 7.5px;
+}
+
+.ssg-opp .ss-stage[data-layout='compact'] .op-score__plot {
+  height: 14px;
+  background-size: 100% 6.5px;
 }
 
 .ssg-opp .ss-stage .op-score__dot {
@@ -226,7 +234,8 @@
 .ssg-opp .ss-stage[data-layout='compact'] .op-ev {
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 4px;
+  padding: 7px 10px;
 }
 
 .ssg-opp .ss-stage .op-ev__badges {

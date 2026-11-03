@@ -1,6 +1,10 @@
 'use client';
 import { ArrowRightLeft, Check, Clock, Info, MessageSquareText, Plus, Target } from 'lucide-react';
-import { Collapse, Field, Stage, Swap, type Act } from '../kit';
+import { Stage } from '../kit/stage';
+import type { Act } from '../kit/act';
+import { Collapse } from '../kit/motion/Collapse';
+import { Swap } from '../kit/motion/Swap';
+import { Field } from '../kit/controls/Field';
 import { useBrainLook } from '../brain-look';
 import { GBadge, GButton, GCard, GKbd, GUIDE_SIZE } from './parts';
 import './week-ritual.css';
@@ -30,8 +34,9 @@ type S = {
 const initial: S = { carried: false, count: 0, draft: '', typing: false, tab: 'plan', answering: false };
 const POSTER: S = { carried: true, count: 3, draft: '', typing: false, tab: 'review', answering: true };
 
-const CARRIED = ['Viết case study cho dự án web', 'Ôn lại React hooks'];
-const ADDED = 'Gửi báo giá cho 2 khách';
+// Short enough to show whole in the review's "Theo mục tiêu" name column (no ellipsis on the poster)
+const CARRIED = ['Viết case study', 'Ôn lại React hooks'];
+const ADDED = 'Gửi 2 báo giá';
 
 /** ObjectiveHint (objectives-editor.tsx) for 0, 2 and 3 objectives, word for word. */
 const HINT: Record<S['count'], string> = {
@@ -50,6 +55,8 @@ const QUESTIONS = [
   'Cơ hội nào có thêm bằng chứng?',
 ];
 const Q2_HINT = 'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở bên trái.';
+/** The compact design stacks the chart above the journal, so its hint points up instead */
+const Q2_HINT_COMPACT = 'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở trên.';
 
 // Example shape of a week (share of the tallest day): objective hours at the baseline, other hours on top
 const DAYS: { day: string; obj: number; other: number }[] = [
@@ -213,7 +220,7 @@ function ReviewPane({ s, compact }: { s: S; compact: boolean }) {
               </span>
               {i === 1 && (
                 <Collapse open={s.answering}>
-                  <span className="g-hint wk-q__hint">{Q2_HINT}</span>
+                  <span className="g-hint wk-q__hint">{compact ? Q2_HINT_COMPACT : Q2_HINT}</span>
                 </Collapse>
               )}
               <span
