@@ -22,6 +22,7 @@ export function TodayPredictions({ className }: { className?: string }) {
   return (
     <Panel
       title="Dự đoán cần chấm lại"
+      area="growth"
       href={PREDICTIONS_HREF}
       linkLabel="Thành tựu"
       className={className}

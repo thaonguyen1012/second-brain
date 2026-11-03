@@ -5,6 +5,7 @@ import { ArrowRight } from 'lucide-react';
 import { getProgressStore, pageIdentity, useProgress } from '@/lib/progress';
 import { Button } from '@/components/ui/button';
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 /** "Đã học xong" checkbox at the bottom of every lesson page. */
 export function DoneCheckbox({ url }: { url: string }) {
@@ -37,19 +38,34 @@ export function VisitTracker({ url, title }: { url: string; title: string }) {
   return null;
 }
 
-/** Progress bar of one book: done pages / lessonCount. */
-export function BookProgress({ book, total }: { book: string; total: number }) {
+/**
+ * Progress bar of one book: done pages / lessonCount, the indicator in the colour of its Sổ tay group on the gray
+ * rail (DESIGN.md §4). The server-rendered card passes the class in, so the colour map stays out of this client
+ * module (home bundle). The first lessons of a long book are under 1%: the bar still shows a sliver and the text
+ * says "<1%", so colour arrives with the first lesson.
+ */
+export function BookProgress({
+  book,
+  total,
+  fill,
+}: {
+  book: string;
+  total: number;
+  /** Indicator colour, `trackFill` of the book's group. */
+  fill: string;
+}) {
   const done = Object.keys(useProgress().done[book] ?? {}).length;
-  const pct = total ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  const exact = total ? Math.min(100, (done / total) * 100) : 0;
+  const pct = done > 0 && exact < 1 ? '<1%' : `${Math.round(exact)}%`;
   return (
     <div className="flex flex-col gap-1.5">
-      <Progress value={pct} aria-label="Tiến độ">
+      <Progress value={exact} aria-label="Tiến độ" getAriaValueText={() => pct}>
         <ProgressTrack className="h-1.5">
-          <ProgressIndicator className="bg-bw-red" />
+          <ProgressIndicator className={cn(fill, done > 0 && 'min-w-1.5')} />
         </ProgressTrack>
       </Progress>
       <p className="text-xs text-muted-foreground tabular-nums">
-        {done > 0 ? `${done}/${total} bài · ${pct}%` : `${total} bài · chưa bắt đầu`}
+        {done > 0 ? `${done}/${total} bài · ${pct}` : `${total} bài · chưa bắt đầu`}
       </p>
     </div>
   );

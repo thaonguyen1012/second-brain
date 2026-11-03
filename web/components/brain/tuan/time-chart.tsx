@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { WeekSection } from './week-section';
 import { dayLabel, minutesLong, minutesShort, shortDate, weekdayShort } from './week-utils';
 
-// Emphasis form (dataviz skill): the objective hours are the point (teal), the rest is context (gray).
+// Emphasis form (dataviz skill): the objective hours are the point (the data blue), the rest is context (gray).
 // Colours are the --chart-objective / --chart-other tokens in app/global.css (light and dark).
 // The gray is below 3:1 on white, so the values are always labelled and a table view exists.
 const FOR = 'bg-chart-objective';

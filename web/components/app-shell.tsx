@@ -25,7 +25,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { appNav, isNavActive } from '@/lib/app-nav';
+import { appNav, areaIcon, isNavActive } from '@/lib/app-nav';
 import { InboxButton } from '@/components/brain/inbox-count';
 import { LazyTooltip } from '@/components/lazy-tooltip';
 import { appName } from '@/lib/shared';
@@ -61,7 +61,8 @@ function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton isActive={active && !item.children} render={<Link href={item.href} />}>
-                      <Icon aria-hidden />
+                      {/* Each area's icon in its colour, active or not (DESIGN.md §4); the row fill stays neutral */}
+                      <Icon aria-hidden className={areaIcon[item.area]} />
                       <span>{item.title}</span>
                     </SidebarMenuButton>
                     {/* Sub-items always show, for every item (owner, 03/11/2026); the current one is highlighted */}

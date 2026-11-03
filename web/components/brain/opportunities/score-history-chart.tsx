@@ -4,7 +4,7 @@ import type { ApiScoreSnapshot } from '@/lib/api/opportunities';
 import { formatDate } from '@/lib/labels';
 import { scoreDims, type ScoreKey } from './labels';
 
-// Small multiples, one figure per score (1-10, shared scale), one data hue (--chart-2): the tile title names the series, so no
+// Small multiples, one figure per score (1-10, shared scale), one data hue (--chart-data): the tile title names the series, so no
 // legend and no categorical palette. One cursor drives every tile; arrows move it, a table view carries all values.
 const W = 220;
 const H = 92;
@@ -104,7 +104,7 @@ function Tile({
           <path
             d={path}
             fill="none"
-            className="stroke-chart-2"
+            className="stroke-chart-data"
             strokeWidth={2}
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -116,7 +116,7 @@ function Tile({
             cx={xs[i]}
             cy={yOf(v)}
             r={i === active ? 5 : 3.5}
-            className="fill-chart-2 stroke-background"
+            className="fill-chart-data stroke-background"
             strokeWidth={2}
           />
         ))}

@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 import { bookUrl, type Book, type CourseLink } from '@/lib/books';
+import { trackFill } from '@/lib/track-colors';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -57,23 +59,25 @@ function BookLinks({ book }: { book: Book }) {
 }
 
 /**
- * Book card: one bordered container, title (a link to the book) and description, progress (with the lesson count),
- * one action row. "Học ngay" is outline: 15 cards on one page must not show 15 filled blue buttons (DESIGN.md D2).
+ * Book card: one bordered container, title (a link to the book) after the dot of its Sổ tay group, description,
+ * progress in the group colour (with the lesson count), one action row (DESIGN.md §4). "Học ngay" is filled on every
+ * card: the owner's call (03/11/2026), made knowing it puts 15 blue buttons on the page (DESIGN.md §6, D2).
  */
 export function BookCard({ book }: { book: Book }) {
   return (
     <Card render={<article />} className="flex flex-col gap-4 rounded-xl border p-4">
       <div className="flex flex-col gap-1">
-        <h3 className="font-heading text-[15px] font-semibold leading-5 tracking-tight">
+        <h3 className="flex items-start gap-2 font-heading text-[15px] font-semibold leading-5 tracking-tight">
+          <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', trackFill[book.track])} aria-hidden />
           <Link href={bookUrl(book)} className="hover:text-primary">
             {book.title}
           </Link>
         </h3>
         <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{book.description}</p>
       </div>
-      <BookProgress book={book.slug} total={book.lessonCount} />
+      <BookProgress book={book.slug} total={book.lessonCount} fill={trackFill[book.track]} />
       <div className="mt-auto flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline" render={<Link href={bookUrl(book)} />}>
+        <Button size="sm" render={<Link href={bookUrl(book)} />}>
           Học ngay
         </Button>
         <BookLinks book={book} />

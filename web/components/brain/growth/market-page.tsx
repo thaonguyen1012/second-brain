@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { BriefcaseBusiness, ClipboardPaste, ExternalLink, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { ClipboardPaste, ExternalLink, Newspaper, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { Page } from '@/lib/api/client';
 import { growthApi, type ApiJobAd, type ApiMarketReport, type ApiMarketSkill } from '@/lib/api/growth';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
@@ -355,7 +355,7 @@ export function MarketPage() {
         <LoadingCards count={2} />
       ) : empty ? (
         <EmptyState
-          icon={<BriefcaseBusiness aria-hidden />}
+          icon={<Newspaper aria-hidden />}
           title="Chưa có tin tuyển dụng nào"
           description="Dán 5 đến 10 tin của vai trò nhắm tới; kỹ năng được rút ra trong nền rồi so với ma trận."
         >

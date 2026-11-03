@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Lightbulb, Pencil, Plus, X } from 'lucide-react';
+import { FlaskConical, Pencil, Plus, X } from 'lucide-react';
 import { api, type ApiOpportunity, type Page } from '@/lib/api/client';
 import { opportunitiesApi, type ApiDecision } from '@/lib/api/opportunities';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
@@ -227,7 +227,7 @@ export function OpportunityList() {
       ) : list.length === 0 ? (
         <>
           <EmptyState
-            icon={<Lightbulb aria-hidden />}
+            icon={<FlaskConical aria-hidden />}
             title="Chưa có cơ hội nào"
             description="Ghi một giả thuyết: ai, đau gì, trả tiền cho gì. Tin trong bản tin sáng và mục inbox sẽ thành bằng chứng."
           >

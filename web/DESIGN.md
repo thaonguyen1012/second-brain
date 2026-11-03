@@ -9,15 +9,16 @@ by ID (D1...D29, last section).
 
 ## 1. Principles
 
-1. **Restraint.** Fewer surfaces, fewer words, fewer colours. Before adding a border, badge, icon or line of help,
-   remove something. Detail goes on the record the user is acting on, not on every row.
+1. **Restraint.** Fewer surfaces, fewer words; no colour without a meaning (§4). Before adding a border, badge, icon
+   or line of help, remove something. Detail goes on the record the user is acting on, not on every row.
 2. **One focal point per screen.** Decide what the eye lands on first (Hôm nay: "Tiếp tục học"; Inbox: the
    selected entry; Tuần: this week's objectives; Giờ: the running timer) and give it the weight. Everything
    else is quieter.
 3. **Hierarchy by type weight and colour, not boxes.** Title vs meta is `foreground`/600 vs
    `muted-foreground`/400, not a new container. Group with whitespace and one divider, not nested cards.
 4. **Real product, simplified.** Signature content stays (thumbnails, the week number, the timer, numbers);
-   decoration goes (eyebrows, gradients, icon on every heading, sparkle).
+   decoration goes (eyebrows, gradients, an icon on every heading, sparkle; §5 names the few headings that carry
+   one).
 5. **Same thing, same look, every page** (DECISIONS 4.4): one row anatomy, one status palette, one tag style.
 
 ## 2. Type scale
@@ -45,7 +46,8 @@ Numbers that line up or change in place get `tabular-nums`. Dates are `formatDat
 - **Steps:** 4px grid only: `1` (4), `1.5` (6), `2` (8), `3` (12), `4` (16), `6` (24), `8` (32), `10`/`12` (40/48).
   No odd arbitrary values (`mt-[7px]`).
 - **Gutters:** `px-4` (16px) at 390 px, `sm:px-8` (32px) from 640 px, the same as `PageHeader`; every block's left
-  edge aligns with the page title. Top bar `h-16`. No horizontal page scroll at 390 px.
+  edge aligns with the title row's left edge (the area tile when there is one, §5). Top bar `h-16`. No horizontal
+  page scroll at 390 px.
 - **Rhythm:** title to its meta 2-4px (`gap-0.5`/`gap-1`); row to row 0 (divider) or 4px; group to group 24-32px
   (`gap-6`/`gap-8`); page header to first content 24px (`pb-6`). A title is always closer to its own meta than to
   the next record.
@@ -68,19 +70,74 @@ Numbers that line up or change in place get `tabular-nums`. Dates are `formatDat
 ## 4. Colour
 
 Tokens only (`bg-background`, `bg-card`, `bg-muted`, `bg-secondary`, `bg-accent`, `text-foreground`,
-`text-muted-foreground`, `border-border`, `ring`, `sidebar-*`); no hex or `zinc-*` in components.
+`text-muted-foreground`, `border-border`, `ring`, `sidebar-*`, `area-*`, `track-*`, `chart-*`); no hex, `zinc-*` or
+`orange-*` utilities in components; a new colour is a token in `:root` and `.dark` with an `@theme` mapping.
 
-- **Neutrals carry the page.** Five inks at most on a screen: foreground, muted-foreground, border, one fill
-  (`secondary`/`muted`), background.
-- **Blue `primary` is for the one primary action** of a view (filled `Button` default) and for links/focus. It is
-  not a selected-tab colour, not a heading colour, not a decoration.
+Owner, 03/11/2026 ("app chỉ có màu đen trắng vậy?"): colour by area, by Sổ tay group, a filled "Học ngay", and data
+colours as data arrives. Every hue names one thing: an area (with the Sổ tay group that feeds it), a status, the
+data, the primary action or the "now" marker. Without purple there are more meanings than hues that stay far apart,
+so the near pairs that remain are listed under the palette, not hidden.
+
+- **Neutrals carry the page.** Text, surfaces, borders and fills stay neutral; body text is never coloured.
+  Colour sits on small marks only: icons, tiles, dots, bars, status chips, chart marks and the blue primary.
+- **Blue `primary` is for the one primary action** of a view (filled `Button` default; hover and press darken it to
+  `--primary-hover`, 10% toward black, so its label keeps >= 6:1) and for links/focus. It is not a selected-tab
+  colour, not a heading colour, not a decoration, never an area or group colour.
+- **Area colours** (`--area-<key>`; `AreaKey` and `areaIcon` in `lib/app-nav.ts`, the tile tint in
+  `components/brain/page-header.tsx`): one per sidebar area. Only on: that item's sidebar icon (always, active or
+  not; the active row keeps its neutral fill), the page title tile of the area's pages (`PageHeader area`: the nav
+  icon on `--area-<key>-soft`), and the icon of a Hôm nay tile that links to the area. Never on text, borders,
+  surfaces, buttons, badges or charts. **Hôm nay has no hue of its own**: it gathers every area, so its icon is the
+  neutral ink and its tile the muted fill (the sun's yellow is the `warning` of the Inbox count). Pages outside the
+  six areas (Inbox, capture, Giới thiệu, Hướng dẫn, personal page) get no tile; the Inbox's colour stays the `warning` tone
+  of its count.
+- **Group colours** (`--track-<slug>`, `trackFill`/`trackUnderline` in `lib/track-colors.ts`): a Sổ tay group wears
+  the hue of the area its handbooks feed, so the hue keeps one meaning: Kinh doanh -> Cơ hội (orange: business
+  ideas), IT -> Công việc (teal: paid technical work), Kỹ năng -> Tuần (pink: học cách học and project management
+  are practised in the weekly plan and review). Blue is the "Học ngay" button, so no group is blue. Only on Sổ tay:
+  the dot of a book card, its progress indicator (on the gray rail; a started book always shows a 6px sliver and
+  "<1%") and the 2px underline of its jump link. Never on text, never on another page.
 - **Status colours come from `lib/labels.ts` tones only** (`Tone` -> `Badge` variant): `info` = active/keep,
   `success` = done/build, `warning` = needs attention (Inbox), `error` = failed, `secondary` = planned/undecided,
   `outline` = dropped/archived. The same status has the same colour on every page; a colour never means two things.
-- **Highlight:** `bw-red` only for the "now / continue" marker (Tiếp tục học dot, progress). Data colours only
-  from `--chart-*` tokens (billable/nonbillable, objective/other).
+- **Data colours arrive with data and stay coloured.** One data hue, the dataviz blue `--chart-data` (slot 1), is the
+  first or only series of every chart (billable hours, hours for objectives, market frequency, score history, the
+  topic heatmap); a second series is a weaker step of it (`--chart-nonbillable`) or gray (`--chart-other`). Status
+  chips and the skill freshness dots (`bw-green`/`bw-yellow`) keep their colours. No chart takes an area or group
+  hue, and no area hue sits in the blue, green, yellow or red that the data and the statuses use.
+- **Highlight:** `bw-red` only for the "now / continue" marker (Tiếp tục học dot, a running timer). Book progress
+  takes the group colour.
 - **Forbidden:** purple (`bw-purple`, `chart-4` dark) in app UI, gradients, glows, coloured shadows, translucent
-  overlapping fills, gradient text.
+  overlapping fills, gradient text, sparkle or other AI decoration, emoji as icons; an area or group hue that reads
+  as the primary blue, `bw-red`, destructive red or a status colour.
+- **Palette** (WCAG contrast of the mark on card / page / active sidebar row / its own `-soft` tint; `-soft` =
+  `color-mix(in oklab, hue 14%, card)` light, 22% dark). Light marks are >= 3:1 everywhere, dark >= 4:1.
+
+  | Token | Where | Light | card / page / row / soft | Dark | card / page / row / soft |
+  |---|---|---|---|---|---|
+  | `--area-today` | Hôm nay | `--foreground` on `--muted` | 19.9 / 18.2 / 15.7 / 16.8 | `--foreground` on `--muted` | 18.4 / 19.9 / 14.9 / 16.5 |
+  | `--area-week` = `--track-ky-nang` | Tuần, Kỹ năng | `#c85088` | 4.2 / 3.9 / 3.3 / 3.6 | `#ffb5d2` | 11.2 / 12.1 / 9.1 / 7.3 |
+  | `--area-growth` | Phát triển | `#658300` | 4.4 / 4.0 / 3.4 / 3.7 | `#afd34c` | 10.7 / 11.6 / 8.7 / 7.1 |
+  | `--area-library` | Thư viện | `#764f1a` | 7.2 / 6.6 / 5.7 / 5.8 | `#b28c5c` | 6.0 / 6.4 / 4.8 / 4.5 |
+  | `--area-opportunity` = `--track-kinh-doanh` | Cơ hội, Kinh doanh | `#cf5d03` | 4.0 / 3.7 / 3.2 / 3.4 | `#fd9149` | 8.2 / 8.8 / 6.6 / 5.8 |
+  | `--area-work` = `--track-it` | Công việc, IT | `#00635d` | 7.1 / 6.5 / 5.6 / 5.7 | `#1db9ad` | 7.5 / 8.1 / 6.1 / 5.4 |
+  | `--chart-data` (= billable, objective) | every chart | `#2a78d6` | 4.4 on card | `#3987e5` | 5.1 on card |
+  | `--chart-nonbillable` | Công việc | `#86b6ef` | 2.1 on card (labelled) | `#1c5cab` | 2.8 on card (labelled) |
+
+  Distance (OKLab ΔE ×100, normal / the lower of protan and deutan; dataviz validator), light | dark:
+  - Sidebar neighbours >= 15.4 / 10.7 | 12.8 / 6.8 (Thư viện and Cơ hội: the brown stays darker than the orange).
+  - The three groups >= 14.9 / 7.6 | 16.0 / 7.0 (the teal is darker than the pink for colour-blind readers), and
+    >= 17.2 from the Phát triển tile above them.
+  - Every area and group hue >= 18.4 from `--chart-data`, >= 26 from `--chart-nonbillable`, >= 15.8 from the
+    primary, >= 9.5 from `bw-red` and destructive red.
+  - Against the statuses on the area's own pages: Phát triển >= 15.2 | 11.0 from the success and warning text and
+    the freshness dots; Cơ hội >= 20.3 | 9.5 from the warning and error text (stale, overdue) and `bw-yellow`
+    (the freshness of fit skills).
+  - Near pairs kept because every free hue is taken: Thư viện's brown and the warning text of the Inbox count (6.8
+    light; the chip reads as its pale yellow fill), Công việc's teal and the success text (7.7 light; a word in a
+    chip next to a title icon), Tuần's pink and the error text (6.4 dark; on Tuần only in an error alert). The brown
+    is the one hue below chroma 0.10 (0.08): a stronger brown turns into the Cơ hội orange. Labels and glyphs carry
+    identity; colour helps.
 - **AI output shows what the AI did, not that it is AI.** Suggested tags/destination render as normal
   `outline` badges followed by a small `text-xs text-muted-foreground` label "tự động" (or a "Gợi ý tự động:"
   prefix); an accepted suggestion loses the label. No sparkle, wand, bot or star icon, no purple, no shimmer.
@@ -99,7 +156,8 @@ Tokens only (`bg-background`, `bg-card`, `bg-muted`, `bg-secondary`, `bg-accent`
     dark), never a fill: the selected card keeps `bg-card` in both themes, because `Kbd` chips are `bg-accent`
     and would vanish on an accent-filled card.
   - Stageshow wells (guides, /gioi-thieu/ tiles) keep their `secondary` ground and add the 1px `--border`.
-  - Blue stays the accent for the one primary action, links and focus only; surfaces never get a blue tint.
+  - Blue stays the accent for the primary action, links and focus (plus the data blue of chart marks); surfaces
+    never get a blue or area tint (the 36px title tile is a mark, not a surface).
   - Focus ring (`--ring`) opaque, >= 3:1 against the page and every surface (WCAG 1.4.11): light `#3582ff` is
     3.3:1 on the page and 3.6:1 on white; dark `#6aa5ff` 7:1 or more. Never lower it with `/50` or alpha.
     Form controls use it too: a focused Input, Textarea or Select gets `border-ring` + a 1px `ring-ring` in light
@@ -115,16 +173,25 @@ Tokens only (`bg-background`, `bg-card`, `bg-muted`, `bg-secondary`, `bg-accent`
 - **lucide-react only**, default stroke (2) everywhere in a screen; the sidebar logo `Brain` (1.75, `size-6`) is
   the one exception. Never mix stroke widths or filled and outline glyphs in one view. No hand-drawn SVG glyphs.
 - **One size per context:** 16px (`size-4`) in buttons, nav, toolbars, rows; 14px (`size-3.5`) in badges, meta
-  lines and `xs` buttons; 18px only in `EmptyMedia`. Components already size their icons: do not override.
+  lines and `xs` buttons; 18px only in `EmptyMedia`; 20px (`size-5`) only in the page title tile. Components
+  already size their icons: do not override.
 - **Icons earn their place:** nav items, a verb with a standard glyph (Plus, Trash2, ExternalLink, Pencil), a
-  state colour alone cannot carry (spinner, error). **No icon beside headings, card titles or section titles.**
-  Hôm nay tiles may reuse the destination's nav icon from `lib/app-nav.ts`, nothing else.
+  state colour alone cannot carry (spinner, error). **No icon beside headings, card titles or section titles**,
+  except the area's own nav icon in its area colour (§4): the title tile of an area page (`PageHeader area`, a
+  36px `rounded-lg` `-soft` tile on the title's first line, `aria-hidden`; server-rendered, except on /co-hoi/ where
+  the client list and detail views render the header) and the heading of a Hôm nay tile, which starts with the icon
+  of where its link leads: an area's nav icon from `lib/app-nav.ts` in its colour, or for the Inbox tile the Inbox
+  glyph in `muted-foreground` (16px, without a tile: a tinted tile inside the card would break D12). An empty
+  state's `EmptyMedia` glyph names the missing object (BookPlus, FlaskConical, FolderPlus...), never a nav icon, so
+  it does not repeat the title tile. Nothing else.
 - **No emoji as icons** (emoji are user content only). Icon-only buttons have `aria-label` and a `Tooltip`.
 
 ## 6. Components (which one for what)
 
 - **Buttons** (`components/ui/button`): `default` (filled blue) = the one primary action per view region (page
-  toolbar, dialog footer, empty state); `outline` = secondary actions, at most 2-3 visible together; `ghost` =
+  toolbar, dialog footer, empty state). One exception: "Học ngay" on every Sổ tay book card is filled (owner,
+  03/11/2026, knowing it puts 15 blue buttons on that page); its "Liên kết" stays ghost. `outline` = secondary
+  actions, at most 2-3 visible together; `ghost` =
   toolbar, row and icon actions; `link` = inline navigation, blue (`text-primary`, set once in the variant;
   a deliberately quiet jump-link row may override it with `text-muted-foreground`); `destructive-outline`/`DeleteButton` = delete
   entry point; filled `destructive` only as the confirm button inside `confirm-delete.tsx`. Sizes: `default` in
@@ -184,7 +251,7 @@ Tokens only (`bg-background`, `bg-card`, `bg-muted`, `bg-secondary`, `bg-accent`
 3. **Boxed.** Containers inside containers. *`BrainCard`'s tinted `bg-secondary rounded-2xl` header panel inside
    a bordered `rounded-3xl` card; tinted info boxes inside sections (market "Công cụ mới"); a card per row.*
    Fix: one container per record; hierarchy from weight, colour and spacing.
-4. **Flat.** Everything the same weight. *Hôm nay's three equal tiles with an icon heading each; every block the
+4. **Flat.** Everything the same weight. *Hôm nay's three equal tiles and no focal block; every block the
    same border and radius; Cơ hội showing two identical blue "Cơ hội mới" buttons; Thư viện's selected tab
    filled blue next to the blue "Thêm item".* Fix: one focal block, one primary, quiet tabs.
 5. **Bland / slop.** Could be any AI dashboard. *`Sparkles` as the "AI" or "new" marker (`done-output.tsx`,
@@ -198,6 +265,7 @@ Take screenshots at 1440 px and 390 px, light and dark, with data and empty.
 Hierarchy
 - **D1** The eye lands first on the screen's focal object (§1.2), not on chrome, help text or a guide.
 - **D2** At most one filled blue button per view region (page toolbar, dialog footer, empty state); none duplicated.
+  Exception: "Học ngay" on each Sổ tay book card (§6).
 - **D3** One page title (30px); sections 18px; nothing else above 18px except one big number.
 - **D4** Page description <= 2 lines on desktop; no setup/how-to text above the main content.
 
@@ -207,7 +275,8 @@ Type
 - **D7** Title vs meta reads by weight and colour (foreground/500-600 vs muted/400), not by an extra box.
 
 Spacing and layout
-- **D8** Gutters 16px at 390 px and 32px on desktop; all blocks share the page title's left edge.
+- **D8** Gutters 16px at 390 px and 32px on desktop; all blocks share the title row's left edge (the area tile when
+  there is one).
 - **D9** Title-to-meta gap is smaller than record-to-record gap; rows are 32/40/56px, no fat rows.
 - **D10** Words sit >= 12px from container edges; no edges 1-3px apart; no element touching another.
 - **D11** At 390 px: no horizontal scroll, no clipped label, no orphaned button on its own line.
@@ -220,17 +289,25 @@ Containers
   second border; large shadows only on floating layers.
 
 Colour
-- **D16** Only token colours; status colours match `lib/labels.ts`, the same status the same colour everywhere.
-- **D17** No purple, gradient, glow or gradient text; `bw-red` only on the continue/now marker.
+- **D16** Only token colours; status colours match `lib/labels.ts`, the same status the same colour everywhere; an
+  area colour only on its sidebar icon, title tile and Hôm nay tile icon (Hôm nay itself neutral), a group colour
+  (its area's hue) only on Sổ tay card dots, progress indicators and jump-link underlines; no coloured body text;
+  data colours (`--chart-*`, statuses, progress) never greyed out, every chart in the data blue, never in an area
+  or group hue.
+- **D17** No purple, gradient, glow, coloured shadow or gradient text; `bw-red` only on the continue/now marker; no
+  area or group hue that reads as the primary blue, `bw-red`, destructive red or a status colour.
 - **D18** AI results carry a plain "tự động" label or prefix; no sparkle, wand, bot or star as an AI marker.
 - **D19** Light and dark both read: muted text legible, no hard-coded white/black surfaces, focus ring visible.
 - **D29** Surfaces and contrast (§4): grey page, white bordered surfaces (light) / darker page, lighter surfaces
-  (dark); border visible; blue only on the primary action, links and focus; focus ring >= 3:1 on page and
-  surfaces; no container left transparent on the page.
+  (dark); border visible; blue only on the primary action, links, focus and chart marks; focus ring >= 3:1 on page
+  and surfaces; no container left transparent on the page.
 
 Icons
-- **D20** lucide only, one stroke width, 16px in controls/rows/nav and 14px in badges/meta; no emoji as icons.
-- **D21** No decorative icon beside headings or card titles; icon-only buttons have a tooltip.
+- **D20** lucide only, one stroke width, 16px in controls/rows/nav, 14px in badges/meta, 20px in the title tile; no
+  emoji as icons.
+- **D21** No decorative icon beside headings or card titles (the area's nav icon on an area page's title tile and the
+  icon of a Hôm nay tile heading excepted, §5); no nav icon as an empty state glyph; icon-only buttons have a
+  tooltip.
 
 Components
 - **D22** Row actions: <= 3 visible, the rest in a Menu; delete goes through the confirm dialog.

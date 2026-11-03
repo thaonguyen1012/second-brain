@@ -27,7 +27,7 @@ export function ProgressLabel({ className, ...props }: ProgressPrimitive.Label.P
 export function ProgressTrack({ className, ...props }: ProgressPrimitive.Track.Props): React.ReactElement {
   return (
     <ProgressPrimitive.Track
-      className={cn('block h-1.5 w-full overflow-hidden rounded-full bg-input', className)}
+      className={cn('block h-1.5 w-full overflow-hidden rounded-full bg-input forced-colors:outline', className)}
       data-slot="progress-track"
       {...props}
     />
@@ -37,7 +37,7 @@ export function ProgressTrack({ className, ...props }: ProgressPrimitive.Track.P
 export function ProgressIndicator({ className, ...props }: ProgressPrimitive.Indicator.Props): React.ReactElement {
   return (
     <ProgressPrimitive.Indicator
-      className={cn('bg-primary transition-all duration-500', className)}
+      className={cn('bg-primary transition-all duration-500 forced-colors:bg-[CanvasText]', className)}
       data-slot="progress-indicator"
       {...props}
     />

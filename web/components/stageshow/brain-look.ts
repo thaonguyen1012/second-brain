@@ -49,12 +49,23 @@ const shared: LookTokens = {
   '--ss-info-text': 'var(--info-foreground)',
   '--ss-destructive': 'var(--destructive)',
   '--ss-muted': 'var(--muted)',
+  '--ss-chart-data': 'var(--chart-data)',
   '--ss-chart-objective': 'var(--chart-objective)',
   '--ss-chart-other': 'var(--chart-other)',
   '--ss-chart-billable': 'var(--chart-billable)',
   '--ss-chart-nonbillable': 'var(--chart-nonbillable)',
   '--ss-fresh': 'var(--color-bw-green, #49ba61)',
   '--ss-aging': 'var(--color-bw-yellow, #ffb73a)',
+  // The area colours (DESIGN.md §4): a faux sidebar icon, a faux page title tile and the icon of a Hôm nay tile
+  // heading, each in the colour of its area, on its -soft tint for a tile
+  '--ss-area-today': 'var(--area-today)',
+  '--ss-area-week': 'var(--area-week)',
+  '--ss-area-growth': 'var(--area-growth)',
+  '--ss-area-library': 'var(--area-library)',
+  '--ss-area-opportunity': 'var(--area-opportunity)',
+  '--ss-area-work': 'var(--area-work)',
+  '--ss-area-today-soft': 'var(--area-today-soft)',
+  '--ss-area-opportunity-soft': 'var(--area-opportunity-soft)',
   // Type: Inter for UI (next/font sets --font-inter on <html>); no font is fetched by the kit
   '--ss-font': 'var(--font-inter), ui-sans-serif, system-ui, sans-serif',
   '--ss-mono': 'var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace',

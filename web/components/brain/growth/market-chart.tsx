@@ -43,7 +43,7 @@ function Delta({ now, before }: { now: number; before: number }) {
  * Skill frequency of the month vs the previous month (dataviz: emphasis form, one hue + a reference tick).
  * Built as a table so every value is text in a cell (the table view); the bar is decoration (aria-hidden) and is
  * hidden below 640 px, where the numbers alone fit. Styled by hand per DESIGN.md §6 Tables (the Space UI table could
- * not be fetched from the registry). Bar: chart-2, at most 12px thick, 4px rounded data end, square at the
+ * not be fetched from the registry). Bar: the data blue (--chart-data), at most 12px thick, 4px rounded data end, square at the
  * baseline. Previous month: a 2px tick.
  */
 export function MarketSkillTable({ lines, processed }: { lines: ApiMarketSkill[]; processed: number }) {
@@ -56,7 +56,7 @@ export function MarketSkillTable({ lines, processed }: { lines: ApiMarketSkill[]
         aria-label="Chú giải"
       >
         <li className="flex items-center gap-1.5">
-          <span className="h-2.5 w-4 rounded-e-[4px] bg-chart-2" aria-hidden />
+          <span className="h-2.5 w-4 rounded-e-[4px] bg-chart-data" aria-hidden />
           Tháng này
         </li>
         <li className="flex items-center gap-1.5">
@@ -103,7 +103,7 @@ export function MarketSkillTable({ lines, processed }: { lines: ApiMarketSkill[]
                 <td className="px-3 py-2 max-sm:hidden" aria-hidden>
                   <div className="relative h-5">
                     <div
-                      className="absolute top-1/2 left-0 h-3 -translate-y-1/2 rounded-e-[4px] bg-chart-2"
+                      className="absolute top-1/2 left-0 h-3 -translate-y-1/2 rounded-e-[4px] bg-chart-data"
                       style={{ width: pct(l.count) }}
                     />
                     {l.previousCount > 0 && (

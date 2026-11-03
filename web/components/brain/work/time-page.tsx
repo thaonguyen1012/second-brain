@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Briefcase, Clock, Pencil, Plus, X } from 'lucide-react';
+import { Clock, FolderPlus, Pencil, Plus, X } from 'lucide-react';
 import type { Page } from '@/lib/api/client';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiTimeEntry } from '@/lib/api/work';
@@ -238,7 +238,7 @@ export function TimePage() {
     return (
       <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
         <EmptyState
-          icon={<Briefcase aria-hidden />}
+          icon={<FolderPlus aria-hidden />}
           title="Chưa có dự án nào"
           description="Bấm giờ cần ít nhất một dự án."
         >

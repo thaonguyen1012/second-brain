@@ -28,6 +28,8 @@
   --popover-foreground: var(--color-zinc-950);
   --primary: #1f6ae0;
   --primary-foreground: var(--color-white);
+  /* Hover and press of the filled primary: 10% darker, so its white label keeps 6.3:1 (/90 over white was 4.2:1). */
+  --primary-hover: color-mix(in oklab, var(--primary) 90%, black);
   --secondary: hsl(0deg 0% 92.5%);
   --secondary-foreground: var(--color-zinc-700);
   --muted: hsl(0deg 0% 92.5%);
@@ -44,12 +46,31 @@
   --chart-3: var(--color-cyan-900);
   --chart-4: var(--color-amber-400);
   --chart-5: var(--color-amber-500);
-  /* Billable vs non-billable time (Công việc): dataviz palette slots 1-2, validated on white. */
-  --chart-billable: #2a78d6;
-  --chart-nonbillable: #eb6834;
-  /* Week review time (Tuần): hours for objectives (teal, not the billable blue) vs other hours (gray). */
-  --chart-objective: #12866f;
+  /* The data hue (DESIGN.md §4): the first or only series of every chart is the dataviz blue (slot 1); a second
+     series is a weaker step of it (nearer the card) or gray. No chart takes an area or group hue. */
+  --chart-data: #2a78d6;
+  /* Billable vs non-billable time (Công việc): the data blue and its 250 step (2.1:1 on white; bars are labelled). */
+  --chart-billable: var(--chart-data);
+  --chart-nonbillable: #86b6ef;
+  /* Week review time (Tuần): hours for objectives (the data blue) vs other hours (gray). */
+  --chart-objective: var(--chart-data);
   --chart-other: var(--color-zinc-400);
+  /* Area colours (owner, 03/11/2026; DESIGN.md §4): one hue per sidebar area, only on its nav icon, its page title
+     tile and a Hôm nay tile heading. Hôm nay gathers every area, so it keeps the neutral ink on the muted fill. No
+     blue, red, yellow or purple, and none of the status or data hues. Each is >= 3:1 on white, the page, the
+     active sidebar row and its own -soft tile (14% of the hue over the card). */
+  --area-today: var(--foreground);
+  --area-week: #c85088;
+  --area-growth: #658300;
+  --area-library: #764f1a;
+  --area-opportunity: #cf5d03;
+  --area-work: #00635d;
+  --area-today-soft: var(--muted);
+  --area-week-soft: color-mix(in oklab, var(--area-week) 14%, var(--card));
+  --area-growth-soft: color-mix(in oklab, var(--area-growth) 14%, var(--card));
+  --area-library-soft: color-mix(in oklab, var(--area-library) 14%, var(--card));
+  --area-opportunity-soft: color-mix(in oklab, var(--area-opportunity) 14%, var(--card));
+  --area-work-soft: color-mix(in oklab, var(--area-work) 14%, var(--card));
   --sidebar: var(--color-white);
   --sidebar-foreground: var(--color-zinc-950);
   --sidebar-primary: var(--primary);
@@ -78,6 +99,8 @@
   --popover-foreground: var(--color-zinc-50);
   --primary: #6aa5ff;
   --primary-foreground: var(--color-zinc-950);
+  /* Hover and press: 10% darker, 6.1:1 with the zinc-950 label. */
+  --primary-hover: color-mix(in oklab, var(--primary) 90%, black);
   --secondary: var(--color-zinc-800);
   --secondary-foreground: var(--color-zinc-50);
   --muted: hsl(0deg 0% 12%);
@@ -94,10 +117,25 @@
   --chart-3: var(--color-amber-500);
   --chart-4: var(--color-purple-500);
   --chart-5: var(--color-rose-500);
-  --chart-billable: #3987e5;
-  --chart-nonbillable: #d95926;
-  --chart-objective: #2fb08f;
+  /* The data blue stepped for dark; the non-billable step is darker, toward the card (blue 550, 2.8:1). */
+  --chart-data: #3987e5;
+  --chart-billable: var(--chart-data);
+  --chart-nonbillable: #1c5cab;
+  --chart-objective: var(--chart-data);
   --chart-other: var(--color-zinc-500);
+  /* Area colours stepped for dark: lighter, >= 4:1 on the card, the page, the active row and the -soft tile (22%). */
+  --area-today: var(--foreground);
+  --area-week: #ffb5d2;
+  --area-growth: #afd34c;
+  --area-library: #b28c5c;
+  --area-opportunity: #fd9149;
+  --area-work: #1db9ad;
+  --area-today-soft: var(--muted);
+  --area-week-soft: color-mix(in oklab, var(--area-week) 22%, var(--card));
+  --area-growth-soft: color-mix(in oklab, var(--area-growth) 22%, var(--card));
+  --area-library-soft: color-mix(in oklab, var(--area-library) 22%, var(--card));
+  --area-opportunity-soft: color-mix(in oklab, var(--area-opportunity) 22%, var(--card));
+  --area-work-soft: color-mix(in oklab, var(--area-work) 22%, var(--card));
   --sidebar: var(--card);
   --sidebar-foreground: var(--color-zinc-50);
   --sidebar-primary: var(--primary);
@@ -140,6 +178,17 @@
   --color-fd-ring: var(--ring);
 }
 
+/* Sổ tay group colours (DESIGN.md §4): a group wears the hue of the area its handbooks feed (Kinh doanh -> Cơ hội,
+   IT -> Công việc, Kỹ năng -> Tuần), so a hue still names one thing; no free hue is left for a seventh meaning.
+   Painted only on Sổ tay, as the card dot, the progress indicator and the jump-link underline. The teal is darker
+   than the pink in both themes, so the two stay apart under red-green colour blindness. */
+:root,
+.dark {
+  --track-kinh-doanh: var(--area-opportunity);
+  --track-it: var(--area-work);
+  --track-ky-nang: var(--area-week);
+}
+
 @theme inline {
   /* Fonts come from next/font in app/layout.tsx (self-hosted, no runtime request). */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -154,6 +203,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -170,10 +220,26 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-data: var(--chart-data);
   --color-chart-billable: var(--chart-billable);
   --color-chart-nonbillable: var(--chart-nonbillable);
   --color-chart-objective: var(--chart-objective);
   --color-chart-other: var(--chart-other);
+  --color-area-today: var(--area-today);
+  --color-area-week: var(--area-week);
+  --color-area-growth: var(--area-growth);
+  --color-area-library: var(--area-library);
+  --color-area-opportunity: var(--area-opportunity);
+  --color-area-work: var(--area-work);
+  --color-area-today-soft: var(--area-today-soft);
+  --color-area-week-soft: var(--area-week-soft);
+  --color-area-growth-soft: var(--area-growth-soft);
+  --color-area-library-soft: var(--area-library-soft);
+  --color-area-opportunity-soft: var(--area-opportunity-soft);
+  --color-area-work-soft: var(--area-work-soft);
+  --color-track-kinh-doanh: var(--track-kinh-doanh);
+  --color-track-it: var(--track-it);
+  --color-track-ky-nang: var(--track-ky-nang);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);

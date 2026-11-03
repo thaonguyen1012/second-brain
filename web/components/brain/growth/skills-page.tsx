@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useRef, useState } from 'react';
-import { Plus, Search, Sprout } from 'lucide-react';
+import { ListChecks, Plus, Search } from 'lucide-react';
 import { growthApi, listAll, type ApiFreshness, type ApiSkill, type ApiSkillDetail } from '@/lib/api/growth';
 import { useApi } from '@/lib/api/use-api';
 import { Button } from '@/components/ui/button';
@@ -156,7 +156,7 @@ export function SkillsPage() {
       ) : empty ? (
         <>
           <EmptyState
-            icon={<Sprout aria-hidden />}
+            icon={<ListChecks aria-hidden />}
             title="Ma trận còn trống"
             description="Thêm các kỹ năng nền và kỹ năng của vai trò nhắm tới, rồi gắn bằng chứng: thứ đã ship, case study, bài viết."
           >

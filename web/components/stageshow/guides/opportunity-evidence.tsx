@@ -1,5 +1,15 @@
 'use client';
-import { Gauge, Lightbulb, Link2, MessagesSquare, Pencil, Plus, ThumbsDown, ThumbsUp } from 'lucide-react';
+import {
+  FlaskConical,
+  Gauge,
+  Lightbulb,
+  Link2,
+  MessagesSquare,
+  Pencil,
+  Plus,
+  ThumbsDown,
+  ThumbsUp,
+} from 'lucide-react';
 import { Stage } from '../kit/stage';
 import type { Act } from '../kit/act';
 import { Collapse } from '../kit/motion/Collapse';
@@ -160,7 +170,7 @@ function ListPage({ s, compact }: { s: S; compact: boolean }) {
       <Collapse open={!s.created}>
         <div className="op-empty">
           <span className="op-empty__icon">
-            <Lightbulb size={16} strokeWidth={2} aria-hidden />
+            <FlaskConical size={16} strokeWidth={2} aria-hidden />
           </span>
           <span className="op-empty__title">Chưa có cơ hội nào</span>
           <span className="g-desc">Ghi một giả thuyết: ai, đau gì, trả tiền cho gì.</span>
@@ -217,7 +227,12 @@ function DetailPage({ s, compact }: { s: S; compact: boolean }) {
         <span className="g-brain__badges">
           <GBadge tone="secondary">Chưa quyết</GBadge>
         </span>
-        <span className="op-title">{TITLE}</span>
+        <span className="op-title-row">
+          <span className="op-tile" aria-hidden>
+            <Lightbulb size={compact ? 14 : 16} strokeWidth={2} />
+          </span>
+          <span className="op-title">{TITLE}</span>
+        </span>
         <span className="op-hyp">{HYP}</span>
       </div>
 

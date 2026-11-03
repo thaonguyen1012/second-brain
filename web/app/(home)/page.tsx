@@ -11,7 +11,7 @@ import { TodayBrief, TodayInbox, TodayPredictions, TodayStatus, TodayWeek } from
 export default function HomePage() {
   return (
     <div className="flex w-full flex-col">
-      <PageHeader title="Hôm nay">
+      <PageHeader title="Hôm nay" area="today">
         <ContinueReading books={books.map(({ slug, title, track }) => ({ slug, title, track }))} />
         <ProgressMigrationOffer />
       </PageHeader>

@@ -9,6 +9,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Dự án"
+        area="work"
         description="Dự án freelance: khách, cách tính tiền và giá. Giá giờ thực tế chia số tiền cho mọi giờ đã làm, kể cả giờ không tính tiền."
       />
       <ProjectsPage />

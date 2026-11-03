@@ -11,6 +11,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Thị trường"
+        area="growth"
         description="Mình so với thị trường theo thời gian: mỗi tháng dán vài tin tuyển dụng của vai trò nhắm tới, xem kỹ năng nào được đòi nhiều lên và kỹ năng nào mình chưa có bằng chứng."
       />
       {/* useSearchParams (?jobAd=, Cmd+K results) needs a Suspense boundary for the static shell */}

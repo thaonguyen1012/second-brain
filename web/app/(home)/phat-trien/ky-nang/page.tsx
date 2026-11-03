@@ -10,6 +10,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Kỹ năng"
+        area="growth"
         description="Ma trận kỹ năng có bằng chứng. Không tự chấm điểm: kỹ năng sáng lên khi có bằng chứng mới và tự mờ dần khi 6 tháng không có."
       />
       {/* useSearchParams (?id=, Cmd+K results) needs a Suspense boundary for the static shell */}

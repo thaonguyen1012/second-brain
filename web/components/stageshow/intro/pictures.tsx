@@ -103,13 +103,14 @@ function Picture<S extends object>({
 
 /* ------------------------------------------------------------------ Hero: the shell with Hôm nay */
 
+// Each icon in its area colour, active or not (lib/app-nav.ts, DESIGN.md §4); Hôm nay's is the neutral ink
 const NAV = [
-  { title: 'Hôm nay', icon: Sun },
-  { title: 'Tuần', icon: CalendarRange },
-  { title: 'Phát triển', icon: Sprout },
-  { title: 'Thư viện', icon: Library },
-  { title: 'Cơ hội', icon: Lightbulb },
-  { title: 'Công việc', icon: Briefcase },
+  { title: 'Hôm nay', icon: Sun, area: 'today' },
+  { title: 'Tuần', icon: CalendarRange, area: 'week' },
+  { title: 'Phát triển', icon: Sprout, area: 'growth' },
+  { title: 'Thư viện', icon: Library, area: 'library' },
+  { title: 'Cơ hội', icon: Lightbulb, area: 'opportunity' },
+  { title: 'Công việc', icon: Briefcase, area: 'work' },
 ];
 
 function ShellSidebar() {
@@ -119,9 +120,9 @@ function ShellSidebar() {
         <Brain size={18} strokeWidth={1.75} aria-hidden />
         <span>Alex&apos;s Brain</span>
       </span>
-      {NAV.map(({ title, icon: Icon }, i) => (
+      {NAV.map(({ title, icon: Icon, area }, i) => (
         <span key={title} className="hs-nav" data-active={i === 0 || undefined}>
-          <Icon size={16} strokeWidth={2} aria-hidden />
+          <Icon size={16} strokeWidth={2} aria-hidden style={{ color: `var(--ss-area-${area})` }} />
           <span>{title}</span>
         </span>
       ))}
@@ -191,7 +192,12 @@ export function HeroShell() {
             }
           >
             <div className="hs-body">
-              <span className="hs-title">Hôm nay</span>
+              <span className="hs-head">
+                <span className="hs-tile" aria-hidden>
+                  <Sun size={16} strokeWidth={2} />
+                </span>
+                <span className="hs-title">Hôm nay</span>
+              </span>
               <span className="hs-desc">Học tiếp, giữ 3 ưu tiên của tuần, dọn inbox và đọc bản tin sáng.</span>
               <span className="hs-continue">
                 <span className="hs-continue__tag">
@@ -207,7 +213,9 @@ export function HeroShell() {
               <span className="hs-panels">
                 <span className="hs-panel">
                   <PanelHead
-                    icon={<CalendarRange size={14} strokeWidth={2} aria-hidden />}
+                    icon={
+                      <CalendarRange size={14} strokeWidth={2} aria-hidden style={{ color: 'var(--ss-area-week)' }} />
+                    }
                     title={<span className="hs-panel__title">3 ưu tiên tuần</span>}
                     link={wide}
                   />

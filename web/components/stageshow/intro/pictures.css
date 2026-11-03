@@ -209,15 +209,16 @@
   color: var(--ss-icon);
 }
 
+/* The Inbox count is the warning tone in the app (Badge variant="warning", DESIGN.md §4), never the blue */
 .ssg-intro .hs-count {
   display: inline-grid;
   place-items: center;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 999px;
-  background: var(--ss-accent);
-  color: var(--ss-on-accent);
+  border-radius: 4px;
+  background: var(--ss-warning-soft);
+  color: var(--ss-warning-text);
   font-size: 10.5px;
   font-variant-numeric: tabular-nums;
 }
@@ -226,6 +227,25 @@
   display: flex;
   flex-direction: column;
   padding: 22px 24px;
+}
+
+/* The page title with its area tile (PageHeader area): Hôm nay's tile is the neutral ink on the muted fill */
+.ssg-intro .hs-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ssg-intro .hs-tile {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--ss-area-today-soft);
+  color: var(--ss-area-today);
 }
 
 .ssg-intro .hs-title {
@@ -583,7 +603,7 @@
 
 /* ------------------------------------------------------------ Tuần tile: the time chart */
 
-/* Emphasis (as components/brain/tuan/time-chart.tsx): objective hours in the chart teal at the baseline,
+/* Emphasis (as components/brain/tuan/time-chart.tsx): objective hours in the data blue at the baseline,
    the rest gray. No axis and no values: the picture shows the form, not anyone's hours. */
 .ssg-intro .wk-chart {
   position: absolute;

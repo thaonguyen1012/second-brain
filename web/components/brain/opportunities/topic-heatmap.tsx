@@ -47,11 +47,11 @@ function buildMatrix(data: ApiTopicCounts): Matrix {
   return { weeks, rows, max };
 }
 
-/** Sequential fill: the data hue (--chart-2, not the action blue) mixed into the page surface, light to full. */
+/** Sequential fill: the data blue (--chart-data, never an area hue) mixed into the page surface, light to full. */
 function fill(count: number, max: number): string | undefined {
   if (count === 0) return undefined;
   const pct = Math.round(18 + 82 * (count / max));
-  return `color-mix(in oklab, var(--chart-2) ${pct}%, var(--background))`;
+  return `color-mix(in oklab, var(--chart-data) ${pct}%, var(--background))`;
 }
 
 const shortWeek = (week: string) => week.replace(/^\d{4}-/, '');

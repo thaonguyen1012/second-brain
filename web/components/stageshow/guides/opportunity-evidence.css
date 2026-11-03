@@ -98,6 +98,31 @@
   padding: 0 4px;
 }
 
+/* The Cơ hội title tile before the title (PageHeader area / AreaTile), on the title's first line */
+.ssg-opp .ss-stage .op-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ssg-opp .ss-stage .op-tile {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--ss-area-opportunity-soft);
+  color: var(--ss-area-opportunity);
+}
+
+.ssg-opp .ss-stage[data-layout='compact'] .op-tile {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+}
+
 .ssg-opp .ss-stage .op-title {
   font-family: var(--ss-heading);
   font-size: 22px;
@@ -191,7 +216,7 @@
   height: 9px;
   border: 2px solid var(--ss-surface);
   border-radius: 50%;
-  background: var(--ss-accent);
+  background: var(--ss-chart-data);
   translate: -50% 50%;
 }
 

@@ -3,8 +3,9 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatHours, formatMinutes } from './format';
 
-// Two series, fixed order and colour (dataviz palette slots 1-2, tokens --chart-billable / --chart-nonbillable in
-// app/global.css, validated in light and dark): billable first from the baseline, non-billable after a 2px gap.
+// Two series, fixed order and colour (tokens --chart-billable / --chart-nonbillable in app/global.css: the data blue
+// and a weaker step of it, nearer the card in either theme): billable first from the baseline, non-billable after a
+// 2px gap.
 
 export function Swatch({ kind }: { kind: 'billable' | 'nonbillable' }) {
   return (

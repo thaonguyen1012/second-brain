@@ -70,7 +70,7 @@ function phaseLabel(title: string, index: number): { title: string; date: string
 export default function RoadmapPage() {
   return (
     <div className="flex w-full flex-col">
-      <PageHeader title="Thứ tự học gợi ý" description={roadmapIntro}>
+      <PageHeader title="Thứ tự học gợi ý" area="growth" description={roadmapIntro}>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <Button variant="outline" size="sm" render={<a href="/lo-trinh.pdf" target="_blank" rel="noreferrer" />}>
             Mở bản PDF đầy đủ

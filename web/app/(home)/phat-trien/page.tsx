@@ -2,6 +2,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Download } from 'lucide-react';
 import { books, booksByTrack, tracks } from '@/lib/books';
+import { trackUnderline } from '@/lib/track-colors';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BookCard } from '@/components/book-card';
 import { PageHeader } from '@/components/brain/page-header';
@@ -16,6 +18,7 @@ export default function HandbooksPage() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Sổ tay"
+        area="growth"
         description={`${books.length} sổ tay từ các khóa Coursera và F8, ${lessons.toLocaleString('vi-VN')} bài học, chia theo ba nhóm.`}
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -33,14 +36,18 @@ export default function HandbooksPage() {
             Tải bản sao dữ liệu
           </Button>
         </div>
-        {/* Quiet jump links to the three groups; text aligns with the page title (px-0). */}
+        {/* Quiet jump links to the three groups, underlined in the group colour (the owner's "gạch chân của tab
+            nhóm", DESIGN.md §4); the text stays muted, px-0 keeps the row on the header's left edge. */}
         <nav aria-label="Nhóm sổ tay" className="flex flex-wrap items-center gap-x-4">
           {tracks.map((t) => (
             <Button
               key={t.slug}
               variant="link"
               size="sm"
-              className="px-0 text-muted-foreground hover:text-foreground"
+              className={cn(
+                'px-0 text-muted-foreground underline decoration-2 underline-offset-6 hover:text-foreground',
+                trackUnderline[t.slug],
+              )}
               render={<a href={`#track-${t.slug}`} />}
             >
               {t.title}

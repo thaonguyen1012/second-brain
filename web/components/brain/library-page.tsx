@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Library, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
+import { BookPlus, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
 import { api, type ApiItem, type ApiItemStatus, type ApiItemType, type Page } from '@/lib/api/client';
 import type { ApiNote } from '@/lib/api/library';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
@@ -253,7 +253,7 @@ export function LibraryPage() {
       ) : list.length === 0 ? (
         <>
           <EmptyState
-            icon={<Library aria-hidden />}
+            icon={<BookPlus aria-hidden />}
             title="Chưa có item nào"
             description="Thêm sách, phim, khóa học, bài viết hoặc dự án. Mục từ inbox cũng có thể thành item."
           >

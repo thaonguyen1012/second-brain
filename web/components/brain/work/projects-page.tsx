@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Briefcase, Clock, Pencil, Play, Plus } from 'lucide-react';
+import { Clock, FolderPlus, Pencil, Play, Plus } from 'lucide-react';
 import type { ApiItemStatus, Page } from '@/lib/api/client';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiProject } from '@/lib/api/work';
@@ -232,7 +232,7 @@ export function ProjectsPage() {
       ) : list.length === 0 ? (
         <>
           <EmptyState
-            icon={<Briefcase aria-hidden />}
+            icon={<FolderPlus aria-hidden />}
             title="Chưa có dự án nào"
             description="Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế."
           >

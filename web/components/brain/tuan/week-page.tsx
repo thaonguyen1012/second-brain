@@ -1,7 +1,7 @@
 'use client';
 import { type ReactNode, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ApiWeek } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import {
@@ -255,7 +255,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
         <LoadingCards count={3} />
       ) : !data.plan ? (
         <EmptyState
-          icon={<CalendarRange aria-hidden />}
+          icon={<CalendarPlus aria-hidden />}
           title="Tuần này chưa được mở"
           description={`Không có kế hoạch hay nhìn lại nào cho tuần ${weekRange(start)}.`}
         >

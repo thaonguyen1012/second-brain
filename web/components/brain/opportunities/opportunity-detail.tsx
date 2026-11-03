@@ -19,6 +19,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, EmptyState, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ConfirmDelete, DeleteButton } from '../confirm-delete';
+import { AreaTile } from '../page-header';
 import { DecideByBadge, FitBadges, Tip } from './bits';
 import { EvidenceDialog, type EvidenceTarget } from './evidence-dialog';
 import { STALE_LABEL, decisionOf, decisions, evidenceKinds, formatDay, stanceOf } from './labels';
@@ -136,7 +137,11 @@ function DetailSkeleton() {
           <Skeleton className="h-4.5 w-28" />
           <Skeleton className="h-4.5 w-24" />
         </div>
-        <Skeleton className="h-9 w-2/3 max-w-xl rounded-md" />
+        {/* The tile is static, so it shows while loading and the title does not shift when the data arrives */}
+        <div className="flex items-start gap-3">
+          <AreaTile area="opportunity" />
+          <Skeleton className="h-9 w-2/3 max-w-xl rounded-md" />
+        </div>
         <div className="flex max-w-2xl flex-col gap-2">
           <Skeleton className="h-3.5 w-full" />
           <Skeleton className="h-3.5 w-4/5" />
@@ -270,7 +275,11 @@ export function OpportunityDetail({ id }: { id: number }) {
             {undecided && <DecideByBadge day={o.decideBy} />}
           </div>
         )}
-        <h1 className="font-heading text-3xl font-semibold tracking-tight break-words">{o.title}</h1>
+        {/* The Cơ hội title tile, as on the list page (PageHeader area); min-w-0 lets a long title wrap */}
+        <div className="flex items-start gap-3">
+          <AreaTile area="opportunity" />
+          <h1 className="min-w-0 font-heading text-3xl font-semibold tracking-tight break-words">{o.title}</h1>
+        </div>
         <p className="max-w-2xl text-sm leading-relaxed text-foreground">{o.hypothesis}</p>
         <div className="flex flex-wrap items-center gap-2">
           <DecisionSelect value={o.decision} onChange={(v) => void decide(v)} />

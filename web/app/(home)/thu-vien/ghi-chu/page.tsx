@@ -12,6 +12,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Thư viện"
+        area="library"
         description="Ghi chú markdown gắn với item. Item xong chỉ tính khi đã có ghi chú."
       >
         <LibraryTabs current="notes" />
