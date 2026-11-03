@@ -1,8 +1,8 @@
 'use client';
-import { NotebookPen, Sparkles, Star } from 'lucide-react';
+import { CircleAlert, NotebookPen, Star } from 'lucide-react';
 import type { ApiItem, ApiItemType } from '@/lib/api/client';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import type { NoteDraft } from './note-dialog';
 
 /** What a done Item still lacks (DECISIONS 4.2: "xong" needs an output); null when nothing is missing. */
@@ -42,9 +42,16 @@ function hintText(type: string, gap: { note: boolean; rating: boolean }): string
   return 'Còn thiếu điểm 1–10.';
 }
 
+/** The gap as a short meta phrase for a list row ("Chưa có ghi chú", "Chưa chấm điểm"). */
+export function gapLabel(gap: { note: boolean; rating: boolean }): string {
+  if (gap.note && gap.rating) return 'Chưa có ghi chú, chưa chấm điểm';
+  return gap.note ? 'Chưa có ghi chú' : 'Chưa chấm điểm';
+}
+
 /**
- * Gentle reminder on a done Item without its output: no note yet, or a film without a rating. `onWriteNote`
- * opens a new note linked to the Item; `onRate` (films) opens or focuses the rating.
+ * Gentle reminder in the Item dialog on a done Item without its output: no note yet, or a film without a rating
+ * (a warning Alert, DESIGN.md §6; no sparkle, D18). `onWriteNote` opens a new note linked to the Item; `onRate`
+ * (films) focuses the rating. List rows show `gapLabel()` in their meta line instead.
  */
 export function DoneOutputHint({
   type,
@@ -59,34 +66,28 @@ export function DoneOutputHint({
   onRate?: () => void;
   className?: string;
 }) {
+  const actions = (gap.note && onWriteNote) || (gap.rating && onRate);
   return (
-    <div
-      className={cn(
-        'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warning-foreground/20 bg-warning/40 px-3 py-2 text-[13px] leading-snug',
-        className,
+    <Alert variant="warning" role="note" className={className}>
+      <CircleAlert aria-hidden />
+      <AlertTitle>Xong rồi, nhưng chưa có đầu ra.</AlertTitle>
+      <AlertDescription>{hintText(type, gap)}</AlertDescription>
+      {actions && (
+        <div className="col-start-2 mt-2 flex flex-wrap gap-2">
+          {gap.note && onWriteNote && (
+            <Button size="xs" variant="outline" type="button" onClick={onWriteNote}>
+              <NotebookPen aria-hidden />
+              Viết ghi chú
+            </Button>
+          )}
+          {gap.rating && onRate && (
+            <Button size="xs" variant="outline" type="button" onClick={onRate}>
+              <Star aria-hidden />
+              Chấm điểm
+            </Button>
+          )}
+        </div>
       )}
-    >
-      <p className="flex min-w-0 flex-1 basis-48 items-start gap-2">
-        <Sparkles className="mt-0.5 size-3.5 shrink-0 text-warning-foreground" aria-hidden />
-        <span>
-          <span className="font-medium">Xong rồi, nhưng chưa có đầu ra.</span>{' '}
-          <span className="text-muted-foreground">{hintText(type, gap)}</span>
-        </span>
-      </p>
-      <span className="flex flex-wrap gap-1.5">
-        {gap.note && onWriteNote && (
-          <Button size="xs" variant="outline" type="button" onClick={onWriteNote}>
-            <NotebookPen aria-hidden />
-            Viết ghi chú
-          </Button>
-        )}
-        {gap.rating && onRate && (
-          <Button size="xs" variant="outline" type="button" onClick={onRate}>
-            <Star aria-hidden />
-            Chấm điểm
-          </Button>
-        )}
-      </span>
-    </div>
+    </Alert>
   );
 }

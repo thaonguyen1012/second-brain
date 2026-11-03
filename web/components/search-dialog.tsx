@@ -6,6 +6,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  BookOpen,
   BriefcaseBusiness,
   Inbox,
   Lightbulb,
@@ -34,6 +35,7 @@ import {
   useSearch,
   type SearchItemType,
 } from 'fumadocs-ui/components/dialog/search';
+import { getBook } from '@/lib/books';
 import { ApiError, isAbort } from '@/lib/api/client';
 import { searchBrain, type BrainSearchResults } from '@/lib/api/search';
 import { toApiError } from '@/lib/api/use-api';
@@ -218,6 +220,80 @@ function useBrainSearch(query: string) {
 
 type ListItems = (SearchItemType | SearchResultItem)[] | null;
 
+/** One handbook page of the results: its page row plus the best heading and text hit of that page. */
+interface HandbookHit {
+  id: string;
+  title: string;
+  /** "{book title} · {best heading}" */
+  meta: string;
+  /** One line of matching text; empty when there is none or it only repeats the title. */
+  excerpt: string;
+}
+
+const NO_HANDBOOK = new Map<string, HandbookHit>();
+
+/** "/docs/<track>/<book>/..." -> the book's title from lib/books.ts. */
+function bookTitle(url: string): string | undefined {
+  const slug = url.replace(/^\/docs\//, '').split('/')[1];
+  return slug ? getBook(slug)?.title : undefined;
+}
+
+/**
+ * /api/search returns a flat list per page (page row, then up to 3 heading and text hits), and the same id can
+ * come twice when a page has several hits without an anchor: React then keeps rows of an older query on screen
+ * (stale rows after editing the query). Collapse it to one row per page with a unique id (DESIGN.md §3 "List
+ * row"): the page title, its book and best heading as meta, one line of text. The row opens the best hit's
+ * anchor when there is one. Tables (none from this index today) pass through to Fumadocs' own renderer.
+ */
+function collapseHandbook(items: SearchResultItem[]): { list: ListItems; byId: Map<string, HandbookHit> } {
+  const pages = new Map<string, { url: string; title: string; heading?: string; text?: string }>();
+  const order: (string | SearchResultItem)[] = [];
+  for (const item of items) {
+    if (item.type === 'table') {
+      order.push(item);
+      continue;
+    }
+    const pageUrl = item.url.split('#')[0];
+    let page = pages.get(pageUrl);
+    if (!page) {
+      page = { url: pageUrl, title: item.type === 'page' ? item.content : '' };
+      pages.set(pageUrl, page);
+      order.push(pageUrl);
+    }
+    if (item.type === 'page') page.title ||= item.content;
+    else if (item.type === 'heading' && page.heading === undefined) {
+      page.heading = item.content;
+      page.url = item.url; // the best hit's anchor
+    } else if (item.type === 'text' && page.text === undefined) page.text = item.content;
+  }
+
+  const byId = new Map<string, HandbookHit>();
+  const list: NonNullable<ListItems> = [];
+  const seen = new Set<string>();
+  for (const entry of order) {
+    if (typeof entry !== 'string') {
+      if (seen.has(entry.id)) continue;
+      seen.add(entry.id);
+      list.push(entry);
+      continue;
+    }
+    const page = pages.get(entry)!;
+    const id = `handbook:${entry}`;
+    const title = page.title || page.heading || entry;
+    const heading = page.heading && page.heading !== title ? page.heading : undefined;
+    const excerpt = page.text ? oneLine(page.text) : '';
+    byId.set(id, {
+      id,
+      title,
+      meta: join(bookTitle(entry), heading),
+      excerpt: excerpt === title ? '' : excerpt,
+    });
+    seen.add(id);
+    list.push({ id, type: 'page', url: page.url, content: title });
+  }
+  return { list, byId };
+}
+
 interface ActiveMemory {
   /** Active row just before `items` changed. */
   id: string | null;
@@ -262,35 +338,42 @@ function ActiveAfter({ items, memoryRef }: { items: ListItems; memoryRef: RefObj
 
 function GroupLabel({ children }: { children: ReactNode }) {
   return (
-    <div
-      role="presentation"
-      aria-hidden
-      className="px-2.5 pt-2.5 pb-1 text-xs font-medium tracking-wide text-fd-muted-foreground uppercase"
-    >
+    <div role="presentation" aria-hidden className="px-3 pt-3 pb-1 text-xs font-medium text-muted-foreground">
       {children}
     </div>
   );
 }
 
-function BrainRow({ hit, item, onClick }: { hit: BrainHit; item: SearchItemType; onClick: () => void }) {
+/**
+ * One result row, the same anatomy for both groups: icon, title (14px medium), meta (12px muted), optionally one
+ * line of matching text (13px). The query is highlighted by Fumadocs' useHighlightQuery (styled on the list).
+ */
+function ResultRow({
+  item,
+  onClick,
+  icon: Icon,
+  title,
+  meta,
+  excerpt,
+}: {
+  item: SearchItemType;
+  onClick: () => void;
+  icon: LucideIcon;
+  title: string;
+  meta?: string;
+  excerpt?: string;
+}) {
   const { query } = useSearch();
   const highlight = useHighlightQuery(query);
-  const kind = kinds[hit.kind];
-  const Icon = kind.icon;
   return (
     <SearchDialogListItem item={item} onClick={onClick}>
       <div ref={highlight} className="flex items-start gap-2.5">
-        <Icon className="mt-0.5 size-4 shrink-0 text-fd-muted-foreground" aria-hidden />
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-medium">{hit.title}</div>
-          {hit.detail && <div className="truncate text-xs text-fd-muted-foreground">{hit.detail}</div>}
+        <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="truncate text-sm font-medium">{title}</div>
+          {meta && <div className="truncate text-xs text-muted-foreground">{meta}</div>}
+          {excerpt && <div className="line-clamp-1 text-[13px] text-muted-foreground">{excerpt}</div>}
         </div>
-        <span
-          data-highlight-ignore=""
-          className="shrink-0 rounded-md border px-1.5 py-0.5 text-xs leading-none text-fd-muted-foreground"
-        >
-          {kind.label}
-        </span>
       </div>
     </SearchDialogListItem>
   );
@@ -298,11 +381,22 @@ function BrainRow({ hit, item, onClick }: { hit: BrainHit; item: SearchItemType;
 
 const NO_LINKS: SearchLink[] = [];
 
-export default function AppSearchDialog({ links = NO_LINKS, ...props }: SharedProps & { links?: SearchLink[] }) {
+export default function AppSearchDialog({
+  links = NO_LINKS,
+  open,
+  onOpenChange,
+  ...props
+}: SharedProps & { links?: SearchLink[] }) {
   const { locale } = useI18n();
   const router = useRouter();
   const search = useFetchSearch({ locale });
-  const brain = useBrainSearch(props.open ? search.search : '');
+  const brain = useBrainSearch(open ? search.search : '');
+  const { onSearchChange } = search;
+  // Every opening starts empty (the destinations list), never with the results of the last query.
+  const onOpen = (next: boolean) => {
+    if (!next) onSearchChange('');
+    onOpenChange(next);
+  };
 
   const defaultItems = useMemo<SearchItemType[] | null>(
     () =>
@@ -327,14 +421,18 @@ export default function AppSearchDialog({ links = NO_LINKS, ...props }: SharedPr
   );
   const byId = useMemo(() => new Map(brain.hits.map((h) => [h.id, h])), [brain.hits]);
 
-  // Second-brain rows first: they are few (at most 5 per kind), the handbook list can run to a hundred rows.
-  const handbook: ListItems = search.data?.items ?? defaultItems;
+  const collapsed = useMemo(() => (search.data ? collapseHandbook(search.data.items) : null), [search.data]);
+  const handbookById = collapsed?.byId ?? NO_HANDBOOK;
+
+  // Second-brain rows first: they are few (at most 5 per kind), the handbook list runs to 20 pages.
+  const handbook: ListItems = collapsed?.list ?? defaultItems;
   const activeMemory = useRef<ActiveMemory>({ id: null, handbook: null, brainOnly: false });
   const items = useMemo<ListItems>(
     () => (brainItems.length === 0 ? handbook : [...brainItems.map((b) => b.item), ...(handbook ?? [])]),
     [brainItems, handbook],
   );
-  const firstHandbook = brainItems.length > 0 ? handbook?.[0]?.id : undefined;
+  const firstHandbook = brainItems.length > 0 && collapsed ? handbook?.[0]?.id : undefined;
+  const firstLink = !collapsed && brainItems.length === 0 ? defaultItems?.[0]?.id : undefined;
   const firstBrain = brainItems[0]?.hit.id;
 
   // Signed out or a server error: one quiet line. Django absent (dev without the proxy, static export): nothing.
@@ -345,38 +443,62 @@ export default function AppSearchDialog({ links = NO_LINKS, ...props }: SharedPr
       : `Không tìm được trong bộ não thứ hai (máy chủ trả lỗi ${brain.error.status}).`;
 
   return (
-    <SearchDialog {...search} isLoading={search.isLoading || brain.loading} {...props}>
+    <SearchDialog
+      {...search}
+      isLoading={search.isLoading || brain.loading}
+      {...props}
+      open={open}
+      onOpenChange={onOpen}
+    >
       <SearchDialogOverlay />
       <SearchDialogContent>
         <SearchDialogHeader>
           <SearchDialogIcon />
-          <SearchDialogInput
-            aria-label="Tìm mọi thứ"
-            placeholder="Tìm sổ tay, thư viện, ghi chú, inbox, thành tựu, bản tin…"
-          />
-          <SearchDialogClose />
+          <SearchDialogInput aria-label="Tìm mọi thứ" placeholder="Tìm sổ tay, ghi chú, inbox…" />
+          <SearchDialogClose className="max-sm:hidden pointer-coarse:hidden" />
         </SearchDialogHeader>
         <ActiveBefore items={items} handbook={handbook} memoryRef={activeMemory} />
         <SearchDialogList
           items={items}
+          // Matches read as emphasis, not as links (Fumadocs' default is blue and underlined)
+          className="[&_::highlight(fd-search)]:bg-muted-foreground/15 [&_::highlight(fd-search)]:text-foreground [&_::highlight(fd-search)]:no-underline"
           Empty={() => (
-            <div role="status" className="py-12 text-center text-sm text-fd-muted-foreground">
+            <div role="status" className="py-12 text-center text-sm text-muted-foreground">
               {brain.loading ? 'Đang tìm…' : 'Không tìm thấy kết quả'}
             </div>
           )}
           Item={({ item, table, onClick }) => {
-            const hit = byId.get(item.id);
+            // Rows of a table and anything unknown go through Fumadocs' own renderer
+            const hit = table ? undefined : byId.get(item.id);
+            const page = table || hit ? undefined : handbookById.get(item.id);
             const label =
               hit && hit.id === firstBrain
                 ? 'Bộ não thứ hai'
-                : !hit && !table && item.id === firstHandbook
+                : !table && item.id === firstHandbook
                   ? 'Sổ tay'
-                  : null;
+                  : !table && item.id === firstLink
+                    ? 'Đi đến'
+                    : null;
             return (
               <>
                 {label && <GroupLabel>{label}</GroupLabel>}
                 {hit ? (
-                  <BrainRow hit={hit} item={item} onClick={onClick} />
+                  <ResultRow
+                    item={item}
+                    onClick={onClick}
+                    icon={kinds[hit.kind].icon}
+                    title={hit.title}
+                    meta={join(kinds[hit.kind].label, hit.detail)}
+                  />
+                ) : page ? (
+                  <ResultRow
+                    item={item}
+                    onClick={onClick}
+                    icon={BookOpen}
+                    title={page.title}
+                    meta={page.meta}
+                    excerpt={page.excerpt}
+                  />
                 ) : (
                   <SearchDialogListItem item={item} table={table} onClick={onClick} />
                 )}
@@ -387,7 +509,7 @@ export default function AppSearchDialog({ links = NO_LINKS, ...props }: SharedPr
         <ActiveAfter items={items} memoryRef={activeMemory} />
         {brainNote && (
           <SearchDialogFooter>
-            <p role="status" className="text-xs text-fd-muted-foreground">
+            <p role="status" className="text-xs text-muted-foreground">
               {brainNote}
             </p>
           </SearchDialogFooter>

@@ -9,8 +9,7 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-// 150 kB in DECISIONS 10.2 is below what Next 16 + React 19 alone ship (~140-150 kB gzip before any app code),
-// so the enforced limit is the measured total after the sidebar split plus headroom, until the owner restates it.
+// 220 kB gzip total, approved by the owner on 03/11/2026 (DECISIONS 10.2); Next 16 + React 19 alone ship ~140-150 kB.
 const { values } = parseArgs({ options: { 'max-kb': { type: 'string', default: '220' } } });
 const maxBytes = Number(values['max-kb']) * 1000;
 

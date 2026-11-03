@@ -4,7 +4,7 @@ import type { ApiScoreSnapshot } from '@/lib/api/opportunities';
 import { formatDate } from '@/lib/labels';
 import { scoreDims, type ScoreKey } from './labels';
 
-// Small multiples, one tile per score (1-10, shared scale), one hue: the tile title names the series, so no
+// Small multiples, one figure per score (1-10, shared scale), one data hue (--chart-2): the tile title names the series, so no
 // legend and no categorical palette. One cursor drives every tile; arrows move it, a table view carries all values.
 const W = 220;
 const H = 92;
@@ -54,7 +54,7 @@ function Tile({
   };
 
   return (
-    <figure className="flex min-w-0 flex-col gap-1 rounded-2xl border bg-card p-3">
+    <figure className="flex min-w-0 flex-col gap-1">
       <figcaption className="flex items-baseline justify-between gap-2">
         <span className="text-sm font-medium">{dim.label}</span>
         <span className="text-sm tabular-nums">
@@ -104,7 +104,7 @@ function Tile({
           <path
             d={path}
             fill="none"
-            className="stroke-primary"
+            className="stroke-chart-2"
             strokeWidth={2}
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -116,7 +116,7 @@ function Tile({
             cx={xs[i]}
             cy={yOf(v)}
             r={i === active ? 5 : 3.5}
-            className="fill-primary stroke-card"
+            className="fill-chart-2 stroke-background"
             strokeWidth={2}
           />
         ))}
@@ -149,7 +149,7 @@ export function ScoreHistoryChart({ history }: { history: ApiScoreSnapshot[] }) 
         tabIndex={0}
         role="group"
         aria-label={`Lịch sử điểm, ${points.length} lần chấm. Dùng phím mũi tên để xem từng lần.`}
-        className="flex flex-col gap-3 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex flex-col gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onKeyDown={(e) => {
           const step = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
           let next: number | null = null;
@@ -170,7 +170,7 @@ export function ScoreHistoryChart({ history }: { history: ApiScoreSnapshot[] }) 
           {snap.note && <>: {snap.note}</>}
           <span className="sr-only">{scoreDims.map((d) => `${d.label} ${snap[d.key]}`).join(', ')}</span>
         </p>
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
           {scoreDims.map((d) => (
             <Tile key={d.key} dim={d} points={points} xs={xs} active={active} onActive={setHover} />
           ))}

@@ -82,6 +82,7 @@ export function ReviewOpportunities({
   onDecided: (id: number, decision: ApiOpportunityDecision) => void;
 }) {
   const { withEvidence, stale } = opportunities;
+  if (withEvidence.length === 0 && stale.length === 0) return null;
   return (
     <WeekSection
       id="week-opportunities"
@@ -93,11 +94,9 @@ export function ReviewOpportunities({
         </Button>
       }
     >
-      <div className="flex flex-col gap-2">
-        <h3 className="text-xs font-medium text-muted-foreground">Có thêm bằng chứng tuần này</h3>
-        {withEvidence.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Tuần này chưa có bằng chứng mới cho cơ hội nào.</p>
-        ) : (
+      {withEvidence.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-xs font-medium text-muted-foreground">Có thêm bằng chứng tuần này</h3>
           <ul className="flex flex-col divide-y">
             {withEvidence.map((o) => {
               const d = decisionOf(o.decision);
@@ -117,8 +116,8 @@ export function ReviewOpportunities({
               );
             })}
           </ul>
-        )}
-      </div>
+        </div>
+      )}
       {stale.length > 0 && (
         <div className="flex flex-col gap-2">
           <h3 className="text-xs font-medium text-muted-foreground">
@@ -186,7 +185,6 @@ export function ReviewAchievements({
     <WeekSection
       id="week-achievements"
       title="Nhật ký thành tựu"
-      description="Mỗi tuần ít nhất một dòng, có số nếu được: dữ liệu cho CV và case study."
       action={
         <Button size="xs" variant="ghost" render={<Link href="/phat-trien/thanh-tuu/" />}>
           Tất cả
@@ -227,7 +225,7 @@ export function ReviewAchievements({
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Đã làm gì, ví dụ: Ship trang thanh toán"
+          placeholder="Đã làm gì"
           aria-label="Thành tựu"
           maxLength={200}
           className="sm:flex-[3]"
@@ -235,7 +233,7 @@ export function ReviewAchievements({
         <Input
           value={impact}
           onChange={(e) => setImpact(e.target.value)}
-          placeholder="Tác động, ví dụ: 40 s xuống 12 s"
+          placeholder="Con số tác động"
           aria-label="Tác động (con số)"
           maxLength={200}
           className="sm:flex-[2]"
@@ -250,9 +248,13 @@ export function ReviewAchievements({
   );
 }
 
-/** Predictions whose 6 months are up (GET /api/predictions?due=true): scored on Thành tựu (DECISIONS 4.8). */
+/**
+ * Predictions whose 6 months are up (GET /api/predictions?due=true): scored on Thành tựu (DECISIONS 4.8). Shown
+ * only when some are due; the review checklist already says "Không có" otherwise.
+ */
 export function ReviewPredictions() {
   const due = useDuePredictions();
+  if (!due.data || due.data.results.length === 0) return null;
   return (
     <WeekSection
       id="week-predictions"

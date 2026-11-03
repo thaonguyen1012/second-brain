@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { opportunitiesApi, type ApiTopicCounts } from '@/lib/api/opportunities';
 import { useApi } from '@/lib/api/use-api';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ApiErrorState, ApiStaleAlert } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { formatDay } from './labels';
@@ -46,11 +47,11 @@ function buildMatrix(data: ApiTopicCounts): Matrix {
   return { weeks, rows, max };
 }
 
-/** Sequential fill: the primary hue mixed into the card surface, light (few) to full (many). */
+/** Sequential fill: the data hue (--chart-2, not the action blue) mixed into the page surface, light to full. */
 function fill(count: number, max: number): string | undefined {
   if (count === 0) return undefined;
   const pct = Math.round(18 + 82 * (count / max));
-  return `color-mix(in oklab, var(--primary) ${pct}%, var(--card))`;
+  return `color-mix(in oklab, var(--chart-2) ${pct}%, var(--background))`;
 }
 
 const shortWeek = (week: string) => week.replace(/^\d{4}-/, '');
@@ -92,7 +93,7 @@ function Heatmap({ m }: { m: Matrix }) {
           tabIndex={0}
           role="group"
           aria-label="Bản đồ nhiệt chủ đề theo tuần. Phím mũi tên để đi qua từng ô."
-          className="grid min-w-max gap-[2px] rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid min-w-max gap-0.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
           style={{ gridTemplateColumns: `minmax(6rem, max-content) repeat(${nCols}, minmax(1.75rem, 1fr))` }}
           onKeyDown={(e) => {
             const d = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
@@ -127,9 +128,9 @@ function Heatmap({ m }: { m: Matrix }) {
                     key={c}
                     onPointerEnter={() => setHover({ r, c })}
                     className={cn(
-                      'h-7 rounded-[4px] transition-shadow',
+                      'h-7 rounded-sm transition-shadow',
                       n === 0 && 'bg-muted',
-                      on && 'ring-2 ring-foreground/70 ring-offset-1 ring-offset-card',
+                      on && 'ring-2 ring-foreground/70 ring-offset-1 ring-offset-background',
                     )}
                     style={{ background: fill(n, m.max) }}
                   />
@@ -150,10 +151,10 @@ function Heatmap({ m }: { m: Matrix }) {
       <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-hidden>
         <span>ít</span>
         {[0.15, 0.35, 0.55, 0.78, 1].map((f) => (
-          <span key={f} className="h-3 w-5 rounded-[3px]" style={{ background: fill(f * m.max, m.max) }} />
+          <span key={f} className="h-3 w-5 rounded-sm" style={{ background: fill(f * m.max, m.max) }} />
         ))}
         <span>nhiều (tối đa {m.max} tin một tuần)</span>
-        <span className="ms-2 inline-block h-3 w-5 rounded-[3px] bg-muted" />
+        <span className="ms-2 inline-block h-3 w-5 rounded-sm bg-muted" />
         <span>không có</span>
       </div>
       <details className="text-sm">
@@ -198,31 +199,38 @@ export function TopicHeatmap() {
   const [weeks, setWeeks] = useState<WeeksValue>('8');
   const topics = useApi(`news-topics:${weeks}`, () => opportunitiesApi.topicCounts(Number(weeks)));
   const m = topics.data ? buildMatrix(topics.data) : null;
+  // No tagged news in the default range: the range picker and the explanation have nothing to act on. Once the
+  // owner has changed the range it stays, so an empty short range can be widened again.
+  const nothing = !!m && m.rows.length === 0 && weeks === '8';
 
   return (
     <section className="flex flex-col gap-4" aria-labelledby="topics-heading">
       <div className="flex flex-wrap items-center gap-2">
         <div className="me-auto flex flex-col gap-1">
-          <h2 id="topics-heading" className="font-heading text-xl font-semibold tracking-tight">
+          <h2 id="topics-heading" className="font-heading text-lg font-semibold tracking-tight">
             Chủ đề trong bản tin theo tuần
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Số tin mỗi tag xuất hiện trong bản tin sáng, theo tuần ISO. Chủ đề nóng dần là gợi ý tìm bằng chứng.
-          </p>
+          {!nothing && (
+            <p className="text-sm text-muted-foreground">
+              Số tin mỗi tag xuất hiện trong bản tin sáng, theo tuần ISO. Chủ đề nóng dần là gợi ý tìm bằng chứng.
+            </p>
+          )}
         </div>
-        <ChoiceSelect
-          label="Khoảng thời gian"
-          value={weeks}
-          onChange={setWeeks}
-          choices={weekChoices}
-          className="w-auto"
-        />
+        {!nothing && (
+          <ChoiceSelect
+            label="Khoảng thời gian"
+            value={weeks}
+            onChange={setWeeks}
+            choices={weekChoices}
+            className="w-auto"
+          />
+        )}
       </div>
       <ApiStaleAlert result={topics} />
       {topics.error && !topics.data ? (
         <ApiErrorState error={topics.error} onRetry={topics.reload} />
       ) : !m ? (
-        <div className="h-48 animate-pulse rounded-2xl bg-muted" aria-busy="true" aria-label="Đang tải" />
+        <Skeleton className="h-48 rounded-xl" aria-busy="true" aria-label="Đang tải" />
       ) : m.rows.length === 0 ? (
         // A secondary block of the page: one line, not a second empty box (DESIGN.md D26)
         <p className="text-sm text-muted-foreground">
@@ -232,7 +240,7 @@ export function TopicHeatmap() {
       ) : (
         <div
           className={cn(
-            'rounded-xl border p-4 transition-opacity',
+            'rounded-xl border bg-card p-4 transition-opacity',
             topics.loading && 'opacity-60',
           )}
         >

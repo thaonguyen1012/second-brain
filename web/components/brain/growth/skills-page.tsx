@@ -1,16 +1,17 @@
 'use client';
 import { useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { Plus, Search, Sprout } from 'lucide-react';
 import { growthApi, listAll, type ApiFreshness, type ApiSkill, type ApiSkillDetail } from '@/lib/api/growth';
 import { useApi } from '@/lib/api/use-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState } from '../api-state';
+import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
 import { freshness, freshnessOrder } from './labels';
 import { SkillDialog } from './skill-dialog';
@@ -18,14 +19,15 @@ import { SkillSheet } from './skill-sheet';
 import { useShortcuts } from './shared';
 
 type Filter = ApiFreshness | 'all';
-const filterChoices: { value: Filter; label: string }[] = [
-  { value: 'all', label: 'Mọi độ mới' },
-  ...freshnessOrder.map((f) => ({ value: f, label: freshness[f].label })),
-];
 
 const loadSkills = () => listAll(growthApi.listSkills({ limit: 200 }));
 
-/** A matrix tile: colour and fading carry freshness; the word under the name says it for everyone. */
+const matrixGrid = 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6';
+
+/**
+ * A matrix tile (DECISIONS 9.1: a matrix, staleness by colour, no number): one bordered container, the freshness dot
+ * beside the name, the word as a StatusBadge; a faded skill's name goes muted.
+ */
 function SkillTile({ skill, onOpen }: { skill: ApiSkill; onOpen: () => void }) {
   const f = freshness[skill.freshness];
   return (
@@ -33,38 +35,27 @@ function SkillTile({ skill, onOpen }: { skill: ApiSkill; onOpen: () => void }) {
       <button
         type="button"
         onClick={onOpen}
-        className={cn(
-          'flex h-full w-full flex-col items-start gap-1 rounded-2xl border p-3 text-start transition-[box-shadow,opacity,filter] duration-200',
-          'hover:opacity-100 hover:shadow-popover hover:grayscale-0 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:grayscale-0',
-          f.tile,
-        )}
+        className="flex h-full min-h-20 w-full flex-col items-start gap-2 rounded-xl border bg-card p-3 text-start transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
-        <span className="font-heading text-[15px] leading-5 font-semibold break-words">{skill.name}</span>
-        {skill.aliases.length > 0 && (
-          <span className="line-clamp-1 text-xs opacity-80">{skill.aliases.join(', ')}</span>
-        )}
-        <span className="mt-auto flex items-center gap-1.5 pt-1 text-xs font-medium">
-          <span className={cn('size-2 rounded-full', f.dot)} aria-hidden />
-          {f.label}
+        <span className="flex w-full min-w-0 items-start gap-2">
+          <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', f.dot)} aria-hidden />
+          <span
+            className={cn(
+              'line-clamp-2 text-sm font-medium break-words',
+              skill.freshness === 'faded' && 'text-muted-foreground',
+            )}
+          >
+            {skill.name}
+          </span>
+        </span>
+        <span className="mt-auto flex w-full min-w-0 items-center gap-2">
+          <StatusBadge tone={f.tone}>{f.label}</StatusBadge>
+          {skill.aliases.length > 0 && (
+            <span className="truncate text-xs text-muted-foreground">{skill.aliases.join(', ')}</span>
+          )}
         </span>
       </button>
     </li>
-  );
-}
-
-function Legend({ counts }: { counts: Record<ApiFreshness, number> }) {
-  return (
-    <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground" aria-label="Chú giải">
-      {freshnessOrder.map((k) => (
-        <li key={k} className="flex items-center gap-1.5">
-          <span className={cn('size-3 rounded border', freshness[k].tile)} aria-hidden />
-          <span>
-            <span className="font-medium text-foreground">{freshness[k].label}</span> ({freshness[k].hint}):{' '}
-            {counts[k]} kỹ năng
-          </span>
-        </li>
-      ))}
-    </ul>
   );
 }
 
@@ -88,12 +79,28 @@ export function SkillsPage() {
     for (const s of all) c[s.freshness] += 1;
     return c;
   }, [all]);
+  const filterChoices = useMemo(
+    (): { value: Filter; label: string }[] => [
+      { value: 'all', label: skills.data ? `Mọi độ mới · ${all.length}` : 'Mọi độ mới' },
+      ...freshnessOrder.map((f) => ({
+        value: f,
+        label: skills.data ? `${freshness[f].label} · ${counts[f]}` : freshness[f].label,
+      })),
+    ],
+    [skills.data, all.length, counts],
+  );
   const q = query.trim().toLowerCase();
   const shown = all.filter(
     (s) =>
       (filter === 'all' || s.freshness === filter) &&
       (!q || s.name.toLowerCase().includes(q) || s.aliases.some((a) => a.toLowerCase().includes(q))),
   );
+
+  const empty = !!skills.data && all.length === 0;
+  const clearFilters = () => {
+    setFilter('all');
+    setQuery('');
+  };
 
   const create = () => {
     setEditing(null);
@@ -102,10 +109,11 @@ export function SkillsPage() {
   useShortcuts({ n: create, '/': () => searchRef.current?.focus() });
 
   return (
-    <div className="flex flex-col gap-5 px-4 pb-12 sm:px-8">
+    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
+      {/* 390 px: filter + "Thêm kỹ năng" on row 1, search full width on row 2 (DESIGN.md §6 Toolbar) */}
       <div className="flex flex-wrap items-center gap-2">
         <ChoiceSelect label="Độ mới" value={filter} onChange={setFilter} choices={filterChoices} className="w-auto" />
-        <div className="relative w-full sm:w-64">
+        <div className="relative order-last w-full sm:order-none sm:w-64">
           <Search
             className="pointer-events-none absolute start-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
@@ -121,9 +129,10 @@ export function SkillsPage() {
             className="ps-6"
           />
         </div>
-        <Button className="ms-auto" onClick={create}>
+        {/* While the matrix is empty the EmptyState button is the one primary (DESIGN.md D2) */}
+        <Button className="ms-auto" variant={empty ? 'outline' : 'default'} onClick={create}>
           <Plus aria-hidden />
-          Thêm kỹ năng <Kbd className="hidden sm:inline-flex">N</Kbd>
+          Thêm kỹ năng <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
         </Button>
       </div>
 
@@ -137,12 +146,14 @@ export function SkillsPage() {
       {skills.error && !skills.data ? (
         <ApiErrorState error={skills.error} onRetry={skills.reload} />
       ) : !skills.data ? (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6" aria-busy="true" aria-label="Đang tải">
+        <ul className={matrixGrid} aria-busy="true" aria-label="Đang tải">
           {Array.from({ length: 8 }, (_, i) => (
-            <li key={i} className="h-24 animate-pulse rounded-2xl bg-muted" />
+            <li key={i}>
+              <Skeleton className="h-20 rounded-xl" />
+            </li>
           ))}
         </ul>
-      ) : all.length === 0 ? (
+      ) : empty ? (
         <>
           <EmptyState
             icon={<Sprout aria-hidden />}
@@ -156,29 +167,19 @@ export function SkillsPage() {
           </EmptyState>
           {!skills.error && <EmptyStateGuide guide="skill" />}
         </>
+      ) : shown.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Không có mục nào khớp bộ lọc.{' '}
+          <Button variant="link" size="sm" className="px-0" onClick={clearFilters}>
+            Xóa bộ lọc
+          </Button>
+        </p>
       ) : (
-        <>
-          <Legend counts={counts} />
-          {shown.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Không có kỹ năng nào khớp bộ lọc.</p>
-          ) : (
-            <ul
-              className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6"
-              aria-label="Ma trận kỹ năng"
-            >
-              {shown.map((s) => (
-                <SkillTile key={s.id} skill={s} onOpen={() => setOpenId(s.id)} />
-              ))}
-            </ul>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Bấm một kỹ năng để xem và gắn bằng chứng. So với tin tuyển dụng ở trang{' '}
-            <Link href="/phat-trien/thi-truong/" className="underline underline-offset-4">
-              Thị trường
-            </Link>
-            . Phím <Kbd>/</Kbd> để tìm.
-          </p>
-        </>
+        <ul className={matrixGrid} aria-label="Ma trận kỹ năng">
+          {shown.map((s) => (
+            <SkillTile key={s.id} skill={s} onOpen={() => setOpenId(s.id)} />
+          ))}
+        </ul>
       )}
 
       <SkillSheet

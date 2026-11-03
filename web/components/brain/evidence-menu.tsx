@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Lightbulb } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { api, type ApiStance } from '@/lib/api/client';
 import { useApi, toApiError } from '@/lib/api/use-api';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
   MenuSubTrigger,
   MenuTrigger,
 } from '@/components/ui/menu';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { describeApiError } from './api-state';
 import { loadOpenOpportunities } from './open-opportunities';
 
@@ -23,7 +24,10 @@ const stances: { value: ApiStance; label: string }[] = [
   { value: 'contradicts', label: 'Phản bác' },
 ];
 
-/** Morning-brief button "bằng chứng cho cơ hội…": records the news item as evidence (DECISIONS 9.2). */
+/**
+ * Overflow of a morning-brief card (DESIGN.md §6 "Row actions": ghost icon-sm MoreHorizontal + tooltip): records
+ * the news item as evidence for an open opportunity (DECISIONS 9.2). Sits at the end of the card's action row.
+ */
 export default function EvidenceMenu({ newsItem }: { newsItem: number }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -40,13 +44,24 @@ export default function EvidenceMenu({ newsItem }: { newsItem: number }) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
+      {status && (
+        <span className="text-xs text-muted-foreground" role="status">
+          {status}
+        </span>
+      )}
       <Menu open={open} onOpenChange={setOpen}>
-        <MenuTrigger render={<Button size="xs" variant="outline" />}>
-          <Lightbulb aria-hidden />
-          Bằng chứng cho cơ hội…
-        </MenuTrigger>
-        <MenuPopup align="start" className="w-72">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Thêm làm bằng chứng cho cơ hội" />} />
+            }
+          >
+            <MoreHorizontal aria-hidden />
+          </TooltipTrigger>
+          <TooltipPopup>Thêm làm bằng chứng</TooltipPopup>
+        </Tooltip>
+        <MenuPopup align="end" className="w-72">
           <MenuGroupLabel>Cơ hội đang mở</MenuGroupLabel>
           {opps.error && <MenuItem disabled>{describeApiError(opps.error).title}</MenuItem>}
           {!opps.error && !opps.data && <MenuItem disabled>Đang tải…</MenuItem>}
@@ -69,11 +84,6 @@ export default function EvidenceMenu({ newsItem }: { newsItem: number }) {
           ))}
         </MenuPopup>
       </Menu>
-      {status && (
-        <span className="text-xs text-muted-foreground" role="status">
-          {status}
-        </span>
-      )}
     </div>
   );
 }

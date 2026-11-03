@@ -1,19 +1,22 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Clock, Lightbulb, Pencil, Plus, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Lightbulb, Pencil, Plus, X } from 'lucide-react';
 import { api, type ApiOpportunity, type Page } from '@/lib/api/client';
 import { opportunitiesApi, type ApiDecision } from '@/lib/api/opportunities';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { opportunityHref } from '@/lib/labels';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
+import { MenuItem } from '@/components/ui/menu';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
-import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
-import { BrainCard, StatusBadge } from '../brain-card';
+import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError } from '../api-state';
+import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
-import { DecideByBadge, FitBadges, ScoresLine } from './bits';
-import { STALE_LABEL, decisionOf, decisions } from './labels';
+import { RowMenu } from '../row-menu';
+import { DecideByCell, RowsSkeleton, ScoresCell, Tip } from './bits';
+import { STALE_LABEL, decisionOf, decisions, formatDay, scoreDims } from './labels';
 import { OpportunityFormDialog } from './opportunity-form-dialog';
 import { useShortcuts } from './use-shortcuts';
 
@@ -29,65 +32,61 @@ const staleChoices: { value: StaleFilter; label: string }[] = [
 
 export const detailHref = opportunityHref;
 
-function OpportunityCard({ o, onEdit, onDrop }: { o: ApiOpportunity; onEdit: () => void; onDrop: () => void }) {
+/**
+ * One list row (DESIGN.md §3 "List row beats card"): decision | title + evidence meta | scores | decide-by | menu.
+ * The title link stretches over the row; the menu sits above it. Hypothesis and next action live on the detail.
+ */
+const ROW_GRID =
+  'grid grid-cols-[5.5rem_minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[5.5rem_minmax(0,1fr)_7rem_10rem_auto]';
+
+function OpportunityRow({ o, onEdit, onDrop }: { o: ApiOpportunity; onEdit: () => void; onDrop: () => void }) {
   const d = decisionOf(o.decision);
+  const undecided = o.decision === 'open' || o.decision === 'keep';
   return (
-    <BrainCard
-      badges={
-        <>
-          <StatusBadge tone={d.tone}>{d.label}</StatusBadge>
-          {o.stale && (
-            <StatusBadge tone="warning">
-              <Clock aria-hidden />
-              {STALE_LABEL}
-            </StatusBadge>
-          )}
-          {o.decision === 'open' || o.decision === 'keep' ? <DecideByBadge day={o.decideBy} /> : null}
-        </>
-      }
-      title={
-        <Link href={detailHref(o.id)} className="hover:underline focus-visible:underline">
+    <li
+      className={cn(
+        ROW_GRID,
+        // badges are positioned (relative): let clicks on them fall through to the stretched title link
+        'relative min-h-14 px-3 py-2 transition-colors hover:bg-accent [&_[data-slot=badge]]:pointer-events-none',
+      )}
+    >
+      <span className="flex">
+        <StatusBadge tone={d.tone}>{d.label}</StatusBadge>
+      </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <Link
+          href={detailHref(o.id)}
+          className="truncate text-sm font-medium outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+        >
           {o.title}
         </Link>
-      }
-      meta={
-        <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="inline-flex items-center gap-1">
-            <ThumbsUp className="size-3" aria-hidden />
-            {o.evidenceSupports} ủng hộ
+        <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground tabular-nums">
+          {o.stale && <StatusBadge tone="warning">{STALE_LABEL}</StatusBadge>}
+          <span>
+            {o.evidenceSupports} ủng hộ · {o.evidenceContradicts} phản bác
+            {undecided && o.decideBy && <span className="md:hidden"> · hạn {formatDay(o.decideBy)}</span>}
           </span>
-          <span className="inline-flex items-center gap-1">
-            <ThumbsDown className="size-3" aria-hidden />
-            {o.evidenceContradicts} phản bác
-          </span>
-        </span>
-      }
-      actions={
-        <>
-          <Button size="xs" render={<Link href={detailHref(o.id)} />}>
-            Mở
-          </Button>
-          <Button size="xs" variant="outline" onClick={onEdit}>
+        </p>
+      </div>
+      <span className="max-md:hidden">
+        <ScoresCell scores={o.scores} />
+      </span>
+      <span className="flex max-md:hidden">{undecided && <DecideByCell day={o.decideBy} />}</span>
+      <span className="relative z-10 flex justify-end">
+        <RowMenu label={`Thao tác cho "${o.title}"`}>
+          <MenuItem onClick={onEdit}>
             <Pencil aria-hidden />
             Sửa
-          </Button>
-          {o.stale && (
-            <Button size="xs" variant="outline" onClick={onDrop}>
+          </MenuItem>
+          {o.stale && o.decision !== 'drop' && (
+            <MenuItem onClick={onDrop}>
+              <X aria-hidden />
               Bỏ cơ hội này
-            </Button>
+            </MenuItem>
           )}
-        </>
-      }
-    >
-      <p className="text-sm leading-relaxed">{o.hypothesis}</p>
-      {o.nextAction && (
-        <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Kế tiếp:</span> {o.nextAction}
-        </p>
-      )}
-      <ScoresLine scores={o.scores} />
-      <FitBadges fit={o.fit} />
-    </BrainCard>
+        </RowMenu>
+      </span>
+    </li>
   );
 }
 
@@ -151,22 +150,59 @@ export function OpportunityList() {
   };
 
   const filtered = decision !== 'all' || stale !== 'all';
+  const clearFilters = () => {
+    setDecision('all');
+    setStale('all');
+  };
+  // Unfiltered and empty: the empty state's button is the one primary, the toolbar's drops to outline (D2).
+  const emptyUnfiltered = !filtered && !opps.loading && !!opps.data && !opps.error && list.length === 0;
+  const newVariant = emptyUnfiltered ? 'outline' : 'default';
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-2">
         <ChoiceSelect
           label="Quyết định"
           value={decision}
           onChange={setDecision}
           choices={decisionChoices}
-          className="w-auto"
+          className="min-w-0 flex-1 max-sm:text-sm sm:w-auto sm:flex-none"
         />
-        <ChoiceSelect label="Bằng chứng" value={stale} onChange={setStale} choices={staleChoices} className="w-auto" />
-        <Button className="ms-auto" onClick={openNew} aria-keyshortcuts="n">
+        <ChoiceSelect
+          label="Bằng chứng"
+          value={stale}
+          onChange={setStale}
+          choices={staleChoices}
+          className="min-w-0 flex-1 max-sm:text-sm sm:w-auto sm:flex-none"
+        />
+        {/* 390 px: icon-only so the primary keeps the end of the one toolbar row (D11) */}
+        <Tip
+          trigger={
+            <Button
+              size="icon"
+              variant={newVariant}
+              className="ms-auto shrink-0 sm:hidden"
+              onClick={openNew}
+              aria-label="Cơ hội mới"
+              aria-keyshortcuts="n"
+            >
+              <Plus aria-hidden />
+            </Button>
+          }
+        >
+          Cơ hội mới
+        </Tip>
+        <Button variant={newVariant} className="ms-auto max-sm:hidden" onClick={openNew} aria-keyshortcuts="n">
           <Plus aria-hidden />
           Cơ hội mới
-          <Kbd className="ms-1 hidden bg-primary-foreground/20 text-primary-foreground sm:inline-flex">N</Kbd>
+          <Kbd
+            className={cn(
+              'ms-1 pointer-coarse:hidden max-sm:hidden',
+              newVariant === 'default' && 'bg-primary-foreground/20 text-primary-foreground',
+            )}
+          >
+            N
+          </Kbd>
         </Button>
       </div>
 
@@ -180,33 +216,50 @@ export function OpportunityList() {
       {opps.error && !opps.data ? (
         <ApiErrorState error={opps.error} onRetry={opps.reload} />
       ) : opps.loading && list.length === 0 ? (
-        <LoadingCards />
+        <RowsSkeleton />
+      ) : list.length === 0 && filtered ? (
+        <p className="text-sm text-muted-foreground">
+          Không có mục nào khớp bộ lọc.{' '}
+          <Button variant="link" size="sm" className="px-0" onClick={clearFilters}>
+            Xóa bộ lọc
+          </Button>
+        </p>
       ) : list.length === 0 ? (
         <>
           <EmptyState
             icon={<Lightbulb aria-hidden />}
-            title={filtered ? 'Không có cơ hội nào khớp bộ lọc' : 'Chưa có cơ hội nào'}
-            description={
-              filtered
-                ? 'Đổi bộ lọc để xem các cơ hội khác.'
-                : 'Ghi một giả thuyết: ai, đau gì, trả tiền cho gì. Tin trong bản tin sáng và mục inbox sẽ thành bằng chứng.'
-            }
-          />
-          {!filtered && opps.data && !opps.error && <EmptyStateGuide guide="opportunity" />}
+            title="Chưa có cơ hội nào"
+            description="Ghi một giả thuyết: ai, đau gì, trả tiền cho gì. Tin trong bản tin sáng và mục inbox sẽ thành bằng chứng."
+          >
+            <Button onClick={openNew}>
+              <Plus aria-hidden />
+              Cơ hội mới
+            </Button>
+          </EmptyState>
+          {opps.data && !opps.error && <EmptyStateGuide guide="opportunity" />}
         </>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-          {list.map((o) => (
-            <OpportunityCard
-              key={o.id}
-              o={o}
-              onEdit={() => {
-                setEditing(o);
-                setDialogOpen(true);
-              }}
-              onDrop={() => void drop(o)}
-            />
-          ))}
+        <div className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card">
+          <div className={cn(ROW_GRID, 'h-8 px-3 text-xs font-medium text-muted-foreground max-md:hidden')} aria-hidden>
+            <span>Quyết định</span>
+            <span>Cơ hội</span>
+            <span title={scoreDims.map((d) => d.label).join(' · ')}>Điểm</span>
+            <span>Hạn quyết định</span>
+            <span className="w-8 sm:w-7" />
+          </div>
+          <ul className="flex flex-col divide-y" aria-label="Cơ hội">
+            {list.map((o) => (
+              <OpportunityRow
+                key={o.id}
+                o={o}
+                onEdit={() => {
+                  setEditing(o);
+                  setDialogOpen(true);
+                }}
+                onDrop={() => void drop(o)}
+              />
+            ))}
+          </ul>
         </div>
       )}
       {opps.data?.next && !opps.loading && (

@@ -5,6 +5,7 @@ import { Inbox } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { LazyTooltip } from '@/components/lazy-tooltip';
 
 // One shared count of entries with status "inbox" for the top bar and "Hôm nay"; refreshed on mount, on tab
 // focus and after every capture or triage (refreshInboxCount: GET /api/inbox/count, one COUNT on the server,
@@ -57,18 +58,23 @@ export function useInboxCount(): string | null {
   return useSyncExternalStore(subscribe, snapshot, () => null);
 }
 
-/** Top bar button: Inbox with its count (DECISIONS 9.3). */
+/**
+ * Top bar button: Inbox with its count (DECISIONS 9.3). Icon-only below sm, so it carries a tooltip (loaded
+ * lazily: the shell is on the home page, see components/lazy-tooltip.tsx).
+ */
 export function InboxButton() {
   const n = useInboxCount();
   return (
-    <Button variant="outline" render={<Link href="/inbox/" aria-label={n ? `Inbox, ${n} mục chưa xử lý` : 'Inbox'} />}>
-      <Inbox aria-hidden />
-      <span className="hidden sm:inline">Inbox</span>
-      {n && n !== '0' && (
-        <Badge variant="warning" size="sm">
-          {n}
-        </Badge>
-      )}
-    </Button>
+    <LazyTooltip label="Inbox">
+      <Button variant="outline" render={<Link href="/inbox/" aria-label={n ? `Inbox, ${n} mục chưa xử lý` : 'Inbox'} />}>
+        <Inbox aria-hidden />
+        <span className="hidden sm:inline">Inbox</span>
+        {n && n !== '0' && (
+          <Badge variant="warning" size="sm">
+            {n}
+          </Badge>
+        )}
+      </Button>
+    </LazyTooltip>
   );
 }

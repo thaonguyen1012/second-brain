@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ApiWeek } from '@/lib/api/client';
@@ -15,8 +15,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards } from '../api-state';
+import { KeyLegend } from '../key-legend';
 import type { BookIndex } from './body-of-work';
 import type { ObjectivesUpdate } from './objectives-editor';
 import { PlanPanel } from './plan-panel';
@@ -24,6 +26,51 @@ import { ReviewPanel } from './review-panel';
 import { addDays, isMonday, isoWeek, mondayOf, todayPrague, weekdayIndex, weekRange } from './week-utils';
 
 type Tab = 'plan' | 'review';
+
+/** Every key of the page in one legend behind "Phím tắt" (DESIGN.md §6, D24): week keys and objective row keys. */
+const keyHelp: [string, string][] = [
+  ['[', 'tuần trước'],
+  [']', 'tuần sau'],
+  ['T', 'về tuần này'],
+  ['P', 'kế hoạch'],
+  ['R', 'nhìn lại'],
+  ['↑ / ↓', 'chọn mục tiêu'],
+  ['D', 'mục tiêu xong'],
+  ['X', 'bỏ mục tiêu'],
+  ['O', 'mở lại mục tiêu'],
+  ['Enter', 'sửa tên mục tiêu'],
+  ['Alt+↑ / ↓', 'đổi thứ tự mục tiêu'],
+  ['Del', 'xóa mục tiêu'],
+  ['?', 'bảng phím tắt này'],
+];
+
+/** Icon-only week arrow with its tooltip; the key shows only there (DESIGN.md D21, D24). */
+function WeekArrow({
+  label,
+  shortcut,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  shortcut: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={<Button size="icon-sm" variant="outline" aria-label={label} disabled={disabled} onClick={onClick} />}
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipPopup>
+        {label} <Kbd>{shortcut}</Kbd>
+      </TooltipPopup>
+    </Tooltip>
+  );
+}
 const tabParam: Record<Tab, string> = { plan: 'ke-hoach', review: 'nhin-lai' };
 
 interface WeekData {
@@ -68,7 +115,9 @@ function isTyping(target: EventTarget | null): boolean {
     target.isContentEditable ||
     ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
     target.getAttribute('role') === 'combobox' ||
-    target.getAttribute('role') === 'option'
+    target.getAttribute('role') === 'option' ||
+    // An open objective menu or a dialog (delete confirmation, key legend) keeps its own keys
+    target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]') !== null
   );
 }
 
@@ -172,18 +221,12 @@ export function WeekPage({ books }: { books: BookIndex }) {
   return (
     <div className="flex flex-col gap-4 px-4 pb-12 sm:px-8">
       <nav aria-label="Chọn tuần" className="flex flex-wrap items-center gap-2">
-        <Button size="icon-sm" variant="outline" aria-label="Tuần trước" onClick={() => go(addDays(start, -7))}>
+        <WeekArrow label="Tuần trước" shortcut="[" onClick={() => go(addDays(start, -7))}>
           <ChevronLeft aria-hidden />
-        </Button>
-        <Button
-          size="icon-sm"
-          variant="outline"
-          aria-label="Tuần sau"
-          disabled={start >= latest}
-          onClick={() => go(addDays(start, 7))}
-        >
+        </WeekArrow>
+        <WeekArrow label="Tuần sau" shortcut="]" disabled={start >= latest} onClick={() => go(addDays(start, 7))}>
           <ChevronRight aria-hidden />
-        </Button>
+        </WeekArrow>
         <h2 className="flex flex-wrap items-baseline gap-x-2 font-heading text-lg font-semibold tracking-tight" aria-live="polite">
           <span>Tuần {isoWeek(start)}</span>
           <span className="text-sm font-normal text-muted-foreground tabular-nums">
@@ -201,9 +244,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
               Về tuần này
             </Button>
           )}
-          <span className="hidden text-xs text-muted-foreground lg:inline">
-            <Kbd>[</Kbd> <Kbd>]</Kbd> đổi tuần · <Kbd>P</Kbd> kế hoạch · <Kbd>R</Kbd> nhìn lại
-          </span>
+          <KeyLegend keys={keyHelp} title="Phím tắt của Tuần" />
         </div>
       </nav>
 

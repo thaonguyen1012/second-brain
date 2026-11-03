@@ -135,7 +135,7 @@ function PredictionForm({
         <FormError error={error} />
       </DialogPanel>
       <DialogFooter>
-        <span className="me-auto hidden self-center text-xs text-muted-foreground sm:inline">
+        <span className="me-auto self-center text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
           <SaveKeys /> để lưu
         </span>
         <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
@@ -229,7 +229,7 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
               >
                 <Radio value={value} />
                 {outcomeOf(value).label}
-                <Kbd className="hidden sm:inline-flex">{key}</Kbd>
+                <Kbd className="max-sm:hidden pointer-coarse:hidden">{key}</Kbd>
               </label>
             ))}
           </RadioGroup>

@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { ArrowUpRight, BookOpen, ExternalLink } from 'lucide-react';
 import { bookUrl, getBook } from '@/lib/books';
 import { businessPhases, itStages, itTitle, roadmapIntro, type RoadmapLink } from '@/lib/roadmap';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/brain/page-header';
 import {
   Timeline,
   TimelineContent,
@@ -17,97 +18,112 @@ import {
 
 export const metadata: Metadata = { title: 'Lộ trình học' };
 
-function BookLinks({ slugs }: { slugs: string[] }) {
+/**
+ * One meta line under a course or stage (DESIGN.md §2 meta): the handbooks it maps to, then its course pages.
+ * Muted 12px links with a 14px icon, no badges.
+ */
+function RowMeta({ slugs, links }: { slugs: string[]; links: RoadmapLink[] }) {
   const list = slugs.map(getBook).filter((b) => !!b);
-  if (!list.length) return null;
+  if (!list.length && !links.length) return null;
   return (
-    <span className="flex flex-wrap gap-1.5">
+    <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
       {list.map((b) => (
-        <Badge key={b.slug} variant="secondary" render={<Link href={bookUrl(b)} />}>
-          📘 {b.title}
-        </Badge>
+        <Link
+          key={b.slug}
+          href={bookUrl(b)}
+          className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+        >
+          <BookOpen className="size-3.5 shrink-0" aria-hidden />
+          {b.title}
+        </Link>
       ))}
-    </span>
-  );
-}
-
-function CourseLinks({ links }: { links: RoadmapLink[] }) {
-  if (!links.length) return null;
-  return (
-    <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
       {links.map((l) => (
-        <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-          {l.label} ↗
+        <a
+          key={l.url}
+          href={l.url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+        >
+          {l.label}
+          <ArrowUpRight className="size-3.5 shrink-0" aria-hidden />
         </a>
       ))}
     </span>
   );
 }
 
+/**
+ * "Giai đoạn 1, nền (tháng 0 đến 5)" -> title "Giai đoạn 1, nền" and date "Tháng 0 đến 5": the number is already
+ * in the title, so the date line carries the months instead of repeating it.
+ */
+function phaseLabel(title: string, index: number): { title: string; date: string | null } {
+  const months = /^(.*?)\s*\((tháng [^)]+)\)\s*$/i.exec(title);
+  if (months) return { title: months[1], date: months[2].replace(/^t/, 'T') };
+  return { title, date: /^giai đoạn \d/i.test(title) ? null : `Giai đoạn ${index + 1}` };
+}
+
 /** Phases and stages are read-only here, so no step is "completed" (defaultValue 0). */
 export default function RoadmapPage() {
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-12 px-4 py-10 sm:px-8 md:py-12">
-      <header className="flex flex-col gap-3">
-        <Badge variant="secondary" className="self-start">
-          Lộ trình
-        </Badge>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Thứ tự học gợi ý</h1>
-        <p className="max-w-[70ch] leading-relaxed text-muted-foreground">{roadmapIntro}</p>
+    <div className="flex w-full flex-col">
+      <PageHeader title="Thứ tự học gợi ý" description={roadmapIntro}>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <Button variant="outline" size="sm" render={<a href="/lo-trinh.pdf" target="_blank" rel="noreferrer" />}>
-            Mở bản PDF đầy đủ ↗
+            Mở bản PDF đầy đủ
+            <ExternalLink aria-hidden />
           </Button>
           <span className="text-xs text-muted-foreground">Chi phí, mô tả từng khóa, thuế và luật</span>
         </div>
-      </header>
+      </PageHeader>
 
-      <Timeline defaultValue={0}>
-        {businessPhases.map((phase, i) => (
-          <TimelineItem key={phase.title} step={i + 1}>
-            <TimelineHeader>
-              <TimelineSeparator />
-              <TimelineDate>Giai đoạn {i + 1}</TimelineDate>
-              <TimelineTitle className="font-heading">{phase.title}</TimelineTitle>
-              <TimelineIndicator />
-            </TimelineHeader>
-            <TimelineContent>
-              <ul className="mt-3 flex flex-col divide-y rounded-2xl border bg-card px-4 shadow-depth-1">
-                {phase.items.map((item) => (
-                  <li key={item.text} className="flex flex-col gap-2 py-3">
-                    <span className="font-medium">{item.text}</span>
-                    <BookLinks slugs={item.books} />
-                    <CourseLinks links={item.links} />
-                  </li>
-                ))}
-              </ul>
-            </TimelineContent>
-          </TimelineItem>
-        ))}
-      </Timeline>
-
-      <section className="flex flex-col gap-6">
-        <h2 className="font-heading text-xl font-semibold tracking-tight">{itTitle}</h2>
+      <div className="flex max-w-4xl flex-col gap-12 px-4 pb-12 sm:px-8">
         <Timeline defaultValue={0}>
-          {itStages.map((s, i) => (
-            <TimelineItem key={s.months} step={i + 1}>
-              <TimelineHeader>
-                <TimelineSeparator />
-                <TimelineDate className="text-bw-orange">
-                  {/^\d/.test(s.months) ? `Tháng ${s.months}` : s.months}
-                </TimelineDate>
-                <TimelineTitle className="font-heading">{s.study}</TimelineTitle>
-                <TimelineIndicator />
-              </TimelineHeader>
-              <TimelineContent className="flex flex-col gap-2">
-                <span className="text-sm text-muted-foreground">Sản phẩm kết giai đoạn: {s.outcome}</span>
-                <BookLinks slugs={s.books} />
-                <CourseLinks links={s.links} />
-              </TimelineContent>
-            </TimelineItem>
-          ))}
+          {businessPhases.map((phase, i) => {
+            const label = phaseLabel(phase.title, i);
+            return (
+              <TimelineItem key={phase.title} step={i + 1}>
+                <TimelineHeader>
+                  <TimelineSeparator />
+                  {label.date && <TimelineDate>{label.date}</TimelineDate>}
+                  <TimelineTitle className="font-heading font-semibold">{label.title}</TimelineTitle>
+                  <TimelineIndicator />
+                </TimelineHeader>
+                <TimelineContent>
+                  <ul className="mt-3 flex flex-col divide-y rounded-xl border bg-card px-3">
+                    {phase.items.map((item) => (
+                      <li key={item.text} className="flex flex-col gap-1 py-3">
+                        <span className="text-sm font-medium text-foreground">{item.text}</span>
+                        <RowMeta slugs={item.books} links={item.links} />
+                      </li>
+                    ))}
+                  </ul>
+                </TimelineContent>
+              </TimelineItem>
+            );
+          })}
         </Timeline>
-      </section>
+
+        <section className="flex flex-col gap-6">
+          <h2 className="font-heading text-lg font-semibold tracking-tight">{itTitle}</h2>
+          <Timeline defaultValue={0}>
+            {itStages.map((s, i) => (
+              <TimelineItem key={s.months} step={i + 1}>
+                <TimelineHeader>
+                  <TimelineSeparator />
+                  <TimelineDate>{/^\d/.test(s.months) ? `Tháng ${s.months}` : s.months}</TimelineDate>
+                  <TimelineTitle className="font-heading font-semibold">{s.study}</TimelineTitle>
+                  <TimelineIndicator />
+                </TimelineHeader>
+                <TimelineContent className="flex flex-col gap-1">
+                  <span className="text-sm text-muted-foreground">Sản phẩm kết giai đoạn: {s.outcome}</span>
+                  <RowMeta slugs={s.books} links={s.links} />
+                </TimelineContent>
+              </TimelineItem>
+            ))}
+          </Timeline>
+        </section>
+      </div>
     </div>
   );
 }

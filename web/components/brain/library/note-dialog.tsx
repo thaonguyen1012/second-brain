@@ -167,7 +167,7 @@ function NoteForm({
         )}
       </DialogPanel>
       <DialogFooter>
-        <span className="me-auto hidden text-xs text-muted-foreground sm:inline">
+        <span className="me-auto text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
           <SaveKeys /> để lưu
         </span>
         <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>

@@ -10,12 +10,17 @@
 /* Alex's Brain theme.
    Code foundation: Space UI (spaceui.one) tokens, installed by `shadcn init` with their preset; components live in
    components/ui and components/spaceui. Layout reference: Brainwave 2.0 (Figma): sidebar + topbar, soft cards,
-   blue primary (#1f6ae0, 4.5:1 on white) and red-orange highlight. Light is the default; dark follows Space UI.
+   blue primary (#1f6ae0, 4.6:1 on the page, 5.0:1 on white) and red-orange highlight. Light is the default; dark
+   follows Space UI.
+   Surfaces (owner, 03/11/2026, DESIGN.md D29): the page (--background) is a light neutral grey, cards, popovers and
+   the sidebar are white with a visible 1px border; in dark the page is the darkest layer and surfaces are lighter.
+   Fills (--muted/--accent/--secondary) are darker than the page so tabs and hovers still show on it. The focus ring
+   is opaque: light #3582ff is 3.3:1 on the page and 3.6:1 on white (60% was 2.1:1); dark #6aa5ff is 7.0:1 or more.
    Fumadocs reads --color-fd-*; those are mapped onto the same tokens below so lesson pages match. */
 
 :root {
   --radius: 0.625rem;
-  --background: var(--color-white);
+  --background: var(--color-neutral-100);
   --foreground: var(--color-zinc-950);
   --card: var(--color-white);
   --card-foreground: var(--color-zinc-950);
@@ -23,17 +28,17 @@
   --popover-foreground: var(--color-zinc-950);
   --primary: #1f6ae0;
   --primary-foreground: var(--color-white);
-  --secondary: var(--color-zinc-100);
+  --secondary: hsl(0deg 0% 92.5%);
   --secondary-foreground: var(--color-zinc-700);
-  --muted: var(--color-zinc-100);
+  --muted: hsl(0deg 0% 92.5%);
   --muted-foreground: var(--color-zinc-600);
-  --accent: var(--color-zinc-100);
+  --accent: hsl(0deg 0% 92.5%);
   --accent-foreground: var(--color-zinc-950);
   --destructive: var(--color-red-500);
   --destructive-foreground: var(--color-red-500);
-  --border: --alpha(var(--color-black) / 8%);
-  --input: --alpha(var(--color-black) / 8%);
-  --ring: --alpha(#3582ff / 60%);
+  --border: --alpha(var(--color-black) / 12%);
+  --input: --alpha(var(--color-black) / 12%);
+  --ring: #3582ff;
   --chart-1: var(--color-orange-600);
   --chart-2: var(--color-teal-600);
   --chart-3: var(--color-cyan-900);
@@ -45,13 +50,13 @@
   /* Week review time (Tuần): hours for objectives (teal, not the billable blue) vs other hours (gray). */
   --chart-objective: #12866f;
   --chart-other: var(--color-zinc-400);
-  --sidebar: var(--color-zinc-50);
+  --sidebar: var(--color-white);
   --sidebar-foreground: var(--color-zinc-950);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--color-white);
   --sidebar-accent: var(--color-zinc-200);
   --sidebar-accent-foreground: var(--color-zinc-950);
-  --sidebar-border: --alpha(var(--color-black) / 8%);
+  --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
   --pill-active-bg: --alpha(var(--color-black) / 10%);
   --info: var(--color-blue-100);
@@ -67,23 +72,23 @@
 .dark {
   --background: var(--color-zinc-950);
   --foreground: var(--color-white);
-  --card: var(--color-zinc-950);
+  --card: hsl(0deg 0% 8%);
   --card-foreground: var(--color-zinc-50);
-  --popover: var(--color-zinc-950);
+  --popover: hsl(0deg 0% 10%);
   --popover-foreground: var(--color-zinc-50);
   --primary: #6aa5ff;
   --primary-foreground: var(--color-zinc-950);
   --secondary: var(--color-zinc-800);
   --secondary-foreground: var(--color-zinc-50);
-  --muted: hsl(0deg 0% 10.2%);
+  --muted: hsl(0deg 0% 12%);
   --muted-foreground: var(--color-zinc-400);
-  --accent: hsl(0deg 2.2% 8.47%);
+  --accent: hsl(0deg 0% 14%);
   --accent-foreground: var(--color-zinc-50);
   --destructive: var(--color-red-800);
   --destructive-foreground: var(--color-red-400);
-  --border: --alpha(var(--color-white) / 8%);
-  --input: --alpha(var(--color-white) / 10%);
-  --ring: --alpha(#6aa5ff / 60%);
+  --border: --alpha(var(--color-white) / 12%);
+  --input: --alpha(var(--color-white) / 14%);
+  --ring: #6aa5ff;
   --chart-1: var(--color-blue-700);
   --chart-2: var(--color-emerald-500);
   --chart-3: var(--color-amber-500);
@@ -93,23 +98,25 @@
   --chart-nonbillable: #d95926;
   --chart-objective: #2fb08f;
   --chart-other: var(--color-zinc-500);
-  --sidebar: hsl(0deg 0% 7%);
+  --sidebar: var(--card);
   --sidebar-foreground: var(--color-zinc-50);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--color-zinc-950);
   --sidebar-accent: var(--color-zinc-800);
   --sidebar-accent-foreground: var(--color-zinc-50);
-  --sidebar-border: --alpha(var(--color-white) / 8%);
+  --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
   --pill-active-bg: --alpha(var(--color-white) / 14%);
-  --info: var(--color-blue-100);
-  --info-foreground: var(--color-blue-800);
-  --success: var(--color-emerald-100);
-  --success-foreground: var(--color-emerald-800);
-  --warning: var(--color-amber-100);
-  --warning-foreground: var(--color-amber-800);
-  --error: var(--color-red-100);
-  --error-foreground: var(--color-red-800);
+  /* Status pairs designed for dark: a solid (not translucent) tint of the hue over the page colour, light text of
+     the same hue. Text contrast on its fill: info 9.4, success 10.7, warning 11.0, error 8.9 (all >= 4.5:1). */
+  --info: color-mix(in oklab, var(--color-blue-500) 18%, var(--color-zinc-950));
+  --info-foreground: var(--color-blue-300);
+  --success: color-mix(in oklab, var(--color-emerald-500) 18%, var(--color-zinc-950));
+  --success-foreground: var(--color-emerald-300);
+  --warning: color-mix(in oklab, var(--color-amber-500) 18%, var(--color-zinc-950));
+  --warning-foreground: var(--color-amber-300);
+  --error: color-mix(in oklab, var(--color-red-500) 18%, var(--color-zinc-950));
+  --error-foreground: var(--color-red-300);
 }
 
 /* Fumadocs tokens follow the same variables (declared after the fumadocs imports so both :root and .dark win). */
@@ -232,7 +239,17 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
+  }
+  /* A surface re-declares the page token, so what is still painted with bg-background (outline Badge, ring
+     offsets) takes the surface colour instead of showing page-grey patches. Form controls (Input, Select,
+     Textarea, Checkbox, Radio) are bg-popover in components/ui, white on the page and on a surface alike. */
+  .bg-card,
+  [data-slot='card'] {
+    --background: var(--card);
+  }
+  .bg-popover {
+    --background: var(--popover);
   }
   body {
     @apply bg-background text-foreground;
@@ -335,4 +352,14 @@ html > body[data-scroll-locked] {
 }
 .mermaid-source[data-state='loading'] {
   opacity: 0.6;
+}
+
+/* Looping animations stop under reduced motion (DESIGN.md D28): Loader2 spinners, the Space UI Spinner and
+   skeleton pulses, so pages need no per-instance motion-reduce classes. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin,
+  .animate-ping,
+  .animate-pulse {
+    animation: none;
+  }
 }

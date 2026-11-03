@@ -1,6 +1,6 @@
 // App sidebar (DECISIONS 9.3): six items, no more (rule 4.4). Inbox is a top bar button with a count, the
-// morning brief lives on "Hôm nay". Sub-items show under their item; `match` lists extra path prefixes that
-// make an item active.
+// morning brief lives on "Hôm nay". Sub-items always show under their item, active or not; `match` lists extra
+// path prefixes that make an item active.
 import type { LucideIcon } from 'lucide-react';
 import { Briefcase, CalendarRange, Lightbulb, Library, Sprout, Sun } from 'lucide-react';
 

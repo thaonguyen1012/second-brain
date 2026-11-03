@@ -32,6 +32,7 @@ const PAGES = [
   ['gioi-thieu', '/gioi-thieu/'],
   ['huong-dan', '/huong-dan/'],
   ['lo-trinh', '/lo-trinh/'],
+  ['personal', '/personal/'],
   ['docs-lesson', LESSON],
   ['search', '/', { search: SEARCH_QUERY }],
 ];
@@ -153,6 +154,8 @@ async function shoot(browser, base, outDir, job) {
       await waitForData(page, 5_000);
       const theClass = await page.evaluate(() => document.documentElement.className);
       if (/\bdark\b/.test(theClass) !== (theme === 'dark')) notes.push(`theme not applied (html class "${theClass}")`);
+      const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+      if (scrollWidth > viewport.width) notes.push(`horizontal overflow: scrollWidth ${scrollWidth} > ${viewport.width}`);
       await page.screenshot({ path: path.join(outDir, file), fullPage: true, animations: 'disabled' });
     }
   } catch (err) {

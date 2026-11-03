@@ -14,7 +14,7 @@ import { GuideFrame } from './guides/guide-frame';
 function GuidePlaceholder() {
   return (
     <div aria-hidden className="@container w-full">
-      <div className="mx-auto aspect-[358/470] w-full max-w-[358px] rounded-3xl bg-secondary @min-[560px]:aspect-[600/452] @min-[560px]:max-w-[600px]" />
+      <div className="mx-auto aspect-[358/470] w-full max-w-[358px] rounded-3xl border bg-secondary @min-[560px]:aspect-[600/452] @min-[560px]:max-w-[600px]" />
     </div>
   );
 }
@@ -46,18 +46,24 @@ const emptyGuides = {
 export type EmptyGuideName = keyof typeof emptyGuides;
 
 /**
- * A how-to guide under a page's empty state, closed until "Xem hướng dẫn" (`open` starts it open, as /huong-dan/
- * does); the open or hidden choice is remembered per guide (localStorage).
+ * A how-to guide under a page's empty state, closed until "Xem hướng dẫn" (`open` starts it open); the open or
+ * hidden choice is remembered per guide (localStorage). /huong-dan/ passes `variant="page" hideable={false} open`:
+ * an 18px section title, always open, only "Xem lại".
  * Render it only when the list is loaded, without error, and truly empty (no filter), never while loading.
  * The Inbox guide loops; the others play once when scrolled into view and offer "Xem lại".
  */
 export function EmptyStateGuide({
   guide,
   open = false,
+  hideable = true,
+  variant = 'empty',
   className,
 }: {
   guide: EmptyGuideName;
   open?: boolean;
+  /** false: ignore the stored hidden choice and offer no hide toggle (see GuideFrame) */
+  hideable?: boolean;
+  variant?: 'empty' | 'page';
   className?: string;
 }) {
   const g = emptyGuides[guide];
@@ -68,6 +74,8 @@ export function EmptyStateGuide({
       Guide={g.Guide}
       replay={g.replay}
       defaultHidden={!open}
+      hideable={hideable}
+      variant={variant}
       className={className}
     />
   );

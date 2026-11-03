@@ -1,69 +1,72 @@
 'use client';
-import Link from 'next/link';
-import { ArrowRight, CalendarPlus, Inbox } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import type { ApiObjective, ApiWeek } from '@/lib/api/client';
-import type { ApiAchievement, ApiOpportunityDecision, ApiReviewView } from '@/lib/api/weeks';
-import { cn } from '@/lib/utils';
+import type { ApiAchievement, ApiOpportunityDecision, ApiReviewView, ApiRhythm } from '@/lib/api/weeks';
 import { Button } from '@/components/ui/button';
 import { useInboxCount } from '../inbox-count';
 import { type BookIndex, BodyOfWork } from './body-of-work';
 import { ObjectivesEditor, type ObjectivesUpdate } from './objectives-editor';
 import { ReviewAchievements, ReviewOpportunities, ReviewPredictions } from './review-extras';
 import { ReviewJournal } from './review-journal';
-import { ReviewRhythm } from './review-rhythm';
+import { CheckLink, CheckRow, RhythmRows } from './review-rhythm';
 import { TimeChart } from './time-chart';
 import { WeekSection } from './week-section';
 
-function Step({ label, value, done, children }: { label: string; value: string; done: boolean; children?: React.ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1 p-4">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className={cn('font-heading text-xl font-semibold tabular-nums', done && 'text-success-foreground')}>
-        {value}
-      </span>
-      {children}
-    </div>
-  );
-}
-
-/** The questions of the 15-minute review at a glance (DECISIONS 9.1): inbox at 0, objectives done. */
-function ReviewChecklist({ objectives, onNextWeek }: { objectives: ApiObjective[]; onNextWeek?: () => void }) {
+/**
+ * The checks of the 15-minute review in one list (DECISIONS 9.1, 6.5): inbox at 0, objectives done, the practice
+ * rhythm (notes, brag lines, predictions due, month and quarter lines), then on to next week's plan.
+ */
+function ReviewChecklist({
+  objectives,
+  rhythm,
+  onNextWeek,
+}: {
+  objectives: ApiObjective[];
+  rhythm: ApiRhythm | null;
+  onNextWeek?: () => void;
+}) {
   const inbox = useInboxCount();
   const counted = objectives.filter((o) => o.status !== 'dropped');
   const done = counted.filter((o) => o.status === 'done').length;
   return (
-    <div className="rounded-xl border">
-      <div className="grid divide-y sm:auto-cols-fr sm:grid-flow-col sm:divide-x sm:divide-y-0">
-        <Step label="Inbox về 0 chưa?" value={inbox === null ? '–' : inbox === '0' ? 'Đã về 0' : `Còn ${inbox}`} done={inbox === '0'}>
-          {inbox !== null && inbox !== '0' && (
-            <Button size="xs" variant="outline" className="self-start" render={<Link href="/inbox/" />}>
-              <Inbox aria-hidden />
-              Xử lý inbox
-            </Button>
-          )}
-        </Step>
-        <Step
-          label="Mục tiêu xong"
-          value={counted.length ? `${done}/${counted.length}` : '–'}
-          done={counted.length > 0 && done === counted.length}
-        />
-        {onNextWeek && (
-          <Step label="3 ưu tiên tuần tới" value="Lên kế hoạch" done={false}>
-            <Button size="xs" className="self-start" onClick={onNextWeek}>
-              <CalendarPlus aria-hidden />
+    <ul className="flex flex-col divide-y rounded-xl border bg-card" aria-label="Kiểm tra cuối tuần">
+      <CheckRow
+        done={inbox === '0'}
+        question="Inbox về 0 chưa?"
+        value={inbox === null ? '–' : inbox === '0' ? 'Đã về 0' : `Còn ${inbox}`}
+        action={inbox !== null && inbox !== '0' && <CheckLink href="/inbox/">Xử lý inbox</CheckLink>}
+      />
+      <CheckRow
+        done={counted.length > 0 && done === counted.length}
+        question="Mục tiêu xong"
+        value={counted.length ? `${done}/${counted.length}` : 'Chưa có mục tiêu'}
+      />
+      {rhythm && <RhythmRows rhythm={rhythm} />}
+      {onNextWeek && (
+        <CheckRow
+          done={false}
+          question="3 ưu tiên tuần tới"
+          action={
+            <Button size="xs" variant="outline" onClick={onNextWeek}>
               Tuần tới
               <ArrowRight aria-hidden />
             </Button>
-          </Step>
-        )}
-      </div>
-    </div>
+          }
+        />
+      )}
+      {/* Below lg the six questions come after every section: one jump to them */}
+      <li className="flex px-0.5 py-1 lg:hidden">
+        <Button variant="link" size="sm" className="lg:hidden" render={<a href="#week-review-journal" />}>
+          Trả lời 6 câu
+        </Button>
+      </li>
+    </ul>
   );
 }
 
 /**
- * Review ritual (DECISIONS 9.1, 9.2): read the left column (objectives, hours, body of work, opportunities,
- * brag lines) and answer the six questions on the right, which stays in view on wide screens.
+ * Review ritual (DECISIONS 9.1, 9.2): the checklist, then the left column to read (objectives with their hours
+ * first, then hours, body of work, opportunities, brag lines, due predictions) and the six questions on the right.
  */
 export function ReviewPanel({
   start,
@@ -87,17 +90,16 @@ export function ReviewPanel({
   onNextWeek?: () => void;
 }) {
   const minutes = new Map(review.time.byObjective.map((o) => [o.id, o.minutes]));
+  // The brag lines added in this review count at once (the server counts the same rows).
+  const rhythm = review.rhythm ? { ...review.rhythm, achievements: review.achievements.length } : null;
+  const { withEvidence, stale } = review.opportunities;
   return (
     <div className="flex flex-col gap-4">
-      <ReviewChecklist objectives={week.objectives} onNextWeek={onNextWeek} />
+      <ReviewChecklist objectives={week.objectives} rhythm={rhythm} onNextWeek={onNextWeek} />
       {/* One surface: the sections to read on the left, divided by hairlines, the six questions on the right */}
-      <div className="grid rounded-xl border lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+      <div className="grid rounded-xl border bg-card lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col divide-y">
-          <WeekSection
-            id="week-review-objectives"
-            title="Tiến độ mục tiêu"
-            description="Đánh dấu xong hoặc bỏ. Cái còn mở sẽ được đề nghị kéo sang tuần sau."
-          >
+          <WeekSection id="week-review-objectives" title="Tiến độ mục tiêu">
             {week.objectives.length === 0 ? (
               <p className="text-sm text-muted-foreground">Tuần này không có mục tiêu nào.</p>
             ) : (
@@ -112,18 +114,16 @@ export function ReviewPanel({
           </WeekSection>
           <TimeChart days={review.days} time={review.time} />
           <BodyOfWork days={review.days} books={books} />
-          {review.rhythm && (
-            // The brag lines added in this review count at once (the server counts the same rows).
-            <ReviewRhythm rhythm={{ ...review.rhythm, achievements: review.achievements.length }} />
+          {(withEvidence.length > 0 || stale.length > 0) && (
+            <ReviewOpportunities opportunities={review.opportunities} onDecided={onOpportunity} />
           )}
-          <ReviewOpportunities opportunities={review.opportunities} onDecided={onOpportunity} />
           <ReviewAchievements start={start} achievements={review.achievements} onAdded={onAchievement} />
-          <ReviewPredictions />
+          {/* Only when the server counts some due by Sunday; the section itself hides while none is due today */}
+          {(rhythm?.predictionsDue ?? 1) > 0 && <ReviewPredictions />}
         </div>
-        <div className="border-t lg:border-t-0 lg:border-l">
-          <div className="lg:sticky lg:top-16 lg:max-h-[calc(100dvh-4rem)] lg:overflow-y-auto">
-            <ReviewJournal start={start} week={week} opportunities={review.opportunities} onSaved={onWeek} />
-          </div>
+        {/* The journal scrolls with the page (no inner scroll area): 'Lưu nhìn lại' is always reachable */}
+        <div id="week-review-journal" className="min-w-0 scroll-mt-20 border-t lg:border-t-0 lg:border-l">
+          <ReviewJournal start={start} week={week} opportunities={review.opportunities} onSaved={onWeek} />
         </div>
       </div>
     </div>

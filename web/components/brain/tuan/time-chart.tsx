@@ -45,7 +45,7 @@ function WeekSplit({ time }: { time: ApiWeekTime }) {
   return (
     <div className="flex flex-col gap-2">
       <p className="flex flex-wrap items-baseline gap-x-2">
-        <span className="font-heading text-3xl font-semibold tabular-nums">{share}%</span>
+        <span className="font-heading text-2xl font-semibold tabular-nums">{share}%</span>
         <span className="text-sm text-muted-foreground">
           giờ cho mục tiêu · {minutesShort(time.minutesForObjectives)} trên tổng {minutesShort(total)}
         </span>
@@ -164,35 +164,39 @@ function DayColumns({ days }: { days: ApiDayWork[] }) {
   );
 }
 
+/** Header cell of DayTable (DESIGN.md §6 Tables: 40px rows, 12px medium muted header, no vertical borders). */
+const HEAD = 'h-10 px-2 text-xs font-medium text-muted-foreground first:ps-0 last:pe-0';
+const CELL = 'px-2 first:ps-0 last:pe-0';
+
 function DayTable({ days }: { days: ApiDayWork[] }) {
   return (
-    <table className="w-full text-sm tabular-nums">
+    <table className="w-full text-sm">
       <caption className="sr-only">Giờ cho mục tiêu và giờ khác theo ngày</caption>
-      <thead className="text-xs text-muted-foreground">
+      <thead>
         <tr className="border-b">
-          <th scope="col" className="py-1.5 text-start font-medium">
+          <th scope="col" className={cn(HEAD, 'text-start')}>
             Ngày
           </th>
-          <th scope="col" className="py-1.5 text-end font-medium">
+          <th scope="col" className={cn(HEAD, 'text-end')}>
             Cho mục tiêu
           </th>
-          <th scope="col" className="py-1.5 text-end font-medium">
+          <th scope="col" className={cn(HEAD, 'text-end')}>
             Khác
           </th>
-          <th scope="col" className="py-1.5 text-end font-medium">
+          <th scope="col" className={cn(HEAD, 'text-end')}>
             Tổng
           </th>
         </tr>
       </thead>
-      <tbody>
+      <tbody className="divide-y">
         {days.map((d) => (
-          <tr key={d.date} className="border-b last:border-0">
-            <th scope="row" className="py-1.5 text-start font-normal">
+          <tr key={d.date} className="h-10">
+            <th scope="row" className={cn(CELL, 'text-start font-normal')}>
               {dayLabel(d.date)}
             </th>
-            <td className="py-1.5 text-end">{minutesShort(d.minutesForObjectives)}</td>
-            <td className="py-1.5 text-end">{minutesShort(d.minutesOther)}</td>
-            <td className="py-1.5 text-end">{minutesShort(d.minutesForObjectives + d.minutesOther)}</td>
+            <td className={cn(CELL, 'text-end tabular-nums')}>{minutesShort(d.minutesForObjectives)}</td>
+            <td className={cn(CELL, 'text-end tabular-nums')}>{minutesShort(d.minutesOther)}</td>
+            <td className={cn(CELL, 'text-end tabular-nums')}>{minutesShort(d.minutesForObjectives + d.minutesOther)}</td>
           </tr>
         ))}
       </tbody>

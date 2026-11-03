@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { BookOpen, CheckCircle2, Layers } from 'lucide-react';
 import type { ApiDayWork } from '@/lib/api/weeks';
 import { itemTypeLabel } from '@/lib/labels';
-import { Badge } from '@/components/ui/badge';
 import { WeekSection } from './week-section';
 import { dayLabel, minutesShort, todayPrague } from './week-utils';
 
@@ -27,7 +26,7 @@ function DayBlock({ day, books, isToday }: { day: ApiDayWork; books: BookIndex; 
     <li className="flex flex-col gap-1.5 border-b py-2.5 last:border-0">
       <div className="flex items-baseline gap-2">
         <h3 className="text-sm font-semibold">{dayLabel(day.date)}</h3>
-        {isToday && <Badge variant="info">Hôm nay</Badge>}
+        {isToday && <span className="text-xs text-muted-foreground">Hôm nay</span>}
         {minutes > 0 && <span className="ms-auto text-xs text-muted-foreground tabular-nums">{minutesShort(minutes)} đã ghi</span>}
       </div>
       {empty ? (
@@ -83,11 +82,7 @@ export function BodyOfWork({ days, books }: { days: ApiDayWork[]; books: BookInd
   const today = todayPrague();
   const shown = days.filter((d) => d.date <= today);
   return (
-    <WeekSection
-      id="week-body"
-      title="Đã làm được gì, theo ngày"
-      description="Item xong, trang sổ tay học xong và mục inbox đã xử lý. Dùng để trả lời câu thắng lớn nhất."
-    >
+    <WeekSection id="week-body" title="Đã làm được gì, theo ngày">
       {shown.length === 0 ? (
         <p className="text-sm text-muted-foreground">Tuần này chưa bắt đầu.</p>
       ) : (

@@ -93,7 +93,7 @@ export const reviewQuestions: { field: ApiReviewField; label: string; hint: stri
   {
     field: 'reviewDistraction',
     label: 'Cái gì kéo thời gian khỏi ưu tiên?',
-    hint: 'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở bên trái.',
+    hint: 'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở phần Giờ.',
   },
   { field: 'reviewLearned', label: 'Học được gì?', hint: '' },
   { field: 'reviewSatisfied', label: 'Có hài lòng với tuần này không?', hint: 'Có, không, hay một nửa, và vì sao.' },

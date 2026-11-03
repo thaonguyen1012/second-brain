@@ -4,34 +4,25 @@ import { addDays, formatDay, todayPrague } from '@/lib/dates';
 import type { Tone } from '@/lib/labels';
 
 /**
- * Freshness is shown by colour and fading, never by a number (DECISIONS 9.1, 9.2 Skill). `tile` styles the
- * matrix tile, `dot` the small swatch next to a skill name elsewhere; `label` is the word for screen readers
- * and the legend, so the state is never colour alone.
+ * Freshness is shown by colour and fading, never by a number (DECISIONS 9.1, 9.2 Skill). `dot` is the small swatch
+ * next to a skill name, `tone` the StatusBadge colour; `label` is the word beside it, so the state is never colour
+ * alone; `hint` says what the word means (skill sheet).
  */
-export const freshness: Record<ApiFreshness, { label: string; hint: string; tone: Tone; tile: string; dot: string }> =
-  {
-    fresh: {
-      label: 'Còn mới',
-      hint: 'có bằng chứng trong 3 tháng',
-      tone: 'success',
-      tile: 'border-bw-green/45 bg-success text-success-foreground',
-      dot: 'bg-bw-green',
-    },
-    aging: {
-      label: 'Đang cũ dần',
-      hint: 'bằng chứng mới nhất 3 đến 6 tháng trước',
-      tone: 'warning',
-      tile: 'border-bw-yellow/50 bg-warning/70 text-warning-foreground opacity-85',
-      dot: 'bg-bw-yellow',
-    },
-    faded: {
-      label: 'Đã mờ',
-      hint: '6 tháng không có bằng chứng mới, hoặc chưa có',
-      tone: 'outline',
-      tile: 'border-dashed border-muted-foreground/35 bg-muted/40 text-muted-foreground',
-      dot: 'bg-muted-foreground/40',
-    },
-  };
+export const freshness: Record<ApiFreshness, { label: string; hint: string; tone: Tone; dot: string }> = {
+  fresh: { label: 'Còn mới', hint: 'có bằng chứng trong 3 tháng', tone: 'success', dot: 'bg-bw-green' },
+  aging: {
+    label: 'Đang cũ dần',
+    hint: 'bằng chứng mới nhất 3 đến 6 tháng trước',
+    tone: 'warning',
+    dot: 'bg-bw-yellow',
+  },
+  faded: {
+    label: 'Đã mờ',
+    hint: '6 tháng không có bằng chứng mới, hoặc chưa có',
+    tone: 'outline',
+    dot: 'bg-muted-foreground/40',
+  },
+};
 
 export const freshnessOrder: ApiFreshness[] = ['fresh', 'aging', 'faded'];
 
@@ -54,7 +45,7 @@ export const seniority: Record<ApiSeniority, string> = {
 export const outcomes: { value: ApiOutcome; label: string; tone: Tone }[] = [
   { value: 'open', label: 'Chưa chấm', tone: 'secondary' },
   { value: 'right', label: 'Đúng', tone: 'success' },
-  { value: 'partial', label: 'Đúng một phần', tone: 'warning' },
+  { value: 'partial', label: 'Đúng một phần', tone: 'secondary' },
   { value: 'wrong', label: 'Sai', tone: 'error' },
 ];
 export const outcomeOf = (o: ApiOutcome) => outcomes.find((x) => x.value === o) ?? outcomes[0];

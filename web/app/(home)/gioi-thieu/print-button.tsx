@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
  * page prints as light text on a dropped background); the theme the owner chose comes back after printing.
  * The print layout itself is the @media print block of intro.css.
  */
-export function PrintButton() {
+export function PrintButton({ className }: { className?: string }) {
   useEffect(() => {
     const root = document.documentElement;
     let restore: (() => void) | null = null;
@@ -36,7 +36,7 @@ export function PrintButton() {
   }, []);
 
   return (
-    <Button variant="outline" onClick={() => window.print()}>
+    <Button variant="outline" className={className} onClick={() => window.print()}>
       <Printer aria-hidden />
       In hoặc lưu PDF
     </Button>

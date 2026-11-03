@@ -8,16 +8,18 @@ import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate, itemStatusOf, itemStatuses, itemTypeLabel, itemTypes } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
-import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError, openError } from './api-state';
-import { BrainCard, StatusBadge } from './brain-card';
+import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError, openError } from './api-state';
+import { StatusBadge } from './brain-card';
 import { ChoiceSelect } from './choice-select';
 import { ItemDialog } from './item-dialog';
-import { DoneOutputHint, missingOutput, noteDraftForItem } from './library/done-output';
+import { gapLabel, missingOutput, noteDraftForItem } from './library/done-output';
+import { FilteredEmpty, RowsSkeleton, onRowClick } from './library/list-rows';
 import { NoteDialog } from './library/note-dialog';
 import { useItemIndex } from './library/use-item-index';
+import { RowMenu } from './row-menu';
 
 type TypeFilter = ApiItemType | 'all';
 type StatusFilter = ApiItemStatus | 'all';
@@ -31,7 +33,7 @@ const nextStep: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: string
   active: { to: 'done', label: 'Xong' },
 };
 
-function ItemCard({
+function ItemRow({
   item,
   onEdit,
   onStep,
@@ -51,51 +53,69 @@ function ItemCard({
     item.startedAt && `bắt đầu ${formatDate(item.startedAt)}`,
     item.finishedAt && `xong ${formatDate(item.finishedAt)}`,
   ].filter(Boolean);
+  const meta = [itemTypeLabel(item.type), item.source, ...(dates.length ? dates : [`thêm ${formatDate(item.createdAt)}`])]
+    .filter(Boolean)
+    .join(' · ');
+  const tags = (item.tags ?? []).map((t) => `#${t}`).join(' ');
   return (
-    <BrainCard
-      badges={
-        <>
-          <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
-          <Badge variant="secondary">{itemTypeLabel(item.type)}</Badge>
-          {item.rating ? (
-            <Badge variant="outline">
-              <Star aria-hidden />
-              {item.rating}/10
-            </Badge>
-          ) : null}
-        </>
-      }
-      title={item.title}
-      meta={[item.source, ...dates].filter(Boolean).join(' · ') || `thêm ${formatDate(item.createdAt)}`}
-      actions={
-        <>
-          {step && (
-            <Button size="xs" onClick={() => onStep(step.to)}>
-              {step.label}
-            </Button>
+    // One row of the shared subgrid (status | title over meta | rating | actions), DESIGN.md §3 "list row beats card"
+    <li
+      className="col-span-full grid min-h-14 grid-cols-subgrid items-center px-3 py-2 transition-colors hover:bg-accent has-focus-visible:bg-accent"
+      onClick={(e) => onRowClick(e, onEdit)}
+    >
+      <span className="flex">
+        <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+      </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <button
+          type="button"
+          className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={onEdit}
+        >
+          {item.title}
+        </button>
+        <p className="truncate text-xs text-muted-foreground">
+          {meta}
+          {gap && (
+            <>
+              {' · '}
+              <span className="text-warning-foreground">{gapLabel(gap)}</span>
+            </>
           )}
-          <Button size="xs" variant="outline" onClick={onEdit}>
+          {tags && ` · ${tags}`}
+        </p>
+      </div>
+      <span className="text-end text-xs tabular-nums text-muted-foreground max-sm:hidden">
+        {item.rating ? `${item.rating}/10` : ''}
+      </span>
+      <div className="flex items-center justify-end gap-1">
+        {step && (
+          <Button size="xs" variant="outline" onClick={() => onStep(step.to)}>
+            {step.label}
+          </Button>
+        )}
+        <RowMenu>
+          <MenuItem onClick={onEdit}>
             <Pencil aria-hidden />
             Sửa
-          </Button>
-          <Button size="xs" variant="ghost" render={<Link href={`/thu-vien/ghi-chu/?item=${item.id}`} />}>
+          </MenuItem>
+          <MenuLinkItem render={<Link href={`/thu-vien/ghi-chu/?item=${item.id}`} />}>
             <NotebookPen aria-hidden />
             Ghi chú
-          </Button>
-        </>
-      }
-    >
-      {gap && <DoneOutputHint type={item.type} gap={gap} onWriteNote={onWriteNote} onRate={onRate} />}
-      {item.tags && item.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {item.tags.map((t) => (
-            <Badge key={t} variant="outline">
-              #{t}
-            </Badge>
-          ))}
-        </div>
-      )}
-    </BrainCard>
+          </MenuLinkItem>
+          <MenuItem onClick={onWriteNote}>
+            <Plus aria-hidden />
+            Viết ghi chú
+          </MenuItem>
+          {gap?.rating && (
+            <MenuItem onClick={onRate}>
+              <Star aria-hidden />
+              Chấm điểm
+            </MenuItem>
+          )}
+        </RowMenu>
+      </div>
+    </li>
   );
 }
 
@@ -177,24 +197,33 @@ export function LibraryPage() {
     }
   };
 
+  const openNew = () => {
+    setEditing(null);
+    setFocusRating(false);
+    setDialogOpen(true);
+  };
+  const unfiltered = type === 'all' && status === 'all';
+  const failed = !!items.error && !items.data;
+  const firstLoad = items.loading && list.length === 0;
+  // An empty, unfiltered library: the empty state's "Thêm item" is the one primary (DESIGN.md §7, D2)
+  const emptyLibrary = !failed && !firstLoad && list.length === 0 && unfiltered;
+
   return (
-    <div className="flex flex-col gap-5 px-4 pb-12 sm:px-8">
-      <div className="flex flex-wrap items-center gap-2">
-        <ChoiceSelect label="Loại" value={type} onChange={setType} choices={typeChoices} className="w-auto" />
+    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
+      {/* 390 px: the two filters share row 1, "Thêm item" takes row 2 at full width (DESIGN.md §6 Toolbar, D11) */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <ChoiceSelect label="Loại" value={type} onChange={setType} choices={typeChoices} className="min-w-0 sm:w-auto" />
         <ChoiceSelect
           label="Trạng thái"
           value={status}
           onChange={setStatus}
           choices={statusChoices}
-          className="w-auto"
+          className="min-w-0 sm:w-auto"
         />
         <Button
-          className="ms-auto"
-          onClick={() => {
-            setEditing(null);
-            setFocusRating(false);
-            setDialogOpen(true);
-          }}
+          variant={emptyLibrary ? 'outline' : 'default'}
+          className="col-span-2 max-sm:w-full sm:ms-auto"
+          onClick={openNew}
         >
           <Plus aria-hidden />
           Thêm item
@@ -208,27 +237,41 @@ export function LibraryPage() {
       )}
 
       <ApiStaleAlert result={items} />
-      {items.error && !items.data ? (
+      {failed && items.error ? (
         <ApiErrorState error={items.error} onRetry={items.reload} />
-      ) : items.loading && list.length === 0 ? (
-        <LoadingCards />
+      ) : firstLoad ? (
+        <RowsSkeleton />
+      ) : list.length === 0 && !unfiltered ? (
+        <FilteredEmpty
+          onClear={() => {
+            setType('all');
+            setStatus('all');
+          }}
+        >
+          Không có mục nào khớp bộ lọc.
+        </FilteredEmpty>
       ) : list.length === 0 ? (
         <>
           <EmptyState
             icon={<Library aria-hidden />}
             title="Chưa có item nào"
-            description={
-              type === 'all' && status === 'all'
-                ? 'Thêm sách, phim, khóa học, bài viết hoặc dự án. Mục từ inbox cũng có thể thành item.'
-                : 'Không có item nào khớp bộ lọc.'
-            }
-          />
-          {type === 'all' && status === 'all' && items.data && !items.error && <EmptyStateGuide guide="library" />}
+            description="Thêm sách, phim, khóa học, bài viết hoặc dự án. Mục từ inbox cũng có thể thành item."
+          >
+            <Button onClick={openNew}>
+              <Plus aria-hidden />
+              Thêm item
+            </Button>
+          </EmptyState>
+          {items.data && !items.error && <EmptyStateGuide guide="library" />}
         </>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        // One container, rows on a shared subgrid so status, rating and actions line up (DESIGN.md §3 Columns)
+        <ul
+          aria-label="Item"
+          className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 divide-y overflow-hidden rounded-xl border bg-card sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
+        >
           {list.map((item) => (
-            <ItemCard
+            <ItemRow
               key={item.id}
               item={item}
               onEdit={() => {
@@ -245,7 +288,7 @@ export function LibraryPage() {
               onWriteNote={() => setNoteFor(item)}
             />
           ))}
-        </div>
+        </ul>
       )}
       {items.data?.next && !items.loading && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>

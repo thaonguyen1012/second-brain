@@ -2,13 +2,14 @@
 import type { ApiStance } from '@/lib/api/client';
 import type { ApiEvidenceKind } from '@/lib/api/opportunities';
 import { daysBetween, todayPrague } from '@/lib/dates';
-import { fieldErrors as sharedFieldErrors, type Tone } from '@/lib/labels';
+import { fieldErrors as sharedFieldErrors } from '@/lib/labels';
 
 export { decisions, decisionOf } from '@/lib/labels';
 
-export const stances: { value: ApiStance; label: string; tone: Tone }[] = [
-  { value: 'supports', label: 'Ủng hộ', tone: 'success' },
-  { value: 'contradicts', label: 'Phản bác', tone: 'error' },
+/** Stance is said in words (font-medium in rows), not with success/error badges: it is not a status. */
+export const stances: { value: ApiStance; label: string }[] = [
+  { value: 'supports', label: 'Ủng hộ' },
+  { value: 'contradicts', label: 'Phản bác' },
 ];
 
 export const stanceOf = (s: string) => stances.find((x) => x.value === s) ?? stances[0];

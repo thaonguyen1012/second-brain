@@ -10,6 +10,17 @@
   color: var(--ss-text-strong);
 }
 
+/* The well is a container on the page, so it carries the surface border (DESIGN.md D29: the grey well alone
+   barely parts from the grey page). Drawn on the unscaled .ss-fit wrapper, over the stage edge. */
+.ssg-inbox.ss-fit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  pointer-events: none;
+}
+
 /* One column at one width, centered on the well; the list runs on into the column's foot, which fades out
    (a mask, gold: fade-crop) above a band of plain well kept for the keycaps (kit .ss-keys, 16 px from the
    bottom, 28 px tall), so a keycap never sits on a card's edge. The script keeps the selected card above the

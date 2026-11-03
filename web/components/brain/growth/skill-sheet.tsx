@@ -2,36 +2,42 @@
 import { useState } from 'react';
 import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
 import { growthApi, type ApiSkillDetail, type ApiSkillEvidence } from '@/lib/api/growth';
-import { toApiError, useApi } from '@/lib/api/use-api';
+import { useApi } from '@/lib/api/use-api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { MenuItem, MenuSeparator } from '@/components/ui/menu';
 import { Sheet, SheetDescription, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { ApiErrorState, describeApiError } from '../api-state';
+import { ApiErrorState } from '../api-state';
 import { StatusBadge } from '../brain-card';
+import { ConfirmDelete } from '../confirm-delete';
+import { RowMenu } from '../row-menu';
 import { EvidenceForm } from './evidence-form';
 import { evidenceKindLabel, formatDay, freshness } from './labels';
 
+/**
+ * One evidence row in the sheet's list (DESIGN.md §3 rows): kind and date as meta, the title (a link when it is
+ * one), the note; edit and delete in the row menu, delete through the confirm dialog. Editing swaps the row for the
+ * form, borderless inside the list.
+ */
 function EvidenceRow({
   evidence,
   skillId,
   onChanged,
-  onError,
 }: {
   evidence: ApiSkillEvidence;
   skillId: number;
   onChanged: () => void;
-  onError: (message: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (editing)
     return (
       <li>
         <EvidenceForm
+          className="p-3"
           skillId={skillId}
           evidence={evidence}
           onCancel={() => setEditing(false)}
@@ -43,62 +49,53 @@ function EvidenceRow({
       </li>
     );
 
-  const remove = async () => {
-    setBusy(true);
-    try {
-      await growthApi.deleteSkillEvidence(skillId, evidence.id);
-      onChanged();
-    } catch (err) {
-      onError(describeApiError(toApiError(err)).title);
-      setBusy(false);
-      setConfirming(false);
-    }
-  };
-
   const isLink = evidence.kind === 'link' && /^https?:\/\//.test(evidence.url);
   return (
-    <li className="flex flex-col gap-2 rounded-2xl border bg-card p-3">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant="secondary">{evidenceKindLabel[evidence.kind]}</Badge>
-        <span className="text-xs text-muted-foreground">{formatDay(evidence.date)}</span>
-      </div>
-      <p className="text-sm font-medium break-words">
-        {isLink ? (
-          <a
-            href={evidence.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 underline-offset-4 hover:underline"
-          >
-            {evidence.title}
-            <ExternalLink className="size-3.5 shrink-0" aria-label="(mở tab mới)" />
-          </a>
-        ) : (
-          evidence.title
+    <li className="flex items-start gap-2 px-3 py-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="text-sm font-medium break-words">
+          {isLink ? (
+            <a
+              href={evidence.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 underline-offset-4 hover:underline"
+            >
+              {evidence.title}
+              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" aria-label="(mở tab mới)" />
+            </a>
+          ) : (
+            evidence.title
+          )}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {evidenceKindLabel[evidence.kind]} · {formatDay(evidence.date)}
+        </p>
+        {evidence.note && (
+          <p className="pt-0.5 text-[13px] leading-relaxed whitespace-pre-line text-muted-foreground">
+            {evidence.note}
+          </p>
         )}
-      </p>
-      {evidence.note && <p className="text-sm whitespace-pre-line text-muted-foreground">{evidence.note}</p>}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="xs" variant="outline" onClick={() => setEditing(true)}>
+      </div>
+      <RowMenu label={`Thao tác với "${evidence.title}"`}>
+        <MenuItem onClick={() => setEditing(true)}>
           <Pencil aria-hidden />
           Sửa
-        </Button>
-        {confirming ? (
-          <>
-            <Button size="xs" variant="destructive" onClick={() => void remove()} disabled={busy} autoFocus>
-              Xóa hẳn
-            </Button>
-            <Button size="xs" variant="ghost" onClick={() => setConfirming(false)}>
-              Giữ lại
-            </Button>
-          </>
-        ) : (
-          <Button size="xs" variant="ghost" onClick={() => setConfirming(true)}>
-            <Trash2 aria-hidden />
-            Xóa
-          </Button>
-        )}
-      </div>
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem variant="destructive" onClick={() => setDeleting(true)}>
+          <Trash2 aria-hidden />
+          Xóa
+        </MenuItem>
+      </RowMenu>
+      <ConfirmDelete
+        open={deleting}
+        onOpenChange={setDeleting}
+        title="Xóa bằng chứng?"
+        description={`"${evidence.title}" bị gỡ khỏi kỹ năng này; độ mới được tính lại. Không hoàn tác được.`}
+        action={() => growthApi.deleteSkillEvidence(skillId, evidence.id)}
+        onDeleted={onChanged}
+      />
     </li>
   );
 }
@@ -116,7 +113,6 @@ function SkillBody({
 }) {
   const detail = useApi(`skill:${id}:${version}`, () => growthApi.getSkill(id));
   const [adding, setAdding] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
   const skill = detail.data;
 
   const changed = () => {
@@ -133,9 +129,9 @@ function SkillBody({
   if (!skill)
     return (
       <SheetPanel className="flex flex-col gap-3" aria-busy="true" aria-label="Đang tải">
-        <Skeleton className="h-8 w-1/2 rounded-xl" />
-        <Skeleton className="h-24 rounded-2xl" />
-        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-8 w-1/2 rounded-lg" />
+        <Skeleton className="h-8 w-48 rounded-lg" />
+        <Skeleton className="h-36 rounded-xl" />
       </SheetPanel>
     );
 
@@ -178,11 +174,6 @@ function SkillBody({
             </Button>
           )}
         </div>
-        {notice && (
-          <p className="text-sm text-destructive-foreground" role="alert">
-            {notice}
-          </p>
-        )}
         {adding && (
           <EvidenceForm
             skillId={skill.id}
@@ -204,9 +195,9 @@ function SkillBody({
               thái mờ.
             </p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="flex flex-col divide-y rounded-xl border">
               {skill.evidence.map((e) => (
-                <EvidenceRow key={e.id} evidence={e} skillId={skill.id} onChanged={changed} onError={setNotice} />
+                <EvidenceRow key={e.id} evidence={e} skillId={skill.id} onChanged={changed} />
               ))}
             </ul>
           )}

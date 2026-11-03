@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { BriefcaseBusiness, ClipboardPaste, ExternalLink, HelpCircle, Pencil, Plus, RefreshCw, Sparkles } from 'lucide-react';
+import { BriefcaseBusiness, ClipboardPaste, ExternalLink, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { Page } from '@/lib/api/client';
 import { growthApi, type ApiJobAd, type ApiMarketReport, type ApiMarketSkill } from '@/lib/api/growth';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
@@ -9,108 +9,135 @@ import { hostOf } from '@/lib/labels';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Kbd } from '@/components/ui/kbd';
+import { MenuItem, MenuLinkItem, MenuSeparator } from '@/components/ui/menu';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError, openError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
-import { ConfirmDelete, DeleteButton } from '../confirm-delete';
+import { ConfirmDelete } from '../confirm-delete';
+import { RowMenu } from '../row-menu';
 import { JobAdDialog } from './job-ad-dialog';
 import { MarketSkillTable, MatchedSkill } from './market-chart';
 import { addMonths, formatDay, monthLabel, seniority, thisMonth, twoQuestions } from './labels';
 import { PeriodStepper, SectionTitle, useShortcuts } from './shared';
 import { SkillDialog } from './skill-dialog';
 
-function adState(ad: ApiJobAd): { label: string; tone: 'success' | 'info' | 'error' } {
+function adState(ad: ApiJobAd): { label: string; tone: 'success' | 'secondary' | 'error' } {
   if (ad.processed) return { label: 'Đã phân tích', tone: 'success' };
   if (ad.error) return { label: 'Lỗi phân tích', tone: 'error' };
-  return { label: 'Đang chờ phân tích', tone: 'info' };
+  return { label: 'Đang chờ phân tích', tone: 'secondary' };
 }
 
-function JobAdCard({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void; onDeleted: () => void }) {
+/** "tự động" after a value the AI derived (DESIGN.md §4, D18). */
+function Auto() {
+  return <span className="text-xs text-muted-foreground">tự động</span>;
+}
+
+/**
+ * One job ad as a row (DESIGN.md D13): status and title, company/host/date meta, the AI-derived level and skills
+ * (labelled "tự động"); the title opens the edit dialog, the rest of the actions sit in the row menu.
+ */
+function JobAdRow({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void; onDeleted: () => void }) {
+  const [deleting, setDeleting] = useState(false);
   const s = adState(ad);
   const host = hostOf(ad.url);
   return (
-    <BrainCard
-      badges={
-        <>
+    <li className="flex items-start gap-2 px-3 py-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
-          {ad.processed && <Badge variant="secondary">{seniority[ad.seniority]}</Badge>}
-        </>
-      }
-      title={ad.title}
-      meta={[ad.company, host, `thêm ${formatDay(ad.createdAt)}`].filter(Boolean).join(' · ')}
-      actions={
-        <>
-          <Button size="xs" variant="outline" onClick={onEdit}>
-            <Pencil aria-hidden />
-            Sửa
-          </Button>
-          {/^https?:\/\//.test(ad.url) && (
-            <Button
-              size="xs"
-              variant="ghost"
-              render={<a href={ad.url} target="_blank" rel="noopener noreferrer" />}
-            >
-              <ExternalLink aria-hidden />
-              Mở tin
-            </Button>
-          )}
-          <ConfirmDelete
-            title="Xóa tin tuyển dụng?"
-            description={`"${ad.title}" bị xóa và không còn tính vào báo cáo thị trường tháng này. Không hoàn tác được.`}
-            action={() => growthApi.deleteJobAd(ad.id)}
-            onDeleted={onDeleted}
-            focusNeighbour
-            trigger={<DeleteButton className="ms-auto" aria-label={`Xóa tin "${ad.title}"`} />}
-          />
-        </>
-      }
-    >
-      {ad.processed && ad.skills.length > 0 && (
-        <div className="flex flex-wrap gap-1.5" aria-label="Kỹ năng được đòi">
-          {ad.skills.map((k) => (
-            <Badge key={k} variant="outline">
-              {k}
-            </Badge>
-          ))}
+          <button
+            type="button"
+            onClick={onEdit}
+            className="min-w-0 text-start text-sm font-medium break-words underline-offset-4 hover:underline"
+          >
+            {ad.title}
+          </button>
         </div>
-      )}
-      {!ad.processed && ad.error && (
-        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-          <p>AI không trả về kết quả hợp lệ. Sửa tin để phân tích lại, hoặc tự điền kỹ năng.</p>
-          <details>
-            <summary className="w-fit cursor-pointer select-none">Chi tiết kỹ thuật</summary>
-            <p className="mt-1 break-words font-mono text-xs" lang="en">
-              {ad.error}
-            </p>
-          </details>
-        </div>
-      )}
-      {!ad.processed && !ad.error && (
-        <p className="text-xs text-muted-foreground">Kỹ năng và cấp bậc sẽ được rút ra trong nền, vài phút sau.</p>
-      )}
-    </BrainCard>
+        <p className="text-xs text-muted-foreground">
+          {[ad.company, host, `thêm ${formatDay(ad.createdAt)}`].filter(Boolean).join(' · ')}
+        </p>
+        {ad.processed && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5" aria-label="Cấp bậc và kỹ năng được đòi">
+            <Badge variant="secondary">{seniority[ad.seniority]}</Badge>
+            {ad.skills.map((k) => (
+              <Badge key={k} variant="outline">
+                {k}
+              </Badge>
+            ))}
+            <Auto />
+          </div>
+        )}
+        {!ad.processed && ad.error && (
+          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+            <p>AI không trả về kết quả hợp lệ. Sửa tin để phân tích lại, hoặc tự điền kỹ năng.</p>
+            <details>
+              <summary className="w-fit cursor-pointer select-none">Chi tiết kỹ thuật</summary>
+              <p className="mt-1 break-words font-mono text-xs" lang="en">
+                {ad.error}
+              </p>
+            </details>
+          </div>
+        )}
+        {!ad.processed && !ad.error && (
+          <p className="text-xs text-muted-foreground">Kỹ năng và cấp bậc sẽ được rút ra trong nền, vài phút sau.</p>
+        )}
+      </div>
+      <RowMenu label={`Thao tác với tin "${ad.title}"`}>
+        <MenuItem onClick={onEdit}>
+          <Pencil aria-hidden />
+          Sửa
+        </MenuItem>
+        {/^https?:\/\//.test(ad.url) && (
+          <MenuLinkItem render={<a href={ad.url} target="_blank" rel="noopener noreferrer" />}>
+            <ExternalLink aria-hidden />
+            Mở tin
+          </MenuLinkItem>
+        )}
+        <MenuSeparator />
+        <MenuItem variant="destructive" onClick={() => setDeleting(true)}>
+          <Trash2 aria-hidden />
+          Xóa
+        </MenuItem>
+      </RowMenu>
+      <ConfirmDelete
+        open={deleting}
+        onOpenChange={setDeleting}
+        title="Xóa tin tuyển dụng?"
+        description={`"${ad.title}" bị xóa và không còn tính vào báo cáo thị trường tháng này. Không hoàn tác được.`}
+        action={() => growthApi.deleteJobAd(ad.id)}
+        onDeleted={onDeleted}
+      />
+    </li>
   );
 }
 
+/** Gaps: one flat section, rows in one bordered list on a shared grid (name, count, matched skill, action). */
 function Gaps({ gaps, onAdd }: { gaps: ApiMarketSkill[]; onAdd: (name: string) => void }) {
   return (
-    <Card className="flex flex-col gap-3 rounded-3xl border p-4 shadow-depth-1 sm:p-5">
-      <SectionTitle>Thị trường đòi mà mình chưa có bằng chứng</SectionTitle>
+    <section className="flex flex-col gap-3" aria-labelledby="market-gaps">
+      <SectionTitle>
+        <span id="market-gaps">Thị trường đòi mà mình chưa có bằng chứng</span>
+      </SectionTitle>
       {gaps.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Không có khoảng trống: mọi kỹ năng được đòi đều có trong ma trận và chưa mờ.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y">
+        <ul className="flex flex-col divide-y rounded-xl border bg-card">
           {gaps.map((g) => (
-            <li key={g.name} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
-              <span className="font-medium">{g.name}</span>
-              <span className="text-xs text-muted-foreground tabular-nums">{g.count} tin</span>
-              <MatchedSkill line={g} />
-              <span className="ms-auto">
+            <li
+              key={g.name}
+              className="grid min-h-10 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-1.5 sm:grid-cols-[minmax(0,1fr)_4rem_10rem_auto]"
+            >
+              <span className="text-sm font-medium break-words">{g.name}</span>
+              <span className="text-end text-xs text-muted-foreground tabular-nums">{g.count} tin</span>
+              <span className="min-w-0 max-sm:hidden">
+                <MatchedSkill line={g} />
+              </span>
+              <span className="justify-self-end">
                 {g.skill ? (
-                  <Button size="xs" variant="outline" render={<Link href="/phat-trien/ky-nang/" />}>
+                  <Button size="xs" variant="outline" render={<Link href={`/phat-trien/ky-nang/?id=${g.skill.id}`} />}>
                     Thêm bằng chứng
                   </Button>
                 ) : (
@@ -124,61 +151,68 @@ function Gaps({ gaps, onAdd }: { gaps: ApiMarketSkill[]; onAdd: (name: string) =
           ))}
         </ul>
       )}
-    </Card>
+    </section>
   );
 }
 
+/** New tools from the morning brief: stories worth reading in place, so cards, one column. */
 function NewTools({ items }: { items: ApiMarketReport['newTools'] }) {
   return (
     <section className="flex flex-col gap-3" aria-labelledby="new-tools">
       <SectionTitle>
-        <span id="new-tools" className="inline-flex items-center gap-2">
-          <Sparkles className="size-4.5 text-muted-foreground" aria-hidden />
-          Công cụ và kỹ năng mới từ bản tin sáng
-        </span>
+        <span id="new-tools">Công cụ và kỹ năng mới từ bản tin sáng</span>
       </SectionTitle>
-      <div className="flex flex-col gap-1.5 rounded-2xl bg-secondary p-3 text-sm">
-        <p className="flex items-center gap-1.5 font-medium">
-          <HelpCircle className="size-4" aria-hidden />
-          Trước khi học cái nào, hỏi hai câu:
-        </p>
-        <ol className="list-decimal ps-6 text-muted-foreground">
-          {twoQuestions.map((q) => (
-            <li key={q}>{q}</li>
-          ))}
-        </ol>
-        <p className="text-xs text-muted-foreground">Chỉ học thứ trả lời &quot;có&quot; cho cả hai.</p>
-      </div>
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">Tháng này bản tin chưa gắn tin nào là công cụ hay kỹ năng mới.</p>
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
-          {items.map((n) => (
-            <li key={n.id}>
-              <BrainCard
-                className="h-full"
-                badges={
-                  <>
-                    <Badge variant="secondary">{n.source.name}</Badge>
-                    {n.relevance ? <Badge variant="outline">liên quan {n.relevance}/5</Badge> : null}
-                  </>
-                }
-                title={
-                  /^https?:\/\//.test(n.url) ? (
-                    <a href={n.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {n.title}
-                    </a>
-                  ) : (
-                    n.title
-                  )
-                }
-                meta={formatDay(n.published ?? n.createdAt)}
-              >
-                {n.summary && <p className="text-sm text-muted-foreground">{n.summary}</p>}
-              </BrainCard>
-            </li>
-          ))}
-        </ul>
+        <>
+          {/* DECISIONS 6.1: the two questions, behind a disclosure (DESIGN.md §7: help text is not content) */}
+          <details className="text-xs text-muted-foreground">
+            <summary className="w-fit cursor-pointer select-none font-medium">Hai câu hỏi trước khi học</summary>
+            <ol className="mt-1.5 list-decimal ps-5 leading-relaxed">
+              {twoQuestions.map((q) => (
+                <li key={q}>{q}</li>
+              ))}
+            </ol>
+            <p className="mt-1">Chỉ học thứ trả lời &quot;có&quot; cho cả hai.</p>
+          </details>
+          <ul className="flex flex-col gap-3">
+            {items.map((n) => (
+              <li key={n.id}>
+                <BrainCard
+                  badges={
+                    <>
+                      <Badge variant="secondary">{n.source.name}</Badge>
+                      {n.relevance ? (
+                        <>
+                          <Badge variant="outline">liên quan {n.relevance}/5</Badge>
+                          <Auto />
+                        </>
+                      ) : null}
+                    </>
+                  }
+                  title={
+                    /^https?:\/\//.test(n.url) ? (
+                      <a href={n.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                        {n.title}
+                      </a>
+                    ) : (
+                      n.title
+                    )
+                  }
+                  meta={formatDay(n.published ?? n.createdAt)}
+                >
+                  {n.summary && (
+                    <p className="text-[13px] leading-relaxed text-muted-foreground">
+                      <span className="text-xs">Tóm tắt tự động: </span>
+                      {n.summary}
+                    </p>
+                  )}
+                </BrainCard>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );
@@ -187,23 +221,26 @@ function NewTools({ items }: { items: ApiMarketReport['newTools'] }) {
 function Report({ report, onAddSkill }: { report: ApiMarketReport; onAddSkill: (name: string) => void }) {
   const pending = report.jobAds - report.processed;
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <p className="text-sm">
-          <span className="font-heading text-2xl font-semibold">{report.jobAds}</span>{' '}
+          <span className="font-heading text-2xl font-semibold tabular-nums">{report.jobAds}</span>{' '}
           <span className="text-muted-foreground">tin trong tháng</span>
           {pending > 0 && <span className="text-muted-foreground"> · {pending} đang chờ phân tích</span>}
         </p>
         {report.seniority.length > 0 && (
-          <ul className="flex flex-wrap items-center gap-1.5" aria-label="Cấp bậc">
-            {report.seniority.map((s) => (
-              <li key={s.level}>
-                <Badge variant="outline" size="lg">
-                  {seniority[s.level]} <span className="font-semibold tabular-nums">{s.count}</span>
-                </Badge>
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <ul className="flex flex-wrap items-center gap-1.5" aria-label="Cấp bậc">
+              {report.seniority.map((s) => (
+                <li key={s.level}>
+                  <Badge variant="outline">
+                    {seniority[s.level]} <span className="font-semibold tabular-nums">{s.count}</span>
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+            <Auto />
+          </div>
         )}
       </div>
       {report.processed === 0 ? (
@@ -236,6 +273,7 @@ export function MarketPage() {
   const ads = useApi<Page<ApiJobAd>>(`job-ads:${month}`, () => growthApi.listJobAds({ month, limit: 100 }));
   const adList = ads.loading ? [] : (ads.data?.results ?? []);
   const current = thisMonth();
+  const empty = !!report.data && report.data.jobAds === 0;
 
   const paste = () => {
     setEditing(null);
@@ -286,13 +324,20 @@ export function MarketPage() {
           currentLabel="Tháng này"
         />
         <div className="ms-auto flex flex-wrap gap-2">
-          <Button variant="outline" onClick={refresh} aria-label="Làm mới">
-            <RefreshCw aria-hidden />
-            <span className="hidden sm:inline">Làm mới</span>
-          </Button>
-          <Button onClick={paste}>
+          {/* Icon-only below 640 px, so it carries a tooltip (DESIGN.md D21) */}
+          <Tooltip>
+            <TooltipTrigger
+              render={<Button variant="outline" onClick={refresh} aria-label="Làm mới" />}
+            >
+              <RefreshCw aria-hidden />
+              <span className="max-sm:hidden">Làm mới</span>
+            </TooltipTrigger>
+            <TooltipPopup>Làm mới</TooltipPopup>
+          </Tooltip>
+          {/* While the month is empty the EmptyState button is the one primary (DESIGN.md D2) */}
+          <Button variant={empty ? 'outline' : 'default'} onClick={paste}>
             <ClipboardPaste aria-hidden />
-            Dán tin tuyển dụng <Kbd className="hidden sm:inline-flex">N</Kbd>
+            Dán tin tuyển dụng <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
           </Button>
         </div>
       </div>
@@ -308,11 +353,11 @@ export function MarketPage() {
         <ApiErrorState error={report.error} onRetry={report.reload} />
       ) : report.loading && !report.data ? (
         <LoadingCards count={2} />
-      ) : report.data && report.data.jobAds === 0 ? (
+      ) : empty ? (
         <EmptyState
           icon={<BriefcaseBusiness aria-hidden />}
-          title={`${monthLabel(month)} chưa có tin tuyển dụng nào`}
-          description="Dán 5 đến 10 tin của vai trò nhắm tới (Product Engineer AI-native, Forward-Deployed Engineer…). Kỹ năng được rút ra trong nền rồi so với ma trận của mình."
+          title="Chưa có tin tuyển dụng nào"
+          description="Dán 5 đến 10 tin của vai trò nhắm tới; kỹ năng được rút ra trong nền rồi so với ma trận."
         >
           <Button onClick={paste}>
             <ClipboardPaste aria-hidden />
@@ -332,9 +377,9 @@ export function MarketPage() {
           <SectionTitle>
             <span id="job-ads">Tin tuyển dụng {monthLabel(month).toLowerCase()}</span>
           </SectionTitle>
-          <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          <ul className="flex flex-col divide-y rounded-xl border bg-card">
             {adList.map((ad) => (
-              <JobAdCard
+              <JobAdRow
                 key={ad.id}
                 ad={ad}
                 onEdit={() => {
@@ -348,7 +393,7 @@ export function MarketPage() {
                 }}
               />
             ))}
-          </div>
+          </ul>
           {ads.data?.next && (
             <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
               Tải thêm

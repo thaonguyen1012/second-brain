@@ -84,11 +84,8 @@ export function ReviewJournal({
     .join('\n');
 
   return (
-    <WeekSection
-      id="week-review-journal"
-      title="Nhật ký nhìn lại"
-      description="Sáu câu, mỗi câu vài dòng. Câu trả lời tự lưu khi chuyển sang câu khác."
-    >
+    // The column around it carries id="week-review-journal" (the "Trả lời 6 câu" anchor), so the heading's id differs.
+    <WeekSection id="week-review-journal-title" title="Nhật ký nhìn lại">
       <div className="flex flex-col gap-4">
         {reviewQuestions.map((q, i) => {
           const id = `review-${q.field}`;
@@ -135,7 +132,12 @@ export function ReviewJournal({
             'Đang lưu…'
           ) : dirty ? (
             <>
-              Chưa lưu · <SaveKeys /> để lưu
+              Chưa lưu
+              {/* Key hint only where a keyboard is likely (DESIGN.md D24) */}
+              <span className="max-sm:hidden pointer-coarse:hidden">
+                {' · '}
+                <SaveKeys /> để lưu
+              </span>
             </>
           ) : reviewedAt ? (
             `Đã lưu lúc ${clockTime(reviewedAt)}`

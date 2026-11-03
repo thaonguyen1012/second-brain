@@ -4,27 +4,17 @@ import { ChevronLeft, ChevronRight, ListFilter } from 'lucide-react';
 import { useApi } from '@/lib/api/use-api';
 import { workApi, type ApiWeekSummary } from '@/lib/api/work';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiErrorState } from '../api-state';
-import { BillableBar, BillableLegend } from './billable-bar';
+import { BillableBar, Swatch } from './billable-bar';
 import { addDays, formatHours, formatWeekRange } from './format';
 
-function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="flex flex-col gap-0.5 rounded-2xl bg-secondary p-3">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-heading text-2xl font-semibold tabular-nums tracking-tight">{value}</dd>
-      {hint && <dd className="text-xs text-muted-foreground">{hint}</dd>}
-    </div>
-  );
-}
-
-const share = (part: number, total: number) => (total > 0 ? `${Math.round((part / total) * 100)}% tổng giờ` : undefined);
+const pct = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 100) : 0);
 
 /**
- * Week summary (GET /api/time-entries/summary): billable vs non-billable per project, one bar per project on a
- * shared scale. `refreshKey` changes when the page records or removes time. `onSelectProject` filters the list.
+ * Week summary (GET /api/time-entries/summary), a flat section: one big number (total hours), one line with the
+ * billable / non-billable split, then one bar per project on a shared scale. `refreshKey` changes when the page
+ * records or removes time. `onSelectProject` filters the list.
  */
 export function WeekSummary({
   refreshKey,
@@ -43,10 +33,7 @@ export function WeekSummary({
   const scale = rows[0]?.minutesTotal ?? 0;
 
   return (
-    <Card
-      render={<section aria-labelledby="week-summary-title" />}
-      className="flex flex-col gap-4 rounded-3xl border p-4 shadow-depth-1 sm:p-5"
-    >
+    <section aria-labelledby="week-summary-title" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 id="week-summary-title" className="font-heading text-lg font-semibold tracking-tight">
           Tuần {data ? formatWeekRange(data.weekStart) : ''}
@@ -54,19 +41,19 @@ export function WeekSummary({
         <div className="ms-auto flex items-center gap-1">
           <Button
             size="icon-sm"
-            variant="outline"
+            variant="ghost"
             aria-label="Tuần trước"
             disabled={!data}
             onClick={() => data && setWeek(addDays(data.weekStart, -7))}
           >
             <ChevronLeft aria-hidden />
           </Button>
-          <Button size="sm" variant="outline" disabled={week === null} onClick={() => setWeek(null)}>
+          <Button size="sm" variant="ghost" disabled={week === null} onClick={() => setWeek(null)}>
             Tuần này
           </Button>
           <Button
             size="icon-sm"
-            variant="outline"
+            variant="ghost"
             aria-label="Tuần sau"
             disabled={!data}
             onClick={() => data && setWeek(addDays(data.weekStart, 7))}
@@ -79,63 +66,61 @@ export function WeekSummary({
       {summary.error && !data ? (
         <ApiErrorState error={summary.error} onRetry={summary.reload} />
       ) : !data ? (
-        <Skeleton className="h-40 rounded-2xl" aria-label="Đang tải tổng kết tuần" />
+        <Skeleton className="h-24 rounded-xl" aria-label="Đang tải tổng kết tuần" />
+      ) : data.minutesTotal === 0 ? (
+        <p className="text-sm text-muted-foreground">Chưa có giờ nào trong tuần này.</p>
       ) : (
         <>
-          <dl className="grid grid-cols-3 gap-2">
-            <Tile label="Tổng giờ" value={formatHours(data.minutesTotal)} />
-            <Tile
-              label="Tính tiền"
-              value={formatHours(data.minutesBillable)}
-              hint={share(data.minutesBillable, data.minutesTotal)}
-            />
-            <Tile
-              label="Không tính tiền"
-              value={formatHours(data.minutesNonBillable)}
-              hint={share(data.minutesNonBillable, data.minutesTotal)}
-            />
-          </dl>
-          {rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Chưa có giờ nào trong tuần này.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-medium">Theo dự án</h3>
-                <BillableLegend />
-              </div>
-              <ul className="flex flex-col gap-4">
-                {rows.map((p) => (
-                  <li key={p.id} className="flex flex-col gap-1.5">
-                    <div className="flex items-baseline gap-2">
-                      <span className="min-w-0 truncate text-sm font-medium">{p.title}</span>
-                      {p.client && <span className="truncate text-xs text-muted-foreground">{p.client}</span>}
-                      {onSelectProject && (
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          className="ms-auto"
-                          aria-label={`Xem các mục giờ của ${p.title} trong tuần này`}
-                          onClick={() => onSelectProject(p.id, data.weekStart)}
-                        >
-                          <ListFilter aria-hidden />
-                          Xem mục
-                        </Button>
-                      )}
-                    </div>
-                    <BillableBar
-                      billable={p.minutesBillable}
-                      nonBillable={p.minutesNonBillable}
-                      scale={scale}
-                      label={p.title}
-                      showTotal
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div className="flex flex-col gap-1">
+            <p className="font-heading text-2xl font-semibold tabular-nums">
+              {formatHours(data.minutesTotal)}
+              <span className="sr-only"> tổng trong tuần</span>
+            </p>
+            <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground tabular-nums">
+              <span className="inline-flex items-center gap-1.5">
+                <Swatch kind="billable" />
+                {formatHours(data.minutesBillable)} tính tiền ({pct(data.minutesBillable, data.minutesTotal)}%)
+              </span>
+              <span aria-hidden>·</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Swatch kind="nonbillable" />
+                {formatHours(data.minutesNonBillable)} không tính tiền
+              </span>
+            </p>
+          </div>
+          {rows.length > 0 && (
+            <ul className="flex flex-col gap-4" aria-label="Theo dự án">
+              {rows.map((p) => (
+                <li key={p.id} className="flex flex-col gap-1.5">
+                  <div className="flex min-h-7 items-center gap-2">
+                    <span className="min-w-0 truncate text-sm font-medium">{p.title}</span>
+                    {p.client && <span className="truncate text-xs text-muted-foreground">{p.client}</span>}
+                    {onSelectProject && (
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        className="ms-auto"
+                        aria-label={`Xem các mục giờ của ${p.title} trong tuần này`}
+                        onClick={() => onSelectProject(p.id, data.weekStart)}
+                      >
+                        <ListFilter aria-hidden />
+                        Xem mục
+                      </Button>
+                    )}
+                  </div>
+                  <BillableBar
+                    billable={p.minutesBillable}
+                    nonBillable={p.minutesNonBillable}
+                    scale={scale}
+                    label={p.title}
+                    showTotal
+                  />
+                </li>
+              ))}
+            </ul>
           )}
         </>
       )}
-    </Card>
+    </section>
   );
 }

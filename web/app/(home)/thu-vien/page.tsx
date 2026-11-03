@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { PageHeader } from '@/components/brain/page-header';
-import { LoadingCards } from '@/components/brain/api-state';
 import { LibraryPage } from '@/components/brain/library-page';
+import { RowsSkeleton } from '@/components/brain/library/list-rows';
 import { LibraryTabs } from '@/components/brain/library/library-tabs';
 
 export const metadata: Metadata = { title: 'Thư viện' };
@@ -12,7 +12,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Thư viện"
-        description="Sách, phim, khóa học, bài viết và dự án, lọc theo loại và trạng thái. Ghi chú nằm ở tab bên cạnh."
+        description="Sách, phim, khóa học, bài viết và dự án, lọc theo loại và trạng thái."
       >
         <LibraryTabs current="items" />
       </PageHeader>
@@ -20,7 +20,7 @@ export default function Page() {
       <Suspense
         fallback={
           <div className="px-4 sm:px-8">
-            <LoadingCards />
+            <RowsSkeleton />
           </div>
         }
       >

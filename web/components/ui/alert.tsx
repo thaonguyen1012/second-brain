@@ -1,9 +1,11 @@
+'use client'
+
 import { cn } from '@/lib/utils'
 import { cva, type VariantProps } from 'class-variance-authority'
 import * as React from 'react'
 
 const alertVariants = cva(
-  'relative grid w-full grid-cols-[auto_1fr_auto] items-start gap-x-3 gap-y-0.5 rounded-xl border bg-transparent dark:bg-input/32 px-3.5 py-3 text-card-foreground text-sm [&>svg]:size-4 [&>svg]:h-lh',
+  'relative grid w-full grid-cols-[auto_1fr_auto] items-start gap-x-3 gap-y-0.5 rounded-xl border bg-card dark:bg-input/32 px-3.5 py-3 text-card-foreground text-sm [&>svg]:size-4 [&>svg]:h-lh',
   {
     defaultVariants: {
       variant: 'default',

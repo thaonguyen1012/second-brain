@@ -15,6 +15,7 @@ import { itemTypeLabel } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { evidenceKinds, fieldErrors, today } from './labels';
@@ -122,11 +123,14 @@ export function EvidenceForm({
   evidence,
   onSaved,
   onCancel,
+  className,
 }: {
   skillId: number;
   evidence: ApiSkillEvidence | null;
   onSaved: (evidence: ApiSkillEvidence, created: boolean) => void;
   onCancel: () => void;
+  /** Container classes; default a bordered box (the add form), a row inside a bordered list passes padding only. */
+  className?: string;
 }) {
   const [kind, setKind] = useState<ApiEvidenceKind>(evidence?.kind ?? 'link');
   const [ref, setRef] = useState('');
@@ -179,7 +183,7 @@ export function EvidenceForm({
 
   return (
     <form
-      className="flex flex-col gap-3 rounded-2xl border bg-card p-3"
+      className={cn('flex flex-col gap-3', className ?? 'rounded-xl border p-3')}
       aria-label={evidence ? 'Sửa bằng chứng' : 'Thêm bằng chứng'}
       onSubmit={(e) => {
         e.preventDefault();

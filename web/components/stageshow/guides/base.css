@@ -12,6 +12,17 @@
   color: var(--ss-text-strong);
 }
 
+/* The well is a container on the page, so it carries the surface border (DESIGN.md D29: the grey well alone
+   barely parts from the grey page). Drawn on the unscaled .ss-fit wrapper, over the stage edge. */
+.ssg-brain.ss-fit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  pointer-events: none;
+}
+
 /* The page column: one width, centered on the well, running off the bottom (gold: stacked-cards) */
 .ssg-brain .g-col {
   position: absolute;

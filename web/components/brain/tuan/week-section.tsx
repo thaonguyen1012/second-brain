@@ -10,32 +10,30 @@ import { describeApiError } from '../api-state';
 
 /**
  * One block of the planning or review ritual: a plain headed block, no card of its own. The panel puts its
- * sections in one bordered surface with dividers between them (DESIGN.md D12: no box inside a box).
+ * sections in one bordered surface with dividers between them (DESIGN.md D12: no box inside a box). No how-to
+ * line under the title (DESIGN.md §7: help text is not content); the ritual is explained on /huong-dan/.
  */
 export function WeekSection({
   title,
   id,
   action,
-  description,
   children,
   className,
 }: {
   title: string;
   id: string;
   action?: ReactNode;
-  description?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <section aria-labelledby={id} className={cn('flex min-w-0 flex-col gap-3 p-4 sm:p-5', className)}>
+    <section aria-labelledby={id} className={cn('flex min-w-0 flex-col gap-3 p-4 sm:p-6', className)}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 id={id} className="font-heading text-[15px] font-semibold tracking-tight">
           {title}
         </h2>
         {action && <div className="ms-auto flex items-center gap-2">{action}</div>}
       </div>
-      {description && <p className="text-[13px] leading-relaxed text-muted-foreground">{description}</p>}
       {children}
     </section>
   );

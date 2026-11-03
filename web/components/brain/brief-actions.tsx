@@ -5,6 +5,7 @@ import { api, type ApiNewsFeedback, type ApiNewsItem } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
 import { firstFieldError } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { describeApiError } from './api-state';
 import { refreshInboxCount } from './inbox-count';
 
@@ -101,7 +102,7 @@ function ToInbox({ item }: { item: ApiNewsItem }) {
           onClick={() => void send()}
         >
           {sent ? (
-            <Check className="text-primary" aria-hidden />
+            <Check aria-hidden />
           ) : busy ? (
             <Loader2 className="animate-spin" aria-hidden />
           ) : (
@@ -131,7 +132,7 @@ const ratings: {
 /**
  * "Hữu ích / Không hữu ích" (PATCH /api/news/{id}, DECISIONS 5, 10.3): the ratings feed the golden set of
  * `manage.py eval brief`. Pressing the active rating again clears it. The change shows at once and is undone
- * if the save fails.
+ * if the save fails. Icon-only toggle buttons with a tooltip; the active one is the neutral secondary fill.
  */
 function Feedback({
   item,
@@ -163,23 +164,27 @@ function Feedback({
 
   return (
     <>
-      <div role="group" aria-label={`Tin "${item.title}" có hữu ích không?`} className="flex items-center gap-1">
+      <div role="group" aria-label={`Tin "${item.title}" có hữu ích không?`} className="flex items-center gap-0.5">
         {ratings.map(({ value, label, icon: Icon }) => {
           const on = current === value;
           return (
-            <Button
-              key={value}
-              size="xs"
-              variant={on ? 'secondary' : 'ghost'}
-              aria-pressed={on}
-              aria-busy={busy || undefined}
-              title={on ? `${label} (bấm lần nữa để bỏ)` : label}
-              onClick={() => void rate(value)}
-              className={on ? 'ring-1 ring-primary/40' : undefined}
-            >
-              <Icon aria-hidden className={on ? 'text-primary' : undefined} />
-              {label}
-            </Button>
+            <Tooltip key={value}>
+              <TooltipTrigger
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant={on ? 'secondary' : 'ghost'}
+                    aria-label={label}
+                    aria-pressed={on}
+                    aria-busy={busy || undefined}
+                    onClick={() => void rate(value)}
+                  />
+                }
+              >
+                <Icon aria-hidden />
+              </TooltipTrigger>
+              <TooltipPopup>{on ? `${label} (bấm lần nữa để bỏ)` : label}</TooltipPopup>
+            </Tooltip>
           );
         })}
       </div>

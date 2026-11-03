@@ -15,7 +15,8 @@ export function OpportunitiesView() {
 
   if (id !== null)
     return (
-      <div className="flex w-full flex-col px-4 pt-8 pb-12 sm:px-8 md:pt-10">
+      // Same gutters and top padding as PageHeader, so the title sits where every page title sits
+      <div className="flex w-full flex-col px-4 pt-10 pb-12 sm:px-8 md:pt-12">
         <OpportunityDetail key={id} id={id} />
       </div>
     );
@@ -26,7 +27,7 @@ export function OpportunitiesView() {
         title="Cơ hội"
         description="Giả thuyết kinh doanh của mình: bằng chứng ủng hộ hoặc phản bác, 4 điểm tự chấm có lịch sử và hạn quyết giữ, bỏ hay làm. Cơ hội 4 tuần không có bằng chứng mới thì bỏ."
       />
-      <div className="flex flex-col gap-12 px-4 pb-12 sm:px-8">
+      <div className="flex flex-col gap-8 px-4 pb-12 sm:px-8">
         <OpportunityList />
         <TopicHeatmap />
       </div>

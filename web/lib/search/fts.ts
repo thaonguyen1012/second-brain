@@ -65,11 +65,13 @@ export function searchIndex(query: string, books: string[] = []): SortedResult[]
   const out: SortedResult[] = [];
   for (const [url, p] of [...pages].slice(0, 20)) {
     out.push({ id: url, type: 'page', url, content: p.title });
-    for (const h of p.hits.slice(0, 3)) {
+    // ids carry the hit index: several hits without an anchor share one target URL, and the
+    // search list keys rows by id (duplicate keys leave stale rows on screen)
+    p.hits.slice(0, 3).forEach((h, i) => {
       const target = h.anchor ? `${url}#${h.anchor}` : url;
-      if (h.heading) out.push({ id: `${target}:h`, type: 'heading', url: target, content: h.heading });
-      if (h.snippet) out.push({ id: `${target}:t`, type: 'text', url: target, content: h.snippet });
-    }
+      if (h.heading) out.push({ id: `${target}:h${i}`, type: 'heading', url: target, content: h.heading });
+      if (h.snippet) out.push({ id: `${target}:t${i}`, type: 'text', url: target, content: h.snippet });
+    });
   }
   return out;
 }

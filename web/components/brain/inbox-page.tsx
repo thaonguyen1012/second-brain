@@ -1,7 +1,7 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Inbox, Library, Lightbulb, Loader2, NotebookPen, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, Inbox, Lightbulb, Loader2, NotebookPen, Plus, Trash2 } from 'lucide-react';
 import {
   api,
   type ApiInboxEntry,
@@ -13,7 +13,7 @@ import {
 } from '@/lib/api/client';
 import { linkInboxItem } from '@/lib/api/library';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
-import { destinations, formatDate, hostOf, inboxStatuses, inboxStatusOf, itemTypeLabel } from '@/lib/labels';
+import { destinations, formatDate, hostOf, inboxStatuses, inboxStatusOf } from '@/lib/labels';
 import { itemDraftFromEntry, noteTitle } from '@/lib/library-labels';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,7 @@ import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from './api-state';
-import { BrainCard, StatusBadge } from './brain-card';
+import { BrainCard } from './brain-card';
 import { ConfirmDelete } from './confirm-delete';
 import { refreshInboxCount } from './inbox-count';
 import { ItemDialog } from './item-dialog';
@@ -123,15 +123,15 @@ function CaptureBox({
         rows={2}
       />
       <div className="flex flex-wrap items-center gap-2 px-1">
-        <span className="text-xs text-muted-foreground">
-          <SaveKeys /> để lưu · tag và tóm tắt được thêm sau, trong nền
+        <span className="text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
+          <SaveKeys /> để lưu
         </span>
         {error && (
           <span className="text-xs text-destructive-foreground" role="alert">
             {error}
           </span>
         )}
-        <Button type="submit" size="sm" className="ms-auto" disabled={busy || !value.trim()}>
+        <Button type="submit" size="sm" className="ms-auto max-sm:w-full" disabled={busy || !value.trim()}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
           Lưu vào inbox
         </Button>
@@ -162,9 +162,28 @@ function EntryCard({
   onNote: () => void;
   onDelete: () => void;
 }) {
-  const s = inboxStatusOf(entry.status);
   const site = entry.ogSiteName || hostOf(entry.url);
+  // An LLM summary says so in words (DESIGN.md §4 "AI output", D18); og:description and captured text do not
+  const autoSummary = !!entry.summary;
   const body = entry.summary || entry.ogDescription || (entry.ogTitle || entry.url ? '' : entry.text);
+  // The suggestion helps triage: once the entry left the inbox the decision is made and the label goes
+  const suggestion =
+    entry.status === 'inbox' && entry.suggestedDestination
+      ? (destinations[entry.suggestedDestination] ?? entry.suggestedDestination)
+      : null;
+  const metaParts: React.ReactNode[] = [site, formatDate(entry.createdAt)].filter(Boolean);
+  if (suggestion) metaParts.push(`Gợi ý tự động: ${suggestion}`);
+  if (entry.item)
+    metaParts.push(
+      <Link
+        key="item"
+        href={`/thu-vien/ghi-chu/?item=${entry.item}`}
+        title="Ghi chú của item này"
+        className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        Item: {linkedItem?.title ?? `#${entry.item}`}
+      </Link>,
+    );
   const id = `inbox-entry-${entry.id}`;
   useEffect(() => {
     if (selected) document.getElementById(id)?.scrollIntoView({ block: 'nearest' });
@@ -177,29 +196,15 @@ function EntryCard({
       onClick={onSelect}
       thumbnail={entry.thumbnailUrl}
       badges={
-        <>
-          <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
-          {!entry.processed && !entry.error && (
-            <Badge variant="secondary">
-              <Loader2 className="animate-spin" aria-hidden />
-              Đang xử lý
-            </Badge>
-          )}
-          {entry.error && <Badge variant="error">Lỗi xử lý</Badge>}
-          {entry.suggestedDestination && (
-            <Badge variant="outline">→ {destinations[entry.suggestedDestination] ?? entry.suggestedDestination}</Badge>
-          )}
-          {entry.item && (
-            <Badge
-              variant="success"
-              render={<Link href={`/thu-vien/ghi-chu/?item=${entry.item}`} title="Ghi chú của item này" />}
-            >
-              <Library aria-hidden />
-              {linkedItem ? `${itemTypeLabel(linkedItem.type)} · ` : 'Item '}
-              <span className="max-w-56 truncate">{linkedItem?.title ?? `#${entry.item}`}</span>
-            </Badge>
-          )}
-        </>
+        // The status is the selected tab, so no status badge; only states the tab does not say (BADGE-1)
+        !entry.processed && !entry.error ? (
+          <Badge variant="secondary">
+            <Loader2 className="animate-spin" aria-hidden />
+            Đang xử lý
+          </Badge>
+        ) : entry.error ? (
+          <Badge variant="error">Lỗi xử lý</Badge>
+        ) : undefined
       }
       title={
         entry.url ? (
@@ -210,7 +215,15 @@ function EntryCard({
           titleOf(entry)
         )
       }
-      meta={[site, formatDate(entry.createdAt)].filter(Boolean).join(' · ')}
+      meta={
+        metaParts.length > 0 &&
+        metaParts.map((part, i) => (
+          <Fragment key={i}>
+            {i > 0 && ' · '}
+            {part}
+          </Fragment>
+        ))
+      }
       actions={
         <>
           {entry.status === 'inbox' && (
@@ -272,15 +285,19 @@ function EntryCard({
       }
     >
       {body && (
-        <p className="line-clamp-3 text-[13px] leading-relaxed text-muted-foreground whitespace-pre-line">{body}</p>
+        <p className="line-clamp-3 text-[13px] leading-relaxed text-muted-foreground whitespace-pre-line">
+          {autoSummary && <span className="font-medium">Tóm tắt tự động: </span>}
+          {body}
+        </p>
       )}
       {entry.suggestedTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {entry.suggestedTags.map((t) => (
             <Badge key={t} variant="outline">
               #{t}
             </Badge>
           ))}
+          <span className="text-xs text-muted-foreground">tự động</span>
         </div>
       )}
     </BrainCard>
@@ -476,7 +493,7 @@ export function InboxPage() {
   };
 
   return (
-    <div className="flex flex-col gap-5 px-4 pb-12 sm:px-8">
+    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
       <CaptureBox
         inputRef={captureRef}
         onCaptured={(e) => {

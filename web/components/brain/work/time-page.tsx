@@ -1,29 +1,25 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Clock, Loader2, Pencil, Plus, Target, Trash2, X } from 'lucide-react';
+import { Briefcase, Clock, Pencil, Plus, X } from 'lucide-react';
 import type { Page } from '@/lib/api/client';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiTimeEntry } from '@/lib/api/work';
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogClose,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogPopup,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
-import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError } from '../api-state';
+import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
+import { ConfirmDelete, DeleteButton } from '../confirm-delete';
 import { addDays, formatDay, formatMinutes, isTyping } from './format';
+import { RowsSkeleton } from './rows-skeleton';
 import { TimeEntryDialog } from './time-entry-dialog';
 import { TimerPanel } from './timer-panel';
 import { useProjectChoices, useTimer, useWeekObjectives } from './use-work';
@@ -31,112 +27,81 @@ import { WeekSummary } from './week-summary';
 
 const isDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
+/** Icon-only row action with its tooltip (DESIGN.md D21). */
+function IconTip({ label, children }: { label: string; children: React.ReactElement }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={children} />
+      <TooltipPopup>{label}</TooltipPopup>
+    </Tooltip>
+  );
+}
+
+const ENTRY_GRID = 'grid grid-cols-[minmax(0,1fr)_5rem_auto] items-center gap-3 px-3';
+
 function EntryRow({
   entry: e,
   objectiveTitle,
   onEdit,
-  onDelete,
+  onDeleted,
 }: {
   entry: ApiTimeEntry;
   objectiveTitle: string | null;
   onEdit: () => void;
-  onDelete: () => void;
+  onDeleted: () => void;
 }) {
+  const meta = [
+    !e.billable && 'Không tính tiền',
+    e.objective && `Mục tiêu: ${objectiveTitle ?? 'mục tiêu tuần'}`,
+    e.note,
+  ].filter(Boolean);
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2.5 sm:px-4">
-      <div className="flex min-w-0 flex-1 basis-56 flex-col gap-1">
+    <li className={cn(ENTRY_GRID, 'min-h-10 py-2')}>
+      <div className="flex min-w-0 flex-col gap-1">
         <p className="text-sm font-medium break-words">{e.projectTitle}</p>
-        {(e.note || e.running || !e.billable || e.objective) && (
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {e.running && (
-              <Badge variant="info">
-                <Clock aria-hidden />
-                Đang chạy
-              </Badge>
-            )}
-            {!e.billable && <Badge variant="outline">Không tính tiền</Badge>}
-            {e.objective && (
-              <Badge variant="secondary">
-                <Target aria-hidden />
-                {objectiveTitle ?? 'Mục tiêu tuần'}
-              </Badge>
-            )}
-            {e.note && <span className="break-words">{e.note}</span>}
-          </div>
+        {(e.running || meta.length > 0) && (
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+            {e.running && <StatusBadge tone="info">Đang chạy</StatusBadge>}
+            {meta.length > 0 && <span className="break-words">{meta.join(' · ')}</span>}
+          </p>
         )}
       </div>
-      <span className="ms-auto text-sm font-medium tabular-nums">{e.running ? '—' : formatMinutes(e.minutes)}</span>
+      <span className="text-end text-sm font-medium tabular-nums">{e.running ? '—' : formatMinutes(e.minutes)}</span>
       <div className="flex items-center gap-1">
-        <Button size="icon-sm" variant="ghost" onClick={onEdit} aria-label={`Sửa giờ của ${e.projectTitle}`}>
-          <Pencil aria-hidden />
-        </Button>
-        <Button size="icon-sm" variant="ghost" onClick={onDelete} aria-label={`Xóa giờ của ${e.projectTitle}`}>
-          <Trash2 aria-hidden />
-        </Button>
+        <IconTip label="Sửa">
+          <Button size="icon-sm" variant="ghost" onClick={onEdit} aria-label={`Sửa giờ của ${e.projectTitle}`}>
+            <Pencil aria-hidden />
+          </Button>
+        </IconTip>
+        <Tooltip>
+          <ConfirmDelete
+            title="Xóa mục giờ này?"
+            description={
+              e.running
+                ? `Bộ bấm giờ của "${e.projectTitle}" đang chạy sẽ bị hủy, không ghi phút nào.`
+                : `${formatMinutes(e.minutes)} cho "${e.projectTitle}" ngày ${formatDay(e.date)}. Không hoàn tác được.`
+            }
+            action={async () => {
+              try {
+                await workApi.deleteTimeEntry(e.id);
+              } catch (err) {
+                // 404: already gone (deleted elsewhere); drop it from the list as well.
+                const apiErr = toApiError(err);
+                if (!(apiErr.reachable && apiErr.status === 404)) throw err;
+              }
+            }}
+            onDeleted={onDeleted}
+            focusNeighbour
+            trigger={
+              <TooltipTrigger
+                render={<DeleteButton size="icon-sm" label="" aria-label={`Xóa giờ của ${e.projectTitle}`} />}
+              />
+            }
+          />
+          <TooltipPopup>Xóa</TooltipPopup>
+        </Tooltip>
       </div>
     </li>
-  );
-}
-
-function DeleteDialog({
-  entry,
-  onOpenChange,
-  onDeleted,
-}: {
-  entry: ApiTimeEntry | null;
-  onOpenChange: (open: boolean) => void;
-  onDeleted: (entry: ApiTimeEntry) => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const confirm = async () => {
-    if (!entry) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await workApi.deleteTimeEntry(entry.id);
-      onDeleted(entry);
-    } catch (err) {
-      const e = toApiError(err);
-      // 404: already gone (deleted elsewhere); drop it from the list as well.
-      if (e.status === 404 && e.reachable) onDeleted(entry);
-      else setError(describeApiError(e).title);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Dialog
-      open={entry !== null}
-      onOpenChange={(open) => {
-        if (!open) setError(null);
-        onOpenChange(open);
-      }}
-    >
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }}>
-        <DialogHeader>
-          <DialogTitle>Xóa mục giờ này?</DialogTitle>
-          <DialogDescription>
-            {entry &&
-              (entry.running
-                ? `Bộ bấm giờ của "${entry.projectTitle}" đang chạy sẽ bị hủy, không ghi phút nào.`
-                : `${formatMinutes(entry.minutes)} cho "${entry.projectTitle}" ngày ${formatDay(entry.date)}. Không hoàn tác được.`)}
-          </DialogDescription>
-          {error && (
-            <p className="text-sm text-destructive-foreground" role="alert">
-              {error}
-            </p>
-          )}
-        </DialogHeader>
-        <DialogFooter>
-          <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
-          <Button variant="destructive" onClick={() => void confirm()} disabled={busy}>
-            {busy && <Loader2 className="animate-spin" aria-hidden />}
-            Xóa
-          </Button>
-        </DialogFooter>
-      </DialogPopup>
-    </Dialog>
   );
 }
 
@@ -151,7 +116,6 @@ export function TimePage() {
   const [to, setTo] = useState('');
   const [editing, setEditing] = useState<ApiTimeEntry | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleting, setDeleting] = useState<ApiTimeEntry | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [summaryKey, setSummaryKey] = useState(0);
@@ -216,8 +180,13 @@ export function TimePage() {
     setDialogOpen(true);
   };
 
+  // No project yet: nothing can be timed or entered, the page shows one empty state instead (D26).
+  const noProjects = !!choices.data && choices.projects.length === 0;
+  const projectsLoading = !choices.data && !choices.error;
+
   // N opens "Nhập giờ" (T, the timer key, lives in TimerPanel).
   useEffect(() => {
+    if (noProjects) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || e.key.toLowerCase() !== 'n') return;
       if (document.querySelector('[role="dialog"]')) return;
@@ -227,7 +196,7 @@ export function TimePage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [noProjects]);
 
   const loadMore = async () => {
     const next = entries.data?.next;
@@ -250,18 +219,53 @@ export function TimePage() {
   if (project !== 'all' && !projectChoices.some((c) => c.value === project))
     projectChoices.push({ value: project, label: `Dự án #${project}` });
 
+  const clearFilters = () => {
+    setProject('all');
+    setFrom('');
+    setTo('');
+  };
+  const removeEntry = (gone: ApiTimeEntry) => {
+    entries.mutate((d) => d && { ...d, results: d.results.filter((e) => e.id !== gone.id) });
+    changed(`Đã xóa mục giờ của "${gone.projectTitle}"`);
+    if (gone.running) timer.reload();
+  };
+  // Unfiltered and empty: the empty state's "Nhập giờ" is the one primary; the toolbar's drops to outline (D2).
+  const emptyUnfiltered =
+    !filtered && !badRange && !entries.loading && !!entries.data && !entries.error && list.length === 0;
+  const addVariant = emptyUnfiltered ? 'outline' : 'default';
+
+  if (noProjects)
+    return (
+      <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
+        <EmptyState
+          icon={<Briefcase aria-hidden />}
+          title="Chưa có dự án nào"
+          description="Bấm giờ cần ít nhất một dự án."
+        >
+          <Button render={<Link href="/cong-viec/" />}>
+            <Plus aria-hidden />
+            Thêm dự án
+          </Button>
+        </EmptyState>
+      </div>
+    );
+
   return (
-    <div className="flex flex-col gap-5 px-4 pb-12 sm:px-8">
-      <TimerPanel
-        timer={timer}
-        projects={choices.projects.filter((p) => p.status === 'active' || p.status === 'planned')}
-        objectives={week.objectives}
-        preferredProject={project === 'all' ? null : Number(project)}
-        onChanged={(message) => {
-          changed(message);
-          entries.reload();
-        }}
-      />
+    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
+      {projectsLoading ? (
+        <Skeleton className="h-24 rounded-xl" aria-label="Đang tải bộ bấm giờ" />
+      ) : (
+        <TimerPanel
+          timer={timer}
+          projects={choices.projects.filter((p) => p.status === 'active' || p.status === 'planned')}
+          objectives={week.objectives}
+          preferredProject={project === 'all' ? null : Number(project)}
+          onChanged={(message) => {
+            changed(message);
+            entries.reload();
+          }}
+        />
+      )}
 
       <WeekSummary
         refreshKey={summaryKey}
@@ -274,54 +278,64 @@ export function TimePage() {
       />
 
       <section id="time-entries" aria-labelledby="time-entries-title" className="flex scroll-mt-20 flex-col gap-4">
-        <div className="flex flex-wrap items-end gap-2">
-          <h2 id="time-entries-title" className="me-auto font-heading text-lg font-semibold tracking-tight">
-            Các mục giờ
-          </h2>
-          <Button onClick={openNew}>
-            <Plus aria-hidden />
-            Nhập giờ <Kbd className="bg-transparent text-current">N</Kbd>
-          </Button>
-        </div>
-        <div className="flex flex-wrap items-end gap-2" role="group" aria-label="Bộ lọc">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="time-filter-project" className="text-xs text-muted-foreground">
-              Dự án
-            </Label>
-            <ChoiceSelect
-              id="time-filter-project"
-              label="Dự án"
-              value={project}
-              onChange={setProject}
-              choices={projectChoices}
-              className="w-auto min-w-40"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="time-filter-from" className="text-xs text-muted-foreground">
+        <h2 id="time-entries-title" className="font-heading text-lg font-semibold tracking-tight">
+          Các mục giờ
+        </h2>
+        {/* One toolbar of h-8 controls: filters left, "Nhập giờ" right. At 390 px: project + Nhập giờ, then the dates. */}
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap">
+          <ChoiceSelect
+            id="time-filter-project"
+            label="Lọc theo dự án"
+            value={project}
+            onChange={setProject}
+            choices={projectChoices}
+            className="min-w-0 sm:w-auto sm:min-w-40"
+          />
+          <div className="col-span-2 grid grid-cols-2 gap-2 sm:flex">
+            <Label htmlFor="time-filter-from" className="sr-only">
               Từ ngày
             </Label>
-            <Input id="time-filter-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="time-filter-to" className="text-xs text-muted-foreground">
+            <Input
+              id="time-filter-from"
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="sm:w-auto"
+            />
+            <Label htmlFor="time-filter-to" className="sr-only">
               Đến ngày
             </Label>
-            <Input id="time-filter-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <Input
+              id="time-filter-to"
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="sm:w-auto"
+            />
           </div>
           {filtered && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setProject('all');
-                setFrom('');
-                setTo('');
-              }}
-            >
+            <Button variant="ghost" className="col-span-2 justify-self-start" onClick={clearFilters}>
               <X aria-hidden />
-              Xóa lọc
+              Xóa bộ lọc
             </Button>
           )}
+          <Button
+            variant={addVariant}
+            className="col-start-2 row-start-1 sm:ms-auto"
+            onClick={openNew}
+            aria-keyshortcuts="n"
+          >
+            <Plus aria-hidden />
+            Nhập giờ
+            <Kbd
+              className={cn(
+                'pointer-coarse:hidden max-sm:hidden',
+                addVariant === 'default' && 'bg-primary-foreground/20 text-primary-foreground',
+              )}
+            >
+              N
+            </Kbd>
+          </Button>
         </div>
 
         {notice && (
@@ -338,32 +352,37 @@ export function TimePage() {
         ) : entries.error && !entries.data ? (
           <ApiErrorState error={entries.error} onRetry={entries.reload} />
         ) : entries.loading && list.length === 0 ? (
-          <LoadingCards />
+          <RowsSkeleton />
+        ) : list.length === 0 && filtered ? (
+          <p className="text-sm text-muted-foreground">
+            Không có mục nào khớp bộ lọc.{' '}
+            <Button variant="link" size="sm" className="px-0" onClick={clearFilters}>
+              Xóa bộ lọc
+            </Button>
+          </p>
         ) : list.length === 0 ? (
           <>
             <EmptyState
               icon={<Clock aria-hidden />}
-              title={filtered ? 'Không có mục giờ nào khớp bộ lọc' : 'Chưa có giờ nào'}
-              description={filtered ? undefined : 'Bấm giờ ở trên, hoặc nhập tay giờ đã làm.'}
+              title="Chưa có giờ nào"
+              description="Bấm giờ ở trên, hoặc nhập tay giờ đã làm."
             >
-              {!filtered && (
-                <Button onClick={openNew}>
-                  <Plus aria-hidden />
-                  Nhập giờ
-                </Button>
-              )}
+              <Button onClick={openNew}>
+                <Plus aria-hidden />
+                Nhập giờ
+              </Button>
             </EmptyState>
-            {!filtered && entries.data && !entries.error && <EmptyStateGuide guide="work" />}
+            {entries.data && !entries.error && <EmptyStateGuide guide="work" />}
           </>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col divide-y rounded-xl border bg-card">
             {days.map((d) => (
-              <Card key={d.date} render={<section aria-label={formatDay(d.date)} />} className="rounded-3xl border p-2">
-                <div className="flex items-baseline justify-between gap-2 rounded-2xl bg-secondary px-3 py-2 sm:px-4">
-                  <h3 className="text-sm font-semibold">{formatDay(d.date)}</h3>
-                  <span className="text-xs text-muted-foreground tabular-nums">{formatMinutes(d.minutes)}</span>
+              <section key={d.date} aria-label={formatDay(d.date)} className="flex flex-col">
+                <div className="flex h-8 items-center justify-between px-3 text-xs font-medium text-muted-foreground">
+                  <h3>{formatDay(d.date)}</h3>
+                  <span className="tabular-nums">{formatMinutes(d.minutes)}</span>
                 </div>
-                <ul className="divide-y">
+                <ul className="flex flex-col divide-y border-t">
                   {d.entries.map((e) => (
                     <EntryRow
                       key={e.id}
@@ -373,11 +392,11 @@ export function TimePage() {
                         setEditing(e);
                         setDialogOpen(true);
                       }}
-                      onDelete={() => setDeleting(e)}
+                      onDeleted={() => removeEntry(e)}
                     />
                   ))}
                 </ul>
-              </Card>
+              </section>
             ))}
           </div>
         )}
@@ -405,17 +424,6 @@ export function TimePage() {
               : `Đã lưu mục giờ của "${saved.projectTitle}"`,
           );
           if (saved.running) timer.reload();
-        }}
-      />
-
-      <DeleteDialog
-        entry={deleting}
-        onOpenChange={(open) => !open && setDeleting(null)}
-        onDeleted={(gone) => {
-          entries.mutate((d) => d && { ...d, results: d.results.filter((e) => e.id !== gone.id) });
-          setDeleting(null);
-          changed(`Đã xóa mục giờ của "${gone.projectTitle}"`);
-          if (gone.running) timer.reload();
         }}
       />
     </div>

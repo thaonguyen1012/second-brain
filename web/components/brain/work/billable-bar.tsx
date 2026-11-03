@@ -6,12 +6,12 @@ import { formatHours, formatMinutes } from './format';
 // Two series, fixed order and colour (dataviz palette slots 1-2, tokens --chart-billable / --chart-nonbillable in
 // app/global.css, validated in light and dark): billable first from the baseline, non-billable after a 2px gap.
 
-function Swatch({ kind }: { kind: 'billable' | 'nonbillable' }) {
+export function Swatch({ kind }: { kind: 'billable' | 'nonbillable' }) {
   return (
     <span
       aria-hidden
       className={cn(
-        'inline-block size-2.5 shrink-0 rounded-[3px]',
+        'inline-block size-2.5 shrink-0 rounded-sm',
         kind === 'billable' ? 'bg-chart-billable' : 'bg-chart-nonbillable',
       )}
     />
@@ -67,13 +67,13 @@ export function BillableBar({
             <span className="flex h-full gap-0.5" style={{ width: `${width}%` }}>
               {billable > 0 && (
                 <span
-                  className={cn('h-full min-w-[3px] bg-chart-billable', nonBillable === 0 && 'rounded-e-[4px]')}
+                  className={cn('h-full min-w-1 bg-chart-billable', nonBillable === 0 && 'rounded-e-sm')}
                   style={{ flex: `${billable} 1 0` }}
                 />
               )}
               {nonBillable > 0 && (
                 <span
-                  className="h-full min-w-[3px] rounded-e-[4px] bg-chart-nonbillable"
+                  className="h-full min-w-1 rounded-e-sm bg-chart-nonbillable"
                   style={{ flex: `${nonBillable} 1 0` }}
                 />
               )}
@@ -112,5 +112,31 @@ export function BillableBar({
         )}
       </p>
     </div>
+  );
+}
+
+/**
+ * A thin billable / non-billable split under a number in a list row (its own total is the scale). The row's
+ * text carries the hours; the exact split is in the accessible label.
+ */
+export function MiniBillableBar({ billable, nonBillable }: { billable: number; nonBillable: number }) {
+  const total = billable + nonBillable;
+  if (total <= 0) return null;
+  return (
+    <span
+      role="img"
+      aria-label={`${formatMinutes(billable)} tính tiền, ${formatMinutes(nonBillable)} không tính tiền`}
+      className="flex h-1 w-full gap-0.5"
+    >
+      {billable > 0 && (
+        <span
+          className={cn('h-full min-w-1 bg-chart-billable', nonBillable === 0 && 'rounded-e-sm')}
+          style={{ flex: `${billable} 1 0` }}
+        />
+      )}
+      {nonBillable > 0 && (
+        <span className="h-full min-w-1 rounded-e-sm bg-chart-nonbillable" style={{ flex: `${nonBillable} 1 0` }} />
+      )}
+    </span>
   );
 }

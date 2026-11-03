@@ -2,9 +2,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
-import { Brain, Search } from 'lucide-react';
+import { Brain, Moon, Search, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useSearchContext } from 'fumadocs-ui/contexts/search';
-import { ThemeSwitch } from 'fumadocs-ui/layouts/shared/slots/theme-switch';
+import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import {
   Sidebar,
@@ -26,9 +27,10 @@ import {
 } from '@/components/ui/sidebar';
 import { appNav, isNavActive } from '@/lib/app-nav';
 import { InboxButton } from '@/components/brain/inbox-count';
+import { LazyTooltip } from '@/components/lazy-tooltip';
 import { appName } from '@/lib/shared';
 
-/** Space UI sidebar: logo, then the six items of lib/app-nav.ts with their sub-items. */
+/** Space UI sidebar: logo, then the six items of lib/app-nav.ts, each with all of its sub-items. */
 const footerLinks = [
   { href: '/gioi-thieu/', label: 'Giới thiệu và case study' },
   { href: '/huong-dan/', label: 'Hướng dẫn' },
@@ -46,7 +48,7 @@ function AppSidebar() {
       <SidebarHeader className="h-16 justify-center px-4">
         <Link href="/" className="flex items-center gap-2.5">
           <Brain className="size-6" strokeWidth={1.75} aria-hidden />
-          <span className="font-heading text-[17px] font-semibold tracking-tight">{appName}</span>
+          <span className="font-heading text-base font-semibold tracking-tight">{appName}</span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
@@ -62,7 +64,8 @@ function AppSidebar() {
                       <Icon aria-hidden />
                       <span>{item.title}</span>
                     </SidebarMenuButton>
-                    {item.children && active && (
+                    {/* Sub-items always show, for every item (owner, 03/11/2026); the current one is highlighted */}
+                    {item.children && (
                       <SidebarMenuSub>
                         {item.children.map((child) => (
                           <SidebarMenuSubItem key={child.href}>
@@ -100,19 +103,48 @@ function AppSidebar() {
   );
 }
 
-/** Opens the search dialog (components/search-dialog.tsx): handbooks and the second brain. */
+/**
+ * Opens the search dialog (components/search-dialog.tsx): handbooks and the second brain. The accessible name stays
+ * "Tìm mọi thứ" at every width; the visible label shortens below sm so it never truncates, and the key hint is
+ * hidden on touch and small screens (DESIGN.md D24).
+ */
 function SearchButton() {
   const { setOpenSearch } = useSearchContext();
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
+      aria-label="Tìm mọi thứ"
       onClick={() => setOpenSearch(true)}
-      className="flex h-9 w-full max-w-[280px] items-center gap-2 rounded-lg border border-input bg-popover pr-2 pl-3 text-sm text-muted-foreground transition-colors hover:bg-accent/50 dark:bg-input/32"
+      className="w-full min-w-0 max-w-[280px] shrink justify-start font-normal text-muted-foreground"
     >
-      <Search className="size-4 opacity-80" aria-hidden />
-      <span className="flex-1 truncate text-left">Tìm mọi thứ...</span>
-      <Kbd>⌘ K</Kbd>
-    </button>
+      <Search aria-hidden />
+      <span className="sm:hidden">Tìm…</span>
+      <span className="max-sm:hidden">Tìm mọi thứ...</span>
+      <Kbd className="ms-auto max-sm:hidden pointer-coarse:hidden">⌘ K</Kbd>
+    </Button>
+  );
+}
+
+/**
+ * Light/dark switch (next-themes, shared with the lesson pages). Both icons are rendered and CSS shows the right
+ * one, so the server markup never depends on the theme (no hydration mismatch). e2e/theme.spec.ts clicks
+ * `button[data-theme-toggle]`.
+ */
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme();
+  return (
+    <LazyTooltip label="Đổi giao diện">
+      <Button
+        variant="ghost"
+        size="icon"
+        data-theme-toggle=""
+        aria-label="Đổi giao diện sáng/tối"
+        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+      >
+        <Sun aria-hidden className="dark:hidden" />
+        <Moon aria-hidden className="hidden dark:block" />
+      </Button>
+    </LazyTooltip>
   );
 }
 
@@ -122,12 +154,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     <SidebarProvider style={{ '--sidebar-width': '14rem' } as React.CSSProperties}>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur sm:px-6">
-          <SidebarTrigger aria-label="Mở hoặc đóng menu" />
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur sm:px-8">
+          {/* -ms-1.5: the trigger's glyph, not its hover box, lines up with the page title's left edge */}
+          <SidebarTrigger aria-label="Mở hoặc đóng menu" className="-ms-1.5" />
           <SearchButton />
           <div className="ms-auto flex items-center gap-2">
             <InboxButton />
-            <ThemeSwitch />
+            <ThemeToggle />
           </div>
         </header>
         {children}

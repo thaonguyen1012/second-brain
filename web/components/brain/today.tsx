@@ -9,20 +9,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { ApiErrorState, LoadingCards } from './api-state';
+import { ApiErrorState } from './api-state';
 import { BrainCard, StatusBadge } from './brain-card';
 import { useInboxCount } from './inbox-count';
 
 // The menu (Base UI Menu + opportunity list) loads only when a brief is shown, outside the home First Load JS.
 const EvidenceMenu = dynamic(() => import('./evidence-menu'), {
   ssr: false,
-  loading: () => <Skeleton className="h-7 w-44 rounded-md" />,
+  loading: () => <Skeleton className="ms-auto size-8 rounded-lg sm:size-7" />,
 });
 
 // Inbox and feedback buttons of a brief card, the due predictions and the status line: also loaded on demand.
 const BriefActions = dynamic(() => import('./brief-actions'), {
   ssr: false,
-  loading: () => <Skeleton className="h-7 w-72 rounded-md" />,
+  loading: () => <Skeleton className="h-8 w-48 rounded-lg sm:h-7" />,
 });
 // Fetch the today-extras chunk as soon as this module runs in the browser (before hydration), so the two panels'
 // API requests do not wait for a chunk request that only starts when they first render. Still a separate chunk:
@@ -38,8 +38,8 @@ export const TodayStatus = dynamic(() => import('./today-extras').then((m) => m.
 });
 
 /**
- * A "Hôm nay" tile: an unboxed block with a heading and a link to its page, quieter than "Tiếp tục học" (the one
- * filled surface of the page; DESIGN.md §1.2, D1).
+ * A "Hôm nay" tile: a white bordered surface on the grey page (DESIGN.md D29) with a heading and a link to its
+ * page, quieter than "Tiếp tục học" (the focal block, DESIGN.md §1.2, D1).
  */
 export function Panel({
   title,
@@ -55,7 +55,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={cn('flex min-w-0 flex-col gap-3', className)}>
+    <section className={cn('flex min-w-0 flex-col gap-3 rounded-xl border bg-card p-4', className)}>
       <div className="flex items-center gap-2 border-b pb-2">
         <h2 className="font-heading text-[15px] font-semibold tracking-tight">{title}</h2>
         <Button size="xs" variant="ghost" className="ms-auto -me-2" render={<Link href={href} />}>
@@ -79,9 +79,12 @@ export function TodayWeek() {
       ) : !week.data ? (
         <Skeleton className="h-20 rounded-md" />
       ) : objectives.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Tuần từ {formatDate(week.data.startDate)} chưa có mục tiêu. Chọn 3 việc ở trang Tuần.
-        </p>
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-sm text-muted-foreground">Tuần từ {formatDate(week.data.startDate)} chưa có mục tiêu.</p>
+          <Button variant="outline" size="sm" render={<Link href="/tuan/" />}>
+            Chọn 3 ưu tiên
+          </Button>
+        </div>
       ) : (
         <ol className="flex flex-col gap-2">
           {objectives.map((o, i) => {
@@ -135,7 +138,10 @@ export function TodayBrief() {
       {brief.error && brief.data === undefined ? (
         <ApiErrorState error={brief.error} onRetry={brief.reload} />
       ) : brief.data === undefined ? (
-        <LoadingCards count={2} />
+        <div className="grid gap-3 lg:grid-cols-2" aria-busy="true" aria-label="Đang tải">
+          <Skeleton className="h-44 rounded-xl" />
+          <Skeleton className="h-44 rounded-xl" />
+        </div>
       ) : brief.data === null || brief.data.items.length === 0 ? (
         // Sized to its content (DESIGN.md D26): one line, no empty box
         <p className="text-sm text-muted-foreground">
@@ -144,28 +150,37 @@ export function TodayBrief() {
         </p>
       ) : (
         <>
-          {brief.data.intro && <p className="max-w-3xl text-sm leading-relaxed">{brief.data.intro}</p>}
+          {brief.data.intro && (
+            // The intro is written by the LLM (brief_intro): say so in words (DESIGN.md §4, D18)
+            <div className="flex max-w-3xl flex-col gap-1">
+              <p className="text-sm leading-relaxed">{brief.data.intro}</p>
+              <span className="text-xs text-muted-foreground">tự động</span>
+            </div>
+          )}
           <div className="grid gap-3 lg:grid-cols-2">
             {brief.data.items.map((n) => (
               <BrainCard
                 key={n.id}
                 badges={
-                  <>
-                    <Badge variant="secondary">{n.source.name}</Badge>
-                    {n.newTool && <Badge variant="info">Công cụ mới</Badge>}
-                    {n.tags.slice(0, 3).map((t) => (
-                      <Badge key={t} variant="outline">
-                        #{t}
-                      </Badge>
-                    ))}
-                  </>
+                  // "Công cụ mới" and the tags come from the LLM (news_tag): outline badges + one "tự động" label
+                  (n.newTool || n.tags.length > 0) && (
+                    <>
+                      {n.newTool && <Badge variant="outline">Công cụ mới</Badge>}
+                      {n.tags.slice(0, 2).map((t) => (
+                        <Badge key={t} variant="outline">
+                          #{t}
+                        </Badge>
+                      ))}
+                      <span className="text-xs text-muted-foreground">tự động</span>
+                    </>
+                  )
                 }
                 title={
                   <a href={n.url} target="_blank" rel="noreferrer" className="hover:text-primary">
                     {n.title}
                   </a>
                 }
-                meta={[hostOf(n.url), formatDate(n.published)].filter(Boolean).join(' · ')}
+                meta={[n.source.name, hostOf(n.url), formatDate(n.published)].filter(Boolean).join(' · ')}
                 actions={
                   <>
                     <BriefActions item={n} onRated={onRated} />
@@ -175,7 +190,7 @@ export function TodayBrief() {
               >
                 {(n.summary || n.excerpt) && (
                   <p className="line-clamp-4 text-[13px] leading-relaxed text-muted-foreground">
-                    {n.summary || n.excerpt}
+                    {n.summary ? `Tóm tắt tự động: ${n.summary}` : n.excerpt}
                   </p>
                 )}
               </BrainCard>

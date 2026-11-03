@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { ArrowDown, CircleAlert } from 'lucide-react';
 import { books } from '@/lib/books';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/brain/page-header';
 import {
@@ -40,20 +42,21 @@ function Tile({ area, lead, children, picture }: { area: string; lead: string; c
   );
 }
 
-/** A slot for a real outcome only the owner knows. */
+/** A slot for a real outcome only the owner knows: visible on screen and on paper until it is filled. */
 function Todo({ children }: { children: ReactNode }) {
   return (
-    <div className="intro-todo intro-keep flex flex-col gap-1 rounded-2xl px-4 py-3 text-sm leading-relaxed" data-todo>
-      <span className="font-semibold">Số liệu: Alex điền</span>
-      <span>{children}</span>
-    </div>
+    <Alert variant="warning" role="note" className="intro-keep max-w-3xl" data-todo>
+      <CircleAlert aria-hidden />
+      <AlertTitle>Số liệu: Alex điền</AlertTitle>
+      <AlertDescription className="leading-relaxed">{children}</AlertDescription>
+    </Alert>
   );
 }
 
 function CaseSection({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section className="intro-keep flex flex-col gap-3" aria-labelledby={id}>
-      <h3 id={id} className="font-heading text-lg font-semibold tracking-tight">
+      <h3 id={id} className="text-sm font-semibold">
         {title}
       </h3>
       {children}
@@ -61,17 +64,16 @@ function CaseSection({ id, title, children }: { id: string; title: string; child
   );
 }
 
-const p = 'max-w-3xl text-[15px] leading-relaxed';
-const list = 'flex max-w-3xl list-disc flex-col gap-2 ps-5 text-[15px] leading-relaxed marker:text-muted-foreground';
+const p = 'max-w-3xl text-sm leading-relaxed';
+const list =
+  'flex max-w-3xl list-disc flex-col gap-2 ps-5 text-sm leading-relaxed marker:text-muted-foreground [&_strong]:font-semibold';
 const code = 'rounded bg-secondary px-1 py-0.5 font-mono text-[13px]';
 
-/** One box of the architecture figure. */
-function Box({ title, children, accent }: { title: string; children: ReactNode; accent?: boolean }) {
+/** One box of the architecture figure: a surface (border + card fill, DESIGN.md D29), no shadow. */
+function Box({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div
-      className={`flex flex-col gap-1 rounded-2xl border bg-card p-4 shadow-depth-1 ${accent ? 'border-primary/50' : ''}`}
-    >
-      <span className="font-heading text-[15px] font-semibold tracking-tight">{title}</span>
+    <div className="flex flex-col gap-1 rounded-xl border bg-card p-4">
+      <span className="text-sm font-semibold">{title}</span>
       <span className="text-[13px] leading-relaxed text-muted-foreground">{children}</span>
     </div>
   );
@@ -80,9 +82,7 @@ function Box({ title, children, accent }: { title: string; children: ReactNode; 
 function Arrow({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center gap-2 ps-6 text-xs text-muted-foreground">
-      <span aria-hidden className="text-base leading-none">
-        ↓
-      </span>
+      <ArrowDown className="size-4 shrink-0" aria-hidden />
       {children}
     </div>
   );
@@ -105,11 +105,13 @@ export default function IntroPage() {
         }
       >
         <div className="intro-noprint flex flex-wrap gap-2">
-          <Button render={<a href="#tinh-nang" />}>Tính năng</Button>
-          <Button variant="outline" render={<a href="#case-study" />}>
+          <Button variant="ghost" render={<a href="#tinh-nang" />}>
+            Tính năng
+          </Button>
+          <Button variant="ghost" render={<a href="#case-study" />}>
             Case study
           </Button>
-          <PrintButton />
+          <PrintButton className="max-sm:hidden" />
         </div>
       </PageHeader>
 
@@ -129,7 +131,7 @@ export default function IntroPage() {
         aria-labelledby="tinh-nang-title"
       >
         <div className="flex flex-col gap-2">
-          <h2 id="tinh-nang-title" className="font-heading text-2xl font-semibold tracking-tight">
+          <h2 id="tinh-nang-title" className="font-heading text-lg font-semibold tracking-tight">
             Làm được gì
           </h2>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
@@ -174,8 +176,7 @@ export default function IntroPage() {
         aria-labelledby="case-study-title"
       >
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold tracking-wide text-primary uppercase">Case study</p>
-          <h2 id="case-study-title" className="font-heading text-2xl font-semibold tracking-tight">
+          <h2 id="case-study-title" className="font-heading text-lg font-semibold tracking-tight">
             Alex&apos;s Brain: một second brain tự host, xây trong vài ngày với một agent
           </h2>
           <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
@@ -253,7 +254,7 @@ export default function IntroPage() {
               </Box>
             </div>
             <Arrow>cron chạy manage.py run_jobs: chỗ duy nhất có request ra ngoài</Arrow>
-            <Box title="Job nền → core/services/llm.py" accent>
+            <Box title="Job nền → core/services/llm.py">
               Một chỗ gọi LLM: đếm token, từ chối khi chi phí tháng cộng ước tính vượt 5 USD, ghi mọi lần gọi vào{' '}
               <code>LlmCall</code>, cache theo hash nội dung, đầu ra là JSON theo schema và được kiểm bằng pydantic. Prompt
               có version, golden set chạy bằng <code>manage.py eval</code>. Hiện dùng Gemini gói miễn phí; đổi sang Claude

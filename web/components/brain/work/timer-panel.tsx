@@ -1,12 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, Play, Square, Timer } from 'lucide-react';
+import { Loader2, Play, Square } from 'lucide-react';
 import type { ApiObjective } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
 import type { ApiProject, ApiTimeEntry } from '@/lib/api/work';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
@@ -37,22 +35,41 @@ function rememberProject(id: number) {
 }
 
 /** Live H:MM:SS since `startedAt`, ticking every second. */
-function Clock({ startedAt }: { startedAt: string }) {
+function Clock({ startedAt, className }: { startedAt: string; className?: string }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(t);
   }, []);
   return (
-    <span className="font-heading text-3xl font-semibold tabular-nums tracking-tight" aria-hidden>
+    <span className={className} aria-hidden>
       {formatClock(now - new Date(startedAt).getTime())}
     </span>
+  );
+}
+
+/** The live marker: the "now" red (bw-red), pulsing only while a timer really runs, still under reduced motion. */
+function LiveDot() {
+  return (
+    <span className="relative flex size-2.5 shrink-0" aria-hidden>
+      <span className="absolute inline-flex size-full animate-ping rounded-full bg-bw-red opacity-60 motion-reduce:animate-none" />
+      <span className="relative inline-flex size-2.5 rounded-full bg-bw-red" />
+    </span>
+  );
+}
+
+/** Shortcut hint inside a filled button: hidden on touch and at 390 px (DESIGN.md D24). */
+function KeyHint({ k }: { k: string }) {
+  return (
+    <Kbd className="bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">{k}</Kbd>
   );
 }
 
 /**
  * The one timer (POST /api/time-entries/timer/start|stop). Shows the running entry from GET timer, so a reload
  * keeps it. `T` starts or stops it when focus is not in a field. `onChanged` lets the page refresh its lists.
+ * Renders nothing with no open project and nothing running. `compact` (Dự án): only a one-line strip while a
+ * timer runs; T still starts the last-used project there, and the strip then appears.
  */
 export function TimerPanel({
   timer,
@@ -60,6 +77,7 @@ export function TimerPanel({
   objectives,
   preferredProject,
   onChanged,
+  compact = false,
 }: {
   timer: TimerState;
   projects: ApiProject[];
@@ -67,6 +85,7 @@ export function TimerPanel({
   /** Pre-selects this project (e.g. the project filter of the Giờ page). */
   preferredProject?: number | null;
   onChanged: (message: string, entry: ApiTimeEntry | null) => void;
+  compact?: boolean;
 }) {
   const [picked, setPicked] = useState<number | null>(null);
   const [note, setNote] = useState('');
@@ -135,8 +154,46 @@ export function TimerPanel({
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  const errorLine = error && (
+    <p className="whitespace-pre-line text-sm text-destructive-foreground" role="alert">
+      {error}
+    </p>
+  );
+  const stopButton = (size: 'default' | 'sm') => (
+    <Button onClick={() => void stop()} disabled={busy} size={size} aria-keyshortcuts="t">
+      {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Square aria-hidden />}
+      Dừng
+      <KeyHint k="T" />
+    </Button>
+  );
+  const startedLabel =
+    running?.startedAt &&
+    new Date(running.startedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+  if (compact) {
+    // nothing runs: no strip, only a failed T start says why
+    if (!running) return errorLine || null;
+    return (
+      <section aria-label="Đang bấm giờ" className="flex flex-col gap-2 rounded-xl border bg-card px-3 py-2">
+        <div className="flex min-h-8 items-center gap-3">
+          <LiveDot />
+          <p className="min-w-0 flex-1 truncate text-sm font-medium">{running.projectTitle}</p>
+          {running.startedAt && (
+            <Clock startedAt={running.startedAt} className="text-sm font-medium tabular-nums" />
+          )}
+          {stopButton('sm')}
+          <span className="sr-only" role="status">
+            Đang bấm giờ cho {running.projectTitle}
+          </span>
+        </div>
+        {errorLine}
+      </section>
+    );
+  }
+
   if (timer.error && !timer.data) return <ApiErrorState error={timer.error} onRetry={timer.reload} />;
-  if (!timer.data) return <Skeleton className="h-28 rounded-3xl" aria-label="Đang tải bộ bấm giờ" />;
+  if (!timer.data) return <Skeleton className="h-24 rounded-xl" aria-label="Đang tải bộ bấm giờ" />;
+  if (!running && projects.length === 0) return null;
 
   const objectiveChoices = [
     { value: 'none', label: 'Không gắn mục tiêu' },
@@ -144,43 +201,26 @@ export function TimerPanel({
   ];
 
   return (
-    <Card
-      render={<section aria-label="Bấm giờ" />}
-      className="flex flex-col gap-3 rounded-3xl border p-4 shadow-depth-1 sm:p-5"
-    >
+    <section aria-label="Bấm giờ" className="flex flex-col gap-3 rounded-xl border bg-card p-4">
       {running ? (
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-          <span className="relative flex size-3" aria-hidden>
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60 motion-reduce:animate-none" />
-            <span className="relative inline-flex size-3 rounded-full bg-primary" />
-          </span>
-          {running.startedAt && <Clock startedAt={running.startedAt} />}
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <p className="font-medium break-words">{running.projectTitle}</p>
-            <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-              {running.note && <span className="break-words">{running.note}</span>}
-              {!running.billable && <Badge variant="outline">Không tính tiền</Badge>}
-              {running.startedAt && (
-                <span>
-                  bắt đầu lúc{' '}
-                  {new Date(running.startedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          <LiveDot />
+          {running.startedAt && (
+            <Clock startedAt={running.startedAt} className="font-heading text-2xl font-semibold tabular-nums" />
+          )}
+          <div className="flex min-w-0 flex-1 basis-40 flex-col gap-0.5">
+            <p className="text-sm font-medium break-words">{running.projectTitle}</p>
+            <p className="text-xs text-muted-foreground break-words">
+              {[running.note, !running.billable && 'không tính tiền', startedLabel && `bắt đầu lúc ${startedLabel}`]
+                .filter(Boolean)
+                .join(' · ')}
             </p>
           </div>
-          <Button onClick={() => void stop()} disabled={busy} variant="destructive">
-            {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Square aria-hidden />}
-            Dừng <Kbd className="bg-transparent text-current">T</Kbd>
-          </Button>
+          {stopButton('default')}
           <span className="sr-only" role="status">
             Đang bấm giờ cho {running.projectTitle}
           </span>
         </div>
-      ) : projects.length === 0 ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Timer aria-hidden className="size-4" />
-          Tạo một dự án trước để bấm giờ.
-        </p>
       ) : (
         <form
           className="flex flex-col gap-3"
@@ -189,10 +229,7 @@ export function TimerPanel({
             void start();
           }}
         >
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Timer aria-hidden className="size-4 text-muted-foreground" />
-            Bấm giờ
-          </div>
+          <h2 className="text-sm font-medium">Bấm giờ</h2>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_auto_minmax(0,1fr)_auto]">
             <ChoiceSelect
               label="Dự án"
@@ -221,19 +258,15 @@ export function TimerPanel({
             ) : (
               <span className="hidden xl:block" />
             )}
-            <Button type="submit" disabled={busy || projectId === null}>
+            <Button type="submit" disabled={busy || projectId === null} aria-keyshortcuts="t">
               {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
-              Bắt đầu <Kbd className="bg-transparent text-current">T</Kbd>
+              Bắt đầu
+              <KeyHint k="T" />
             </Button>
           </div>
         </form>
       )}
-      {error && (
-        <p className="whitespace-pre-line text-sm text-destructive-foreground" role="alert">
-          {error}
-        </p>
-      )}
-    </Card>
+      {errorLine}
+    </section>
   );
 }
-

@@ -10,6 +10,7 @@ import { describeApiError } from '@/components/brain/api-state';
 import { refreshInboxCount } from '@/components/brain/inbox-count';
 import { SaveKeys } from '@/components/brain/save-keys';
 import { Button } from '@/components/ui/button';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -51,7 +52,7 @@ export function CaptureForm() {
 
   return (
     <form
-      className="flex max-w-xl flex-col gap-4 rounded-3xl border bg-card p-4 shadow-depth-1"
+      className="flex max-w-xl flex-col gap-4 rounded-xl border bg-card p-4"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
@@ -63,10 +64,9 @@ export function CaptureForm() {
         }
       }}
     >
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="capture-url" className="text-sm font-medium">
-          Link
-        </label>
+      {/* Field wires label, aria-invalid and the error's aria-describedby (Space UI Field on Base UI) */}
+      <Field invalid={!!urlError} className="gap-1.5">
+        <FieldLabel>Link</FieldLabel>
         <Input
           id="capture-url"
           type="url"
@@ -75,19 +75,15 @@ export function CaptureForm() {
           maxLength={MAX_URL}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://…"
-          aria-invalid={urlError ? true : undefined}
-          aria-describedby={urlError ? 'capture-url-error' : undefined}
         />
         {urlError && (
-          <p id="capture-url-error" className="text-xs text-destructive-foreground">
+          <FieldError match className="text-destructive-foreground">
             {urlError} Sửa link hoặc xóa trống để chỉ lưu ghi chú.
-          </p>
+          </FieldError>
         )}
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="capture-note" className="text-sm font-medium">
-          Ghi chú kèm theo
-        </label>
+      </Field>
+      <Field className="gap-1.5">
+        <FieldLabel>Ghi chú kèm theo</FieldLabel>
         <Textarea
           id="capture-note"
           value={note}
@@ -96,10 +92,10 @@ export function CaptureForm() {
           placeholder="Tiêu đề, đoạn trích hoặc vì sao lưu…"
           rows={4}
         />
-      </div>
+      </Field>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">
-          <SaveKeys /> để lưu · tag và tóm tắt được thêm sau, trong nền
+        <span className="text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
+          <SaveKeys /> để lưu
         </span>
         {error && (
           <span className="text-xs text-destructive-foreground" role="alert">
@@ -107,7 +103,7 @@ export function CaptureForm() {
           </span>
         )}
         {/* Focused on open: Enter saves the capture as it came from the bookmarklet or the share sheet. */}
-        <Button type="submit" className="ms-auto" disabled={!canSave} autoFocus>
+        <Button type="submit" className="ms-auto max-sm:w-full" disabled={!canSave} autoFocus>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
           Lưu vào inbox
         </Button>
@@ -135,12 +131,12 @@ function Saved({ entry }: { entry: ApiInboxEntry }) {
   };
   return (
     <div
-      className="flex max-w-xl flex-col gap-4 rounded-3xl border bg-card p-4 shadow-depth-1"
+      className="flex max-w-xl flex-col gap-4 rounded-xl border bg-card p-4"
       role="status"
       aria-live="polite"
     >
-      <p className="flex items-center gap-2 font-medium">
-        <CheckCircle2 className="size-5 text-primary" aria-hidden />
+      <p className="flex items-center gap-2 text-sm font-medium">
+        <CheckCircle2 className="size-4 text-success-foreground" aria-hidden />
         Đã lưu vào inbox
       </p>
       <p className="truncate text-sm text-muted-foreground">{entry.url || (entry.text ?? '').split('\n')[0]}</p>

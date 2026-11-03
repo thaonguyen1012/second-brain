@@ -86,10 +86,10 @@ export function EmptyState({
 }) {
   return (
     // Sized to its content (DESIGN.md D26): a solid hairline, no tall dashed void
-    <Empty className="flex-none gap-4 rounded-xl border px-6 py-8 md:py-8">
+    <Empty className="flex-none gap-4 rounded-xl border bg-card px-6 py-8 md:py-8">
       <EmptyHeader>
         <EmptyMedia variant="icon">{icon ?? <Inbox aria-hidden />}</EmptyMedia>
-        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyTitle className="text-lg tracking-tight">{title}</EmptyTitle>
         {description && <EmptyDescription>{description}</EmptyDescription>}
       </EmptyHeader>
       {children}
@@ -97,11 +97,26 @@ export function EmptyState({
   );
 }
 
+/**
+ * Loading placeholder at the geometry of a BrainCard (Inbox entry, brief story): badge row, title, meta, two
+ * excerpt lines and the action row, so the list does not jump when the cards arrive (DESIGN.md D27).
+ */
 export function LoadingCards({ count = 3 }: { count?: number }) {
   return (
     <div className="flex flex-col gap-3" aria-busy="true" aria-label="Đang tải">
       {Array.from({ length: count }, (_, i) => (
-        <Skeleton key={i} className="h-24 rounded-xl" />
+        <div key={i} aria-hidden className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-5 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-5/6" />
+          </div>
+          <Skeleton className="h-7 w-48 max-w-full" />
+        </div>
       ))}
     </div>
   );

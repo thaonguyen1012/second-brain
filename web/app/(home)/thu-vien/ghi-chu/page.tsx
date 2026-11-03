@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { PageHeader } from '@/components/brain/page-header';
-import { LoadingCards } from '@/components/brain/api-state';
+import { RowsSkeleton } from '@/components/brain/library/list-rows';
 import { LibraryTabs } from '@/components/brain/library/library-tabs';
 import { NotesPage } from '@/components/brain/library/notes-page';
 
@@ -12,7 +12,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Thư viện"
-        description="Ghi chú markdown, liên kết tới sách, phim, khóa học, bài viết và dự án. Không có ghi chú thì item chưa tính là xong."
+        description="Ghi chú markdown gắn với item. Item xong chỉ tính khi đã có ghi chú."
       >
         <LibraryTabs current="notes" />
       </PageHeader>
@@ -20,7 +20,7 @@ export default function Page() {
       <Suspense
         fallback={
           <div className="px-4 sm:px-8">
-            <LoadingCards />
+            <RowsSkeleton />
           </div>
         }
       >

@@ -30,9 +30,10 @@ export function DuePredictionList({ due }: { due: ReturnType<typeof useDuePredic
   const more = rows.length - SHOWN;
   return (
     <div className="flex flex-col gap-2">
-      <ul className="flex flex-col gap-1.5">
+      {/* Plain rows split by one divider (DESIGN.md D12, D13): no box per prediction */}
+      <ul className="divide-y">
         {rows.slice(0, SHOWN).map((p) => (
-          <li key={p.id} className="flex flex-col gap-1 rounded-xl border px-3 py-2">
+          <li key={p.id} className="flex flex-col gap-1 py-2">
             <p className="line-clamp-2 text-sm">{p.statement}</p>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <Badge variant="warning" size="sm">

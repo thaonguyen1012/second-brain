@@ -1,29 +1,37 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { NotebookPen, Pencil, Plus, Search, X } from 'lucide-react';
+import { NotebookPen, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import type { Page } from '@/lib/api/client';
 import { notesApi, type ApiNote } from '@/lib/api/library';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
-import { formatDate, itemTypeLabel } from '@/lib/labels';
+import { formatDate } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Kbd } from '@/components/ui/kbd';
-import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
-import { BrainCard } from '../brain-card';
+import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
+import {
+  Sheet,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetPanel,
+  SheetPopup,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
+import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError } from '../api-state';
 import { ConfirmDelete, DeleteButton } from '../confirm-delete';
+import { KeyLegend } from '../key-legend';
+import { RowMenu } from '../row-menu';
 import { NoteDialog } from './note-dialog';
 import type { ItemLabel } from './item-picker';
+import { FilteredEmpty, RowsSkeleton, onRowClick } from './list-rows';
 import { useItemIndex } from './use-item-index';
 
 const PAGE = 50;
-/** Notes longer than this start collapsed. */
-const LONG_CHARS = 600;
-const LONG_LINES = 8;
 
 function isTyping(el: EventTarget | null): boolean {
   const t = el as HTMLElement | null;
@@ -39,99 +47,106 @@ function useDebounced<T>(value: T, ms: number): T {
   return v;
 }
 
-const isLong = (md: string) => md.length > LONG_CHARS || md.split('\n').length > LONG_LINES;
+type ItemTitle = (id: number) => { title: string; type?: string };
 
-function NoteCard({
+/** Meta line of a note: linked Item titles as quiet links (each filters the list by that Item), then the date. */
+function NoteMeta({ note, itemTitle, onNavigate }: { note: ApiNote; itemTitle: ItemTitle; onNavigate?: () => void }) {
+  const edited = note.updatedAt.slice(0, 10) !== note.createdAt.slice(0, 10);
+  const date = edited ? `sửa ${formatDate(note.updatedAt)}` : formatDate(note.createdAt);
+  return (
+    <>
+      {note.items.length === 0
+        ? 'Chưa liên kết item'
+        : note.items.map((itemId, i) => (
+            <Fragment key={itemId}>
+              {i > 0 && ', '}
+              <Link
+                href={`/thu-vien/ghi-chu/?item=${itemId}`}
+                title="Lọc ghi chú theo item này"
+                className="underline-offset-4 hover:text-foreground hover:underline"
+                onClick={onNavigate}
+              >
+                {itemTitle(itemId).title}
+              </Link>
+            </Fragment>
+          ))}
+      {' · '}
+      {date}
+    </>
+  );
+}
+
+function NoteRow({
   note,
   itemTitle,
   selected,
-  expanded,
   onSelect,
+  onOpen,
   onEdit,
-  onToggle,
   onDelete,
 }: {
   note: ApiNote;
-  itemTitle: (id: number) => { title: string; type?: string };
+  itemTitle: ItemTitle;
   selected: boolean;
-  expanded: boolean;
   onSelect: () => void;
+  onOpen: () => void;
   onEdit: () => void;
-  onToggle: () => void;
   onDelete: () => void;
 }) {
   const id = `note-${note.id}`;
-  const long = isLong(note.markdown);
   useEffect(() => {
     if (selected) document.getElementById(id)?.scrollIntoView({ block: 'nearest' });
   }, [selected, id]);
-  const edited = note.updatedAt.slice(0, 10) !== note.createdAt.slice(0, 10);
 
   return (
-    <BrainCard
+    // The keyboard cursor: neutral fill + aria-current (aria-selected is not allowed on a plain list item)
+    <li
       id={id}
-      selected={selected}
-      onClick={onSelect}
-      badges={
-        note.items.length === 0 ? (
-          <Badge variant="secondary">Chưa liên kết item</Badge>
-        ) : (
-          note.items.map((itemId) => {
-            const it = itemTitle(itemId);
-            return (
-              <Badge
-                key={itemId}
-                variant="outline"
-                render={<Link href={`/thu-vien/ghi-chu/?item=${itemId}`} title="Lọc ghi chú theo item này" />}
-              >
-                {it.type && <span className="text-muted-foreground">{itemTypeLabel(it.type)} ·</span>}
-                <span className="max-w-56 truncate">{it.title}</span>
-              </Badge>
-            );
-          })
-        )
-      }
-      title={noteTitle(note)}
-      meta={[`tạo ${formatDate(note.createdAt)}`, edited && `sửa ${formatDate(note.updatedAt)}`]
-        .filter(Boolean)
-        .join(' · ')}
-      actions={
-        <>
-          <Button size="xs" variant="outline" onClick={onEdit}>
-            <Pencil aria-hidden />
-            Sửa <Kbd>E</Kbd>
-          </Button>
-          {long && (
-            <Button size="xs" variant="ghost" onClick={onToggle} aria-expanded={expanded} aria-controls={`${id}-body`}>
-              {expanded ? 'Thu gọn' : 'Xem đầy đủ'} <Kbd>V</Kbd>
-            </Button>
-          )}
-          <DeleteButton className="ms-auto" onClick={onDelete}>
-            Xóa <Kbd>Del</Kbd>
-          </DeleteButton>
-        </>
-      }
+      aria-current={selected ? 'true' : undefined}
+      data-selected={selected || undefined}
+      className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 transition-colors hover:bg-accent has-focus-visible:bg-accent data-selected:bg-accent"
+      onClick={(e) => {
+        onSelect();
+        onRowClick(e, onOpen);
+      }}
     >
-      {/* Plain text on purpose: markdown is shown as typed, never parsed into HTML. */}
-      <p
-        id={`${id}-body`}
-        className={`whitespace-pre-wrap break-words text-[13px] leading-relaxed text-muted-foreground ${
-          long && !expanded ? 'line-clamp-8' : ''
-        }`}
-      >
-        {note.markdown}
-      </p>
-    </BrainCard>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <button
+          type="button"
+          className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={onOpen}
+        >
+          {noteTitle(note)}
+        </button>
+        <p className="truncate text-xs text-muted-foreground">
+          <NoteMeta note={note} itemTitle={itemTitle} />
+        </p>
+      </div>
+      <RowMenu>
+        <MenuItem onClick={onEdit}>
+          <Pencil aria-hidden />
+          Sửa
+          <MenuShortcut>E</MenuShortcut>
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem variant="destructive" onClick={onDelete}>
+          <Trash2 aria-hidden />
+          Xóa
+          <MenuShortcut>Del</MenuShortcut>
+        </MenuItem>
+      </RowMenu>
+    </li>
   );
 }
 
 const keyHelp: [string, string][] = [
   ['J / K', 'xuống / lên'],
+  ['Enter', 'đọc ghi chú'],
   ['E', 'sửa'],
-  ['V', 'xem đủ'],
   ['Del', 'xóa'],
   ['N', 'ghi chú mới'],
   ['/', 'tìm'],
+  ['?', 'bảng phím tắt này'],
 ];
 
 /** Ghi chú: markdown notes linked to Items, search (?q) and filter by Item (?item), create and edit. */
@@ -144,10 +159,12 @@ export function NotesPage() {
   const [query, setQuery] = useState('');
   const q = useDebounced(query.trim(), 250);
   const [cursor, setCursor] = useState(0);
-  const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
   const [editing, setEditing] = useState<ApiNote | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState<ApiNote | null>(null);
+  // The note read in the Sheet; kept while the Sheet animates out
+  const [reading, setReading] = useState<ApiNote | null>(null);
+  const [readOpen, setReadOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -180,9 +197,14 @@ export function NotesPage() {
     setEditing(note);
     setDialogOpen(true);
   }, []);
-  // ?id=N (Cmd+K result): open that note in the dialog, wherever it sits in the list.
+  /** Reading one note beside the list (DESIGN.md §6 Overlays: Sheet). */
+  const openReader = useCallback((note: ApiNote) => {
+    setReading(note);
+    setReadOpen(true);
+  }, []);
+  // ?id=N (Cmd+K result): open that note in the reading Sheet, wherever it sits in the list.
   useOpenFromUrl('id', (id) =>
-    notesApi.get(id).then(openEditor, (err: unknown) => {
+    notesApi.get(id).then(openReader, (err: unknown) => {
       const e = toApiError(err);
       setNotice(
         e.status === 404 && e.reachable
@@ -191,16 +213,6 @@ export function NotesPage() {
       );
     }),
   );
-  const toggle = useCallback(
-    (id: number) =>
-      setExpanded((s) => {
-        const next = new Set(s);
-        if (!next.delete(id)) next.add(id);
-        return next;
-      }),
-    [],
-  );
-
   /** Same rule as the backend filters (case-insensitive substring; item link). */
   const matches = (n: ApiNote) =>
     (!itemFilter || n.items.includes(itemFilter)) &&
@@ -219,7 +231,9 @@ export function NotesPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (dialogOpen || deleting || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (dialogOpen || deleting || readOpen || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      // The key legend dialog, the reading Sheet and a row's overflow menu handle their own keys
+      if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return;
       const act: Record<string, () => void> = {
         j: () => setCursor(Math.min(selected + 1, shown.length - 1)),
         arrowdown: () => setCursor(Math.min(selected + 1, shown.length - 1)),
@@ -229,8 +243,7 @@ export function NotesPage() {
         '/': () => searchRef.current?.focus(),
         ...(current && {
           e: () => openEditor(current),
-          enter: () => openEditor(current),
-          v: () => isLong(current.markdown) && toggle(current.id),
+          enter: () => openReader(current),
           // Del / Backspace delete, as on the week page (X there means "bỏ" an objective)
           delete: () => setDeleting(current),
           backspace: () => setDeleting(current),
@@ -245,7 +258,7 @@ export function NotesPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [dialogOpen, deleting, selected, shown.length, current, openEditor, toggle]);
+  }, [dialogOpen, deleting, readOpen, selected, shown.length, current, openEditor, openReader]);
 
   const loadMore = async () => {
     const next = notes.data?.next;
@@ -266,11 +279,21 @@ export function NotesPage() {
       ? 'Đang tải danh sách item…'
       : undefined;
   const filtered = !!q || !!itemFilter;
+  const failed = !!notes.error && !notes.data;
+  const firstLoad = notes.loading && shown.length === 0;
+  // No notes at all: the empty state's button is the one primary, the toolbar's drops to outline (DESIGN.md §7, D2)
+  const emptyNotes = !failed && !firstLoad && shown.length === 0 && !filtered;
+  const clearFilters = () => {
+    setQuery('');
+    setCursor(0);
+    router.replace(pathname);
+  };
 
   return (
-    <div className="flex flex-col gap-5 px-4 pb-12 sm:px-8">
+    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
+      {/* One toolbar row: search left, "Ghi chú mới" keeps the end of row 1 at 390 px (icon only there) */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-80">
+        <div className="relative min-w-0 flex-1 sm:w-80 sm:flex-none">
           <Search
             className="pointer-events-none absolute start-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
@@ -296,81 +319,136 @@ export function NotesPage() {
           />
         </div>
         {filterItem && (
-          <Badge variant="info" size="lg" className="gap-1 pe-0.5">
-            Item: <span className="max-w-60 truncate">{filterItem.title}</span>
-            <button
-              type="button"
-              className="inline-flex size-5 items-center justify-center rounded-sm hover:bg-background/30"
-              aria-label="Bỏ lọc theo item"
-              onClick={() => router.replace(pathname)}
-            >
-              <X className="size-3.5" aria-hidden />
-            </button>
-          </Badge>
+          <div className="flex min-w-0 max-sm:order-last max-sm:basis-full">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="min-w-0"
+                    aria-label={`Item: ${filterItem.title}, bỏ lọc`}
+                    onClick={() => router.replace(pathname)}
+                  />
+                }
+              >
+                Item: <span className="max-w-60 truncate">{filterItem.title}</span>
+                <X aria-hidden />
+              </TooltipTrigger>
+              <TooltipPopup>Bỏ lọc theo item</TooltipPopup>
+            </Tooltip>
+          </div>
         )}
-        <Button className="ms-auto" onClick={() => openEditor(null)}>
-          <Plus aria-hidden />
-          Ghi chú mới
-        </Button>
+        <div className="ms-auto flex items-center gap-2">
+          {shown.length > 0 && <KeyLegend keys={keyHelp} title="Phím tắt của Ghi chú" />}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  size="icon"
+                  variant={emptyNotes ? 'outline' : 'default'}
+                  className="sm:hidden"
+                  aria-label="Ghi chú mới"
+                  onClick={() => openEditor(null)}
+                />
+              }
+            >
+              <Plus aria-hidden />
+            </TooltipTrigger>
+            <TooltipPopup>Ghi chú mới</TooltipPopup>
+          </Tooltip>
+          <Button variant={emptyNotes ? 'outline' : 'default'} className="max-sm:hidden" onClick={() => openEditor(null)}>
+            <Plus aria-hidden />
+            Ghi chú mới
+          </Button>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {notice && (
-          <p className="text-sm text-muted-foreground" role="status">
-            {notice}
-          </p>
-        )}
-        <p className="ms-auto hidden flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground lg:flex">
-          {keyHelp.map(([k, label]) => (
-            <span key={k}>
-              <Kbd>{k}</Kbd> {label}
-            </span>
-          ))}
+      {notice && (
+        <p className="text-sm text-muted-foreground" role="status">
+          {notice}
         </p>
-      </div>
+      )}
 
       <ApiStaleAlert result={notes} />
-      {notes.error && !notes.data ? (
+      {failed && notes.error ? (
         <ApiErrorState error={notes.error} onRetry={notes.reload} />
-      ) : notes.loading && shown.length === 0 ? (
-        <LoadingCards />
+      ) : firstLoad ? (
+        <RowsSkeleton />
+      ) : shown.length === 0 && filtered ? (
+        <FilteredEmpty onClear={clearFilters}>Không có ghi chú nào khớp bộ lọc.</FilteredEmpty>
       ) : shown.length === 0 ? (
         <EmptyState
           icon={<NotebookPen aria-hidden />}
-          title={filtered ? 'Không có ghi chú nào khớp' : 'Chưa có ghi chú nào'}
-          description={
-            filtered
-              ? 'Thử từ khóa khác hoặc bỏ lọc theo item.'
-              : 'Sách xong cần highlights và 3 ý chính, phim xong cần một câu nhận xét: ghi ở đây và liên kết tới item.'
-          }
+          title="Chưa có ghi chú nào"
+          description="Sách xong cần highlights và 3 ý chính, phim xong cần một câu nhận xét: ghi ở đây và liên kết tới item."
         >
           <Button onClick={() => openEditor(null)}>
             <Plus aria-hidden />
-            {filterItem ? `Viết ghi chú cho "${filterItem.title}"` : 'Viết ghi chú đầu tiên'}
+            Viết ghi chú đầu tiên
           </Button>
         </EmptyState>
       ) : (
-        <div className="grid items-start gap-3 xl:grid-cols-2">
+        <ul aria-label="Ghi chú" className="divide-y overflow-hidden rounded-xl border bg-card">
           {shown.map((n, i) => (
-            <NoteCard
+            <NoteRow
               key={n.id}
               note={n}
               itemTitle={itemTitle}
               selected={i === selected}
-              expanded={expanded.has(n.id)}
               onSelect={() => setCursor(i)}
+              onOpen={() => openReader(n)}
               onEdit={() => openEditor(n)}
-              onToggle={() => toggle(n.id)}
               onDelete={() => setDeleting(n)}
             />
           ))}
-        </div>
+        </ul>
       )}
       {notes.data?.next && !notes.loading && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
           Tải thêm
         </Button>
       )}
+
+      <Sheet open={readOpen} onOpenChange={setReadOpen}>
+        <SheetPopup className="max-w-2xl" closeProps={{ 'aria-label': 'Đóng' }}>
+          {reading && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="pe-8 leading-tight">{noteTitle(reading)}</SheetTitle>
+                <SheetDescription render={<div />} className="text-xs">
+                  <NoteMeta note={reading} itemTitle={itemTitle} onNavigate={() => setReadOpen(false)} />
+                </SheetDescription>
+              </SheetHeader>
+              <SheetPanel>
+                {/* Plain text on purpose: markdown is shown as typed, never parsed into HTML. */}
+                <p className="max-w-2xl whitespace-pre-wrap break-words text-sm leading-relaxed">{reading.markdown}</p>
+              </SheetPanel>
+              <SheetFooter>
+                <DeleteButton
+                  size="sm"
+                  className="sm:me-auto"
+                  onClick={() => {
+                    setReadOpen(false);
+                    setDeleting(reading);
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setReadOpen(false);
+                    openEditor(reading);
+                  }}
+                >
+                  <Pencil aria-hidden />
+                  Sửa
+                </Button>
+              </SheetFooter>
+            </>
+          )}
+        </SheetPopup>
+      </Sheet>
 
       <ConfirmDelete
         open={deleting !== null}
@@ -400,6 +478,7 @@ export function NotesPage() {
         onOpenChange={setDialogOpen}
         onSaved={(saved, created) => {
           upsert(saved, created);
+          setReading((r) => (r && r.id === saved.id ? saved : r));
           setDialogOpen(false);
           setNotice(`${created ? 'Đã tạo' : 'Đã lưu'} "${noteTitle(saved)}"`);
           if (created) setCursor(0);

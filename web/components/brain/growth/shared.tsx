@@ -2,7 +2,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +34,7 @@ export function useShortcuts(keys: Record<string, () => void>) {
   }, []);
 }
 
-/** "‹ Tháng 11/2026 ›" style period switcher; `[` and `]` step it from the keyboard. */
+/** "‹ Tháng 11/2026 ›" style period switcher; `[` and `]` step it from the keyboard (no on-screen hint, DESIGN.md D24). */
 export function PeriodStepper({
   label,
   onPrev,
@@ -82,9 +81,6 @@ export function PeriodStepper({
           {currentLabel}
         </Button>
       )}
-      <span className="hidden text-xs text-muted-foreground sm:inline">
-        <Kbd>[</Kbd> <Kbd>]</Kbd> đổi {name}
-      </span>
     </div>
   );
 }

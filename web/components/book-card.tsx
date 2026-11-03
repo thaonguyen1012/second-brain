@@ -56,7 +56,10 @@ function BookLinks({ book }: { book: Book }) {
   );
 }
 
-/** Book card: one bordered container, title and description, progress (with the lesson count), one action row. */
+/**
+ * Book card: one bordered container, title (a link to the book) and description, progress (with the lesson count),
+ * one action row. "Học ngay" is outline: 15 cards on one page must not show 15 filled blue buttons (DESIGN.md D2).
+ */
 export function BookCard({ book }: { book: Book }) {
   return (
     <Card render={<article />} className="flex flex-col gap-4 rounded-xl border p-4">
@@ -70,7 +73,7 @@ export function BookCard({ book }: { book: Book }) {
       </div>
       <BookProgress book={book.slug} total={book.lessonCount} />
       <div className="mt-auto flex flex-wrap items-center gap-2">
-        <Button size="sm" render={<Link href={bookUrl(book)} />}>
+        <Button size="sm" variant="outline" render={<Link href={bookUrl(book)} />}>
           Học ngay
         </Button>
         <BookLinks book={book} />

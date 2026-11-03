@@ -6,32 +6,37 @@ import type { ApiItemStatus, Page } from '@/lib/api/client';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiProject } from '@/lib/api/work';
 import { itemStatusOf, itemStatuses } from '@/lib/labels';
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { EmptyStateGuide } from '@/components/stageshow/lazy';
-import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from '../api-state';
-import { BrainCard, StatusBadge } from '../brain-card';
+import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
+import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError } from '../api-state';
+import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
-import { BillableBar, BillableLegend } from './billable-bar';
-import { billingLabel, formatHours, formatMoney } from './format';
+import { RowMenu } from '../row-menu';
+import { BillableLegend, MiniBillableBar } from './billable-bar';
+import { formatHours, formatMoney } from './format';
 import { ProjectDialog } from './project-dialog';
+import { RowsSkeleton } from './rows-skeleton';
 import { TimerPanel } from './timer-panel';
 import { sortProjectChoices, useProjectChoices, useTimer, useWeekObjectives } from './use-work';
 
 type StatusFilter = ApiItemStatus | 'all';
 const statusChoices = [{ value: 'all' as const, label: 'Mọi trạng thái' }, ...itemStatuses];
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+/** One grid for the header and every row, so the number columns line up (DESIGN.md §3 "Columns"). */
+const ROW_GRID =
+  'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 md:grid-cols-[5rem_minmax(0,1fr)_6rem_8rem_8rem_auto]';
+
+function agreedPrice(p: ApiProject): string {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-heading text-lg font-semibold tabular-nums leading-6">{value}</dd>
-      {hint && <dd className="text-xs text-muted-foreground">{hint}</dd>}
-    </div>
+    (p.billing === 'hourly'
+      ? p.hourlyRate && `${formatMoney(p.hourlyRate, p.currency)}/giờ`
+      : p.price && `${formatMoney(p.price, p.currency)} trọn gói`) || 'chưa có giá'
   );
 }
 
-function ProjectCard({
+function ProjectRow({
   project: p,
   running,
   onEdit,
@@ -43,62 +48,64 @@ function ProjectCard({
   onStart: () => void;
 }) {
   const s = itemStatusOf(p.status);
-  const agreed =
-    p.billing === 'hourly'
-      ? p.hourlyRate && `${formatMoney(p.hourlyRate, p.currency)}/giờ`
-      : p.price && `${formatMoney(p.price, p.currency)} trọn gói`;
+  const canStart = !running && (p.status === 'active' || p.status === 'planned');
+  const meta = [p.client || 'Chưa ghi khách', agreedPrice(p)].join(' · ');
   return (
-    <BrainCard
-      badges={
-        <>
-          <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
-          <Badge variant="secondary">{billingLabel(p.billing)}</Badge>
+    <li className={cn(ROW_GRID, 'min-h-14 py-2')}>
+      <span className="flex max-md:hidden">
+        <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+      </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
           {running && (
-            <Badge variant="info">
-              <Clock aria-hidden />
-              Đang bấm giờ
-            </Badge>
+            <span className="size-2 shrink-0 rounded-full bg-bw-red" aria-hidden />
           )}
-        </>
-      }
-      title={p.title}
-      meta={[p.client ? `Khách: ${p.client}` : 'Chưa ghi khách', agreed || 'chưa có giá'].join(' · ')}
-      actions={
-        <>
-          {!running && (p.status === 'active' || p.status === 'planned') && (
-            <Button size="xs" onClick={onStart}>
+          <span className="truncate">{p.title}</span>
+          {running && <span className="sr-only">(đang bấm giờ)</span>}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          <span className="md:hidden">{s.label} · </span>
+          {meta}
+        </p>
+      </div>
+      <div className="flex flex-col items-end gap-1">
+        <span className="text-sm font-medium tabular-nums">{formatHours(p.minutesTotal)}</span>
+        <span className="w-full max-w-16 max-md:hidden">
+          <MiniBillableBar billable={p.minutesBillable} nonBillable={p.minutesNonBillable} />
+        </span>
+      </div>
+      <span className="text-end text-sm tabular-nums max-md:hidden">
+        {p.effectiveRate ? `${formatMoney(p.effectiveRate, p.currency)}/giờ` : '—'}
+      </span>
+      <span className="text-end text-sm tabular-nums max-md:hidden">{formatMoney(p.earned, p.currency) || '—'}</span>
+      <div className="flex items-center justify-end gap-1">
+        {canStart ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button size="icon-sm" variant="ghost" onClick={onStart} aria-label={`Bấm giờ cho ${p.title}`} />
+              }
+            >
               <Play aria-hidden />
-              Bấm giờ
-            </Button>
-          )}
-          <Button size="xs" variant="outline" onClick={onEdit}>
+            </TooltipTrigger>
+            <TooltipPopup>Bấm giờ</TooltipPopup>
+          </Tooltip>
+        ) : (
+          // keeps the actions track the same width on every row
+          <span className="size-8 sm:size-7" aria-hidden />
+        )}
+        <RowMenu label={`Thao tác cho "${p.title}"`}>
+          <MenuItem onClick={onEdit}>
             <Pencil aria-hidden />
             Sửa
-          </Button>
-          <Button size="xs" variant="ghost" render={<Link href={`/cong-viec/gio/?project=${p.id}`} />}>
+          </MenuItem>
+          <MenuLinkItem render={<Link href={`/cong-viec/gio/?project=${p.id}`} />}>
+            <Clock aria-hidden />
             Xem giờ
-          </Button>
-        </>
-      }
-    >
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Stat label="Đã kiếm" value={formatMoney(p.earned, p.currency) || '—'} />
-        <Stat
-          label="Giá giờ thực tế"
-          value={p.effectiveRate ? `${formatMoney(p.effectiveRate, p.currency)}/giờ` : '—'}
-          hint={p.effectiveRate ? 'tính cả giờ không tính tiền' : 'cần giá và giờ đã làm'}
-        />
-        <Stat label="Tổng giờ" value={formatHours(p.minutesTotal)} />
-      </dl>
-      {p.minutesTotal > 0 && (
-        <BillableBar
-          billable={p.minutesBillable}
-          nonBillable={p.minutesNonBillable}
-          scale={p.minutesTotal}
-          label={p.title}
-        />
-      )}
-    </BrainCard>
+          </MenuLinkItem>
+        </RowMenu>
+      </div>
+    </li>
   );
 }
 
@@ -167,9 +174,19 @@ export function ProjectsPage() {
     }
   };
 
+  const openNew = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+  const filtered = status !== 'all';
+  // Unfiltered and empty: "Thêm dự án" in the empty state is the one primary; the toolbar's drops to outline.
+  const emptyUnfiltered = !filtered && !projects.loading && !!projects.data && !projects.error && list.length === 0;
+  const anyMinutes = list.some((p) => p.minutesTotal > 0);
+
   return (
-    <div className="flex flex-col gap-5 px-4 pb-12 sm:px-8">
+    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
       <TimerPanel
+        compact
         timer={timer}
         projects={allProjects.filter((p) => p.status === 'active' || p.status === 'planned')}
         objectives={objectives}
@@ -179,22 +196,15 @@ export function ProjectsPage() {
         }}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2">
         <ChoiceSelect
           label="Trạng thái"
           value={status}
           onChange={setStatus}
           choices={statusChoices}
-          className="w-auto"
+          className="min-w-0 flex-1 sm:w-auto sm:flex-none"
         />
-        <BillableLegend className="ms-2 hidden sm:flex" />
-        <Button
-          className="ms-auto"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-        >
+        <Button variant={emptyUnfiltered ? 'outline' : 'default'} className="ms-auto shrink-0" onClick={openNew}>
           <Plus aria-hidden />
           Thêm dự án
         </Button>
@@ -210,34 +220,55 @@ export function ProjectsPage() {
       {projects.error && !projects.data ? (
         <ApiErrorState error={projects.error} onRetry={projects.reload} />
       ) : projects.loading && list.length === 0 ? (
-        <LoadingCards />
+        <RowsSkeleton />
+      ) : list.length === 0 && filtered ? (
+        <p className="text-sm text-muted-foreground">
+          Không có mục nào khớp bộ lọc.{' '}
+          <Button variant="link" size="sm" className="px-0" onClick={() => setStatus('all')}>
+            Xóa bộ lọc
+          </Button>
+        </p>
       ) : list.length === 0 ? (
-        <>
-          <EmptyState
-            icon={<Briefcase aria-hidden />}
-            title="Chưa có dự án nào"
-            description={
-              status === 'all'
-                ? 'Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế.'
-                : 'Không có dự án nào ở trạng thái này.'
-            }
-          />
-          {status === 'all' && projects.data && !projects.error && <EmptyStateGuide guide="work" />}
-        </>
+        <EmptyState
+          icon={<Briefcase aria-hidden />}
+          title="Chưa có dự án nào"
+          description="Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế."
+        >
+          <Button onClick={openNew}>
+            <Plus aria-hidden />
+            Thêm dự án
+          </Button>
+        </EmptyState>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-          {list.map((p) => (
-            <ProjectCard
-              key={p.id}
-              project={p}
-              running={timer.running?.project === p.id}
-              onEdit={() => {
-                setEditing(p);
-                setDialogOpen(true);
-              }}
-              onStart={() => void startFor(p)}
-            />
-          ))}
+        <div className="flex flex-col gap-2">
+          {anyMinutes && <BillableLegend className="justify-end" />}
+          <div className="flex flex-col divide-y rounded-xl border bg-card">
+            <div
+              className={cn(ROW_GRID, 'h-8 text-xs font-medium text-muted-foreground max-md:hidden')}
+              aria-hidden
+            >
+              <span>Trạng thái</span>
+              <span>Dự án</span>
+              <span className="text-end">Giờ</span>
+              <span className="text-end">Giá giờ thực tế</span>
+              <span className="text-end">Đã kiếm</span>
+              <span className="w-15" />
+            </div>
+            <ul className="flex flex-col divide-y" aria-label="Dự án">
+              {list.map((p) => (
+                <ProjectRow
+                  key={p.id}
+                  project={p}
+                  running={timer.running?.project === p.id}
+                  onEdit={() => {
+                    setEditing(p);
+                    setDialogOpen(true);
+                  }}
+                  onStart={() => void startFor(p)}
+                />
+              ))}
+            </ul>
+          </div>
         </div>
       )}
       {projects.data?.next && !projects.loading && (

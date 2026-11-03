@@ -34,7 +34,8 @@ web/
                                  co-hoi/ (?id= detail), cong-viec/ (projects) + cong-viec/gio/ (time); static shells;
                                  inbox/them/ (?url=&title=&text= capture: bookmarklet + PWA share target);
                                  gioi-thieu/ (intro, feature bento, printable case study; linked from the sidebar footer);
-                                 huong-dan/ (all Stageshow guides; also shown in the pages' empty states)
+                                 huong-dan/ (all Stageshow guides; also shown in the pages' empty states);
+                                 personal/ (personal page from content/pages/personal.md, not in the sidebar)
   app/lo-trinh/                  roadmap (data: lib/roadmap.ts, from the PDF)
   app/docs/[[...slug]]/page.tsx  lesson pages (rendered on request, ISR cached)
   app/trees/[book]/route.ts      full sidebar tree JSON (lazy sidebar, R1)
@@ -59,8 +60,9 @@ web/
   lib/page-tree.ts               shell tree, crumbs, prev/next
   components/ui/, components/spaceui/  Space UI components (shadcn registry on Base UI). Add with
                                  `npx shadcn@latest add @spaceui/<name>` (config: components.json); do not hand-write what can be added
-  components/app-shell.tsx       app frame: Space UI Sidebar with the 6 items of lib/app-nav.ts + top bar
-                                 (search, Inbox button with count, theme)
+  components/app-shell.tsx       app frame: Space UI Sidebar with the 6 items of lib/app-nav.ts (sub-items always
+                                 shown) + top bar (search, Inbox button with count, theme); look rules in web/DESIGN.md
+                                 (D1-D29; grey page, white bordered surfaces: do not whiten it again)
   components/brain/              second-brain UI (client): BrainCard, api-state (empty/error states), today,
                                  inbox-page, library-page, dialogs; per area: tuan/, opportunities/, work/,
                                  growth/, library/. Data loads in the browser, never at build. Deletes only through

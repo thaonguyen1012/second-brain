@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, CornerDownLeft, Info, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { ApiObjective } from '@/lib/api/client';
 import { type ApiObjectiveStatus, weeksApi } from '@/lib/api/weeks';
 import { objectiveStatuses } from '@/lib/labels';
@@ -8,9 +8,10 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Kbd } from '@/components/ui/kbd';
+import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
 import { StatusBadge } from '../brain-card';
 import { ConfirmDelete } from '../confirm-delete';
+import { RowMenu } from '../row-menu';
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WriteError } from './week-section';
 import { minutesShort } from './week-utils';
@@ -58,27 +59,18 @@ function StatusSelect({
   );
 }
 
-/** 3–5 objectives is a guideline (API_CONTRACT.md), never enforced: a gentle line, not an error. */
+/**
+ * 3–5 objectives is a guideline (API_CONTRACT.md), never enforced: one plain meta line (DESIGN.md §7), with the
+ * example the short "Kết quả muốn có" placeholder leaves out; above 5 it turns into a gentle warning.
+ */
 export function ObjectiveHint({ objectives }: { objectives: ApiObjective[] }) {
   const active = objectives.filter((o) => o.status !== 'dropped').length;
-  let text: string;
-  let warn = false;
-  if (active === 0) text = 'Chọn 3–5 mục tiêu cho tuần: kết quả muốn có, không phải danh sách task.';
-  else if (active < 3) text = `Đang có ${active} mục tiêu. 3–5 là vừa cho một tuần, ít hơn cũng được.`;
-  else if (active <= 5) text = `${active} mục tiêu: vừa đủ cho một tuần.`;
-  else {
-    warn = true;
-    text = `${active} mục tiêu: hơn 5 thường là quá nhiều. Cân nhắc bỏ bớt hoặc để sang tuần sau.`;
-  }
+  const warn = active > 5;
   return (
-    <p
-      className={cn(
-        'flex items-start gap-1.5 text-[13px] leading-relaxed',
-        warn ? 'text-warning-foreground' : 'text-muted-foreground',
-      )}
-    >
-      <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-      {text}
+    <p className={cn('text-xs leading-relaxed', warn ? 'text-warning-foreground' : 'text-muted-foreground')}>
+      {warn
+        ? `${active} mục tiêu: hơn 5 thường là quá nhiều. Cân nhắc bỏ bớt hoặc để sang tuần sau.`
+        : '3–5 mục tiêu: kết quả muốn có, không phải danh sách task. Ví dụ: Gửi báo giá cho 2 khách.'}
     </p>
   );
 }
@@ -301,41 +293,30 @@ export function ObjectivesEditor({
                     label={`Trạng thái: ${o.title}`}
                     onChange={(v) => v !== status && patch(o, { status: v })}
                   />
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    aria-label={`Sửa tên: ${o.title}`}
-                    onClick={() => setEditing({ id: o.id, title: o.title })}
-                  >
-                    <Pencil aria-hidden />
-                  </Button>
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    aria-label={`Đưa lên: ${o.title}`}
-                    disabled={i === 0}
-                    onClick={() => move(i, -1)}
-                  >
-                    <ArrowUp aria-hidden />
-                  </Button>
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    aria-label={`Đưa xuống: ${o.title}`}
-                    disabled={i === objectives.length - 1}
-                    onClick={() => move(i, 1)}
-                  >
-                    <ArrowDown aria-hidden />
-                  </Button>
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    className="text-destructive-foreground"
-                    aria-label={`Xóa: ${o.title}`}
-                    onClick={() => setDeleting(o)}
-                  >
-                    <Trash2 aria-hidden />
-                  </Button>
+                  {/* Rename, reorder and delete live in one menu (DESIGN.md D22); the row keys still do them */}
+                  <RowMenu label="Thao tác mục tiêu">
+                    <MenuItem onClick={() => setEditing({ id: o.id, title: o.title })}>
+                      <Pencil aria-hidden />
+                      Sửa tên
+                      <MenuShortcut>Enter</MenuShortcut>
+                    </MenuItem>
+                    <MenuItem disabled={i === 0} onClick={() => move(i, -1)}>
+                      <ArrowUp aria-hidden />
+                      Đưa lên
+                      <MenuShortcut>Alt+↑</MenuShortcut>
+                    </MenuItem>
+                    <MenuItem disabled={i === objectives.length - 1} onClick={() => move(i, 1)}>
+                      <ArrowDown aria-hidden />
+                      Đưa xuống
+                      <MenuShortcut>Alt+↓</MenuShortcut>
+                    </MenuItem>
+                    <MenuSeparator />
+                    <MenuItem variant="destructive" onClick={() => setDeleting(o)}>
+                      <Trash2 aria-hidden />
+                      Xóa
+                      <MenuShortcut>Del</MenuShortcut>
+                    </MenuItem>
+                  </RowMenu>
                 </div>
               </li>
             );
@@ -354,7 +335,7 @@ export function ObjectivesEditor({
           <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Thêm mục tiêu, ví dụ: Gửi báo giá cho 2 khách"
+            placeholder="Kết quả muốn có"
             aria-label="Thêm mục tiêu"
             maxLength={200}
             className="flex-1"
@@ -387,24 +368,6 @@ export function ObjectivesEditor({
           onChange((list) => list.filter((x) => x.id !== gone));
         }}
       />
-
-      {objectives.length > 0 && (
-        <p className="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:flex">
-          <span>Chọn một dòng rồi:</span>
-          <span>
-            <Kbd>D</Kbd> xong · <Kbd>X</Kbd> bỏ · <Kbd>O</Kbd> mở lại · <Kbd>Del</Kbd> xóa
-          </span>
-          <span>
-            <Kbd>
-              <CornerDownLeft aria-hidden className="size-3" />
-            </Kbd>{' '}
-            sửa tên
-          </span>
-          <span>
-            <Kbd>Alt</Kbd>+<Kbd>↑</Kbd>/<Kbd>↓</Kbd> đổi thứ tự
-          </span>
-        </p>
-      )}
     </div>
   );
 }

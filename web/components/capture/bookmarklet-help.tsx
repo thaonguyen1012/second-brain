@@ -85,7 +85,7 @@ export function BookmarkletHelp() {
                   ref={ref}
                   draggable
                   title="Kéo lên thanh dấu trang"
-                  className="inline-flex cursor-grab items-center gap-1 rounded-full border bg-card px-2.5 py-0.5 text-xs font-medium text-foreground shadow-depth-1 active:cursor-grabbing"
+                  className="inline-flex cursor-grab items-center gap-1 rounded-lg border bg-card px-2 py-0.5 text-xs font-medium text-foreground transition-colors hover:bg-accent active:cursor-grabbing"
                   onClick={(e) => {
                     e.preventDefault();
                     setClicked(true);

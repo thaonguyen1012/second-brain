@@ -5,7 +5,7 @@ Cmd+K). Not for Stageshow guides and intro pictures (they follow `.claude/skills
 (Fumadocs, `#nd-page .prose`). Target: a screen that could sit next to Linear, Raycast or Notion and not look
 generated. Space UI (`components/ui`, `components/spaceui`, tokens in `app/global.css`) is the source of truth; a
 missing component is added with `npx shadcn@latest add @spaceui/<name>`, never hand-written. Reviews cite rules
-by ID (D1...D28, last section).
+by ID (D1...D29, last section).
 
 ## 1. Principles
 
@@ -56,7 +56,7 @@ Numbers that line up or change in place get `tabular-nums`. Dates are `formatDat
 - **Columns:** rows of one list share one grid template with fixed tracks (status, title flexible, meta, actions);
   optional content keeps its track empty so columns stay aligned.
 - **List row beats card** when items are homogeneous and scanned or triaged (items, notes, projects, time entries,
-  skills, opportunities, search results): rows in one container, `rounded-xl border divide-y`, hover fill
+  skills, opportunities, search results): rows in one container, `rounded-xl border bg-card divide-y`, hover fill
   `hover:bg-accent`, selection `bg-accent` + `aria-selected`. **Card** only when the record carries an image or an
   excerpt worth reading in place (inbox entry, brief story) or it is a dashboard tile on Hôm nay; cards stack with
   `gap-3`. Never a card per row of a list of more than ~5 plain records.
@@ -83,10 +83,28 @@ Tokens only (`bg-background`, `bg-card`, `bg-muted`, `bg-secondary`, `bg-accent`
 - **AI output shows what the AI did, not that it is AI.** Suggested tags/destination render as normal
   `outline` badges followed by a small `text-xs text-muted-foreground` label "tự động" (or a "Gợi ý tự động:"
   prefix); an accepted suggestion loses the label. No sparkle, wand, bot or star icon, no purple, no shimmer.
-- **Borders vs fills:** a container gets a border or a fill, not both, plus at most `shadow-depth-1`.
-  `shadow-popover` only for things floating above the page (popover, menu, dialog, hovered draggable).
-- **Both themes are designed.** Every screen is checked in light and dark; dark depth comes from a lighter
-  surface (`bg-muted`, `bg-input/32`), not shadows.
+- **Surfaces and contrast** (owner, 03/11/2026: the all-white UI was "too white"; do not whiten it again):
+  - The page (`--background`) is a light neutral grey (`neutral-100`, no blue or purple tint); every container
+    on it (card, list container, empty state, panel, Hôm nay tile) is a surface: `rounded-xl border bg-card`,
+    white with a visible 1px `--border` (black 12%). Dialogs, sheets, menus and popovers are `bg-popover` (white)
+    with the same border. The sidebar is white (`--sidebar` = card) with a border, so it reads apart from the page.
+  - Dark: the page is the darkest layer (`zinc-950`), surfaces are lighter (`--card` 8%, `--popover` 10%),
+    borders white 12%. Depth comes from the lighter surface, not shadows.
+  - Fills (`--muted`, `--accent`, `--secondary`) are darker than the page, so tabs, hovers and skeletons still
+    show on it. Form controls (Input, Textarea, Select, Checkbox, Radio) are painted `bg-popover` like the
+    outline Button, so a filter or search field on the grey page is white too, never a grey box; a surface
+    also re-declares `--background` (global.css) for the rest (outline badges, ring offsets).
+  - The keyboard cursor on a card list (Inbox) is a darker border (`foreground/40`), not a grey fill: in light
+    a selected card stays white; dark adds the lighter `accent` step.
+  - Stageshow wells (guides, /gioi-thieu/ tiles) keep their `secondary` ground and add the 1px `--border`.
+  - Blue stays the accent for the one primary action, links and focus only; surfaces never get a blue tint.
+  - Focus ring (`--ring`) opaque, >= 3:1 against the page and every surface (WCAG 1.4.11): light `#3582ff` is
+    3.3:1 on the page and 3.6:1 on white; dark `#6aa5ff` 7:1 or more. Never lower it with `/50` or alpha.
+  - Text stays AA on page, surface and fill: `muted-foreground` is >= 5.6:1 on every one of them.
+- **Border plus fill:** a surface is border + `bg-card` (the surface rule above), plus at most `shadow-depth-1`
+  (the focal block). Inside a surface, a nested element gets a fill or a divider, never another bordered box
+  (D12). `shadow-popover` only for things floating above the page (popover, menu, dialog, hovered draggable).
+- **Both themes are designed.** Every screen is checked in light and dark.
 
 ## 5. Icons
 
@@ -193,13 +211,17 @@ Containers
 - **D12** No bordered or tinted box inside another box (inputs and code excepted).
 - **D13** A homogeneous list of more than ~5 records is rows in one container, not a stack of cards.
 - **D14** Radii from §3 (`xl` containers, `lg` controls, `md` fills, `sm` badges); nested radii concentric.
-- **D15** Each container has a border or a fill, not both; large shadows only on floating layers.
+- **D15** A container on the page is a surface (border + `bg-card`, D29); inside it, a fill or a divider, not a
+  second border; large shadows only on floating layers.
 
 Colour
 - **D16** Only token colours; status colours match `lib/labels.ts`, the same status the same colour everywhere.
 - **D17** No purple, gradient, glow or gradient text; `bw-red` only on the continue/now marker.
 - **D18** AI results carry a plain "tự động" label or prefix; no sparkle, wand, bot or star as an AI marker.
 - **D19** Light and dark both read: muted text legible, no hard-coded white/black surfaces, focus ring visible.
+- **D29** Surfaces and contrast (§4): grey page, white bordered surfaces (light) / darker page, lighter surfaces
+  (dark); border visible; blue only on the primary action, links and focus; focus ring >= 3:1 on page and
+  surfaces; no container left transparent on the page.
 
 Icons
 - **D20** lucide only, one stroke width, 16px in controls/rows/nav and 14px in badges/meta; no emoji as icons.

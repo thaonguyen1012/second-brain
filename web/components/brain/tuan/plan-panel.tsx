@@ -42,11 +42,8 @@ function CarryOver({
   }
 
   return (
-    <WeekSection
-      id="week-carry"
-      title="Kéo mục tiêu chưa xong sang"
-      description={`Mục tiêu còn mở của tuần ${weekRange(candidates[0].weekStart)}. Bỏ chọn cái không còn quan trọng.`}
-    >
+    // The source week goes in the title; no how-to line under it (DESIGN.md §7).
+    <WeekSection id="week-carry" title={`Mục tiêu còn mở của tuần ${weekRange(candidates[0].weekStart)}`}>
       <ul className="flex flex-col divide-y">
         {candidates.map((c) => (
           <li key={c.id}>
@@ -115,11 +112,7 @@ function PlanJournal({
   }
 
   return (
-    <WeekSection
-      id="week-plan-journal"
-      title={`Kỳ vọng cho ${weekName}`}
-      description={`Vài dòng: ${weekName} mong điều gì, sợ điều gì, bận gì ngoài kế hoạch. Không lên task ở đây.`}
-    >
+    <WeekSection id="week-plan-journal" title={`Kỳ vọng cho ${weekName}`}>
       <Textarea
         aria-labelledby="week-plan-journal"
         value={text}
@@ -131,16 +124,25 @@ function PlanJournal({
           }
         }}
         rows={6}
-                placeholder={`${weekName.charAt(0).toUpperCase()}${weekName.slice(1)} mình mong...`}
+        placeholder={`${weekName.charAt(0).toUpperCase()}${weekName.slice(1)} mình mong...`}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => void save()} disabled={!dirty} loading={busy}>
-          Lưu kế hoạch
-        </Button>
+      {/* Quiet at rest (DESIGN.md D2, §1.2): the objectives are the focal point, so the save button is outline
+          and appears only while there is something to save; Cmd/Ctrl+Enter in the field saves too. */}
+      <div className="flex min-h-8 flex-wrap items-center gap-2">
+        {dirty && (
+          <Button variant="outline" size="sm" onClick={() => void save()} loading={busy}>
+            Lưu kế hoạch
+          </Button>
+        )}
         <span className="text-xs text-muted-foreground" aria-live="polite">
           {dirty ? (
             <>
-              Chưa lưu · <SaveKeys /> để lưu
+              Chưa lưu
+              {/* Key hint only where a keyboard is likely (DESIGN.md D24) */}
+              <span className="max-sm:hidden pointer-coarse:hidden">
+                {' · '}
+                <SaveKeys /> để lưu
+              </span>
             </>
           ) : week.plannedAt ? (
             `Đã lên kế hoạch lúc ${clockTime(week.plannedAt)}`
@@ -176,7 +178,7 @@ export function PlanPanel({
   return (
     // One surface for the ritual (DESIGN.md D12): objectives on the left, the journal on the right, a hairline
     // between them; the shorter column no longer leaves a floating card above an empty band.
-    <div className="grid rounded-xl border lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <div className="grid rounded-xl border bg-card lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col divide-y">
         {carryCandidates.length > 0 && <CarryOver start={start} weekName={weekName} candidates={carryCandidates} onCarried={onCarried} />}
         <WeekSection id="week-objectives" title="Mục tiêu tuần">

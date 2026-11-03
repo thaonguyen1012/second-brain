@@ -25,7 +25,7 @@ function Delta({ now, before }: { now: number; before: number }) {
   if (now === before)
     return (
       <span className="inline-flex items-center gap-0.5 text-muted-foreground">
-        <Minus className="size-3" aria-hidden />
+        <Minus className="size-3.5" aria-hidden />
         <span className="sr-only">không đổi</span>
       </span>
     );
@@ -33,7 +33,7 @@ function Delta({ now, before }: { now: number; before: number }) {
   const Icon = up ? ArrowUp : ArrowDown;
   return (
     <span className="inline-flex items-center gap-0.5 text-muted-foreground">
-      <Icon className="size-3" aria-hidden />
+      <Icon className="size-3.5" aria-hidden />
       <span className="sr-only">{up ? 'tăng' : 'giảm'}</span>
     </span>
   );
@@ -41,17 +41,22 @@ function Delta({ now, before }: { now: number; before: number }) {
 
 /**
  * Skill frequency of the month vs the previous month (dataviz: emphasis form, one hue + a reference tick).
- * Built as a table so every value is text in a cell (the table view); the bar is decoration (aria-hidden).
- * Bar: primary, at most 12px thick, 4px rounded data end, square at the baseline. Previous month: a 2px tick.
+ * Built as a table so every value is text in a cell (the table view); the bar is decoration (aria-hidden) and is
+ * hidden below 640 px, where the numbers alone fit. Styled by hand per DESIGN.md §6 Tables (the Space UI table could
+ * not be fetched from the registry). Bar: chart-2, at most 12px thick, 4px rounded data end, square at the
+ * baseline. Previous month: a 2px tick.
  */
 export function MarketSkillTable({ lines, processed }: { lines: ApiMarketSkill[]; processed: number }) {
   const max = Math.max(1, ...lines.map((l) => Math.max(l.count, l.previousCount)));
   const pct = (n: number) => `${(n / max) * 100}%`;
   return (
     <div className="flex flex-col gap-2">
-      <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground" aria-label="Chú giải">
+      <ul
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground max-sm:hidden"
+        aria-label="Chú giải"
+      >
         <li className="flex items-center gap-1.5">
-          <span className="h-2.5 w-4 rounded-e-[4px] bg-primary" aria-hidden />
+          <span className="h-2.5 w-4 rounded-e-[4px] bg-chart-2" aria-hidden />
           Tháng này
         </li>
         <li className="flex items-center gap-1.5">
@@ -59,35 +64,35 @@ export function MarketSkillTable({ lines, processed }: { lines: ApiMarketSkill[]
           Tháng trước
         </li>
       </ul>
-      <div className="overflow-x-auto rounded-2xl border">
-        <table className="w-full min-w-[34rem] border-collapse text-sm">
+      <div className="overflow-x-auto rounded-xl border bg-card">
+        <table className="w-full border-collapse text-sm">
           <caption className="sr-only">
             Số tin tuyển dụng đã phân tích nhắc tới từng kỹ năng, so với tháng trước
           </caption>
           <thead>
-            <tr className="border-b text-xs text-muted-foreground">
-              <th scope="col" className="px-3 py-2 text-start font-medium">
+            <tr className="h-10 border-b text-xs font-medium text-muted-foreground">
+              <th scope="col" className="px-3 text-start font-medium">
                 Kỹ năng được đòi
               </th>
-              <th scope="col" className="w-[40%] px-3 py-2 text-start font-medium">
+              <th scope="col" className="w-[40%] px-3 text-start font-medium max-sm:hidden">
                 <span className="sr-only">Biểu đồ</span>
               </th>
-              <th scope="col" className="px-3 py-2 text-end font-medium">
+              <th scope="col" className="px-3 text-end font-medium">
                 Tháng này
               </th>
-              <th scope="col" className="px-3 py-2 text-end font-medium">
+              <th scope="col" className="px-3 text-end font-medium">
                 Tháng trước
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y">
             {lines.map((l) => (
-              <tr key={l.name} className="border-b transition-colors last:border-b-0 hover:bg-muted/60">
+              <tr key={l.name} className="h-10 transition-colors duration-150 hover:bg-accent">
                 <th scope="row" className="px-3 py-2 text-start font-normal">
                   <div className="flex flex-col gap-0.5">
                     <span className="font-medium break-words">{l.name}</span>
                     {l.skill ? (
-                      <Link href="/phat-trien/ky-nang/" className="w-fit hover:underline">
+                      <Link href={`/phat-trien/ky-nang/?id=${l.skill.id}`} className="w-fit hover:underline">
                         <MatchedSkill line={l} />
                       </Link>
                     ) : (
@@ -95,15 +100,15 @@ export function MarketSkillTable({ lines, processed }: { lines: ApiMarketSkill[]
                     )}
                   </div>
                 </th>
-                <td className="px-3 py-2" aria-hidden>
+                <td className="px-3 py-2 max-sm:hidden" aria-hidden>
                   <div className="relative h-5">
                     <div
-                      className="absolute top-1/2 left-0 h-3 -translate-y-1/2 rounded-e-[4px] bg-primary"
+                      className="absolute top-1/2 left-0 h-3 -translate-y-1/2 rounded-e-[4px] bg-chart-2"
                       style={{ width: pct(l.count) }}
                     />
                     {l.previousCount > 0 && (
                       <div
-                        className="absolute top-0 h-5 w-0.5 -translate-x-1/2 rounded-full bg-foreground/70 ring-2 ring-card"
+                        className="absolute top-0 h-5 w-0.5 -translate-x-1/2 rounded-full bg-foreground/70"
                         style={{ left: pct(l.previousCount) }}
                       />
                     )}
