@@ -12,8 +12,8 @@
   color: var(--ss-text-strong);
 }
 
-/* The well is a container on the page, so it carries the surface border (DESIGN.md D29: the grey well alone
-   barely parts from the grey page). Drawn on the unscaled .ss-fit wrapper, over the stage edge. */
+/* The well is a container on the page, so it carries the surface border (DESIGN.md D29: on the white page
+   the pale well needs its edge). Drawn on the unscaled .ss-fit wrapper, over the stage edge. */
 .ssg-brain.ss-fit::after {
   content: '';
   position: absolute;

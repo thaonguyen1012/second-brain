@@ -161,6 +161,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/DailyBrief'
           description: ''
+  /api/counts:
+    get:
+      operationId: getCounts
+      description: 'The sidebar''s numbers: each list''s row count with its page''s
+        default filters; a running timer.'
+      tags:
+      - counts
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Counts'
+          description: ''
   /api/export:
     get:
       operationId: downloadExport
@@ -463,7 +479,7 @@ paths:
         name: month
         schema:
           type: string
-        description: 'YYYY-MM; default: this month (Europe/Prague).'
+        description: 'YYYY-MM; omitted: every month.'
       - in: query
         name: q
         schema:
@@ -2230,6 +2246,43 @@ components:
       - id
       - title
       - weekStart
+    Counts:
+      type: object
+      description: |-
+        The sidebar's numbers: each is the row count of the list its row opens, with the page's default
+        filters. This week and this month are Europe/Prague.
+      properties:
+        objectivesOpen:
+          type: integer
+          description: Open objectives of this week; 0 while the week has no row yet.
+        skills:
+          type: integer
+        jobAds:
+          type: integer
+          description: Job ads of this month (GET /api/market/job-ads?month=).
+        achievements:
+          type: integer
+          description: Achievements of this week (GET /api/achievements?week=).
+        items:
+          type: integer
+        notes:
+          type: integer
+        opportunities:
+          type: integer
+        projects:
+          type: integer
+        timerRunning:
+          type: boolean
+      required:
+      - achievements
+      - items
+      - jobAds
+      - notes
+      - objectivesOpen
+      - opportunities
+      - projects
+      - skills
+      - timerRunning
     DailyBrief:
       type: object
       properties:

@@ -130,8 +130,13 @@ def delete_entry(entry: TimeEntry) -> None:
     entry.delete()
 
 
+def running_entries(user: User) -> QuerySet[TimeEntry]:
+    """The running timer as a queryset: no minutes yet, at most one per user (one_running_timer)."""
+    return TimeEntry.objects.filter(user=user, minutes__isnull=True)
+
+
 def running_entry(user: User) -> TimeEntry | None:
-    return TimeEntry.objects.select_related("project").filter(user=user, minutes__isnull=True).first()
+    return running_entries(user).select_related("project").first()
 
 
 def _stop(entry: TimeEntry, now: dt.datetime) -> TimeEntry:
@@ -146,7 +151,7 @@ def start_timer(user: User, data: dict[str, Any]) -> TimeEntry:
     now = timezone.now()
     try:
         with transaction.atomic():
-            running = TimeEntry.objects.select_for_update().filter(user=user, minutes__isnull=True).first()
+            running = running_entries(user).select_for_update().first()
             if running is not None:
                 _stop(running, now)
             fields = {f: data[f] for f in ("project", "objective", "note", "billable") if f in data}
@@ -160,7 +165,7 @@ def start_timer(user: User, data: dict[str, Any]) -> TimeEntry:
 def stop_timer(user: User) -> TimeEntry | None:
     """Stop the running timer (rounded to whole minutes, at least 1); None when nothing runs."""
     with transaction.atomic():
-        running = TimeEntry.objects.select_for_update().filter(user=user, minutes__isnull=True).first()
+        running = running_entries(user).select_for_update().first()
         return None if running is None else _stop(running, timezone.now())
 
 

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, Inbox, type LucideIcon } from 'lucide-react';
 import { api, type ApiNewsFeedback } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
-import { areaIcon, navByArea, type AreaKey } from '@/lib/app-nav';
+import { areaIcon, navRow } from '@/lib/app-nav';
 import { formatDate, hostOf, objectiveStatuses } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -39,14 +39,13 @@ export const TodayStatus = dynamic(() => import('./today-extras').then((m) => m.
 });
 
 /**
- * A "Hôm nay" tile: a white bordered surface on the grey page (DESIGN.md D29) with a heading and a link to its
- * page, quieter than "Tiếp tục học" (the focal block, DESIGN.md §1.2, D1). Every tile heading starts with the icon
- * of where its link leads (16px, no tile inside the card; DESIGN.md §4, §5): `area`, a sidebar area, gives its nav
- * icon in the area colour; `icon` is for a place outside the six areas (Inbox), in muted ink.
+ * A "Hôm nay" tile: a white bordered surface (DESIGN.md D29) with a heading and a link to its page, quieter than
+ * "Tiếp tục học" (the focal block, DESIGN.md §1.2, D1). Every tile heading starts with the icon of where its link
+ * leads (16px, no tile inside the card; DESIGN.md §4, §5): an `href` with a sidebar row gives that row's icon in its
+ * area colour; `icon` is for a place outside the six areas (Inbox), in muted ink.
  */
 export function Panel({
   title,
-  area,
   icon,
   href,
   linkLabel,
@@ -54,19 +53,19 @@ export function Panel({
   className,
 }: {
   title: string;
-  area?: AreaKey;
   icon?: LucideIcon;
   href: string;
   linkLabel: string;
   children: React.ReactNode;
   className?: string;
 }) {
-  const Icon = area ? navByArea[area].icon : icon;
+  const row = navRow(href);
+  const Icon = row?.icon ?? icon;
   return (
     <section className={cn('flex min-w-0 flex-col gap-3 rounded-xl border bg-card p-4', className)}>
       <div className="flex items-center gap-2 border-b pb-2">
         {Icon && (
-          <Icon aria-hidden className={cn('size-4 shrink-0', area ? areaIcon[area] : 'text-muted-foreground')} />
+          <Icon aria-hidden className={cn('size-4 shrink-0', row ? areaIcon[row.area] : 'text-muted-foreground')} />
         )}
         <h2 className="font-heading text-[15px] font-semibold tracking-tight">{title}</h2>
         <Button size="xs" variant="ghost" className="ms-auto -me-2" render={<Link href={href} />}>
@@ -84,7 +83,7 @@ export function TodayWeek() {
   const week = useApi('week', api.getCurrentWeek);
   const objectives = week.data?.objectives ?? [];
   return (
-    <Panel title="3 ưu tiên tuần" area="week" href="/tuan/" linkLabel="Tuần">
+    <Panel title="3 ưu tiên tuần" href="/tuan/" linkLabel="Tuần">
       {week.error && !week.data ? (
         <ApiErrorState error={week.error} onRetry={week.reload} />
       ) : !week.data ? (

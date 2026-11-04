@@ -139,7 +139,7 @@ function DetailSkeleton() {
         </div>
         {/* The tile is static, so it shows while loading and the title does not shift when the data arrives */}
         <div className="flex items-start gap-3">
-          <AreaTile area="opportunity" />
+          <AreaTile nav="/co-hoi/" />
           <Skeleton className="h-9 w-2/3 max-w-xl rounded-md" />
         </div>
         <div className="flex max-w-2xl flex-col gap-2">
@@ -275,9 +275,9 @@ export function OpportunityDetail({ id }: { id: number }) {
             {undecided && <DecideByBadge day={o.decideBy} />}
           </div>
         )}
-        {/* The Cơ hội title tile, as on the list page (PageHeader area); min-w-0 lets a long title wrap */}
+        {/* The Cơ hội title tile, as on the list page (PageHeader nav); min-w-0 lets a long title wrap */}
         <div className="flex items-start gap-3">
-          <AreaTile area="opportunity" />
+          <AreaTile nav="/co-hoi/" />
           <h1 className="min-w-0 font-heading text-3xl font-semibold tracking-tight break-words">{o.title}</h1>
         </div>
         <p className="max-w-2xl text-sm leading-relaxed text-foreground">{o.hypothesis}</p>

@@ -148,6 +148,14 @@ def digest(ad: JobAd) -> str:
     return hashlib.sha256(f"{ad.title}\n{ad.company}\n{ad.text}".encode()).hexdigest()[:16]
 
 
+def job_ads(user: User | int, month: dt.date | None = None) -> QuerySet[JobAd]:
+    """The owner's pasted ads; `month` (its first day) keeps the ads collected for that month."""
+    rows = JobAd.objects.filter(user=user)
+    if month is not None:
+        rows = rows.filter(month=month)
+    return rows
+
+
 def enqueue_extraction(ad: JobAd) -> None:
     """Idempotent per ad and text; text edited back to an earlier version re-runs that version's job."""
     job = jobs.enqueue(JD_JOB, f"{JD_JOB}:{ad.pk}:{digest(ad)}", {"job_ad_id": ad.pk, "digest": digest(ad)})

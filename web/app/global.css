@@ -10,17 +10,19 @@
 /* Alex's Brain theme.
    Code foundation: Space UI (spaceui.one) tokens, installed by `shadcn init` with their preset; components live in
    components/ui and components/spaceui. Layout reference: Brainwave 2.0 (Figma): sidebar + topbar, soft cards,
-   blue primary (#1f6ae0, 4.6:1 on the page, 5.0:1 on white) and red-orange highlight. Light is the default; dark
-   follows Space UI.
-   Surfaces (owner, 03/11/2026, DESIGN.md D29): the page (--background) is a light neutral grey, cards, popovers and
-   the sidebar are white with a visible 1px border; in dark the page is the darkest layer and surfaces are lighter.
-   Fills (--muted/--accent/--secondary) are darker than the page so tabs and hovers still show on it. The focus ring
-   is opaque: light #3582ff is 3.3:1 on the page and 3.6:1 on white (60% was 2.1:1); dark #6aa5ff is 7.0:1 or more.
+   blue primary (#1f6ae0, 5.0:1 on the white page, 4.6:1 on the grey sidebar) and red-orange highlight. Light is the
+   default; dark follows Space UI.
+   Surfaces (owner, 04/11/2026, DESIGN.md D29; replaces the grey page of 03/11): the page (--background) is white,
+   cards and popovers are white with a visible 1px border, the sidebar is the light neutral grey (neutral-100) and its
+   current row a white chip; in dark the page and the sidebar are the darkest layer and surfaces are lighter. Fills
+   (--muted/--accent/--secondary) are darker than the page and the sidebar so tabs and hovers still show. The focus
+   ring is opaque: light #3582ff is 3.6:1 on white and 3.3:1 on the sidebar (60% was 2.1:1); dark #6aa5ff is 7.0:1 or
+   more.
    Fumadocs reads --color-fd-*; those are mapped onto the same tokens below so lesson pages match. */
 
 :root {
   --radius: 0.625rem;
-  --background: var(--color-neutral-100);
+  --background: var(--color-white);
   --foreground: var(--color-zinc-950);
   --card: var(--color-white);
   --card-foreground: var(--color-zinc-950);
@@ -55,10 +57,10 @@
   /* Week review time (Tuần): hours for objectives (the data blue) vs other hours (gray). */
   --chart-objective: var(--chart-data);
   --chart-other: var(--color-zinc-400);
-  /* Area colours (owner, 03/11/2026; DESIGN.md §4): one hue per sidebar area, only on its nav icon, its page title
-     tile and a Hôm nay tile heading. Hôm nay gathers every area, so it keeps the neutral ink on the muted fill. No
-     blue, red, yellow or purple, and none of the status or data hues. Each is >= 3:1 on white, the page, the
-     active sidebar row and its own -soft tile (14% of the hue over the card). */
+  /* Area colours (owner, 03/11/2026; DESIGN.md §4): one hue per sidebar area, only on its page title tile and a Hôm
+     nay tile heading (the sidebar's own icons are the primary blue since 04/11/2026). Hôm nay gathers every area, so it keeps the neutral ink on the muted fill. No
+     blue, red, yellow or purple, and none of the status or data hues. Each is >= 3:1 on white (the page, a card) and
+     its own -soft tile (14% of the hue over the card), and on the grey sidebar and its hover fill too. */
   --area-today: var(--foreground);
   --area-week: #c85088;
   --area-growth: #658300;
@@ -71,7 +73,9 @@
   --area-library-soft: color-mix(in oklab, var(--area-library) 14%, var(--card));
   --area-opportunity-soft: color-mix(in oklab, var(--area-opportunity) 14%, var(--card));
   --area-work-soft: color-mix(in oklab, var(--area-work) 14%, var(--card));
-  --sidebar: var(--color-white);
+  --sidebar: var(--color-neutral-100);
+  /* The current sidebar row: a raised chip above the sidebar and its hover fill (app-shell.tsx) */
+  --sidebar-current: var(--card);
   --sidebar-foreground: var(--color-zinc-950);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--color-white);
@@ -136,11 +140,14 @@
   --area-library-soft: color-mix(in oklab, var(--area-library) 22%, var(--card));
   --area-opportunity-soft: color-mix(in oklab, var(--area-opportunity) 22%, var(--card));
   --area-work-soft: color-mix(in oklab, var(--area-work) 22%, var(--card));
-  --sidebar: var(--card);
+  /* The sidebar is the page's layer. Its hover is the faint popover step and the current row the zinc-800 chip, so
+     the current row stays the strongest step (in light the chip is white and the hover darker grey). */
+  --sidebar: var(--background);
+  --sidebar-current: var(--color-zinc-800);
   --sidebar-foreground: var(--color-zinc-50);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--color-zinc-950);
-  --sidebar-accent: var(--color-zinc-800);
+  --sidebar-accent: var(--popover);
   --sidebar-accent-foreground: var(--color-zinc-50);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
@@ -245,6 +252,7 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-current: var(--sidebar-current);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -308,7 +316,8 @@
     @apply border-border outline-ring;
   }
   /* A surface re-declares the page token, so what is still painted with bg-background (outline Badge, ring
-     offsets) takes the surface colour instead of showing page-grey patches. Form controls (Input, Select,
+     offsets) takes the surface colour instead of showing page-coloured patches (a no-op on the white light page,
+     needed in dark where the page is darker than a card). Form controls (Input, Select,
      Textarea, Checkbox, Radio) are bg-popover in components/ui, white on the page and on a surface alike. */
   .bg-card,
   [data-slot='card'] {

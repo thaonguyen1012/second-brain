@@ -98,7 +98,7 @@
   padding: 0 4px;
 }
 
-/* The Cơ hội title tile before the title (PageHeader area / AreaTile), on the title's first line */
+/* The Cơ hội title tile before the title (PageHeader nav / AreaTile), on the title's first line */
 .ssg-opp .ss-stage .op-title-row {
   display: flex;
   align-items: flex-start;

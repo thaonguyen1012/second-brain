@@ -11,7 +11,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Nhật ký thành tựu"
-        area="growth"
+        nav="/phat-trien/thanh-tuu/"
         description="Những việc đã làm được, cập nhật mỗi tuần, kèm kết quả bằng số cho hồ sơ đi làm. Bên dưới là các dự đoán, 6 tháng sau chấm lại."
       />
       {/* useSearchParams (?achievement=, ?prediction=, Cmd+K results) needs a Suspense boundary for the static shell */}

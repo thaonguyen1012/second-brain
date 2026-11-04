@@ -170,7 +170,9 @@ file when no other entry uses it (content addressed). Lists of items, inbox, opp
 /api/news/{id}`); `manage.py export_brief_feedback` writes rated items into `backend/evals/news_tag/fb-<id>.json`
 (title + first 500 characters). `GET /api/status` (`core/services/status.py`): month cost at paid prices from
 `llm.month_paid_cost` vs `LLM_MONTHLY_BUDGET_USD`, LLM calls this month, last DailyBrief date, pending/failed Job
-counts by kind, never keys or error texts. `manage.py export --out <dir>` (`core/services/export.py`, DECISIONS
+counts by kind, never keys or error texts. `GET /api/counts` (`core/services/counts.py`): the sidebar's
+numbers, one COUNT/EXISTS per list on the list endpoints' own querysets with the pages' default filters (this
+week, this month: Europe/Prague), read-only (no Week row created). `manage.py export --out <dir>` (`core/services/export.py`, DECISIONS
 4.7): `notes/<id>-<slug>.md` with YAML front matter (id, title, items, created, updated) and `data/<table>.json`
 (Django serializer) for every other owned model, plus `manifest.json`; never the User row, sessions, `Job`,
 `LlmCall` or `LlmCache`; a test fails when a new model is neither exported nor excluded. `GET /api/export`

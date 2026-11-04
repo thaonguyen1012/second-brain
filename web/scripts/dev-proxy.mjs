@@ -19,7 +19,7 @@ const { values } = parseArgs({
   },
 });
 
-const DJANGO = /^\/(api\/(me|progress|schema|inbox|items|notes|weeks|projects|time-entries|opportunities|skills|market|news|brief|achievements|predictions|status|export)(\/|$|\?)|admin(\/|$)|admin-static\/|healthz$)/;
+const DJANGO = /^\/(api\/(me|progress|schema|inbox|items|notes|weeks|projects|time-entries|opportunities|skills|market|news|brief|achievements|predictions|status|counts|export)(\/|$|\?)|admin(\/|$)|admin-static\/|healthz$)/;
 
 const upstreamFor = (url) => new URL(DJANGO.test(url ?? '') ? values.api : values.web);
 

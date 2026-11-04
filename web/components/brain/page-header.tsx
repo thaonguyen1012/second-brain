@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { areaIcon, navByArea, type AreaKey } from '@/lib/app-nav';
+import { areaIcon, navRow, type AreaKey, type NavHref } from '@/lib/app-nav';
 import { cn } from '@/lib/utils';
 
 /**
@@ -15,40 +15,45 @@ const areaTile: Record<AreaKey, string> = {
   work: 'bg-area-work-soft',
 };
 
-/** An area's nav icon in its colour on its tint (DESIGN.md §4, §5); 36px, the page title's line height. */
-export function AreaTile({ area, className }: { area: AreaKey; className?: string }) {
-  const Icon = navByArea[area].icon;
+/**
+ * The page's sidebar row icon in its area colour on the area tint (DESIGN.md §4, §5); 36px, the page title's line
+ * height. Kỹ năng shows the Kỹ năng icon, not one icon for all of Phát triển.
+ */
+export function AreaTile({ nav, className }: { nav: NavHref; className?: string }) {
+  const row = navRow(nav);
+  if (!row) return null;
+  const Icon = row.icon;
   return (
     <span
       aria-hidden
-      className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', areaTile[area], className)}
+      className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', areaTile[row.area], className)}
     >
-      <Icon className={cn('size-5', areaIcon[area])} />
+      <Icon className={cn('size-5', areaIcon[row.area])} />
     </span>
   );
 }
 
 /**
- * Title block shared by the app pages (same spacing as the home and roadmap headers). `area` puts the tile of the
- * sidebar area the page belongs to before the title, on its first line; pages outside the six areas pass none.
+ * Title block shared by the app pages (same spacing as the home and roadmap headers). `nav` is the page's sidebar row
+ * href: its tile goes before the title, on its first line; pages outside the six areas pass none.
  */
 export function PageHeader({
   title,
   description,
-  area,
+  nav,
   children,
 }: {
   title: string;
   description?: ReactNode;
-  area?: AreaKey;
+  nav?: NavHref;
   children?: ReactNode;
 }) {
   const heading = <h1 className="font-heading text-3xl font-semibold tracking-tight">{title}</h1>;
   return (
     <section className="flex flex-col gap-3 px-4 pt-10 pb-6 sm:px-8 md:pt-12">
-      {area ? (
+      {nav ? (
         <div className="flex items-start gap-3">
-          <AreaTile area={area} />
+          <AreaTile nav={nav} />
           {heading}
         </div>
       ) : (

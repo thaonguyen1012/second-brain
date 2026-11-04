@@ -18,8 +18,8 @@ function isLocal(src: string | null | undefined): src is string {
  * The second-brain card (inbox entries, library items, brief stories): one bordered container per record
  * (DESIGN.md D12, D15), thumbnail beside badges, title and meta, then body and actions. Hierarchy comes from type
  * weight and colour, not from an inner panel. `selected` marks the keyboard cursor with a darker neutral border
- * (blue is for the primary action, DESIGN.md §4); in light the card stays a white surface (a grey fill would melt
- * into the grey page, D29), in dark it also takes the lighter accent step.
+ * (blue is for the primary action, DESIGN.md §4); in light the card stays a white surface (the border is
+ * the cursor, D29), in dark it also takes the lighter accent step.
  */
 export function BrainCard({
   badges,

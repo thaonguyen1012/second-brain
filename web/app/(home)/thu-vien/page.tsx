@@ -12,7 +12,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Thư viện"
-        area="library"
+        nav="/thu-vien/"
         description="Sách, phim, khóa học, bài viết và dự án, lọc theo loại và trạng thái."
       >
         <LibraryTabs current="items" />

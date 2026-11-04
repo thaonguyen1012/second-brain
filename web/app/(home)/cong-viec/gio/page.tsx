@@ -11,7 +11,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Giờ"
-        area="work"
+        nav="/cong-viec/gio/"
         description="Bấm giờ hoặc nhập tay giờ đã làm cho từng dự án; xem giờ tính tiền và không tính tiền trong tuần."
       />
       {/* TimePage reads ?project= (useSearchParams), which needs a Suspense boundary on a static page. */}

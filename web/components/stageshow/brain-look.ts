@@ -56,8 +56,8 @@ const shared: LookTokens = {
   '--ss-chart-nonbillable': 'var(--chart-nonbillable)',
   '--ss-fresh': 'var(--color-bw-green, #49ba61)',
   '--ss-aging': 'var(--color-bw-yellow, #ffb73a)',
-  // The area colours (DESIGN.md §4): a faux sidebar icon, a faux page title tile and the icon of a Hôm nay tile
-  // heading, each in the colour of its area, on its -soft tint for a tile
+  // The area colours (DESIGN.md §4): a faux page title tile and the icon of a Hôm nay tile heading (sidebar icons
+  // are the one blue, --ss-accent), each in the colour of its area, on its -soft tint for a tile
   '--ss-area-today': 'var(--area-today)',
   '--ss-area-week': 'var(--area-week)',
   '--ss-area-growth': 'var(--area-growth)',
@@ -90,10 +90,10 @@ const light: LookTokens = {
 
 const dark: LookTokens = {
   ...shared,
-  // Dark cards are zinc-950; the ground is the sidebar's 7% gray so cards read as cut out of it,
+  // The ground is the card's 8% gray, a step above the zinc-950 page (the intro tiles use the same, intro.css),
   // and raised surfaces (a dialog) take the muted step, since depth on dark comes from a lighter surface
-  '--ss-well': 'var(--sidebar)',
-  '--ss-canvas': 'var(--sidebar)',
+  '--ss-well': 'var(--card)',
+  '--ss-canvas': 'var(--card)',
   '--ss-raised': 'var(--muted)',
 };
 

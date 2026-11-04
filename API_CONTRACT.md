@@ -97,6 +97,21 @@ what the `LLM_MONTHLY_BUDGET_USD` guard compares, even on the free tier. `calls`
 since then, refused and failed ones too. `lastBriefDate` is the owner's newest DailyBrief (`null` when none). `jobs` counts background jobs waiting (`pending`) and given up
 (`failed`) by kind. No keys, payloads or error texts.
 
+## GET /api/counts
+
+```json
+200 { "objectivesOpen": 2, "skills": 14, "jobAds": 6, "achievements": 1, "items": 37, "notes": 12,
+      "opportunities": 3, "projects": 2, "timerRunning": false }
+```
+
+The numbers next to the app sidebar's rows. Each one is the row count of the list its sidebar row opens, with
+that page's default filters, so a click shows exactly that many rows: `objectivesOpen` = the open objectives of
+this week, `jobAds` = the job ads of this month (`GET /api/market/job-ads?month=`), `achievements` = the
+achievements of this week (`GET /api/achievements?week=`); `skills`, `items`, `notes`, `opportunities` and
+`projects` = their whole unfiltered lists. `timerRunning` is `true` while a timer runs. This week and this month
+are Europe/Prague. Read-only: unlike `GET /api/weeks/current` it never creates a Week row (a week nobody opened
+yet has `objectivesOpen: 0`). One COUNT or EXISTS query per number. `401` when not logged in.
+
 ## GET /api/export
 
 A copy of all the owner's data (DECISIONS 4.7), the same files as `manage.py export`, streamed as

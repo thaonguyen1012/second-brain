@@ -2,17 +2,17 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import { useSearchContext, type SearchLink } from 'fumadocs-ui/contexts/search';
 import { lazy, useEffect, type ReactNode } from 'react';
-import { appNav } from '@/lib/app-nav';
+import { navAreas } from '@/lib/app-nav';
 import { viTranslations } from '@/lib/i18n-vi';
 
 /** Handbooks + second brain (Cmd+K "find everything"); lazy like Fumadocs' default dialog, so off the first load. */
 const SearchDialog = lazy(() => import('./search-dialog'));
 
-/** What the dialog lists before anything is typed: the sidebar's six items, Inbox and the guides. */
+/** What the dialog lists before anything is typed: the sidebar's six areas, Inbox and the guides. */
 const searchLinks: SearchLink[] = [
-  ...appNav.slice(0, 1).map((n): SearchLink => [n.title, n.href]),
+  ...navAreas.slice(0, 1).map((n): SearchLink => [n.title, n.href]),
   ['Inbox', '/inbox/'],
-  ...appNav.slice(1).map((n): SearchLink => [n.title, n.href]),
+  ...navAreas.slice(1).map((n): SearchLink => [n.title, n.href]),
   ['Hướng dẫn', '/huong-dan/'],
 ];
 

@@ -294,7 +294,7 @@ export default function IntroPage() {
             </li>
             <li>
               <strong>Phạm vi hẹp có chủ đích.</strong> Không lịch, không task manager, không hóa đơn, không CRM; sidebar
-              tối đa 6 mục.
+              tối đa 6 khu vực.
             </li>
           </ul>
         </CaseSection>

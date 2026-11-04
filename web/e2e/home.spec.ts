@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { appNav } from '@/lib/app-nav';
+import { navRows, otherNav } from '@/lib/app-nav';
 
 test('home page renders "Hôm nay" inside the app shell', async ({ page }) => {
   const errors: string[] = [];
@@ -10,9 +10,13 @@ test('home page renders "Hôm nay" inside the app shell', async ({ page }) => {
   await expect(page).toHaveTitle(/Alex's Brain/);
   await expect(page.getByRole('heading', { level: 1, name: 'Hôm nay' })).toBeVisible();
 
-  // The six sidebar items of lib/app-nav.ts, each a link to its page.
-  for (const item of appNav) {
-    await expect(page.getByRole('link', { name: item.title, exact: true }).first()).toHaveAttribute('href', item.href);
+  // Every sidebar row of lib/app-nav.ts is a link to its page; a row with a count says it after a comma.
+  const sidebar = page.getByRole('navigation', { name: 'Menu' });
+  for (const link of [...navRows, ...otherNav.links]) {
+    await expect(sidebar.getByRole('link', { name: new RegExp(`^${link.title}(,|$)`) })).toHaveAttribute(
+      'href',
+      link.href,
+    );
   }
   // Top bar: search trigger and theme toggle are hydrated and usable.
   await expect(page.getByRole('button', { name: /Tìm mọi thứ/ })).toBeVisible();

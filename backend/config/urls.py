@@ -11,6 +11,7 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/me", core_views.MeView.as_view()),
     path("api/status", core_views.StatusView.as_view()),
+    path("api/counts", core_views.CountsView.as_view()),
     path("api/export", core_views.ExportView.as_view()),
     path("", include("progress.urls")),
     path("", include("library.urls")),

@@ -16,7 +16,7 @@ export default function Page() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Tuần"
-        area="week"
+        nav="/tuan/"
         description="Đầu tuần chọn 3–5 mục tiêu, cuối tuần nhìn lại trong 15 phút."
       />
       {/* The week comes from ?w= (useSearchParams): rendered in the browser, never during next build. */}

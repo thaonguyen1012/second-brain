@@ -1,17 +1,25 @@
 'use client';
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
+  BookOpen,
   Brain,
   Briefcase,
   CalendarRange,
+  Clock,
+  Dumbbell,
   Inbox,
   Library,
   Lightbulb,
+  NotebookPen,
+  PanelLeftClose,
+  Route,
   Search,
-  Sprout,
   Sun,
   ThumbsDown,
   ThumbsUp,
+  TrendingUp,
+  Trophy,
+  type LucideIcon,
 } from 'lucide-react';
 import { Stage, type LookTokens } from '../kit/stage';
 import type { Act } from '../kit/act';
@@ -26,7 +34,7 @@ import './pictures.css';
  * Plan (Stageshow references/bento.md), written before building:
  *
  *   Tile       Span   Kind        The one thing                                   Moves
- *   Hero       page   Hero UI     the shell: 6-item sidebar, Hôm nay panels       still
+ *   Hero       page   Hero UI     the shell: grouped sidebar, Hôm nay panels      still
  *   Inbox      2 x 2  Component   the card list under the key legend, triaged    L then A fold two cards, once
  *   ⌘K         1 x 1  Object      two keycaps at display size                     still
  *   Tuần       1 x 1  Diagram     day columns, objective hours vs other hours     still
@@ -103,27 +111,128 @@ function Picture<S extends object>({
 
 /* ------------------------------------------------------------------ Hero: the shell with Hôm nay */
 
-// Each icon in its area colour, active or not (lib/app-nav.ts, DESIGN.md §4); Hôm nay's is the neutral ink
-const NAV = [
-  { title: 'Hôm nay', icon: Sun, area: 'today' },
-  { title: 'Tuần', icon: CalendarRange, area: 'week' },
-  { title: 'Phát triển', icon: Sprout, area: 'growth' },
-  { title: 'Thư viện', icon: Library, area: 'library' },
-  { title: 'Cơ hội', icon: Lightbulb, area: 'opportunity' },
-  { title: 'Công việc', icon: Briefcase, area: 'work' },
+/*
+ * The app sidebar (lib/app-nav.ts, components/app-shell.tsx) at the picture's scale: the header (Brain tile, the
+ * name, the hide button), Hôm nay and Tuần without a label, then the groups Phát triển, Thư viện, Cơ hội and
+ * Công việc under their muted labels ("Khác" is left out). Every row icon is the one primary blue, a row with a
+ * count ends in it in muted digits, and Hôm nay, the page the main pane shows, is the white current-row chip.
+ * Counts are example numbers; Tuần's 2 are the two open objectives of the panel beside it.
+ *
+ * The window runs off the bottom of the slot but no row may be cut by it: every group keeps its first row (the
+ * page its area opens), and the other rows join by `rank` while they still fit whole above the crop (fitSide).
+ */
+type SideRow = { title: string; icon: LucideIcon; count?: number; rank: number };
+type SideGroup = { label?: string; rows: SideRow[] };
+
+const SIDE_NAV: SideGroup[] = [
+  {
+    rows: [
+      { title: 'Hôm nay', icon: Sun, rank: 0 },
+      { title: 'Tuần', icon: CalendarRange, count: 2, rank: 0 },
+    ],
+  },
+  {
+    label: 'Phát triển',
+    rows: [
+      { title: 'Sổ tay', icon: BookOpen, rank: 0 },
+      { title: 'Lộ trình', icon: Route, rank: 5 },
+      { title: 'Kỹ năng', icon: Dumbbell, count: 14, rank: 1 },
+      { title: 'Thị trường', icon: TrendingUp, count: 6, rank: 4 },
+      { title: 'Nhật ký thành tựu', icon: Trophy, count: 1, rank: 6 },
+    ],
+  },
+  {
+    label: 'Thư viện',
+    rows: [
+      { title: 'Item', icon: Library, count: 48, rank: 0 },
+      { title: 'Ghi chú', icon: NotebookPen, count: 23, rank: 2 },
+    ],
+  },
+  { label: 'Cơ hội', rows: [{ title: 'Cơ hội', icon: Lightbulb, count: 3, rank: 0 }] },
+  {
+    label: 'Công việc',
+    rows: [
+      { title: 'Dự án', icon: Briefcase, count: 2, rank: 0 },
+      { title: 'Giờ', icon: Clock, rank: 3 },
+    ],
+  },
 ];
 
-function ShellSidebar() {
+const MAX_RANK = 6;
+
+/** Sidebar metrics in px; pictures.css reads them from custom properties set on .hs-side, so the two never drift. */
+const SIDE = {
+  /** The kit's lights band at the top of a sidebar window (window.css .ss-window__side-top) */
+  lights: 38,
+  pad: 0,
+  brand: 30,
+  brandGap: 8,
+  row: 26,
+  rowGap: 2,
+  label: 20,
+  groupGap: 6,
+  /** Room kept between the last whole row and the crop */
+  clear: 8,
+};
+
+/** Where the first group starts, from the window's top edge. */
+const SIDE_TOP = SIDE.lights + SIDE.pad + SIDE.brand + SIDE.brandGap;
+
+const sideHeight = (groups: SideGroup[]) =>
+  groups.reduce(
+    (h, g) =>
+      h + (g.label ? SIDE.groupGap + SIDE.label : 0) + g.rows.length * SIDE.row + (g.rows.length - 1) * SIDE.rowGap,
+    0,
+  );
+
+/**
+ * The groups and rows that fit whole in `room` px: every group's first row, then the others by rank. Below the
+ * design size (never at the page's slot sizes, 270 px and up) whole groups leave from the end instead.
+ */
+function fitSide(room: number): SideGroup[] {
+  let fit: SideGroup[] | null = null;
+  for (let k = 0; k <= MAX_RANK; k++) {
+    const groups = SIDE_NAV.map((g) => ({ ...g, rows: g.rows.filter((r) => r.rank <= k) }));
+    if (sideHeight(groups) > room) break;
+    fit = groups;
+  }
+  if (fit) return fit;
+  let groups = SIDE_NAV.map((g) => ({ ...g, rows: g.rows.filter((r) => r.rank === 0) }));
+  while (groups.length > 1 && sideHeight(groups) > room) groups = groups.slice(0, -1);
+  return groups;
+}
+
+function ShellSidebar({ room }: { room: number }) {
+  const vars = {
+    '--hs-pad': `${SIDE.pad}px`,
+    '--hs-brand': `${SIDE.brand}px`,
+    '--hs-brand-gap': `${SIDE.brandGap}px`,
+    '--hs-row': `${SIDE.row}px`,
+    '--hs-row-gap': `${SIDE.rowGap}px`,
+    '--hs-label': `${SIDE.label}px`,
+    '--hs-group-gap': `${SIDE.groupGap}px`,
+  } as CSSProperties;
   return (
-    <nav className="hs-side">
+    <nav className="hs-side" style={vars}>
       <span className="hs-brand">
-        <Brain size={18} strokeWidth={1.75} aria-hidden />
-        <span>Alex&apos;s Brain</span>
+        <span className="hs-brand__tile" aria-hidden>
+          <Brain size={16} strokeWidth={1.75} />
+        </span>
+        <span className="hs-brand__name">Alex&apos;s Brain</span>
+        <PanelLeftClose size={14} strokeWidth={2} aria-hidden className="hs-brand__hide" />
       </span>
-      {NAV.map(({ title, icon: Icon, area }, i) => (
-        <span key={title} className="hs-nav" data-active={i === 0 || undefined}>
-          <Icon size={16} strokeWidth={2} aria-hidden style={{ color: `var(--ss-area-${area})` }} />
-          <span>{title}</span>
+      {fitSide(room).map((group) => (
+        <span key={group.rows[0].title} className="hs-group">
+          {group.label && <span className="hs-label">{group.label}</span>}
+          <span className="hs-rows">
+            {group.rows.map(({ title, icon: Icon, count }) => (
+              <span key={title} className="hs-nav" data-active={title === 'Hôm nay' || undefined}>
+                <Icon size={16} strokeWidth={2} aria-hidden />
+                <span className="hs-nav__title">{title}</span>
+                {count !== undefined && <span className="hs-nav__count">{count}</span>}
+              </span>
+            ))}
+          </span>
         </span>
       ))}
     </nav>
@@ -148,29 +257,34 @@ const HERO_OBJECTIVES: { title: string; status: string; tone: 'info' | 'success'
 ];
 
 const HERO_LABEL =
-  "Màn hình Hôm nay của Alex's Brain: thanh bên với sáu mục Hôm nay, Tuần, Phát triển, Thư viện, Cơ hội, Công việc; " +
-  'thanh trên có ô Tìm mọi thứ với phím tắt Cmd K và nút Inbox có số đếm; nội dung gồm Tiếp tục học (Nhánh và merge ' +
-  'trong Git), 3 ưu tiên tuần (Viết case study, Ôn lại React hooks, Gửi 2 báo giá) và Inbox.';
+  "Màn hình Hôm nay của Alex's Brain: thanh bên chia theo nhóm như trong app, Hôm nay (đang mở) và Tuần ở trên, " +
+  'rồi các nhóm Phát triển, Thư viện, Cơ hội và Công việc với trang của từng nhóm, biểu tượng cùng một màu xanh và ' +
+  'số đếm ở cuối dòng; thanh trên có ô Tìm mọi thứ với phím tắt Cmd K và nút Inbox có số đếm; nội dung gồm Tiếp tục ' +
+  'học (Nhánh và merge trong Git), 3 ưu tiên tuần (Viết case study, Ôn lại React hooks, Gửi 2 báo giá) và Inbox.';
+
+/** The narrow window's top edge, in px from the slot's top. */
+const NARROW_TOP = 20;
 
 // The plate is the tile's own gray (a coloured stage), so the window is inset 8% of the tile's width on the
 // top and both sides and runs off the bottom (framing rule 14). Narrow tiles keep a desktop-width window that
-// runs off the right and the bottom instead.
+// runs off the right and the bottom instead. The sidebar gets the height left above the crop (fitSide).
 export function HeroShell() {
   return (
     <Picture name="hero" label={HERO_LABEL} initial={{}}>
       {(_, { w, h }) => {
         const wide = w >= 600;
         const inset = Math.round(w * 0.08);
+        const top = wide ? inset : NARROW_TOP;
         return (
           <Window
             className={wide ? 'hs-win' : 'hs-win hs-win--narrow'}
             style={
               wide
-                ? { top: inset, left: inset, width: w - 2 * inset, height: Math.round((h - inset) * 1.3) }
-                : undefined
+                ? { top, left: inset, width: w - 2 * inset, height: Math.round((h - inset) * 1.3) }
+                : { top }
             }
             sidebarWidth={wide ? 200 : 172}
-            sidebar={<ShellSidebar />}
+            sidebar={<ShellSidebar room={h - top - SIDE_TOP - SIDE.clear} />}
             lead={
               <span className="hs-search">
                 <Search size={14} strokeWidth={2} aria-hidden />

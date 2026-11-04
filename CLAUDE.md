@@ -33,7 +33,7 @@ web/
                                  phat-trien/ (handbook grid) + {ky-nang,thi-truong,thanh-tuu}/, tuan/ (?w=&tab=),
                                  co-hoi/ (?id= detail), cong-viec/ (projects) + cong-viec/gio/ (time); static shells;
                                  inbox/them/ (?url=&title=&text= capture: bookmarklet + PWA share target);
-                                 gioi-thieu/ (intro, feature bento, printable case study; linked from the sidebar footer);
+                                 gioi-thieu/ (intro, feature bento, printable case study; linked from the sidebar's Khác group);
                                  huong-dan/ (all Stageshow guides; also shown in the pages' empty states);
                                  personal/ (personal page from content/pages/personal.md, not in the sidebar)
   app/lo-trinh/                  roadmap (data: lib/roadmap.ts, from the PDF)
@@ -60,9 +60,11 @@ web/
   lib/page-tree.ts               shell tree, crumbs, prev/next
   components/ui/, components/spaceui/  Space UI components (shadcn registry on Base UI). Add with
                                  `npx shadcn@latest add @spaceui/<name>` (config: components.json); do not hand-write what can be added
-  components/app-shell.tsx       app frame: Space UI Sidebar with the 6 items of lib/app-nav.ts (sub-items always
-                                 shown) + top bar (search, Inbox button with count, theme); look rules in web/DESIGN.md
-                                 (D1-D29; grey page, white bordered surfaces: do not whiten it again)
+  components/app-shell.tsx       app frame: Space UI Sidebar laid out like the owner's reference (04/11/2026): header
+                                 with "Ẩn menu", labelled groups of lib/app-nav.ts (6 areas, a row per page, blue icons, counts
+                                 from /api/counts via brain/nav-counts.ts) + "Khác" + top bar (search, Inbox button
+                                 with count, theme); look rules in web/DESIGN.md (D1-D29; white page, white bordered
+                                 surfaces, grey sidebar with a white current row: owner's choice, keep it)
   components/brain/              second-brain UI (client): BrainCard, api-state (empty/error states), today,
                                  inbox-page, library-page, dialogs; per area: tuan/, opportunities/, work/,
                                  growth/, library/. Data loads in the browser, never at build. Deletes only through
@@ -87,7 +89,9 @@ web/
 backend/                         Django 5.2 + DRF + Postgres, managed with uv (pyproject.toml, uv.lock)
   config/                        settings (all from backend/.env, example: .env.example), urls, JSON logging
   core/                          /healthz, /api/me, /api/status (services/status.py: LLM month cost vs budget, calls,
-                                 last brief, pending/failed jobs by kind; no secrets), /files/ (X-Accel-Redirect),
+                                 last brief, pending/failed jobs by kind; no secrets), /api/counts (services/counts.py:
+                                 sidebar numbers from the lists' own querysets, default filters, no Week created),
+                                 /files/ (X-Accel-Redirect),
                                  single-owner auth middleware (AUTH_MODE dev|cf_access; cf_access verifies
                                  Cf-Access-Jwt-Assertion); `manage.py export --out <dir>` (services/export.py: notes
                                  as .md with front matter + every owned model as JSON; never User, Job, LlmCall,
@@ -174,7 +178,7 @@ Makefile                         make check = web types+lint+Vitest (web/lib/**/
 * `BUILD_SUBSET=slug,slug` limits loaded books in dev; the home page still lists all books.
 * Theme: Space UI tokens in `app/global.css` are the source of truth (`--background`, `--primary`...); the Fumadocs
   `--color-fd-*` tokens are mapped onto them. Blue primary, red-orange `bw-red` highlight. Fonts via next/font only.
-* App UI rubric: `web/DESIGN.md` (rules D1-D28); screenshots for a design pass: `node web/scripts/screens.mjs`.
+* App UI rubric: `web/DESIGN.md` (rules D1-D29); screenshots for a design pass: `node web/scripts/screens.mjs`.
 * No runtime requests to external domains: no CDN, no Google Fonts, no analytics. Mermaid loads from
   `/vendor/mermaid/` (copied by `scripts/prepare-vendor.mjs`), `securityLevel: 'strict'`, only on pages with diagrams.
 * Raw HTML in content goes through `rehype-safe-html`: unknown tags become text, images become placeholders

@@ -10,8 +10,8 @@
 }
 
 /* One frame for all tiles: radius, ground, border, copy gutter. The ground is the stage well of brain-look.ts
-   (secondary in light, the sidebar gray in dark), so the pictures sit on what the kit expects; the border
-   parts the tile from the grey page (DESIGN.md D29). */
+   (secondary in light, the card gray in dark), so the pictures sit on what the kit expects; the border is the
+   surface border every container on the page carries (DESIGN.md D29). */
 .intro-page .intro-tile {
   --intro-pad: 28px;
   position: relative;
@@ -24,7 +24,7 @@
 }
 
 .dark .intro-page .intro-tile {
-  background: var(--sidebar);
+  background: var(--card);
 }
 
 /* Run-in copy: a bold lead and its muted continuation at one size, page type (not stage type) */

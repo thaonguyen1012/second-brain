@@ -1,9 +1,9 @@
 /* Pictures of the intro page (pictures.tsx). Every rule is scoped under .ssg-intro (the Stage's className, on
    its .ss-fit wrapper) or under the slot wrapper .intro-pic-fill, so nothing reaches the rest of the app.
    Sizes are design px at 1:1 (each Stage is drawn at its slot's measured size). Colors come from the --ss-*
-   tokens of brain-look.ts; the few app tokens used directly (--sidebar, --sidebar-accent, --info,
-   --chart-objective, --chart-other, --color-bw-*) are Space UI tokens of app/global.css that the look has no
-   --ss-* name for. --intro-pad is the tile's copy gutter, set by app/(home)/gioi-thieu/intro.css. */
+   tokens of brain-look.ts; the few app tokens used directly (--sidebar, --sidebar-border, --shadow-depth-1,
+   --info, --chart-objective, --chart-other, --color-bw-*) are Space UI tokens of app/global.css that the look
+   has no --ss-* name for. --intro-pad is the tile's copy gutter, set by app/(home)/gioi-thieu/intro.css. */
 
 .intro-pic-fill {
   position: absolute;
@@ -88,9 +88,9 @@
   box-shadow: var(--ss-shadow-hero);
 }
 
-/* Narrow: the window keeps a desktop width and runs off the right; the sidebar and the start of Hôm nay show */
+/* Narrow: the window keeps a desktop width and runs off the right; the sidebar and the start of Hôm nay show.
+   Its top (20px, NARROW_TOP) is set inline, since the sidebar's room is computed from it. */
 .ssg-intro .hs-win--narrow {
-  top: 20px;
   left: 16px;
   width: 600px;
   height: calc((100% - 20px) * 1.2);
@@ -100,51 +100,119 @@
   background: var(--sidebar);
 }
 
+/* The app sidebar (app-shell.tsx) at the picture's scale. The --hs-* sizes are set inline by ShellSidebar from
+   the same numbers it uses to decide which rows fit above the crop. Labels, row icons and the brand tile share
+   one left edge (16px into the sidebar), as in the app. */
 .ssg-intro .hs-side {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 2px 8px;
+  padding: var(--hs-pad) 8px 0;
 }
 
+/* The header: the Brain tile (a bordered card square), the name and the muted hide button */
 .ssg-intro .hs-brand {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 36px;
-  margin-bottom: 8px;
+  height: var(--hs-brand);
+  margin-bottom: var(--hs-brand-gap);
   padding: 0 8px;
+}
+
+.ssg-intro .hs-brand__tile {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1px var(--sidebar-border);
+  color: var(--ss-text-strong);
+}
+
+.ssg-intro .hs-brand__name {
+  overflow: hidden;
   font-family: var(--ss-heading);
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ssg-intro .hs-brand__hide {
+  flex: none;
+  margin-left: auto;
+  color: var(--ss-icon);
+}
+
+.ssg-intro .hs-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A group label: muted, closer to its rows than to the group above */
+.ssg-intro .hs-label {
+  display: flex;
+  align-items: center;
+  height: var(--hs-label);
+  margin-top: var(--hs-group-gap);
+  padding: 0 8px;
+  color: var(--ss-text);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ssg-intro .hs-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hs-row-gap);
 }
 
 .ssg-intro .hs-nav {
   display: flex;
   align-items: center;
-  gap: 9px;
-  height: 32px;
+  gap: 8px;
+  height: var(--hs-row);
   padding: 0 8px;
-  border-radius: 8px;
+  border-radius: 7px;
   color: var(--ss-text-strong);
-  font-size: 13.5px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
 .ssg-intro .hs-nav svg {
   flex: none;
-  color: var(--ss-icon);
+  /* The app's sidebar icons are all the primary blue (app-shell.tsx) */
+  color: var(--ss-accent);
+}
+
+.ssg-intro .hs-nav__title {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+/* A row's count (GET /api/counts in the app): muted digits at the row's end */
+.ssg-intro .hs-nav__count {
+  flex: none;
+  margin-left: auto;
+  color: var(--ss-text);
+  font-size: 11px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
 .ssg-intro .hs-nav[data-active] {
-  background: var(--sidebar-accent);
+  /* The app's current row: a white chip with a 1px border and the depth-1 shadow (app-shell.tsx) */
+  background: var(--ss-surface);
+  box-shadow:
+    0 0 0 1px var(--sidebar-border),
+    var(--shadow-depth-1);
   font-weight: 500;
-}
-
-.ssg-intro .hs-nav[data-active] svg {
-  color: var(--ss-text-strong);
 }
 
 .ssg-intro .hs-search {

@@ -16,8 +16,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.authentication import request_user
-from core.serializers import StatusSerializer
-from core.services import export, status
+from core.serializers import CountsSerializer, StatusSerializer
+from core.services import counts, export, status
 from core.services.files import attachments_root, resolve_attachment
 
 
@@ -50,6 +50,13 @@ class StatusView(APIView):
         """This month's LLM cost at paid prices vs the budget, calls this month, the last morning brief and
         the background jobs waiting or failed, by kind."""
         return Response(StatusSerializer(status.snapshot(request_user(request))).data)
+
+
+class CountsView(APIView):
+    @extend_schema(responses=CountsSerializer, operation_id="getCounts")
+    def get(self, request: Request) -> Response:
+        """The sidebar's numbers: each list's row count with its page's default filters; a running timer."""
+        return Response(CountsSerializer(counts.snapshot(request_user(request))).data)
 
 
 class ExportView(APIView):

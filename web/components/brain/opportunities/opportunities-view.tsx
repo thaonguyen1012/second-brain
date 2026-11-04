@@ -25,7 +25,7 @@ export function OpportunitiesView() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Cơ hội"
-        area="opportunity"
+        nav="/co-hoi/"
         description="Giả thuyết kinh doanh của mình: bằng chứng ủng hộ hoặc phản bác, 4 điểm tự chấm có lịch sử và hạn quyết giữ, bỏ hay làm. Cơ hội 4 tuần không có bằng chứng mới thì bỏ."
       />
       <div className="flex flex-col gap-8 px-4 pb-12 sm:px-8">

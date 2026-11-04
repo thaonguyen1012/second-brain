@@ -38,6 +38,7 @@ from growth.serializers import (
 
 BOOLEAN = {"true": True, "false": False}
 MONTH_PARAM = OpenApiParameter("month", str, description="YYYY-MM; default: this month (Europe/Prague).")
+JOB_ADS_MONTH_PARAM = OpenApiParameter("month", str, description="YYYY-MM; omitted: every month.")
 
 
 def _search(request: Request, *fields: str) -> Q | None:
@@ -172,19 +173,22 @@ class SkillEvidenceView(APIView):
 
 
 @extend_schema_view(
-    get=extend_schema(operation_id="listJobAds", parameters=[MONTH_PARAM, _q_param("the title or company")])
+    get=extend_schema(
+        operation_id="listJobAds", parameters=[JOB_ADS_MONTH_PARAM, _q_param("the title or company")]
+    )
 )
 class JobAdListView(generics.ListAPIView[JobAd]):
     serializer_class = JobAdSerializer
     pagination_class = NewestFirstCursor
 
     def get_queryset(self) -> QuerySet[JobAd]:
-        rows = JobAd.objects.filter(user=request_user(self.request))
-        if (month := _month(self.request)) is not None:
+        month = None
+        if (raw := _month(self.request)) is not None:
             try:
-                rows = rows.filter(month=parse_month(month))
+                month = parse_month(raw)
             except ValueError as error:
                 raise ValidationError({"month": str(error)}) from error
+        rows = services.job_ads(request_user(self.request), month)
         if (match := _search(self.request, "title", "company")) is not None:
             rows = rows.filter(match)
         return rows

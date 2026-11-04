@@ -25,6 +25,7 @@ export type ApiAttachResult = Schemas['AttachResult'];
 export type ApiAttachNewsResult = Schemas['AttachNewsResult'];
 export type ApiNewsFeedback = Schemas['NewsFeedbackEnum'];
 export type ApiStatus = Schemas['Status'];
+export type ApiCounts = Schemas['Counts'];
 
 /** Query parameters of an OpenAPI operation. */
 export type Query<Op extends keyof operations> = operations[Op]['parameters'] extends { query?: infer Q }
@@ -65,10 +66,13 @@ function csrfToken(): string {
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
+/** Fired on window after every successful write, so shared numbers (the sidebar counts) can refresh. */
+export const API_WRITE_EVENT = 'brain:api-write';
+
 /**
  * The one sender for every backend call (lib/api/* modules use it): same origin, CSRF header on writes,
- * ApiError on failure, undefined for 204. An aborted `signal` rejects with the fetch AbortError (not an
- * ApiError), so callers can tell "cancelled" from "offline" (isAbort).
+ * ApiError on failure, undefined for 204; a successful write fires API_WRITE_EVENT. An aborted `signal` rejects
+ * with the fetch AbortError (not an ApiError), so callers can tell "cancelled" from "offline" (isAbort).
  */
 export async function request<T>(method: Method, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
@@ -93,6 +97,7 @@ export async function request<T>(method: Method, path: string, body?: unknown, s
     const errBody: unknown = json ? await res.json().catch(() => undefined) : undefined;
     throw new ApiError(res.status, `${method} ${path}: ${res.status}`, reachable, errBody);
   }
+  if (method !== 'GET') window.dispatchEvent(new Event(API_WRITE_EVENT));
   if (res.status === 204) return undefined as T;
   if (!json) throw new ApiError(res.status, `${method} ${path}: not JSON`, false);
   return (await res.json()) as T;
@@ -133,6 +138,8 @@ export const api = {
   getMe: () => request<ApiMe>('GET', '/api/me'),
   /** LLM cost this month vs the budget, last brief date, pending / failed jobs by kind. */
   getStatus: () => request<ApiStatus>('GET', '/api/status'),
+  /** Sidebar row numbers: each list's row count with its page's default filters, and whether a timer runs. */
+  getCounts: () => request<Schemas['Counts']>('GET', '/api/counts'),
   getProgress: () => request<ApiProgressSnapshot>('GET', '/api/progress'),
   setPageDone: (book: string, page: string, done: boolean) =>
     request<ApiSetDoneResponse>('PUT', `/api/progress/${encodeURIComponent(book)}/${pageSegment(page)}`, {

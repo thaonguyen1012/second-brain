@@ -74,6 +74,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The sidebar's numbers: each list's row count with its page's default filters; a running timer. */
+        get: operations["getCounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/export": {
         parameters: {
             query?: never;
@@ -961,6 +978,24 @@ export interface components {
             /** Format: date */
             weekStart: string;
             carried: boolean;
+        };
+        /**
+         * @description The sidebar's numbers: each is the row count of the list its row opens, with the page's default
+         *     filters. This week and this month are Europe/Prague.
+         */
+        Counts: {
+            /** @description Open objectives of this week; 0 while the week has no row yet. */
+            objectivesOpen: number;
+            skills: number;
+            /** @description Job ads of this month (GET /api/market/job-ads?month=). */
+            jobAds: number;
+            /** @description Achievements of this week (GET /api/achievements?week=). */
+            achievements: number;
+            items: number;
+            notes: number;
+            opportunities: number;
+            projects: number;
+            timerRunning: boolean;
         };
         DailyBrief: {
             /** Format: date */
@@ -2285,6 +2320,25 @@ export interface operations {
             };
         };
     };
+    getCounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Counts"];
+                };
+            };
+        };
+    };
     downloadExport: {
         parameters: {
             query?: never;
@@ -2554,7 +2608,7 @@ export interface operations {
                 cursor?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
-                /** @description YYYY-MM; default: this month (Europe/Prague). */
+                /** @description YYYY-MM; omitted: every month. */
                 month?: string;
                 /** @description Case-insensitive match in the title or company. */
                 q?: string;

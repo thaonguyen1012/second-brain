@@ -37,3 +37,22 @@ class StatusSerializer(serializers.Serializer[object]):
     llm = LlmStatusSerializer()
     lastBriefDate = serializers.DateField(allow_null=True)
     jobs = JobCountsSerializer()
+
+
+class CountsSerializer(serializers.Serializer[object]):
+    """The sidebar's numbers: each is the row count of the list its row opens, with the page's default
+    filters. This week and this month are Europe/Prague."""
+
+    objectivesOpen = serializers.IntegerField(
+        help_text="Open objectives of this week; 0 while the week has no row yet."
+    )
+    skills = serializers.IntegerField()
+    jobAds = serializers.IntegerField(help_text="Job ads of this month (GET /api/market/job-ads?month=).")
+    achievements = serializers.IntegerField(
+        help_text="Achievements of this week (GET /api/achievements?week=)."
+    )
+    items = serializers.IntegerField()
+    notes = serializers.IntegerField()
+    opportunities = serializers.IntegerField()
+    projects = serializers.IntegerField()
+    timerRunning = serializers.BooleanField()

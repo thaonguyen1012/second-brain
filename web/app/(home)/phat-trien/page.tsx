@@ -18,7 +18,7 @@ export default function HandbooksPage() {
     <div className="flex w-full flex-col">
       <PageHeader
         title="Sổ tay"
-        area="growth"
+        nav="/phat-trien/"
         description={`${books.length} sổ tay từ các khóa Coursera và F8, ${lessons.toLocaleString('vi-VN')} bài học, chia theo ba nhóm.`}
       >
         <div className="flex flex-wrap items-center gap-2">
