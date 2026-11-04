@@ -1,0 +1,439 @@
+/* The bookmarklet guide (capture-bookmarklet.tsx). Scoped under .ssg-bm (the Stage's class, next to .ssg-brain);
+   selectors start with .ssg-bm .ss-stage so they beat base.css whatever the CSS order. Sizes are design px. */
+
+/* The browser: a gutter from the top and sides, off the bottom (as the other page guides' column) */
+.ssg-bm .ss-stage .bm-browser {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  width: 552px;
+  height: 560px;
+  box-shadow: var(--ss-shadow-hero);
+}
+
+.ssg-bm .ss-stage .bm-browser .ss-window__body,
+.ssg-bm .ss-stage .bm-popup .ss-window__body {
+  background: var(--ss-surface);
+}
+
+/* The address: the click selects it all, typing replaces it; focused, the field takes the accent ring */
+.ssg-bm .ss-stage .bm-url {
+  display: block;
+  width: 100%;
+  color: var(--ss-text-faint);
+}
+
+.ssg-bm .ss-stage .bm-url[data-editing] {
+  color: var(--ss-text-strong);
+}
+
+.ssg-bm .ss-stage .bm-browser .ss-window__url:has(.bm-url[data-editing]) {
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1.5px var(--ss-accent);
+}
+
+.ssg-bm .ss-stage .bm-url__text[data-selected] {
+  border-radius: 2px;
+  background: var(--ss-accent-soft);
+}
+
+.ssg-bm .ss-stage .bm-url__caret {
+  display: inline-block;
+  width: 1px;
+  height: 11px;
+  margin-left: 1px;
+  vertical-align: -2px;
+  background: var(--ss-text-strong);
+}
+
+/* The bookmarks bar: part of the browser's chrome, under the toolbar */
+.ssg-bm .ss-stage .bm-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 30px;
+  padding: 0 14px;
+  background: var(--ss-chrome);
+  border-bottom: 1px solid var(--ss-line);
+}
+
+.ssg-bm .ss-stage .bm-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+}
+
+.ssg-bm .ss-stage .bm-mark--new {
+  margin-left: -6px;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: var(--ss-text-strong);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease, background-color 0.12s ease;
+}
+
+.ssg-bm .ss-stage .bm-mark--new svg {
+  flex: none;
+  color: var(--ss-icon);
+}
+
+.ssg-bm .ss-stage .bm-mark--new[data-show] {
+  opacity: 1;
+}
+
+.ssg-bm .ss-stage .bm-mark--new[data-hover] {
+  background: var(--ss-panel);
+}
+
+/* The insertion mark and the carried link, in stage coordinates over the browser */
+.ssg-bm .ss-stage .bm-insert {
+  position: absolute;
+  z-index: 35;
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: var(--ss-accent);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+
+.ssg-bm .ss-stage .bm-insert[data-show] {
+  opacity: 1;
+}
+
+.ssg-bm .ss-stage .bm-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--ss-surface);
+  box-shadow: inset 0 0 0 1px var(--ss-line);
+  color: var(--ss-text-strong);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ssg-bm .ss-stage .bm-ghost {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform;
+  transform-origin: 42% 55%;
+  transition: opacity 0.18s ease, scale 0.15s ease, rotate 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Picked up, the copy appears over the link in a blink (a browser's drag image) and lifts; dropped, it fades in place */
+.ssg-bm .ss-stage .bm-ghost[data-carry] {
+  transition: opacity 0.08s ease, scale 0.15s ease, rotate 0.15s ease, box-shadow 0.15s ease;
+  opacity: 1;
+  scale: 1.03;
+  rotate: -1.5deg;
+  box-shadow: inset 0 0 0 1px var(--ss-line), var(--ss-shadow-lift);
+}
+
+/* The two pages crossfade inside the window, with an 8px rise. Both keep a layer, so their text does not hop
+   when the rise ends or when the opening bookmarks bar carries them down */
+.ssg-bm .ss-stage .bm-pages {
+  position: relative;
+  height: 100%;
+  will-change: transform;
+}
+
+.ssg-bm .ss-stage .bm-page {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 22px 24px 0;
+  opacity: 0;
+  translate: 0 8px;
+  will-change: transform;
+  transition: opacity 0.2s ease, translate 0.2s ease;
+}
+
+.ssg-bm .ss-stage .bm-page[data-show] {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.ssg-bm .ss-stage .bm-h1 {
+  color: var(--ss-text-strong);
+  font-family: var(--ss-heading);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 30px;
+  letter-spacing: -0.02em;
+}
+
+.ssg-bm .ss-stage .bm-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ssg-bm .ss-stage .bm-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  color: var(--ss-text);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+/* The help line: "Bookmarklet: kéo nút [link]" and "lên thanh dấu trang", one line wide, two lines compact */
+.ssg-bm .ss-stage .bm-help {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--ss-text);
+  font-size: 12.5px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.ssg-bm .ss-stage .bm-help__part {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ssg-bm .ss-stage .bm-help__lead {
+  color: var(--ss-text-strong);
+  font-weight: 500;
+}
+
+.ssg-bm .ss-stage .bm-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-self: stretch;
+  margin-top: 20px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--ss-line);
+  border-radius: 16px;
+  background: var(--ss-surface);
+}
+
+.ssg-bm .ss-stage .bm-card__box {
+  height: 54px;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px var(--ss-line);
+}
+
+.ssg-bm .ss-stage .bm-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  height: 30px;
+  margin-top: 16px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--ss-panel);
+}
+
+.ssg-bm .ss-stage .bm-card--entry {
+  min-height: 90px;
+  margin-top: 12px;
+}
+
+/* The article: a site name, the headline, text and a picture as placeholders */
+.ssg-bm .ss-stage .bm-site {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 8px;
+}
+
+.ssg-bm .ss-stage .bm-headline {
+  margin-top: 12px;
+}
+
+.ssg-bm .ss-stage .bm-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  align-self: stretch;
+  margin-top: 16px;
+}
+
+.ssg-bm .ss-stage .bm-figure {
+  display: block;
+  align-self: stretch;
+  height: 132px;
+  margin-top: 18px;
+  border-radius: 10px;
+  background: var(--ss-ink-1);
+  box-shadow: inset 0 0 0 1px var(--ss-line-faint);
+}
+
+/* The bookmarklet's popup: the real /inbox/them/ page in a small window coming forward */
+.ssg-bm .ss-stage .bm-popup {
+  position: absolute;
+  top: 180px;
+  left: 262px;
+  z-index: 50;
+  width: 290px;
+  box-shadow: var(--ss-shadow-hero);
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  will-change: transform;
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ssg-bm .ss-stage .bm-popup[data-show] {
+  opacity: 1;
+  transform: none;
+}
+
+.ssg-bm .ss-stage .bm-form {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 14px;
+}
+
+.ssg-bm .ss-stage .bm-form__title {
+  color: var(--ss-text-strong);
+  font-family: var(--ss-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+}
+
+.ssg-bm .ss-stage .bm-form__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.ssg-bm .ss-stage .bm-field .ss-field__label {
+  font-size: 12px;
+  line-height: 15px;
+}
+
+.ssg-bm .ss-stage .bm-field .ss-field__box {
+  height: 30px;
+  font-size: 12px;
+}
+
+.ssg-bm .ss-stage .bm-form__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.ssg-bm .ss-stage .bm-form__hint {
+  color: var(--ss-text);
+  font-size: 11.5px;
+  line-height: 15px;
+}
+
+/* The submit button has focus when the page opens (autoFocus), so Enter saves: the app's 2px ring, 1px offset */
+.ssg-bm .ss-stage .bm-save {
+  margin-left: auto;
+  will-change: transform;
+}
+
+.ssg-bm .ss-stage .bm-save[data-focus] {
+  box-shadow: 0 0 0 1px var(--ss-surface), 0 0 0 3px var(--ss-accent);
+}
+
+.ssg-bm .ss-stage .bm-saved {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 12px;
+}
+
+.ssg-bm .ss-stage .bm-saved__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ss-text-strong);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.ssg-bm .ss-stage .bm-saved__title svg {
+  flex: none;
+  color: var(--ss-success-text);
+}
+
+.ssg-bm .ss-stage .bm-saved__url {
+  overflow: hidden;
+  color: var(--ss-text);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ssg-bm .ss-stage .bm-saved__actions {
+  margin-top: 6px;
+}
+
+/* Compact (358 x 356): the browser runs off the right and the bottom, so what shows stays landscape; the
+   page keeps its words inside the visible part, and the popup covers the article's top */
+.ssg-bm .ss-stage[data-layout='compact'] .bm-browser {
+  top: 16px;
+  left: 16px;
+  width: 372px;
+  height: 560px;
+}
+
+.ssg-bm .ss-stage[data-layout='compact'] .bm-help {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ssg-bm .ss-stage[data-layout='compact'] .bm-card {
+  width: 310px;
+}
+
+/* The address field ends inside the stage, so the click target stays whole */
+.ssg-bm .ss-stage[data-layout='compact'] .bm-browser .ss-window__url {
+  margin-right: 30px;
+}
+
+.ssg-bm .ss-stage[data-layout='compact'] .bm-figure {
+  height: 170px;
+}
+
+.ssg-bm .ss-stage[data-layout='compact'] .bm-page {
+  padding: 18px 16px 0;
+}
+
+.ssg-bm .ss-stage[data-layout='compact'] .bm-h1 {
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.ssg-bm .ss-stage[data-layout='compact'] .bm-popup {
+  top: 92px;
+  left: 28px;
+  width: 302px;
+}

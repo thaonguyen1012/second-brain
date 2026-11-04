@@ -24,7 +24,8 @@ const InboxTriage = dynamic(() => import('./guides/inbox-triage'), {
   loading: GuidePlaceholder,
 });
 
-// The page guides shown in empty states (all, the Inbox too, share the 600 x 452 / 358 x 470 design).
+// The page guides shown in empty states (all, the Inbox too, share the 600 x 452 / 358 x 470 design); the
+// bookmarklet guide shows in the Inbox's "Cách thu thập" help instead.
 const WeekRitual = dynamic(() => import('./guides/week-ritual'), { ssr: false, loading: GuidePlaceholder });
 const OpportunityEvidence = dynamic(() => import('./guides/opportunity-evidence'), {
   ssr: false,
@@ -33,9 +34,23 @@ const OpportunityEvidence = dynamic(() => import('./guides/opportunity-evidence'
 const WorkTimer = dynamic(() => import('./guides/work-timer'), { ssr: false, loading: GuidePlaceholder });
 const SkillFreshness = dynamic(() => import('./guides/skill-freshness'), { ssr: false, loading: GuidePlaceholder });
 const LibraryItem = dynamic(() => import('./guides/library-item'), { ssr: false, loading: GuidePlaceholder });
+// Its compact design is square (358 x 356, guides/capture-bookmarklet.tsx COMPACT), so its placeholder is too
+function SquarePlaceholder() {
+  return (
+    <div aria-hidden className="@container w-full">
+      <div className="mx-auto aspect-[358/356] w-full max-w-[358px] rounded-3xl border bg-secondary @min-[560px]:aspect-[600/452] @min-[560px]:max-w-[600px]" />
+    </div>
+  );
+}
+
+const CaptureBookmarklet = dynamic(() => import('./guides/capture-bookmarklet'), {
+  ssr: false,
+  loading: SquarePlaceholder,
+});
 
 const emptyGuides = {
   inbox: { Guide: InboxTriage, title: 'thu thập và xử lý bằng phím', replay: false },
+  bookmarklet: { Guide: CaptureBookmarklet, title: 'cài và dùng bookmarklet', replay: true },
   week: { Guide: WeekRitual, title: 'lên kế hoạch và nhìn lại tuần', replay: true },
   opportunity: { Guide: OpportunityEvidence, title: 'giả thuyết, bằng chứng và điểm', replay: true },
   work: { Guide: WorkTimer, title: 'bấm giờ và tổng kết tuần', replay: true },

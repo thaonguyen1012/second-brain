@@ -2,6 +2,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { BookmarkPlus, ChevronDown, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { bookmarkletHref } from '@/lib/capture';
 
 /**
@@ -111,6 +112,8 @@ export function BookmarkletHelp() {
                 Trên Android: cài app (Thêm vào màn hình chính), rồi Chia sẻ → Alex&apos;s Brain. Trên iPhone, iPad: Safari
                 chưa hỗ trợ chia sẻ thẳng vào app, hãy dùng bookmarklet.
               </p>
+              {/* The animated how-to (Stageshow, lazy chunk): open with the panel, hideable like every guide */}
+              <EmptyStateGuide guide="bookmarklet" open className="mt-2 w-full" />
             </>
           )}
           {platform === 'android' && (

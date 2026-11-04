@@ -19,6 +19,15 @@ const guides: { guide: EmptyGuideName; href: string; label: string; text?: strin
       'Dán link vào ô Thu thập nhanh, nhấn ⌘↵. Thẻ hiện ngay, ảnh thu nhỏ và tag được thêm sau trong nền. Esc để ' +
       'rời ô nhập, rồi mỗi phím là một quyết định: J/K đi xuống/lên, L đọc sau, A lưu trữ, O gắn làm bằng chứng cho một cơ hội.',
   },
+  {
+    guide: 'bookmarklet',
+    href: '/inbox/',
+    label: 'Mở Inbox',
+    text:
+      'Cài một lần: ở trang Inbox, mở "Cách thu thập từ trình duyệt và điện thoại", nhấn ⌘⇧B để hiện thanh dấu trang ' +
+      'rồi kéo nút Lưu vào Brain lên đó. Sau đó ở trang bất kỳ, bấm Lưu vào Brain trên thanh dấu trang (bôi đen một đoạn ' +
+      'trước nếu muốn lưu kèm), rồi nhấn Enter trong cửa sổ nhỏ. Bookmarklet trỏ về đúng địa chỉ bạn kéo nó từ đó.',
+  },
   { guide: 'week', href: '/tuan/', label: 'Mở Tuần' },
   { guide: 'opportunity', href: '/co-hoi/', label: 'Mở Cơ hội' },
   { guide: 'work', href: '/cong-viec/gio/', label: 'Mở Giờ' },

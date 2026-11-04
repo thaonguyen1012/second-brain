@@ -15,7 +15,8 @@ components/stageshow/
                     .ssg-intro); the page imports only intro/lazy.tsx (one shared chunk, ssr: false)
 ```
 
-Guides today (all 600 x 452 wide, 358 x 470 compact below 560 px):
+Guides today (all 600 x 452 wide; 358 x 470 compact below 560 px, except `capture-bookmarklet`, whose compact
+design is 358 x 356 so its desktop browser stays landscape, with its own placeholder in `lazy.tsx`):
 
 | Guide | Story | Plays | Shown in |
 |---|---|---|---|
@@ -25,6 +26,7 @@ Guides today (all 600 x 452 wide, 358 x 470 compact below 560 px):
 | `work-timer` | start the timer on a project, time-lapse, T stops, the week summary fills | once, ~10 s | Dự án (no status filter) and Giờ (no filter) empty |
 | `skill-freshness` | add evidence to a faded skill, it turns fresh, then 3 and 6 months later it fades | once, ~12 s | Kỹ năng matrix empty |
 | `library-item` | add a book, Xong asks for an output, write the note, the reminder leaves | once, ~12 s | Thư viện empty, no filter |
+| `capture-bookmarklet` | Cmd+Shift+B shows the bookmarks bar, "Lưu vào Brain" dragged onto it, an article loaded, the bookmark clicked, the popup filled in, Enter saves | once, ~14 s | Inbox "Cách thu thập" help (open with the panel), `/huong-dan/` |
 
 Pages use `EmptyStateGuide guide="..."` from `lazy.tsx`: it wraps the guide in `guides/guide-frame.tsx`, a header
 with "Xem lại" (guides that play once) and "Ẩn hướng dẫn" / "Xem hướng dẫn". Under an empty state a guide starts
