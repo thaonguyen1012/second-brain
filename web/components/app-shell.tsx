@@ -161,7 +161,7 @@ function AppSidebar() {
           {appNav.map((group, i) => (
             <SidebarGroup key={group.rows[0].href} className="py-1.5">
               {'label' in group && (
-                <SidebarGroupLabel id={`nav-group-${i}`} className="text-muted-foreground">
+                <SidebarGroupLabel id={`nav-group-${i}`} className="uppercase tracking-wide text-muted-foreground">
                   {group.label}
                 </SidebarGroupLabel>
               )}
@@ -176,7 +176,7 @@ function AppSidebar() {
             </SidebarGroup>
           ))}
           <SidebarGroup className="py-1.5">
-            <SidebarGroupLabel id="nav-group-other" className="text-muted-foreground">
+            <SidebarGroupLabel id="nav-group-other" className="uppercase tracking-wide text-muted-foreground">
               {otherNav.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>

@@ -234,15 +234,16 @@ so the near pairs that remain are listed under the palette, not hidden.
 - **States:** `LoadingCards`/`Skeleton` at the real row or card geometry; `ApiErrorState` (with "Thử lại") when
   nothing loaded, `ApiStaleAlert` when old rows stay; `EmptyState` for empty lists.
 - **Sidebar** (`components/app-shell.tsx`, `lib/app-nav.ts`; owner's reference, 04/11/2026): a 64px header (the
-  `Brain` tile, "Alex's Brain" alone, no tagline (owner), a ghost `icon-sm` "Ẩn menu" button; its border continues
-  the top bar's), then the groups of `lib/app-nav.ts`: the first (Hôm nay, Tuần) without a label, then Phát triển,
-  Thư viện, Cơ hội and Công việc as `text-xs` medium muted labels over their pages, then "Khác" (Giới thiệu,
-  Hướng dẫn). Every row is an icon + title in the text colour in one `<nav aria-label="Menu">`, `aria-current`
-  on the current one (darker grey fill, medium weight). A row may end in its count (`text-xs` muted `tabular-nums`, 99+, nothing for 0; read out after the
-  title as "Tuần, còn 2 mục tiêu") from `GET /api/counts`: the number the page lists with its default filters,
-  except Tuần (open objectives of this week); refreshed on every navigation, on tab focus and after every API
-  write. Giờ ends in the `bw-red` "now" dot while a timer runs. The top bar's menu trigger shows only while the
-  sidebar is hidden (and on phones). Inbox and search stay in the top bar (DECISIONS 9.3).
+  `Brain` tile, "Alex's Brain" alone, no tagline (owner), a ghost `icon-sm` "Ẩn menu" button; its border continues the
+  top bar's), then the groups of `lib/app-nav.ts`: the first (Hôm nay, Tuần) without a label, then Phát triển, Thư
+  viện, Cơ hội and Công việc as `text-xs` medium muted uppercase labels (`tracking-wide`; owner, 06/11/2026) over
+  their pages, then "Khác" (Giới thiệu, Hướng dẫn). Every row is an icon + title in the text colour in one `<nav
+  aria-label="Menu">`, `aria-current` on the current one (darker grey fill, medium weight). A row may end in its count
+  (`text-xs` muted `tabular-nums`, 99+, nothing for 0; read out after the title as "Tuần, còn 2 mục tiêu") from `GET
+  /api/counts`: the number the page lists with its default filters, except Tuần (open objectives of this week);
+  refreshed on every navigation, on tab focus and after every API write. Giờ ends in the `bw-red` "now" dot while a
+  timer runs. The top bar's menu trigger shows only while the sidebar is hidden (and on phones). Inbox and search stay
+  in the top bar (DECISIONS 9.3).
 
 ## 7. Density and empty states
 
