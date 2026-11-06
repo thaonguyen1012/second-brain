@@ -62,7 +62,7 @@ web/
                                  `npx shadcn@latest add @spaceui/<name>` (config: components.json); do not hand-write what can be added
   components/app-shell.tsx       app frame: Space UI Sidebar laid out like the owner's reference (04/11/2026): header
                                  with "Ẩn menu", labelled groups of lib/app-nav.ts (6 areas, a row per page, icons in the text colour, counts
-                                 from /api/counts via brain/nav-counts.ts) + "Khác" + top bar (search, Inbox button
+                                 from /api/counts via brain/nav-counts.ts), three tiers parted by hairlines, "Khác" at the bottom + top bar (search, Inbox button
                                  with count, theme); look rules in web/DESIGN.md (D1-D29; white page, white bordered
                                  surfaces, grey sidebar with a darker grey current row: owner's choice, keep it)
   components/brain/              second-brain UI (client): BrainCard, api-state (empty/error states), today,

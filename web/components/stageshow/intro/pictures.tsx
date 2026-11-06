@@ -113,8 +113,8 @@ function Picture<S extends object>({
 
 /*
  * The app sidebar (lib/app-nav.ts, components/app-shell.tsx) at the picture's scale: the header (Brain tile, the
- * name, the hide button), Hôm nay and Tuần without a label, then the groups Phát triển, Thư viện, Cơ hội and
- * Công việc under their muted labels ("Khác" is left out). Every row icon takes the row's text colour, a row
+ * name, the hide button), Hôm nay and Tuần without a label, a hairline, then the groups Phát triển, Thư viện, Cơ hội
+ * and Công việc under their muted semibold labels ("Khác", at the bottom in the app, is left out). Every row icon takes the row's text colour, a row
  * with a count ends in it in muted digits, and Hôm nay, the page the main pane shows, is the darker grey current row.
  * Counts are example numbers; Tuần's 2 are the two open objectives of the panel beside it.
  *
@@ -171,6 +171,8 @@ const SIDE = {
   rowGap: 2,
   label: 20,
   groupGap: 6,
+  /** Space above and below the hairline after Hôm nay and Tuần; the label under it drops its groupGap */
+  tierGap: 4,
   /** Room kept between the last whole row and the crop */
   clear: 8,
 };
@@ -182,7 +184,7 @@ const sideHeight = (groups: SideGroup[]) =>
   groups.reduce(
     (h, g) =>
       h + (g.label ? SIDE.groupGap + SIDE.label : 0) + g.rows.length * SIDE.row + (g.rows.length - 1) * SIDE.rowGap,
-    0,
+    groups.length > 1 ? 2 * SIDE.tierGap + 1 - SIDE.groupGap : 0,
   );
 
 /**
@@ -211,7 +213,9 @@ function ShellSidebar({ room }: { room: number }) {
     '--hs-row-gap': `${SIDE.rowGap}px`,
     '--hs-label': `${SIDE.label}px`,
     '--hs-group-gap': `${SIDE.groupGap}px`,
+    '--hs-tier-gap': `${SIDE.tierGap}px`,
   } as CSSProperties;
+  const groups = fitSide(room);
   return (
     <nav className="hs-side" style={vars}>
       <span className="hs-brand">
@@ -221,8 +225,9 @@ function ShellSidebar({ room }: { room: number }) {
         <span className="hs-brand__name">Alex&apos;s Brain</span>
         <PanelLeftClose size={14} strokeWidth={2} aria-hidden className="hs-brand__hide" />
       </span>
-      {fitSide(room).map((group) => (
+      {groups.map((group, i) => (
         <span key={group.rows[0].title} className="hs-group">
+          {i === 1 && <span className="hs-tier" aria-hidden />}
           {group.label && <span className="hs-label">{group.label}</span>}
           <span className="hs-rows">
             {group.rows.map(({ title, icon: Icon, count }) => (

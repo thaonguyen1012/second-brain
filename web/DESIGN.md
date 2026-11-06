@@ -53,7 +53,7 @@ Numbers that line up or change in place get `tabular-nums`. Dates are `formatDat
   the next record.
 - **Insets:** words keep 12px from any container edge (`px-3`), 16px in cards and dialogs. Edges either align
   exactly or sit 8px+ apart; 1-3px near-misses are bugs. A button keeps 8px+ from the field above it.
-- **Row heights:** 32px menu/sidebar row (`h-8`; a sidebar group label too);
+- **Row heights:** 32px menu/sidebar row (`h-8`; a sidebar group label is 28px, `h-7`, so it sits close to its rows);
   40px one-line list row (`h-10 px-3`); 56px two-line row (title + meta). Touch targets reach 44px via the
   components' own `pointer-coarse` rules; never shrink below them.
 - **Columns:** rows of one list share one grid template with fixed tracks (status, title flexible, meta, actions);
@@ -233,17 +233,20 @@ so the near pairs that remain are listed under the palette, not hidden.
   legend lives behind one "Phím tắt" control, not as a bar of 10 keys.
 - **States:** `LoadingCards`/`Skeleton` at the real row or card geometry; `ApiErrorState` (with "Thử lại") when
   nothing loaded, `ApiStaleAlert` when old rows stay; `EmptyState` for empty lists.
-- **Sidebar** (`components/app-shell.tsx`, `lib/app-nav.ts`; owner's reference, 04/11/2026): a 64px header (the
-  `Brain` tile, "Alex's Brain" alone, no tagline (owner), a ghost `icon-sm` "Ẩn menu" button; its border continues the
-  top bar's), then the groups of `lib/app-nav.ts`: the first (Hôm nay, Tuần) without a label, then Phát triển, Thư
-  viện, Cơ hội and Công việc as `text-xs` medium muted uppercase labels (`tracking-wide`; owner, 06/11/2026) over
-  their pages, then "Khác" (Giới thiệu, Hướng dẫn). Every row is an icon + title in the text colour in one `<nav
-  aria-label="Menu">`, `aria-current` on the current one (darker grey fill, medium weight). A row may end in its count
-  (`text-xs` muted `tabular-nums`, 99+, nothing for 0; read out after the title as "Tuần, còn 2 mục tiêu") from `GET
-  /api/counts`: the number the page lists with its default filters, except Tuần (open objectives of this week);
-  refreshed on every navigation, on tab focus and after every API write. Giờ ends in the `bw-red` "now" dot while a
-  timer runs. The top bar's menu trigger shows only while the sidebar is hidden (and on phones). Inbox and search stay
-  in the top bar (DECISIONS 9.3).
+- **Sidebar** (`components/app-shell.tsx`, `lib/app-nav.ts`; owner's references, 04/11 and 06/11/2026): a 64px header
+  (the `Brain` tile, "Alex's Brain" alone, no tagline (owner), a ghost `icon-sm` "Ẩn menu" button; its border
+  continues the top bar's), then three tiers parted by hairlines (`TierLine`: a `border-t` in `--sidebar-border`,
+  inset to the icons' edge, so it stays in forced colours): the daily pages (Hôm nay, Tuần) without a label; the areas
+  Phát triển, Thư viện, Cơ hội and Công việc, each under a `text-xs` semibold muted uppercase label (`h-7`,
+  `tracking-wide`) with more space above a label than between rows; and Khác (Giới thiệu, Hướng dẫn) pushed to the
+  bottom (`mt-auto`; on a short screen it scrolls with the rest), muted until hovered or current, without a label (its
+  list is named "Khác"). Every row is an icon + title in the text colour in one `<nav aria-label="Menu">`,
+  `aria-current` on the current one (darker grey fill, medium weight). A row may end in its count (`text-xs` muted
+  `tabular-nums`, 99+, nothing for 0; read out after the title as "Tuần, còn 2 mục tiêu") from `GET /api/counts`: the
+  number the page lists with its default filters, except Tuần (open objectives of this week); refreshed on every
+  navigation, on tab focus and after every API write. Giờ ends in the `bw-red` "now" dot while a timer runs. The top
+  bar's menu trigger shows only while the sidebar is hidden (and on phones). Inbox and search stay in the top bar
+  (DECISIONS 9.3).
 
 ## 7. Density and empty states
 

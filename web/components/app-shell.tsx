@@ -28,6 +28,9 @@ import { InboxButton } from '@/components/brain/inbox-count';
 import { refreshNavCounts, useNavCounts } from '@/components/brain/nav-counts';
 import { LazyTooltip } from '@/components/lazy-tooltip';
 import { appName } from '@/lib/shared';
+import { cn } from '@/lib/utils';
+
+const [daily, ...areas] = appNav;
 
 /**
  * The current row is a darker grey (owner, 06/11/2026, DESIGN.md §4): `--sidebar-current`, one step past the hover
@@ -35,6 +38,11 @@ import { appName } from '@/lib/shared';
  * the pointer. Row icons take the row's text colour.
  */
 const currentRow = 'data-[active=true]:bg-sidebar-current data-[active=true]:hover:bg-sidebar-current';
+
+/** A hairline between the sidebar's tiers, inset to the icons' edge; a border, so it stays in forced colours. */
+function TierLine({ className }: { className?: string }) {
+  return <div aria-hidden className={cn('mx-4 border-t border-sidebar-border', className)} />;
+}
 
 interface RowEnd {
   mark: ReactNode;
@@ -73,14 +81,17 @@ function rowEnd(row: NavRow, counts: ApiCounts | null): RowEnd | null {
   };
 }
 
-/** One sidebar row: icon, title and, for an area row, its count or dot. */
-function Row({ link, active, end }: { link: NavLink; active: boolean; end?: RowEnd | null }) {
+/**
+ * One sidebar row: icon, title and, for an area row, its count or dot. A quiet row (Khác) is muted until it is
+ * hovered or current.
+ */
+function Row({ link, active, end, quiet }: { link: NavLink; active: boolean; end?: RowEnd | null; quiet?: boolean }) {
   const Icon = link.icon;
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         isActive={active}
-        className={currentRow}
+        className={cn(currentRow, quiet && 'text-muted-foreground')}
         render={
           <Link
             href={link.href}
@@ -157,17 +168,31 @@ function AppSidebar() {
         </LazyTooltip>
       </SidebarHeader>
       <SidebarContent className="py-2">
-        <nav aria-label="Menu">
-          {appNav.map((group, i) => (
-            <SidebarGroup key={group.rows[0].href} className="py-1.5">
-              {'label' in group && (
-                <SidebarGroupLabel id={`nav-group-${i}`} className="uppercase tracking-wide text-muted-foreground">
-                  {group.label}
-                </SidebarGroupLabel>
-              )}
+        {/* Three tiers (owner's second reference, 06/11/2026): the daily pages; a hairline; the areas under their
+            labels, more space above a label than between rows; Khác pushed to the bottom (mt-auto; it scrolls with
+            the rest on a short screen) after another hairline, muted and without a label */}
+        <nav aria-label="Menu" className="flex flex-1 flex-col">
+          <SidebarGroup className="py-1.5">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {daily.rows.map((row: NavRow) => (
+                  <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts)} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+          <TierLine className="my-1.5" />
+          {areas.map((group, i) => (
+            <SidebarGroup key={group.label} className="pt-2.5 pb-0">
+              <SidebarGroupLabel
+                id={`nav-group-${i}`}
+                className="h-7 font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                {group.label}
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 {/* The label names its list, so "Item" is heard as part of Thư viện */}
-                <SidebarMenu aria-labelledby={'label' in group ? `nav-group-${i}` : undefined}>
+                <SidebarMenu aria-labelledby={`nav-group-${i}`}>
                   {group.rows.map((row: NavRow) => (
                     <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts)} />
                   ))}
@@ -175,18 +200,18 @@ function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
           ))}
-          <SidebarGroup className="py-1.5">
-            <SidebarGroupLabel id="nav-group-other" className="uppercase tracking-wide text-muted-foreground">
-              {otherNav.label}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu aria-labelledby="nav-group-other">
-                {otherNav.links.map((link) => (
-                  <Row key={link.href} link={link} active={current === link.href} />
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <div className="mt-auto pt-5">
+            <TierLine />
+            <SidebarGroup className="py-1.5">
+              <SidebarGroupContent>
+                <SidebarMenu aria-label={otherNav.label}>
+                  {otherNav.links.map((link) => (
+                    <Row key={link.href} link={link} active={current === link.href} quiet />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </div>
         </nav>
       </SidebarContent>
     </Sidebar>
