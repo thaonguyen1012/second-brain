@@ -82,13 +82,13 @@ so the near pairs that remain are listed under the palette, not hidden.
   Colour sits on small marks only: icons, tiles, dots, bars, status chips, chart marks and the blue primary.
 - **Blue `primary` is for the one primary action** of a view (filled `Button` default; hover and press darken it to
   `--primary-hover`, 10% toward black, so its label keeps >= 6:1) and for links/focus. It is not a selected-tab
-  colour, not a heading colour, not a decoration, never an area or group colour. One exception: every sidebar row
-  icon is `text-primary` (owner, 04/11/2026: "màu icon ở menu nhìn lộn xộn quá", one area hue per icon looked
-  messy; light 4.6:1 on the sidebar, 3.9 on its hover fill, 5.0 on the current row; dark 6.0 or more).
+  colour, not a heading colour, not a decoration, never an area or group colour. Sidebar row icons are not blue
+  either: they take the row's text colour (owner, 06/11/2026, "icon cùng đen với chữ"; one area hue per icon was
+  messy, 04/11, and the one blue that followed was dropped too).
 - **Area colours** (`--area-<key>`; `AreaKey` and `areaIcon` in `lib/app-nav.ts`, the tile tint in
   `components/brain/page-header.tsx`): one per sidebar area. Only on: the page title tile of the area's pages
   (`PageHeader nav`: the icon of the page's own sidebar row on `--area-<key>-soft`) and the icon of a Hôm nay tile,
-  the icon of the row its link opens. Not in the sidebar (its icons are all the primary blue, see above). Never on
+  the icon of the row its link opens. Not in the sidebar (its icons take the text colour, see above). Never on
   text, borders, surfaces, buttons, badges or charts. **Hôm nay has no hue of its own**: it gathers every area, so its icon is the
   neutral ink and its tile the muted fill (the sun's yellow is the `warning` of the Inbox count). Pages outside the
   six areas (Inbox, capture, Giới thiệu, Hướng dẫn, personal page) get no tile; the Inbox's colour stays the `warning` tone
@@ -114,7 +114,7 @@ so the near pairs that remain are listed under the palette, not hidden.
   as the primary blue, `bw-red`, destructive red or a status colour.
 - **Palette** (WCAG contrast of the mark on each ground; `-soft` = `color-mix(in oklab, hue 14%, card)` light, 22%
   dark). Light: white = the page and every surface; sidebar = `neutral-100`; hover = the sidebar hover fill
-  (`zinc-200`). Dark: card = surfaces; page = the page and the sidebar (`zinc-950`); hover = `zinc-800`. The sidebar
+  (`zinc-200` until 06/11/2026; now a lighter `neutral-200`/`neutral-100` mix, so these are lower bounds). Dark: card = surfaces; page = the page and the sidebar (`zinc-950`); hover = `zinc-800`. The sidebar
   and hover columns are kept from when the sidebar icons wore these hues (until 04/11/2026), should a mark go back
   there. Light marks are >= 3:1 everywhere, dark >= 4:1.
 
@@ -146,18 +146,21 @@ so the near pairs that remain are listed under the palette, not hidden.
 - **AI output shows what the AI did, not that it is AI.** Suggested tags/destination render as normal
   `outline` badges followed by a small `text-xs text-muted-foreground` label "tự động" (or a "Gợi ý tự động:"
   prefix); an accepted suggestion loses the label. No sparkle, wand, bot or star icon, no purple, no shimmer.
-- **Surfaces and contrast** (owner, 04/11/2026, from their reference sidebar: "Sidebar xám, dòng chọn trắng" and
-  "đổi nền trang sang trắng"; this replaces the grey page of 03/11/2026):
+- **Surfaces and contrast** (owner, 04/11/2026, from their reference sidebar: "đổi nền trang sang trắng"; this
+  replaces the grey page of 03/11/2026. Current row from a second reference, 06/11/2026: "lúc active tab thì đậm hơn
+  chút ... chứ không active tab màu trắng nữa"):
   - The page (`--background`) is white; every container on it (card, list container, empty state, panel, Hôm nay
     tile) is still a surface: `rounded-xl border bg-card`, white with a visible 1px `--border` (black 12%), so
     the border alone carries its edge. Dialogs, sheets, menus and popovers are `bg-popover` (white) with the same
     border.
   - The sidebar is the grey layer: `--sidebar` = `neutral-100` (no blue or purple tint) with its right border;
-    hover is the darker `--sidebar-accent` fill; the current row is a white chip (`--sidebar-current` = card, a
-    1px ring in `--sidebar-border`, `shadow-depth-1`; `app-shell.tsx`), the reference's "raised" row.
+    hover is a slightly darker fill (`--sidebar-accent`, `neutral-200` 50% over `neutral-100`); the current row is
+    one step darker again (`--sidebar-current` = `neutral-200`, 1.16:1 on the sidebar) in medium weight, no border
+    or shadow (`app-shell.tsx`). Text and icons on it 15.8:1, muted text 6:1. The focus ring is drawn outside
+    the row, on the sidebar (3.3:1).
   - Dark: the page and the sidebar are the darkest layer (`zinc-950`), surfaces are lighter (`--card` 8%,
     `--popover` 10%), borders white 12%. In the sidebar the hover is the faint popover step and the current row
-    the zinc-800 chip, so the current row stays the strongest step. Depth comes from the lighter surface, not
+    the zinc-800 fill, so the current row stays the strongest step. Depth comes from the lighter surface, not
     shadows.
   - Fills (`--muted`, `--accent`, `--secondary`) are darker than the page and the sidebar, so tabs, hovers and
     skeletons still show. Form controls (Input, Textarea, Select, Checkbox, Radio) are painted `bg-popover` like
@@ -168,8 +171,7 @@ so the near pairs that remain are listed under the palette, not hidden.
     and would vanish on an accent-filled card.
   - Stageshow wells (guides, /gioi-thieu/ tiles) keep their `secondary` ground (`--card` in dark) and add the 1px
     `--border`.
-  - Blue stays the accent for the primary action, links and focus (plus the data blue of chart marks and the
-    sidebar row icons); surfaces never get a blue or area tint (the 36px title tile is a mark, not a surface).
+  - Blue stays the accent for the primary action, links and focus (plus the data blue of chart marks); surfaces never get a blue or area tint (the 36px title tile is a mark, not a surface).
   - Focus ring (`--ring`) opaque, >= 3:1 against the page, the sidebar and every surface (WCAG 1.4.11): light
     `#3582ff` is 3.6:1 on white and 3.3:1 on the grey sidebar; dark `#6aa5ff` 7:1 or more. Never lower it with
     `/50` or alpha.
@@ -191,7 +193,7 @@ so the near pairs that remain are listed under the palette, not hidden.
   already size their icons: do not override.
 - **Icons earn their place:** nav items, a verb with a standard glyph (Plus, Trash2, ExternalLink, Pencil), a
   state colour alone cannot carry (spinner, error). **No icon beside headings, card titles or section titles**,
-  except a sidebar row's icon in its area colour (§4; in the sidebar itself the icon is blue): the title tile of an
+  except a sidebar row's icon in its area colour (§4; in the sidebar itself the icon is the text colour): the title tile of an
   area page (`PageHeader nav`, the icon of the page's own row in a 36px `rounded-lg` `-soft` tile on the title's first line, `aria-hidden`; server-rendered,
   except on /co-hoi/ where the client list and detail views render the header) and the heading of a Hôm nay tile,
   which starts with the icon of where its link leads: that row's icon from `lib/app-nav.ts` in its colour, or for the
@@ -235,8 +237,8 @@ so the near pairs that remain are listed under the palette, not hidden.
   `Brain` tile, "Alex's Brain" alone, no tagline (owner), a ghost `icon-sm` "Ẩn menu" button; its border continues
   the top bar's), then the groups of `lib/app-nav.ts`: the first (Hôm nay, Tuần) without a label, then Phát triển,
   Thư viện, Cơ hội and Công việc as `text-xs` medium muted labels over their pages, then "Khác" (Giới thiệu,
-  Hướng dẫn). Every row is a blue icon + title in one `<nav aria-label="Menu">`, `aria-current` on the current
-  one. A row may end in its count (`text-xs` muted `tabular-nums`, 99+, nothing for 0; read out after the
+  Hướng dẫn). Every row is an icon + title in the text colour in one `<nav aria-label="Menu">`, `aria-current`
+  on the current one (darker grey fill, medium weight). A row may end in its count (`text-xs` muted `tabular-nums`, 99+, nothing for 0; read out after the
   title as "Tuần, còn 2 mục tiêu") from `GET /api/counts`: the number the page lists with its default filters,
   except Tuần (open objectives of this week); refreshed on every navigation, on tab focus and after every API
   write. Giờ ends in the `bw-red` "now" dot while a timer runs. The top bar's menu trigger shows only while the
@@ -324,8 +326,8 @@ Colour
 - **D18** AI results carry a plain "tự động" label or prefix; no sparkle, wand, bot or star as an AI marker.
 - **D19** Light and dark both read: muted text legible, no hard-coded white/black surfaces, focus ring visible.
 - **D29** Surfaces and contrast (§4): white page with white bordered surfaces and a grey sidebar whose current row
-  is a white chip (light) / darkest page and sidebar, lighter surfaces (dark); border visible; blue only on the
-  primary action, links, focus, chart marks and the sidebar row icons; focus ring >= 3:1 on page, sidebar and surfaces; no container left
+  is a darker grey (light) / darkest page and sidebar, lighter surfaces (dark); border visible; blue only on the
+  primary action, links, focus and chart marks; focus ring >= 3:1 on page, sidebar and surfaces; no container left
   transparent on the page.
 
 Icons

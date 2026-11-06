@@ -14,7 +14,7 @@
    default; dark follows Space UI.
    Surfaces (owner, 04/11/2026, DESIGN.md D29; replaces the grey page of 03/11): the page (--background) is white,
    cards and popovers are white with a visible 1px border, the sidebar is the light neutral grey (neutral-100) and its
-   current row a white chip; in dark the page and the sidebar are the darkest layer and surfaces are lighter. Fills
+   current row a darker grey (neutral-200, owner 06/11); in dark the page and the sidebar are the darkest layer and surfaces are lighter. Fills
    (--muted/--accent/--secondary) are darker than the page and the sidebar so tabs and hovers still show. The focus
    ring is opaque: light #3582ff is 3.6:1 on white and 3.3:1 on the sidebar (60% was 2.1:1); dark #6aa5ff is 7.0:1 or
    more.
@@ -58,8 +58,8 @@
   --chart-objective: var(--chart-data);
   --chart-other: var(--color-zinc-400);
   /* Area colours (owner, 03/11/2026; DESIGN.md §4): one hue per sidebar area, only on its page title tile and a Hôm
-     nay tile heading (the sidebar's own icons are the primary blue since 04/11/2026). Hôm nay gathers every area, so it keeps the neutral ink on the muted fill. No
-     blue, red, yellow or purple, and none of the status or data hues. Each is >= 3:1 on white (the page, a card) and
+     nay tile heading (the sidebar's own icons take the row's text colour since 06/11/2026). Hôm nay gathers every
+     area, so it keeps the neutral ink on the muted fill. No blue, red, yellow or purple, and none of the status or data hues. Each is >= 3:1 on white (the page, a card) and
      its own -soft tile (14% of the hue over the card), and on the grey sidebar and its hover fill too. */
   --area-today: var(--foreground);
   --area-week: #c85088;
@@ -74,12 +74,12 @@
   --area-opportunity-soft: color-mix(in oklab, var(--area-opportunity) 14%, var(--card));
   --area-work-soft: color-mix(in oklab, var(--area-work) 14%, var(--card));
   --sidebar: var(--color-neutral-100);
-  /* The current sidebar row: a raised chip above the sidebar and its hover fill (app-shell.tsx) */
-  --sidebar-current: var(--card);
+  /* The current sidebar row (app-shell.tsx): a darker grey than the sidebar, one step past its hover fill */
+  --sidebar-current: var(--color-neutral-200);
   --sidebar-foreground: var(--color-zinc-950);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--color-white);
-  --sidebar-accent: var(--color-zinc-200);
+  --sidebar-accent: color-mix(in oklab, var(--color-neutral-200) 50%, var(--color-neutral-100));
   --sidebar-accent-foreground: var(--color-zinc-950);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
@@ -140,8 +140,8 @@
   --area-library-soft: color-mix(in oklab, var(--area-library) 22%, var(--card));
   --area-opportunity-soft: color-mix(in oklab, var(--area-opportunity) 22%, var(--card));
   --area-work-soft: color-mix(in oklab, var(--area-work) 22%, var(--card));
-  /* The sidebar is the page's layer. Its hover is the faint popover step and the current row the zinc-800 chip, so
-     the current row stays the strongest step (in light the chip is white and the hover darker grey). */
+  /* The sidebar is the page's layer. Its hover is the faint popover step and the current row the zinc-800 fill, so
+     the current row stays the strongest step (as in light, where both are greys darker than the sidebar). */
   --sidebar: var(--background);
   --sidebar-current: var(--color-zinc-800);
   --sidebar-foreground: var(--color-zinc-50);

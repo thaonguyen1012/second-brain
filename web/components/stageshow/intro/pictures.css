@@ -184,10 +184,9 @@
   white-space: nowrap;
 }
 
+/* The app's sidebar icons take the row's text colour (app-shell.tsx) */
 .ssg-intro .hs-nav svg {
   flex: none;
-  /* The app's sidebar icons are all the primary blue (app-shell.tsx) */
-  color: var(--ss-accent);
 }
 
 .ssg-intro .hs-nav__title {
@@ -207,11 +206,8 @@
 }
 
 .ssg-intro .hs-nav[data-active] {
-  /* The app's current row: a white chip with a 1px border and the depth-1 shadow (app-shell.tsx) */
-  background: var(--ss-surface);
-  box-shadow:
-    0 0 0 1px var(--sidebar-border),
-    var(--shadow-depth-1);
+  /* The app's current row: a darker grey than the sidebar, medium weight (app-shell.tsx) */
+  background: var(--sidebar-current);
   font-weight: 500;
 }
 

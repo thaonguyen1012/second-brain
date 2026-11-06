@@ -180,9 +180,9 @@ export function navRow(href: string): NavRow | undefined {
 }
 
 /**
- * Area colour on an icon: the page title tile and a Hôm nay tile linking to the area (the sidebar's row icons are
- * all the primary blue, owner 04/11/2026). In forced colours the icon follows its row again (an svg keeps an explicit colour there). Class names are
- * written out in full: Tailwind only generates classes it finds in the source.
+ * Area colour on an icon: the page title tile and a Hôm nay tile linking to the area (the sidebar's row icons
+ * take the row's text colour, owner 06/11/2026). In forced colours the icon follows its row again (an svg keeps an
+ * explicit colour there). Class names are written out in full: Tailwind only generates classes it finds in the source.
  */
 export const areaIcon: Record<AreaKey, string> = {
   today: 'text-area-today forced-colors:text-inherit',

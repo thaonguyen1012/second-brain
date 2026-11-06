@@ -30,18 +30,11 @@ import { LazyTooltip } from '@/components/lazy-tooltip';
 import { appName } from '@/lib/shared';
 
 /**
- * The current row is a raised chip (owner, 04/11/2026, DESIGN.md §4): `--sidebar-current` (white on the grey
- * sidebar, the zinc-800 step in dark, above the hover fill), a 1px border drawn as a ring (no layout shift) and the
- * depth-1 shadow; it keeps its colour under the pointer, and the focus ring keeps its blue over the border ring.
+ * The current row is a darker grey (owner, 06/11/2026, DESIGN.md §4): `--sidebar-current`, one step past the hover
+ * fill (the zinc-800 step in dark), with the medium weight of the button's own active style; it keeps its fill under
+ * the pointer. Row icons take the row's text colour.
  */
-const currentRow =
-  'data-[active=true]:bg-sidebar-current data-[active=true]:shadow-depth-1 data-[active=true]:ring-1 data-[active=true]:ring-sidebar-border data-[active=true]:hover:bg-sidebar-current data-[active=true]:focus-visible:ring-2 data-[active=true]:focus-visible:ring-sidebar-ring';
-
-/**
- * Every row icon is the one primary blue (owner, 04/11/2026: an area colour per icon looked messy; DESIGN.md §4).
- * In forced colours the icon follows its row again (an svg keeps an explicit colour there).
- */
-const rowIcon = 'text-primary forced-colors:text-inherit';
+const currentRow = 'data-[active=true]:bg-sidebar-current data-[active=true]:hover:bg-sidebar-current';
 
 interface RowEnd {
   mark: ReactNode;
@@ -96,7 +89,7 @@ function Row({ link, active, end }: { link: NavLink; active: boolean; end?: RowE
           />
         }
       >
-        <Icon aria-hidden className={rowIcon} />
+        <Icon aria-hidden />
         <span className="truncate">{link.title}</span>
         {end?.mark}
       </SidebarMenuButton>

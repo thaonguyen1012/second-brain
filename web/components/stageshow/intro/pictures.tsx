@@ -114,8 +114,8 @@ function Picture<S extends object>({
 /*
  * The app sidebar (lib/app-nav.ts, components/app-shell.tsx) at the picture's scale: the header (Brain tile, the
  * name, the hide button), Hôm nay and Tuần without a label, then the groups Phát triển, Thư viện, Cơ hội and
- * Công việc under their muted labels ("Khác" is left out). Every row icon is the one primary blue, a row with a
- * count ends in it in muted digits, and Hôm nay, the page the main pane shows, is the white current-row chip.
+ * Công việc under their muted labels ("Khác" is left out). Every row icon takes the row's text colour, a row
+ * with a count ends in it in muted digits, and Hôm nay, the page the main pane shows, is the darker grey current row.
  * Counts are example numbers; Tuần's 2 are the two open objectives of the panel beside it.
  *
  * The window runs off the bottom of the slot but no row may be cut by it: every group keeps its first row (the
