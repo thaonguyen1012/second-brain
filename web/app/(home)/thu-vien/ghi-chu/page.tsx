@@ -13,14 +13,14 @@ export default function Page() {
       <PageHeader
         title="Thư viện"
         nav="/thu-vien/ghi-chu/"
-        description="Ghi chú markdown gắn với item. Item xong chỉ tính khi đã có ghi chú."
+        description="Ghi chú markdown; item xong cần có ghi chú."
       >
         <LibraryTabs current="notes" />
       </PageHeader>
       {/* useSearchParams (?item=) needs a Suspense boundary for the static shell */}
       <Suspense
         fallback={
-          <div className="px-4 sm:px-8">
+          <div className="w-full max-w-7xl px-4 sm:px-8">
             <RowsSkeleton />
           </div>
         }

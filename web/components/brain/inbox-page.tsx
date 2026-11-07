@@ -22,11 +22,11 @@ import { Kbd } from '@/components/ui/kbd';
 import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { EmptyStateGuide } from '@/components/stageshow/lazy';
-import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError } from './api-state';
+import { ApiErrorState, ApiStaleAlert, LoadingCards, describeApiError } from './api-state';
 import { BrainCard } from './brain-card';
 import { ConfirmDelete } from './confirm-delete';
-import { refreshInboxCount } from './inbox-count';
+import { EmptyPanel } from './empty-panel';
+import { refreshInboxCount, useInboxCount } from './inbox-count';
 import { ItemDialog } from './item-dialog';
 import { KeyLegend } from './key-legend';
 import { NoteDialog, type NoteDraft } from './library/note-dialog';
@@ -131,7 +131,14 @@ function CaptureBox({
             {error}
           </span>
         )}
-        <Button type="submit" size="sm" className="ms-auto max-sm:w-full" disabled={busy || !value.trim()}>
+        {/* Outline while there is nothing to save, so a disabled filled button never reads as broken (D2 holds) */}
+        <Button
+          type="submit"
+          size="sm"
+          variant={value.trim() ? 'default' : 'outline'}
+          className="ms-auto max-sm:w-full"
+          disabled={busy || !value.trim()}
+        >
           {busy && <Loader2 className="animate-spin" aria-hidden />}
           Lưu vào inbox
         </Button>
@@ -331,6 +338,21 @@ export function InboxPage() {
   const captureRef = useRef<HTMLTextAreaElement>(null);
   const inbox = useApi<Page<ApiInboxEntry>>(`inbox:${status}`, () => api.listInbox({ status, limit: PAGE }));
   const shown = inbox.loading ? [] : (inbox.data?.results ?? []);
+  const inboxCount = useInboxCount();
+
+  // An empty Inbox tab is either the first run (nothing ever captured: the empty panel) or cleared (one line,
+  // DESIGN.md §9a). Two COUNTs tell them apart, asked only while the tab is empty; an entry handled on this visit
+  // already means cleared.
+  const [handled, setHandled] = useState(false);
+  const inboxEmpty = status === 'inbox' && !inbox.loading && !!inbox.data && !inbox.error && shown.length === 0;
+  const elsewhere = useApi(inboxEmpty && !handled ? 'inbox:elsewhere' : null, async () => {
+    const [later, archived] = await Promise.all([
+      api.countInbox({ status: 'later' }),
+      api.countInbox({ status: 'archived' }),
+    ]);
+    return later.count + archived.count;
+  });
+  const firstRun = inboxEmpty && !handled && elsewhere.data === 0 && !elsewhere.loading;
 
   // ?status=S&id=N (Cmd+K result): switch to that tab, then select the entry once the tab's list has loaded.
   // Cmd+K finds old archived entries too, so the list pages forward ("Tải thêm") until the entry shows up.
@@ -417,6 +439,7 @@ export function InboxPage() {
     async (entry: ApiInboxEntry, next: ApiInboxStatus) => {
       if (entry.status === next) return;
       remove(entry.id);
+      setHandled(true);
       try {
         await api.triageInboxEntry(entry.id, { status: next });
         setNotice(`"${titleOf(entry)}" → ${inboxStatusOf(next).label}`);
@@ -433,6 +456,7 @@ export function InboxPage() {
     async (entry: ApiInboxEntry, opp: ApiOpportunity, stance: ApiStance) => {
       setPickFor(null);
       remove(entry.id);
+      setHandled(true);
       try {
         const res = await api.attachInboxEvidence(opp.id, { inboxEntry: entry.id, stance, archive: true });
         setNotice(`${res.created ? 'Đã thêm' : 'Đã có sẵn'} làm bằng chứng cho "${opp.title}", mục đã lưu trữ`);
@@ -493,7 +517,7 @@ export function InboxPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
+    <div className="flex min-w-0 flex-col gap-6">
       <CaptureBox
         inputRef={captureRef}
         onCaptured={(e) => {
@@ -515,13 +539,20 @@ export function InboxPage() {
             {inboxStatuses.map((s) => (
               <TabsTab key={s.value} value={s.value}>
                 {s.label}
+                {/* The backlog as plain muted text, like the Thư viện tabs (the top bar's badge says the same) */}
+                {s.value === 'inbox' && inboxCount !== null && (
+                  <span className="ms-1.5 text-xs font-normal text-muted-foreground tabular-nums">{inboxCount}</span>
+                )}
               </TabsTab>
             ))}
           </TabsList>
         </Tabs>
-        <div className="ms-auto">
-          <KeyLegend keys={keyHelp} title="Phím tắt của Inbox" />
-        </div>
+        {/* First run: no entry for a key to act on yet */}
+        {!firstRun && (
+          <div className="ms-auto">
+            <KeyLegend keys={keyHelp} title="Phím tắt của Inbox" />
+          </div>
+        )}
       </div>
 
       {notice && (
@@ -535,15 +566,22 @@ export function InboxPage() {
         <ApiErrorState error={inbox.error} onRetry={inbox.reload} />
       ) : inbox.loading && shown.length === 0 ? (
         <LoadingCards />
+      ) : firstRun ? (
+        <EmptyPanel
+          area="neutral"
+          glyph={Inbox}
+          title="Inbox trống"
+          text="Dán một link hoặc ghi một ý tưởng vào ô ở trên; mỗi mục sẽ hiện ở đây thành một thẻ để xử lý bằng phím."
+        />
       ) : shown.length === 0 ? (
-        <>
-          <EmptyState
-            icon={<Inbox aria-hidden />}
-            title={status === 'inbox' ? 'Inbox đã về 0' : `Không có mục nào ở "${inboxStatusOf(status).label}"`}
-            description={status === 'inbox' ? 'Mọi thứ đã được xử lý. Dán link mới vào ô thu thập ở trên.' : undefined}
-          />
-          {status === 'inbox' && inbox.data && !inbox.error && <EmptyStateGuide guide="inbox" />}
-        </>
+        // Cleared, or a tab with nothing in it: one line, no action (DESIGN.md §9a). Blank while the counts answer.
+        status !== 'inbox' ? (
+          <p className="text-sm text-muted-foreground">Không có mục nào ở &ldquo;{inboxStatusOf(status).label}&rdquo;.</p>
+        ) : handled || (elsewhere.data !== undefined && !elsewhere.loading) || elsewhere.error ? (
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Đã xử lý hết.</span> Mục mới sẽ hiện ở đây.
+          </p>
+        ) : null
       ) : (
         <div className="flex flex-col gap-3">
           {shown.map((e, i) => (
@@ -581,6 +619,7 @@ export function InboxPage() {
         onDeleted={() => {
           if (!deleteFor) return;
           remove(deleteFor.id);
+          setHandled(true);
           setNotice(`Đã xóa "${titleOf(deleteFor)}"`);
           void refreshInboxCount();
         }}

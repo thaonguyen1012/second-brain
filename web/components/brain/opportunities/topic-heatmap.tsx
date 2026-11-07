@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiErrorState, ApiStaleAlert } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
+import { PAGE_WIDTH } from '../layout';
 import { formatDay } from './labels';
 
 // Topic tags of the morning-brief news per ISO week (DECISIONS 9.2: replaces Exploding Topics).
@@ -194,6 +195,46 @@ function Heatmap({ m }: { m: Matrix }) {
   );
 }
 
+/** Widths of the empty frame's topic-label bars, fixed so they never read as data. */
+const ghostLabel = ['w-14', 'w-10', 'w-12', 'w-8'] as const;
+
+/**
+ * No tagged news yet: the heatmap's own frame at its real geometry (the range's last 8 week columns, so a 12 or 26
+ * week range still fits 390 px without scrolling; four muted rows), with the message over it (DESIGN.md §9a: show
+ * what the block will become). Cells stay neutral; the data blue arrives only with data.
+ */
+function EmptyHeatmap({ weeks: range }: { weeks: Matrix['weeks'] }) {
+  const weeks = range.slice(-8);
+  const cols = { gridTemplateColumns: `minmax(4.5rem, max-content) repeat(${weeks.length}, minmax(1.75rem, 1fr))` };
+  return (
+    // Below sm the message sits above the frame; from sm it lies over the cells
+    <div className="relative flex flex-col gap-3 overflow-hidden rounded-xl border bg-card p-4">
+      <div aria-hidden className="grid gap-0.5" style={cols}>
+        <span />
+        {weeks.map((w) => (
+          <span key={w.week} className="pb-1 text-center text-[11px] text-muted-foreground tabular-nums">
+            {shortWeek(w.week)}
+          </span>
+        ))}
+        {ghostLabel.map((width) => (
+          <div key={width} className="contents">
+            <span className="flex h-6 items-center pe-3">
+              <span className={cn('h-2 rounded-sm bg-muted', width)} />
+            </span>
+            {weeks.map((w) => (
+              <span key={w.week} className="h-6 rounded-sm bg-muted" />
+            ))}
+          </div>
+        ))}
+      </div>
+      <p className="text-sm text-pretty text-muted-foreground max-sm:order-first sm:absolute sm:inset-x-4 sm:top-1/2 sm:mx-auto sm:w-fit sm:max-w-[calc(100%-2rem)] sm:-translate-y-1/2 sm:rounded-lg sm:bg-card/90 sm:px-3 sm:py-2 sm:text-center">
+        <span className="font-medium text-foreground">Chưa có tin nào được gắn tag.</span> Bản tin sáng gắn tag chủ đề
+        mỗi ngày; số đếm sẽ hiện ở đây.
+      </p>
+    </div>
+  );
+}
+
 /** "Chủ đề trong bản tin": GET /api/news/topics, with its own range filter. */
 export function TopicHeatmap() {
   const [weeks, setWeeks] = useState<WeeksValue>('8');
@@ -204,7 +245,7 @@ export function TopicHeatmap() {
   const nothing = !!m && m.rows.length === 0 && weeks === '8';
 
   return (
-    <section className="flex flex-col gap-4" aria-labelledby="topics-heading">
+    <section className={cn(PAGE_WIDTH, 'flex flex-col gap-4')} aria-labelledby="topics-heading">
       <div className="flex flex-wrap items-center gap-2">
         <div className="me-auto flex flex-col gap-1">
           <h2 id="topics-heading" className="font-heading text-lg font-semibold tracking-tight">
@@ -232,11 +273,7 @@ export function TopicHeatmap() {
       ) : !m ? (
         <Skeleton className="h-48 rounded-xl" aria-busy="true" aria-label="Đang tải" />
       ) : m.rows.length === 0 ? (
-        // A secondary block of the page: one line, not a second empty box (DESIGN.md D26)
-        <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Chưa có tin nào được gắn tag.</span> Bản tin sáng gắn tag chủ đề
-          mỗi ngày; số đếm sẽ hiện ở đây.
-        </p>
+        <EmptyHeatmap weeks={m.weeks} />
       ) : (
         <div
           className={cn(

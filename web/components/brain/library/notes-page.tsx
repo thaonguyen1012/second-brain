@@ -9,6 +9,7 @@ import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
@@ -22,16 +23,25 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
-import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { ConfirmDelete, DeleteButton } from '../confirm-delete';
+import { EmptyPanel } from '../empty-panel';
 import { KeyLegend } from '../key-legend';
+import { PAGE_WIDTH } from '../layout';
+import { useNavCounts } from '../nav-counts';
 import { RowMenu } from '../row-menu';
-import { NoteDialog } from './note-dialog';
+import { NoteDialog, type NoteDraft } from './note-dialog';
 import type { ItemLabel } from './item-picker';
 import { FilteredEmpty, RowsSkeleton, onRowClick } from './list-rows';
 import { useItemIndex } from './use-item-index';
 
 const PAGE = 50;
+
+/** Starting text of the empty page's two template buttons (the outputs DECISIONS 4.2 asks of a book and a film). */
+const templates = [
+  { label: 'Ghi chú sách', markdown: '## Highlights\n\n- \n\n## 3 ý chính\n\n1. \n2. \n3. \n' },
+  { label: 'Nhận xét phim', markdown: '## Một câu nhận xét\n\n' },
+] as const;
 
 function isTyping(el: EventTarget | null): boolean {
   const t = el as HTMLElement | null;
@@ -161,6 +171,8 @@ export function NotesPage() {
   const [cursor, setCursor] = useState(0);
   const [editing, setEditing] = useState<ApiNote | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  // A new note's starting markdown (the empty page's templates); null = blank
+  const [template, setTemplate] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ApiNote | null>(null);
   // The note read in the Sheet; kept while the Sheet animates out
   const [reading, setReading] = useState<ApiNote | null>(null);
@@ -193,8 +205,9 @@ export function NotesPage() {
   );
   const filterItem = itemFilter ? itemTitle(itemFilter) : null;
 
-  const openEditor = useCallback((note: ApiNote | null) => {
+  const openEditor = useCallback((note: ApiNote | null, markdown: string | null = null) => {
     setEditing(note);
+    setTemplate(markdown);
     setDialogOpen(true);
   }, []);
   /** Reading one note beside the list (DESIGN.md §6 Overlays: Sheet). */
@@ -278,91 +291,92 @@ export function NotesPage() {
     : index.loading && index.items.length === 0
       ? 'Đang tải danh sách item…'
       : undefined;
-  const filtered = !!q || !!itemFilter;
+  // The raw query counts too, so the search field never vanishes while its debounce runs
+  const filtered = !!q || !!query.trim() || !!itemFilter;
   const failed = !!notes.error && !notes.data;
   const firstLoad = notes.loading && shown.length === 0;
-  // No notes at all: the empty state's button is the one primary, the toolbar's drops to outline (DESIGN.md §7, D2)
-  const emptyNotes = !failed && !firstLoad && shown.length === 0 && !filtered;
+  // The toolbar waits for a first note, a query or an Item filter (DESIGN.md §9a): with no notes the empty panel's
+  // "Viết ghi chú" is the one primary (D2). While the list loads it stays unless the sidebar count already says 0, so
+  // the notes never jump down when they arrive (first load, reload on tab focus).
+  const counts = useNavCounts();
+  const showToolbar = shown.length > 0 || filtered || (notes.loading && counts?.notes !== 0);
   const clearFilters = () => {
     setQuery('');
     setCursor(0);
     router.replace(pathname);
   };
+  const newDraft: NoteDraft = { items: itemFilter ? [itemFilter] : [], ...(template && { markdown: template }) };
 
   return (
-    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
+    <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
       {/* One toolbar row: search left, "Ghi chú mới" keeps the end of row 1 at 390 px (icon only there) */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-0 flex-1 sm:w-80 sm:flex-none">
-          <Search
-            className="pointer-events-none absolute start-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <Input
-            ref={searchRef}
-            data-local-search
-            type="search"
-            aria-label="Tìm trong ghi chú"
-            placeholder="Tìm trong tiêu đề và nội dung…"
-            className="[&_input]:ps-8"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setCursor(0);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                if (query) setQuery('');
-                else e.currentTarget.blur();
-              }
-            }}
-          />
-        </div>
-        {filterItem && (
-          <div className="flex min-w-0 max-sm:order-last max-sm:basis-full">
+      {showToolbar && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-0 flex-1 sm:w-80 sm:flex-none">
+            <Search
+              className="pointer-events-none absolute start-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              ref={searchRef}
+              data-local-search
+              type="search"
+              aria-label="Tìm trong ghi chú"
+              placeholder="Tìm trong tiêu đề và nội dung…"
+              className="[&_input]:ps-8"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setCursor(0);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  if (query) setQuery('');
+                  else e.currentTarget.blur();
+                }
+              }}
+            />
+          </div>
+          {filterItem && (
+            <div className="flex min-w-0 max-sm:order-last max-sm:basis-full">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-w-0"
+                      aria-label={`Item: ${filterItem.title}, bỏ lọc`}
+                      onClick={() => router.replace(pathname)}
+                    />
+                  }
+                >
+                  Item: <span className="max-w-60 truncate">{filterItem.title}</span>
+                  <X aria-hidden />
+                </TooltipTrigger>
+                <TooltipPopup>Bỏ lọc theo item</TooltipPopup>
+              </Tooltip>
+            </div>
+          )}
+          <div className="ms-auto flex items-center gap-2">
+            {shown.length > 0 && <KeyLegend keys={keyHelp} title="Phím tắt của Ghi chú" />}
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="min-w-0"
-                    aria-label={`Item: ${filterItem.title}, bỏ lọc`}
-                    onClick={() => router.replace(pathname)}
-                  />
+                  <Button size="icon" className="sm:hidden" aria-label="Ghi chú mới" onClick={() => openEditor(null)} />
                 }
               >
-                Item: <span className="max-w-60 truncate">{filterItem.title}</span>
-                <X aria-hidden />
+                <Plus aria-hidden />
               </TooltipTrigger>
-              <TooltipPopup>Bỏ lọc theo item</TooltipPopup>
+              <TooltipPopup>Ghi chú mới</TooltipPopup>
             </Tooltip>
-          </div>
-        )}
-        <div className="ms-auto flex items-center gap-2">
-          {shown.length > 0 && <KeyLegend keys={keyHelp} title="Phím tắt của Ghi chú" />}
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  size="icon"
-                  variant={emptyNotes ? 'outline' : 'default'}
-                  className="sm:hidden"
-                  aria-label="Ghi chú mới"
-                  onClick={() => openEditor(null)}
-                />
-              }
-            >
+            <Button className="max-sm:hidden" onClick={() => openEditor(null)}>
               <Plus aria-hidden />
-            </TooltipTrigger>
-            <TooltipPopup>Ghi chú mới</TooltipPopup>
-          </Tooltip>
-          <Button variant={emptyNotes ? 'outline' : 'default'} className="max-sm:hidden" onClick={() => openEditor(null)}>
-            <Plus aria-hidden />
-            Ghi chú mới
-          </Button>
+              Ghi chú mới
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {notice && (
         <p className="text-sm text-muted-foreground" role="status">
@@ -378,16 +392,24 @@ export function NotesPage() {
       ) : shown.length === 0 && filtered ? (
         <FilteredEmpty onClear={clearFilters}>Không có ghi chú nào khớp bộ lọc.</FilteredEmpty>
       ) : shown.length === 0 ? (
-        <EmptyState
-          icon={<NotebookPen aria-hidden />}
+        <EmptyPanel
+          area="library"
+          glyph={NotebookPen}
           title="Chưa có ghi chú nào"
-          description="Sách xong cần highlights và 3 ý chính, phim xong cần một câu nhận xét: ghi ở đây và liên kết tới item."
-        >
-          <Button onClick={() => openEditor(null)}>
-            <Plus aria-hidden />
-            Viết ghi chú đầu tiên
-          </Button>
-        </EmptyState>
+          text="Ghi lại điều đáng nhớ và gắn vào item."
+          action={
+            <Button onClick={() => openEditor(null)}>
+              <Plus aria-hidden />
+              Viết ghi chú
+            </Button>
+          }
+          quick={templates.map((t) => (
+            <Button key={t.label} variant="outline" size="sm" onClick={() => openEditor(null, t.markdown)}>
+              {t.label}
+            </Button>
+          ))}
+          guide={notes.error ? undefined : 'library'}
+        />
       ) : (
         <ul aria-label="Ghi chú" className="divide-y overflow-hidden rounded-xl border bg-card">
           {shown.map((n, i) => (
@@ -471,7 +493,7 @@ export function NotesPage() {
       <NoteDialog
         open={dialogOpen}
         note={editing}
-        draft={editing ? undefined : { items: itemFilter ? [itemFilter] : [] }}
+        draft={editing ? undefined : newDraft}
         items={index.items}
         byId={labels}
         itemsStatus={itemsStatus}

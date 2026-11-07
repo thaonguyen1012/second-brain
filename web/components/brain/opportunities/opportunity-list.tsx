@@ -10,12 +10,14 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { MenuItem } from '@/components/ui/menu';
-import { EmptyStateGuide } from '@/components/stageshow/lazy';
-import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
+import { EmptyPanel } from '../empty-panel';
+import { PAGE_WIDTH } from '../layout';
+import { useNavCounts } from '../nav-counts';
 import { RowMenu } from '../row-menu';
-import { DecideByCell, RowsSkeleton, ScoresCell, Tip } from './bits';
+import { DecideByCell, RowsSkeleton, ScoresCell } from './bits';
 import { STALE_LABEL, decisionOf, decisions, formatDay, scoreDims } from './labels';
 import { OpportunityFormDialog } from './opportunity-form-dialog';
 import { useShortcuts } from './use-shortcuts';
@@ -154,57 +156,41 @@ export function OpportunityList() {
     setDecision('all');
     setStale('all');
   };
-  // Unfiltered and empty: the empty state's button is the one primary, the toolbar's drops to outline (D2).
-  const emptyUnfiltered = !filtered && !opps.loading && !!opps.data && !opps.error && list.length === 0;
-  const newVariant = emptyUnfiltered ? 'outline' : 'default';
+  // The toolbar waits for a first opportunity or a filter (DESIGN.md §9a): an empty list shows only the empty panel,
+  // whose "Cơ hội mới" is the one primary (D2); N still opens the form. While the list loads it stays unless the
+  // sidebar count already says 0, so the rows never jump down when they arrive (first load, reload on tab focus).
+  const counts = useNavCounts();
+  const showToolbar = list.length > 0 || filtered || (opps.loading && counts?.opportunities !== 0);
+  const newButton = (className?: string) => (
+    <Button className={className} onClick={openNew} aria-keyshortcuts="n">
+      <Plus aria-hidden />
+      Cơ hội mới
+      <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
+    </Button>
+  );
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-2">
-        <ChoiceSelect
-          label="Quyết định"
-          value={decision}
-          onChange={setDecision}
-          choices={decisionChoices}
-          className="min-w-0 flex-1 max-sm:text-sm sm:w-auto sm:flex-none"
-        />
-        <ChoiceSelect
-          label="Bằng chứng"
-          value={stale}
-          onChange={setStale}
-          choices={staleChoices}
-          className="min-w-0 flex-1 max-sm:text-sm sm:w-auto sm:flex-none"
-        />
-        {/* 390 px: icon-only so the primary keeps the end of the one toolbar row (D11) */}
-        <Tip
-          trigger={
-            <Button
-              size="icon"
-              variant={newVariant}
-              className="ms-auto shrink-0 sm:hidden"
-              onClick={openNew}
-              aria-label="Cơ hội mới"
-              aria-keyshortcuts="n"
-            >
-              <Plus aria-hidden />
-            </Button>
-          }
-        >
-          Cơ hội mới
-        </Tip>
-        <Button variant={newVariant} className="ms-auto max-sm:hidden" onClick={openNew} aria-keyshortcuts="n">
-          <Plus aria-hidden />
-          Cơ hội mới
-          <Kbd
-            className={cn(
-              'ms-1 pointer-coarse:hidden max-sm:hidden',
-              newVariant === 'default' && 'bg-primary-foreground/20 text-primary-foreground',
-            )}
-          >
-            N
-          </Kbd>
-        </Button>
-      </div>
+    <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6')}>
+      {/* 390 px: the two filters share row 1, "Cơ hội mới" takes row 2 at full width, as on Thư viện (D11) */}
+      {showToolbar && (
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          <ChoiceSelect
+            label="Quyết định"
+            value={decision}
+            onChange={setDecision}
+            choices={decisionChoices}
+            className="min-w-0 max-sm:text-sm sm:w-auto"
+          />
+          <ChoiceSelect
+            label="Bằng chứng"
+            value={stale}
+            onChange={setStale}
+            choices={staleChoices}
+            className="min-w-0 max-sm:text-sm sm:w-auto"
+          />
+          {newButton('col-span-2 max-sm:w-full sm:ms-auto')}
+        </div>
+      )}
 
       {notice && (
         <p className="text-sm text-muted-foreground" role="status">
@@ -225,19 +211,14 @@ export function OpportunityList() {
           </Button>
         </p>
       ) : list.length === 0 ? (
-        <>
-          <EmptyState
-            icon={<FlaskConical aria-hidden />}
-            title="Chưa có cơ hội nào"
-            description="Ghi một giả thuyết: ai, đau gì, trả tiền cho gì. Tin trong bản tin sáng và mục inbox sẽ thành bằng chứng."
-          >
-            <Button onClick={openNew}>
-              <Plus aria-hidden />
-              Cơ hội mới
-            </Button>
-          </EmptyState>
-          {opps.data && !opps.error && <EmptyStateGuide guide="opportunity" />}
-        </>
+        <EmptyPanel
+          area="opportunity"
+          glyph={FlaskConical}
+          title="Chưa có cơ hội nào"
+          text="Ghi một giả thuyết: ai đang đau vì điều gì và sẽ trả tiền cho gì."
+          action={newButton()}
+          guide={opps.error ? undefined : 'opportunity'}
+        />
       ) : (
         <div className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card">
           <div className={cn(ROW_GRID, 'h-8 px-3 text-xs font-medium text-muted-foreground max-md:hidden')} aria-hidden>

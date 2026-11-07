@@ -1,21 +1,26 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { BookPlus, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
+import { BookPlus, Loader2, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
 import { api, type ApiItem, type ApiItemStatus, type ApiItemType, type Page } from '@/lib/api/client';
 import type { ApiNote } from '@/lib/api/library';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate, itemStatusOf, itemStatuses, itemTypeLabel, itemTypes } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
+import { useProgress } from '@/lib/progress';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
-import { EmptyStateGuide } from '@/components/stageshow/lazy';
-import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError, openError } from './api-state';
+import { ApiErrorState, ApiStaleAlert, describeApiError, openError } from './api-state';
 import { StatusBadge } from './brain-card';
 import { ChoiceSelect } from './choice-select';
+import { EmptyPanel } from './empty-panel';
 import { ItemDialog } from './item-dialog';
+import { PAGE_WIDTH } from './layout';
+import { useNavCounts } from './nav-counts';
 import { gapLabel, missingOutput, noteDraftForItem } from './library/done-output';
+import { handbooks, importHandbooks } from './library/handbook-import';
 import { FilteredEmpty, RowsSkeleton, onRowClick } from './library/list-rows';
 import { NoteDialog } from './library/note-dialog';
 import { useItemIndex } from './library/use-item-index';
@@ -131,6 +136,11 @@ export function LibraryPage() {
   // The full Item list is only for the note dialog's item picker.
   const index = useItemIndex(noteFor !== null);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Lesson progress picks each course's status; the button waits for it (`loaded`), or every book would be "Dự định"
+  const { done, loaded } = useProgress();
+  // "Thêm 15 khóa học từ Sổ tay": sent/total while it runs; the ref stops a second click before the re-render
+  const [importing, setImporting] = useState<{ sent: number; total: number } | null>(null);
+  const importLock = useRef(false);
 
   const items = useApi<Page<ApiItem>>(`items:${type}:${status}`, () =>
     api.listItems({
@@ -202,33 +212,68 @@ export function LibraryPage() {
     setFocusRating(false);
     setDialogOpen(true);
   };
+
+  const addHandbooks = async () => {
+    if (importLock.current || loaded === false) return;
+    importLock.current = true;
+    setImporting({ sent: 0, total: handbooks.length });
+    try {
+      const res = await importHandbooks(done, (sent, total) => setImporting({ sent, total }));
+      // Handbooks already in the library mean the shown list was out of date: read it again
+      if (res.skipped > 0) items.reload();
+      else if (res.created.length > 0)
+        items.mutate((d) => d && { ...d, results: [...res.created.filter(matches), ...d.results] });
+      const active = res.created.filter((i) => i.status === 'active').length;
+      const parts = [
+        res.created.length > 0 &&
+          `Đã thêm ${res.created.length} khóa học từ Sổ tay` +
+            (active > 0 ? ` (${active} ${itemStatusOf('active').label.toLowerCase()})` : ''),
+        res.skipped > 0 && `${res.skipped} khóa đã có trong thư viện`,
+        res.error && `dừng lại vì lỗi: ${describeApiError(res.error).title}`,
+      ].filter(Boolean);
+      setNotice(parts.length ? `${parts.join('; ')}.` : null);
+    } catch (err) {
+      setNotice(describeApiError(toApiError(err)).title);
+    } finally {
+      importLock.current = false;
+      setImporting(null);
+    }
+  };
+
   const unfiltered = type === 'all' && status === 'all';
   const failed = !!items.error && !items.data;
   const firstLoad = items.loading && list.length === 0;
-  // An empty, unfiltered library: the empty state's "Thêm item" is the one primary (DESIGN.md §7, D2)
-  const emptyLibrary = !failed && !firstLoad && list.length === 0 && unfiltered;
+  // The toolbar waits for a first record or a filter (DESIGN.md §9a): an empty library shows only the empty panel,
+  // whose "Thêm item" is the one primary (D2). While the list loads it stays unless the sidebar count already says 0,
+  // so a library with records never jumps down when they arrive (first load, reload on tab focus).
+  const counts = useNavCounts();
+  const showToolbar = list.length > 0 || !unfiltered || (items.loading && counts?.items !== 0);
 
   return (
-    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
+    <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
       {/* 390 px: the two filters share row 1, "Thêm item" takes row 2 at full width (DESIGN.md §6 Toolbar, D11) */}
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-        <ChoiceSelect label="Loại" value={type} onChange={setType} choices={typeChoices} className="min-w-0 sm:w-auto" />
-        <ChoiceSelect
-          label="Trạng thái"
-          value={status}
-          onChange={setStatus}
-          choices={statusChoices}
-          className="min-w-0 sm:w-auto"
-        />
-        <Button
-          variant={emptyLibrary ? 'outline' : 'default'}
-          className="col-span-2 max-sm:w-full sm:ms-auto"
-          onClick={openNew}
-        >
-          <Plus aria-hidden />
-          Thêm item
-        </Button>
-      </div>
+      {showToolbar && (
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <ChoiceSelect
+            label="Loại"
+            value={type}
+            onChange={setType}
+            choices={typeChoices}
+            className="min-w-0 sm:w-auto"
+          />
+          <ChoiceSelect
+            label="Trạng thái"
+            value={status}
+            onChange={setStatus}
+            choices={statusChoices}
+            className="min-w-0 sm:w-auto"
+          />
+          <Button className="col-span-2 max-sm:w-full sm:ms-auto" onClick={openNew}>
+            <Plus aria-hidden />
+            Thêm item
+          </Button>
+        </div>
+      )}
 
       {notice && (
         <p className="text-sm text-muted-foreground" role="status">
@@ -251,19 +296,32 @@ export function LibraryPage() {
           Không có mục nào khớp bộ lọc.
         </FilteredEmpty>
       ) : list.length === 0 ? (
-        <>
-          <EmptyState
-            icon={<BookPlus aria-hidden />}
-            title="Chưa có item nào"
-            description="Thêm sách, phim, khóa học, bài viết hoặc dự án. Mục từ inbox cũng có thể thành item."
-          >
+        <EmptyPanel
+          area="library"
+          glyph={BookPlus}
+          title="Chưa có item nào"
+          text="Thêm sách, phim, khóa học, bài viết hoặc dự án; mục từ inbox cũng có thể thành item."
+          action={
             <Button onClick={openNew}>
               <Plus aria-hidden />
               Thêm item
             </Button>
-          </EmptyState>
-          {items.data && !items.error && <EmptyStateGuide guide="library" />}
-        </>
+          }
+          quick={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void addHandbooks()}
+              disabled={importing !== null || loaded === false}
+            >
+              {importing && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />}
+              {importing
+                ? `Đang thêm ${importing.sent}/${importing.total} khóa học…`
+                : `Thêm ${handbooks.length} khóa học từ Sổ tay`}
+            </Button>
+          }
+          guide={items.error ? undefined : 'library'}
+        />
       ) : (
         // One container, rows on a shared subgrid so status, rating and actions line up (DESIGN.md §3 Columns)
         <ul

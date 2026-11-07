@@ -13,14 +13,14 @@ export default function Page() {
       <PageHeader
         title="Thư viện"
         nav="/thu-vien/"
-        description="Sách, phim, khóa học, bài viết và dự án, lọc theo loại và trạng thái."
+        description="Sách, phim, khóa học, bài viết và dự án."
       >
         <LibraryTabs current="items" />
       </PageHeader>
       {/* useSearchParams (?item=, Cmd+K results) needs a Suspense boundary for the static shell */}
       <Suspense
         fallback={
-          <div className="px-4 sm:px-8">
+          <div className="w-full max-w-7xl px-4 sm:px-8">
             <RowsSkeleton />
           </div>
         }
