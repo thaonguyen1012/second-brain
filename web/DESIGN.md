@@ -5,7 +5,7 @@ Cmd+K). Not for Stageshow guides and intro pictures (they follow `.claude/skills
 (Fumadocs, `#nd-page .prose`). Target: a screen that could sit next to Linear, Raycast or Notion and not look
 generated. Space UI (`components/ui`, `components/spaceui`, tokens in `app/global.css`) is the source of truth; a
 missing component is added with `npx shadcn@latest add @spaceui/<name>`, never hand-written. Reviews cite rules
-by ID (D1...D31, last section).
+by ID (D1...D32, last section).
 
 ## 1. Principles
 
@@ -30,7 +30,8 @@ URLs, keys and aligned numbers. Weights 400, 500, 600 only (no 700). Sentence ca
 | Role | Classes | px / line | Where |
 |---|---|---|---|
 | Page title | `font-heading text-3xl font-semibold tracking-tight` | 30 / 36 | `PageHeader` h1, one per page |
-| Big number | `font-heading text-2xl font-semibold tabular-nums` | 24 / 32 | at most one per screen (timer, count, week rhythm); cover monograms are 24px marks |
+| Big number | `font-heading text-2xl font-semibold tabular-nums` | 24 / 32 | at most one per screen (timer, count, week rhythm) |
+| Cover name | `font-heading font-semibold leading-tight tracking-tight text-cover-ink`, `clamp(14px, 5.5cqw, 18px)` | 14-18 / 1.25 | printed on a handbook cover only (`BookCover`, §9a), sized by the cover's width, 2 lines |
 | Section | `font-heading text-lg font-semibold tracking-tight` | 18 / 28 | h2 inside a page |
 | Card title | `font-heading text-[15px] font-semibold leading-5` | 15 / 20 | `BrainCard` title only |
 | Group / row title | `text-sm font-medium` (group heading: `font-semibold`) | 14 / 20 | list rows, card headers, dialog fields |
@@ -81,8 +82,8 @@ data, the primary action or the "now" marker. Without purple there are more mean
 so the near pairs that remain are listed under the palette, not hidden.
 
 - **Neutrals carry the page.** Text, surfaces, borders and fills stay neutral; body text is never coloured.
-  Colour sits on marks (icons, tiles, covers, dots, bars, chips, chart marks), the area header band and the blue
-  primary.
+  Colour sits on marks (icons, tiles, dots, bars, chips, chart marks), the handbook covers' illustrations (§9a),
+  the area header band and the blue primary.
 - **Blue `primary` is for the one primary action** of a view (filled `Button` default; hover and press darken it to
   `--primary-hover`, 10% toward black, so its label keeps >= 6:1) and for links/focus. It is not a selected-tab
   colour, not a heading colour, not a decoration, never an area or group colour. Sidebar row icons are not blue
@@ -95,13 +96,14 @@ so the near pairs that remain are listed under the palette, not hidden.
   hues live on only as the handbook group hues below (and inside Stageshow pictures); `AreaKey` in `lib/app-nav.ts`
   still groups the rows. Pages outside the six areas (Inbox, capture, Giới thiệu, Hướng dẫn, personal page) get no title
   icon; the Inbox's colour stays the `warning` tone of its count.
-- **Group colours** (`--track-<slug>` and its `-soft` cover tint; `trackFill`/`trackSoft`/`trackInk`
-  in `lib/track-colors.ts`): a Sổ tay group wears
+- **Group colours** (`--track-<slug>`; `trackFill` in `lib/track-colors.ts`): a Sổ tay group wears
   the hue of the area its handbooks feed, so the hue keeps one meaning: Kinh doanh -> Cơ hội (orange: business
   ideas), IT -> Công việc (teal: paid technical work), Kỹ năng -> Tuần (pink: học cách học and project management
   are practised in the weekly plan and review). Blue is the "Học ngay" button, so no group is blue. Wherever one
   handbook is shown (Sổ tay cards, rows and jump dots; the Hôm nay hero, its in-progress rows, the Sổ tay tile and
-  the roadmap rows): its cover, its dot and its progress indicator. Never on text.
+  the roadmap rows): its dot and its progress indicator. Never on text, and never on the cover: since 07/11/2026 a
+  cover is an illustration in the fixed cover palette, the same for every group (owner: "illustration kiểu retro ...
+  thay vì để màu", §9a).
 - **Status colours come from `lib/labels.ts` tones only** (`Tone` -> `Badge` variant): `info` = active/keep,
   `success` = done/build, `warning` = needs attention (Inbox), `error` = failed, `secondary` = planned/undecided,
   `outline` = dropped/archived. The same status has the same colour on every page; a colour never means two things.
@@ -114,8 +116,9 @@ so the near pairs that remain are listed under the palette, not hidden.
   takes the group colour.
 - **Brand mark** (`components/brand-mark.tsx`; owner, 07/11/2026: "không có border bao quanh", colourful, in the
   manner of Anthropic's warm palette): an open handbook, orange `#d97757` and blue `#6a9bcc` pages, with a green
-  `#788c5d` sprout from its spine; spine and stem in `currentColor`. The one multi-colour drawing in the app: its
-  three hues are fixed hex values, not tokens, used nowhere else and naming nothing. Only in the sidebar header
+  `#788c5d` sprout from its spine; spine and stem in `currentColor`. With the handbook covers (§9a) one of the two
+  multi-colour drawings in the app: its three hues belong to the cover palette and, like it, are fixed hex values
+  inside the drawing, not tokens, naming nothing. Only in the sidebar header
   (28px), the Fumadocs nav (24px), the /gioi-thieu/ hero and the icons in `public/icons/` (PNGs rendered by
   `scripts/make-icons.mjs` from `icon.svg`). Never on a tile, border, ground or shadow in the app; only the opaque OS
   icons (apple-touch, maskable) stand on a full-bleed ivory `#faf9f5` that the OS rounds or masks.
@@ -138,7 +141,7 @@ so the near pairs that remain are listed under the palette, not hidden.
   | `--area-work` = `--track-it` | Công việc, IT | `#00635d` | 7.1 / 6.5 / 5.6 / 5.7 | `#1db9ad` | 7.5 / 8.1 / 6.1 / 5.4 |
   | `--chart-data` (= billable, objective) | every chart | `#2a78d6` | 4.4 on card | `#3987e5` | 5.1 on card |
   | `--chart-nonbillable` | Công việc | `#86b6ef` | 2.1 on card (labelled) | `#1c5cab` | 2.8 on card (labelled) |
-  | `--track-<slug>-soft` (= the area `-soft`) | handbook cover (§9a) | hue 14% over card | monogram = the hue's soft column above: 3.4-5.8 | hue 22% over card | 4.5-7.3 |
+  | `--cover-ground` / `--cover-ink` | handbook covers (§9a) | `#e3dacc` / `#141413` | name 13.3:1 on the ground; ground 1.38 on white (the drawing and the card edge carry it) | the same (a printed object) | ground 13.3 on the card |
   | `--well` | wells (§9a) | `oklch(0.977 0 0)` ≈ `#f7f7f7` | muted text 7.2 · area hues 3.8-6.8 · data 4.1 · nonbillable 2.0 · muted fill 1.11 | `hsl(0 0% 6%)` = `#0f0f0f` | muted text 7.3 · area hues 6.2-11.7 · data 5.3 · nonbillable 2.9 · muted fill 1.16 |
 
   The header band is the well tone. On a band or a well the link blue stays >= 4.55:1 (light) / 7.1:1 (dark) and the
@@ -208,7 +211,8 @@ so the near pairs that remain are listed under the palette, not hidden.
 ## 5. Icons
 
 - **lucide-react only**, default stroke (2) everywhere in a screen. Never mix stroke widths or filled and outline
-  glyphs in one view. No hand-drawn SVG glyphs; the brand mark (§4) is the one drawing that is not lucide.
+  glyphs in one view. No hand-drawn SVG glyphs; the brand mark (§4) is the one drawing that is not lucide. The
+  handbook covers (§9a) are illustrations loaded as images, not icons.
 - **One size per context:** 16px (`size-4`) in buttons, nav, toolbars, rows; 14px (`size-3.5`) in badges, meta
   lines and `xs` buttons; 28px (`size-7`, `strokeWidth={1.5} absoluteStrokeWidth`, so its line matches the 16px
   icons) for the page title icon; 32px (same line) for the glyph of a first-run empty panel; 16px in other empty
@@ -346,9 +350,23 @@ wins.
   nay rail tiles, the right slot of a first-run empty panel, help rails). Never inside a card, and no card inside a
   well, except a board's lanes (§6 "Board"): the lane is the grey ground the white cards are moved across, so the
   cards stay surfaces and the lane stays borderless.
-- **Cover.** A handbook's cover is a flat `--track-<slug>-soft` tint carrying its monogram (`lib/book-marks.ts`) in
-  the group hue, Geist 600 24px. It appears as the 80px full-bleed top band of a Sổ tay card and as the 64px tile of
-  the Hôm nay hero. It is a mark, not a surface: no shapes, images, gradients or shadows.
+- **Cover** (owner 07/11/2026: retro illustrations "kiểu như Anthropic" instead of the group tint, the book's name
+  instead of 1-5 or a monogram, and on Hôm nay "chia hẳn 1 phần là ảnh của sổ tay, một bên là title thay vì div lồng
+  div"). A handbook's cover is an original retro illustration, `public/covers/<slug>.svg` (16:7, rules and checklist
+  in `components/book-cover.md`), shown only through `BookCover` (`components/book-cover.tsx`) as a plain `<img>`,
+  never inline SVG. Like the brand mark's three hues, its palette is a fixed set of hex values inside the SVG files
+  (ink, ivory, oat ground, manilla, kraft, clay, book cloth, sky, olive), naming nothing; components use only the
+  `--cover-ground` and `--cover-ink` tokens. The cover is a printed object: the same in light and dark. The book's
+  name is HTML over the drawing's calm top-left (`coverName()` in `lib/book-marks.ts`: the registry title without
+  "Sổ tay N –"; the "Cover name" role in §2), never text in the SVG. Variants: `band` (16:7, full-bleed top of the
+  Sổ tay card, with the name), `side` (the Hôm nay hero: a 16:7 band with the name on top below sm, a 14rem column
+  from sm, the picture's right part edge to edge, no name, because the text beside it names the book), `thumb` (no
+  name: the "Đang học" shelf rows, a 5rem column; the phone Sổ tay card, a 4.5rem column). Every crop keeps the right
+  edge, where the subject is drawn. A card that shows a cover is a **split card**: the cover is flush with the card's
+  edges, the full height of the card or the full width of its top, clipped only by the card's own radius, and the
+  text sits beside or below it; never a tile, a rounded picture or a padded box inside the card. A book with no
+  drawing yet shows the ground with its name. No gradients, glows, shadows, purple, sparkles, emoji or text in a
+  drawing.
 - **Width.** App content is capped at `max-w-7xl`, left-aligned with the title; bands stay full-bleed. Hôm nay has
   a 320px rail from `xl`.
 - **First-run empty panel.** The missing object's glyph (32px, muted ink, no tile), title ("Chưa có <object> nào"),
@@ -374,7 +392,8 @@ wins.
 
 Shared pieces: `PageHeader` (the band, `components/brain/page-header.tsx`), `components/brain/layout.tsx`
 (`PAGE_WIDTH`, `wellClass`, `SectionHeader`), `week-strip.tsx` (`WeekStrip`, `dayLevel`),
-`ghost-rows.tsx`, `empty-panel.tsx` (client; never imported on Hôm nay) and `EmptyStateGuide variant="flush"`.
+`ghost-rows.tsx`, `empty-panel.tsx` (client; never imported on Hôm nay), `EmptyStateGuide variant="flush"` and
+`components/book-cover.tsx` (`BookCover`, server and client alike; the drawings in `public/covers/`).
 
 ## 10. Review checklist (cite by ID; each is checkable on a screenshot)
 
@@ -385,8 +404,8 @@ Hierarchy
 - **D2** At most one filled blue button per view region (page toolbar, dialog footer, empty state); none duplicated.
   A guide's faux UI is a picture, not a region (§9a).
   Exception: "Học ngay" on each Sổ tay book card (§6).
-- **D3** One page title (30px); sections 18px; nothing else above 18px except one 24px big number and the 24px cover
-  monograms.
+- **D3** One page title (30px); sections 18px; nothing else above 18px except one 24px big number (a cover name is
+  at most 18px).
 - **D4** Page description <= 2 lines on desktop; no setup/how-to text above the main content (the Hôm nay setup
   checklist sits under the hero).
 
@@ -404,8 +423,8 @@ Spacing and layout
 - **D30** Content is capped at `max-w-7xl` and left-aligned; no single column stretched across ultra-wide screens.
 
 Containers
-- **D12** No bordered or tinted box inside another box (inputs, code and the handbook cover
-  excepted); no card in a well, no well in a card (the first-run panel's slot, a full-bleed half parted by the
+- **D12** No bordered or tinted box inside another box (inputs and code excepted; a handbook cover is not a box in
+  the card but a flush part of it, D32); no card in a well, no well in a card (the first-run panel's slot, a full-bleed half parted by the
   panel's own divider, and the cards in a board's lanes excepted, §6 "Board", §9a).
 - **D13** A homogeneous list of more than ~5 records is rows in one container, not a stack of cards (a board view's
   lanes excepted; its list view keeps the rows).
@@ -414,9 +433,9 @@ Containers
   border); inside it, a fill or a divider. A board lane is a well holding card surfaces (§6 "Board").
 
 Colour
-- **D16** Only token colours (the brand mark's own three hues excepted, §4); status colours match `lib/labels.ts`, the same status the same colour everywhere; an
+- **D16** Only token colours (the hex palette inside the brand mark and the cover SVGs excepted, §4, §9a); status colours match `lib/labels.ts`, the same status the same colour everywhere; an
   no colour per area (title icons, bands, Hôm nay tile icons and empty glyphs are neutral); a group colour only
-  where one handbook is shown (cover, dot, progress indicator); no coloured body text;
+  where one handbook is shown (dot, progress indicator; never the cover); no coloured body text;
   data colours (`--chart-*`, statuses, progress) never greyed out, every chart in the data blue, never in an area
   or group hue.
 - **D17** No purple, gradient, glow, coloured shadow or gradient text; `bw-red` only on the continue/now marker; no
@@ -430,7 +449,7 @@ Colour
   focus ring >= 3:1 on page, sidebar, surfaces, wells and bands; no container left transparent on the page.
 
 Icons
-- **D20** lucide only (the brand mark excepted: 28px in the sidebar header, no tile), one stroke width, 16px in
+- **D20** lucide only (the brand mark excepted: 28px in the sidebar header, no tile; covers are images, not icons), one stroke width, 16px in
   controls/rows/nav, 14px in badges/meta, 28px for the title icon and 32px for the empty-panel glyph (both with a 1.5px absolute
   line); no emoji as icons.
 - **D21** No decorative icon beside headings or card titles (an area page's title icon and the icon of a Hôm nay
@@ -450,3 +469,9 @@ States and motion
 - **D28** Nothing animates on load (the first-run panel's guide excepted: it plays once in view, §9a); transitions
   <= 200 ms (overlays <= 250 ms); every looping animation stops under reduced motion.
 - **D31** Week strip and checklist follow §9a; no streaks, XP, badges, rings or confetti; missed days are muted.
+
+Covers
+- **D32** A handbook shows its illustrated cover only through `BookCover` (§9a): the name in HTML in `--cover-ink`, no
+  text in the drawing, the same in both themes; a card or row with a cover is split, the cover flush with its edges
+  (Sổ tay card band and phone column, Hôm nay hero column, "Đang học" rows), never a tile inside it; no group tint
+  or monogram on a cover; every drawing passes the `components/book-cover.md` checklist.

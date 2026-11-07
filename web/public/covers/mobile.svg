@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140">
+<defs>
+<filter id="g" x="0" y="0" width="100%" height="100%">
+<feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="13" result="n"/>
+<feColorMatrix in="n" values="0 0 0 0 .98 0 0 0 0 .976 0 0 0 0 .96 2.6 0 0 0 -1.62" result="s"/>
+<feComposite in="s" in2="SourceGraphic" operator="in" result="d"/>
+<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="d"/></feMerge>
+</filter>
+<path id="w1" d="M302 35C311 38 318 45 317 53S308 65 301 64S287 58 288 50S295 39 302 35z"/>
+<ellipse id="w2" cx="208" cy="68" rx="13" ry="10" transform="rotate(20 208 68)"/>
+<ellipse id="w4" cx="292" cy="94" rx="12" ry="9" transform="rotate(-15 292 94)"/>
+</defs>
+<rect width="320" height="140" fill="#e3dacc"/>
+<g filter="url(#g)">
+<circle cx="254" cy="66" r="44" fill="#6a9bcc"/>
+<path d="M0 120h320v20H0z" fill="#d4a27f"/>
+</g>
+<g transform="translate(2.5 2)" filter="url(#g)">
+<use href="#w1" fill="#d97757"/>
+<use href="#w2" fill="#faf9f5"/>
+<use href="#w4" fill="#cc785c"/>
+</g>
+<g fill="none" stroke="#141413" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<use href="#w1"/><use href="#w2"/><use href="#w4"/>
+<circle cx="236" cy="102" r="10" fill="#141413"/>
+<path d="M214 28Q236 12 262 14Q288 16 302 24M204 50Q207 42 214 42Q242 42 264 52M236 80Q248 66 264 66Q282 66 292 74"/>
+<path d="M262 0v14M302 24v11M214 28v14M204 50v8M264 52v14M236 80v12M292 74v11" stroke-width="2"/>
+<g fill="#141413" stroke="none"><circle cx="262" cy="14" r="3"/><circle cx="214" cy="42" r="3"/><circle cx="264" cy="66" r="3"/></g>
+</g>
+</svg>

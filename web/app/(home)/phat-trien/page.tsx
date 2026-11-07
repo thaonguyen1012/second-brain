@@ -2,8 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Download } from 'lucide-react';
 import { books, booksByTrack, bookUrl, tracks } from '@/lib/books';
-import { markOf } from '@/lib/book-marks';
-import { trackFill, trackInk, trackSoft } from '@/lib/track-colors';
+import { trackFill } from '@/lib/track-colors';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BookCard } from '@/components/book-card';
@@ -29,9 +28,6 @@ export default function HandbooksPage() {
       title: b.title,
       href: bookUrl(b),
       lessonCount: b.lessonCount,
-      mark: markOf(b),
-      soft: trackSoft[b.track],
-      ink: trackInk[b.track],
       fill: trackFill[b.track],
     })),
   );

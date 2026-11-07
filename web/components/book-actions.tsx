@@ -7,7 +7,8 @@ import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/prog
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/components/brain/layout';
-import { bookState, bookVerb, doneIn, percent, type BookState } from './progress';
+import { BookCover } from './book-cover';
+import { bookState, bookVerb, coverLinkFocus, doneIn, percent, type BookState } from './progress';
 
 // The progress-aware parts of the Sổ tay page (DESIGN.md §9a). The server page passes plain props, class strings
 // already resolved, so the registry and the colour maps stay out of this chunk.
@@ -18,10 +19,7 @@ export interface ShelfBook {
   title: string;
   href: string;
   lessonCount: number;
-  mark: string;
-  /** Cover tint, monogram colour and progress fill (trackSoft, trackInk, trackFill). */
-  soft: string;
-  ink: string;
+  /** Progress fill of the book's Sổ tay group (`trackFill`). */
   fill: string;
 }
 
@@ -96,8 +94,10 @@ export function ProgressSummary({ books }: { books: readonly Pick<ShelfBook, 'sl
 }
 
 /**
- * "Đang học": the started, unfinished books as 56px rows in one surface (cover, title, bar, chevron), the book of
- * the last visited page first. Each row opens where Alex stopped. Nothing renders while no book is in progress.
+ * "Đang học": the started, unfinished books as 56px rows in one surface, the book of the last visited page first.
+ * Each row is split like the Hôm nay hero: the cover's subject flush on the left (a 5rem column the row's height,
+ * no tile inside the row), then title, bar and numbers, then the chevron. Each row opens where Alex stopped.
+ * Nothing renders while no book is in progress.
  */
 export function StartedShelf({ books }: { books: readonly ShelfBook[] }) {
   const progress = useProgress();
@@ -133,19 +133,14 @@ export function StartedShelf({ books }: { books: readonly ShelfBook[] }) {
             <li key={book.slug}>
               <Link
                 href={continueHref(book.href, here)}
-                className="grid h-14 grid-cols-[2.5rem_minmax(0,1fr)_1rem] items-center gap-3 px-3 outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:grid-cols-[2.5rem_minmax(0,1fr)_auto_1rem]"
+                className={cn(
+                  'grid h-14 grid-cols-[5rem_minmax(0,1fr)_1rem] items-center gap-3 pe-3 transition-colors duration-150 hover:bg-accent sm:grid-cols-[5rem_minmax(0,1fr)_auto_1rem]',
+                  coverLinkFocus,
+                )}
               >
-                <span
-                  aria-hidden
-                  className={cn(
-                    'flex size-10 items-center justify-center rounded-lg font-heading text-sm font-semibold',
-                    book.soft,
-                    book.ink,
-                  )}
-                >
-                  {book.mark}
-                </span>
-                <span className="flex min-w-0 flex-col gap-1">
+                <BookCover slug={book.slug} title={book.title} variant="thumb" className="self-stretch" />
+                {/* ms-1: the words 16px from the picture's edge */}
+                <span className="ms-1 flex min-w-0 flex-col gap-1">
                   <span className="truncate text-sm font-medium">{book.title}</span>
                   {/* Phone: the bar under the title. From sm: the last page here (if any), the bar in its own column. */}
                   <span className="flex items-center gap-2 sm:hidden">

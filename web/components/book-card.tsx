@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { ChevronDown, MoreHorizontal } from 'lucide-react';
 import { bookUrl, type Book, type CourseLink } from '@/lib/books';
-import { markOf } from '@/lib/book-marks';
-import { trackFill, trackInk, trackSoft } from '@/lib/track-colors';
+import { trackFill } from '@/lib/track-colors';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -17,12 +16,13 @@ import {
 } from '@/components/ui/menu';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { BookAction } from './book-actions';
+import { BookCover } from './book-cover';
 import { BookProgress } from './progress';
 
 const searchUrl = (title: string) => `https://www.coursera.org/search?query=${encodeURIComponent(title)}`;
 const linkOf = (c: CourseLink) => c.url ?? searchUrl(c.title);
 
-/** The cover's source label: "Coursera · 4 khóa", or "F8" for the F8 book, which lists no programs. */
+/** The source line under the title: "Coursera · 4 khóa", or "F8" for the F8 book, which lists no programs. */
 function sourceOf(book: Book): string | null {
   const links = book.courseraUrls;
   if (links.length > 0) return `${links[0].provider} · ${links.length} khóa`;
@@ -87,34 +87,23 @@ function BookLinks({ book, icon = false, className }: { book: Book; icon?: boole
 }
 
 /**
- * Book card (DESIGN.md §9a): the cover band (the group tint, the monogram in the group hue, the source at the right),
- * the title as the link to the book, the description, progress in the group colour, one action row. The button is
+ * Book card (DESIGN.md §9a): the illustrated cover as a full-bleed 16:7 band (its name printed on it), the title as
+ * the link to the book, the source and the description, progress in the group colour, one action row. The button is
  * filled on every card: the owner's call (03/11/2026), made knowing it puts 15 blue buttons on the page (§6, D2).
- * Below sm the card turns horizontal to keep the page short: the band becomes a 56px tile, the description goes,
- * and the button, with "Liên kết" as a ⋯ after it, sits beside the progress.
+ * Below sm the card turns horizontal to keep the page short: the cover becomes a flush left column the card's height
+ * (its subject, no name), source and description go, and the button, with "Liên kết" as a ⋯ after it, sits beside
+ * the progress.
  */
 export function BookCard({ book }: { book: Book }) {
   const source = sourceOf(book);
   return (
     <Card
       render={<article />}
-      className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-0 gap-x-3 overflow-hidden border p-3 sm:flex sm:flex-col sm:p-0"
+      className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-0 overflow-hidden border p-0 sm:flex sm:flex-col"
     >
-      <div
-        className={cn(
-          'flex size-14 items-center justify-center rounded-lg sm:h-20 sm:w-auto sm:items-end sm:justify-between sm:rounded-none sm:px-4 sm:pb-3',
-          trackSoft[book.track],
-        )}
-      >
-        <span
-          aria-hidden
-          className={cn('font-heading text-lg leading-none font-semibold sm:text-2xl', trackInk[book.track])}
-        >
-          {markOf(book)}
-        </span>
-        {source && <span className="text-xs text-muted-foreground max-sm:hidden">{source}</span>}
-      </div>
-      <div className="flex min-w-0 flex-col gap-1 sm:flex-1 sm:gap-4 sm:p-4">
+      <BookCover slug={book.slug} title={book.title} variant="thumb" className="sm:hidden" />
+      <BookCover slug={book.slug} title={book.title} variant="band" className="max-sm:hidden" />
+      <div className="flex min-w-0 flex-col gap-1 p-3 sm:flex-1 sm:gap-4 sm:p-4">
         <div className="flex flex-col gap-1">
           {/* The clamp sits on the link: on the h3 its overflow would cut the link's focus ring. */}
           <h3 className="font-heading text-[15px] leading-5 font-semibold tracking-tight">
@@ -125,6 +114,7 @@ export function BookCard({ book }: { book: Book }) {
               {book.title}
             </Link>
           </h3>
+          {source && <p className="text-xs text-muted-foreground max-sm:hidden">{source}</p>}
           <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground max-sm:hidden">
             {book.description}
           </p>

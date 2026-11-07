@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140">
+<defs>
+<filter id="g" x="0" y="0" width="100%" height="100%">
+<feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="3" result="n"/>
+<feColorMatrix in="n" values="0 0 0 0 .98 0 0 0 0 .976 0 0 0 0 .96 2.6 0 0 0 -1.62" result="s"/>
+<feComposite in="s" in2="SourceGraphic" operator="in" result="d"/>
+<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="d"/></feMerge>
+</filter>
+<path id="l" d="M249 22l7-17h8l7 17h-7l-4-9l-4 9zM230 97h7l-8 29h-7zM283 97h7l8 29h-7zM262 97h6l3 24h-6z"/>
+<path id="r" d="M216 90h88v7h-88z"/>
+<path id="c" d="M222 22h76v68h-76z"/>
+</defs>
+<rect width="320" height="140" fill="#e3dacc"/>
+<g filter="url(#g)">
+<path d="M150 118C200 92 250 62 300 64C312 64 320 68 324 70V140H150z" fill="#6a9bcc"/>
+<path d="M-4 120C60 108 120 112 180 118S280 114 324 110V140H-4z" fill="#788c5d"/>
+</g>
+<g transform="translate(2.5 2)" filter="url(#g)">
+<use href="#l" fill="#d4a27f"/>
+<use href="#c" fill="#faf9f5"/>
+<path d="M222 22h30v34h-30zM252 74h46v16h-46z" fill="#d97757"/>
+<path d="M252 44h46v30h-46z" fill="#6a9bcc"/>
+<use href="#r" fill="#d4a27f"/>
+</g>
+<g fill="none" stroke="#141413" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<use href="#l"/><use href="#c"/><use href="#r"/>
+<path d="M252 22v68M222 56h30M252 44h46M252 74h46" stroke-width="2"/>
+</g>
+</svg>

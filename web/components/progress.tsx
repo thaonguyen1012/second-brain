@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { BookCover } from './book-cover';
 
 /** "Đã học xong" checkbox at the bottom of every lesson page. */
 export function DoneCheckbox({ url }: { url: string }) {
@@ -97,17 +98,13 @@ export function BookProgress({
   );
 }
 
-/** A handbook as "Hôm nay" shows it; the class strings are resolved on the server (lib/track-colors.ts). */
+/** A handbook as "Hôm nay" shows it; the class string is resolved on the server (lib/track-colors.ts). */
 export interface HeroBook {
   slug: string;
   title: string;
   track: string;
   lessonCount: number;
-  /** Cover monogram (lib/book-marks.ts). */
-  mark: string;
-  /** Cover tint, monogram ink and progress fill of the book's Sổ tay group. */
-  soft: string;
-  ink: string;
+  /** Progress fill of the book's Sổ tay group (`trackFill`). */
   fill: string;
 }
 
@@ -122,11 +119,21 @@ export const bookHref = (b: { slug: string; track: string }, page = '') =>
   `/docs/${b.track}/${b.slug}/${page ? `${page}/` : ''}`;
 
 /**
- * The focal block of "Hôm nay" (DESIGN.md §1.2, §9a): the book's cover, the last visited page, the book's progress
- * and the page's one filled button; below a divider, up to two other books with lessons done. With no last visited
- * page it suggests the first book of the roadmap (`start`). Lead and verb follow the book's state as the Sổ tay card
- * does (`bookState`): a visit with no lesson done is "Xem gần nhất" and "Học ngay", never "Tiếp tục học". A skeleton
- * holds the place until the store has loaded, so the suggestion never flashes before the stored pointer arrives.
+ * Focus ring of a link whose first child is a cover: drawn by the link's own ::after, which paints above the
+ * positioned cover (an inset ring or outline on the link itself would sit under it). The link is `relative`.
+ */
+export const coverLinkFocus =
+  'relative outline-none focus-visible:after:pointer-events-none focus-visible:after:absolute focus-visible:after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset';
+
+/**
+ * The focal block of "Hôm nay" (DESIGN.md §1.2, §9a): a split card, the book's cover flush on one side (owner,
+ * 07/11/2026: "chia hẳn 1 phần là ảnh của sổ tay, một bên là title", no tile inside the card), the last visited page,
+ * the book's progress and the page's one filled button on the other; below a divider, up to two other books with
+ * lessons done. From sm the cover is a 14rem column the card's height, clipped by its corners; below sm a 16:7 band
+ * on top. With no last visited page it suggests the first book of the roadmap (`start`). Lead and verb follow the
+ * book's state as the Sổ tay card does (`bookState`): a visit with no lesson done is "Xem gần nhất" and "Học ngay",
+ * never "Tiếp tục học". A skeleton of the same geometry holds the place until the store has loaded, so the
+ * suggestion never flashes before the stored pointer arrives.
  */
 export function ContinueReading({
   books,
@@ -139,8 +146,31 @@ export function ContinueReading({
   className?: string;
 }) {
   const { done, lastVisited: last, loaded } = useProgress();
-  // about the hero's own height (taller on phones: full-width button), so the tiles below do not jump
-  if (!loaded) return <Skeleton className={cn('h-48 rounded-xl sm:h-36', className)} />;
+  const frame = 'grid sm:min-h-42 sm:grid-cols-[14rem_minmax(0,1fr)]';
+  const body = 'flex min-w-0 flex-col gap-4 p-4 sm:justify-center sm:p-5 lg:flex-row lg:items-center lg:gap-5';
+  if (!loaded) {
+    // the hero's own geometry, line for line (lead, a two-line title as lesson titles mostly are in this column,
+    // BookProgress, the button), so the tiles below do not jump when the store answers
+    return (
+      <div aria-hidden className={cn(frame, 'overflow-hidden rounded-xl border bg-card shadow-depth-1', className)}>
+        <Skeleton className="aspect-[16/7] rounded-none sm:aspect-auto" />
+        <div className={body}>
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <Skeleton className="h-4 w-48 max-w-full" />
+            <div className="flex h-14 flex-col justify-center gap-2">
+              <Skeleton className="h-5 w-64 max-w-full" />
+              <Skeleton className="h-5 w-40 max-w-full" />
+            </div>
+            <div className="mt-1 flex max-w-md flex-col gap-1.5">
+              <Skeleton className="h-1.5" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          </div>
+          <Skeleton className="h-9 rounded-lg sm:h-8 sm:w-28" />
+        </div>
+      </div>
+    );
+  }
   const resumed = last && books.find((b) => b.slug === last.bookSlug);
   const book = resumed || books.find((b) => b.slug === start.slug);
   if (!book) return null;
@@ -159,33 +189,25 @@ export function ContinueReading({
     >
       <Link
         href={resumed && last ? bookHref(book, last.pageSlug) : bookHref(book)}
-        className={cn('grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-5 sm:p-5', row)}
+        className={cn(frame, 'transition-colors duration-150 hover:bg-accent', coverLinkFocus)}
       >
-        <span
-          aria-hidden
-          className={cn(
-            'flex size-12 items-center justify-center rounded-xl font-heading text-2xl font-semibold sm:size-16',
-            book.mark.length > 3 && 'max-sm:text-lg',
-            book.soft,
-            book.ink,
-          )}
-        >
-          {book.mark}
-        </span>
-        <span className="flex min-w-0 flex-col gap-1">
-          <span className="truncate text-xs text-muted-foreground">
-            {lead} · {resumed ? book.title : start.phase}
+        <BookCover slug={book.slug} title={book.title} variant="side" />
+        <span className={body}>
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="truncate text-xs text-muted-foreground">
+              {lead} · {resumed ? book.title : start.phase}
+            </span>
+            <span className="line-clamp-2 font-heading text-lg font-semibold tracking-tight">
+              {/* the book's own root page is "Mở đầu sổ tay", so the book name is never said twice */}
+              {!resumed ? book.title : last?.title && last.title !== book.title ? last.title : 'Mở đầu sổ tay'}
+            </span>
+            <BookProgress book={book.slug} total={book.lessonCount} fill={book.fill} className="mt-1 max-w-md" />
           </span>
-          <span className="line-clamp-2 font-heading text-lg font-semibold tracking-tight">
-            {/* the book's own root page is "Mở đầu sổ tay", so the book name is never said twice */}
-            {!resumed ? book.title : last?.title && last.title !== book.title ? last.title : 'Mở đầu sổ tay'}
-          </span>
-          <BookProgress book={book.slug} total={book.lessonCount} fill={book.fill} className="mt-1 max-w-md" />
+          <Button render={<span />} className="sm:self-start lg:self-auto">
+            {bookVerb[state]}
+            <ArrowRight aria-hidden />
+          </Button>
         </span>
-        <Button render={<span />} className="col-span-2 sm:col-span-1">
-          {bookVerb[state]}
-          <ArrowRight aria-hidden />
-        </Button>
       </Link>
       {others.length > 0 && (
         <ul className="divide-y border-t" aria-label="Sổ tay khác đang học">

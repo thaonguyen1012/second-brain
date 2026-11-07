@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140">
+<defs>
+<filter id="g" x="0" y="0" width="100%" height="100%">
+<feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="33" result="n"/>
+<feColorMatrix in="n" values="0 0 0 0 .98 0 0 0 0 .976 0 0 0 0 .96 2.6 0 0 0 -1.62" result="s"/>
+<feComposite in="s" in2="SourceGraphic" operator="in" result="d"/>
+<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="d"/></feMerge>
+</filter>
+<path id="e" d="M254 80C236 64 224 52 224 38C224 18 242 6 262 6S300 18 300 38C300 52 288 64 270 80z"/>
+<path id="s" d="M262 6C227 8 227 58 257 80H260C249 58 249 8 262 6zM262 6C297 8 297 58 267 80H264C275 58 275 8 262 6z"/>
+<path id="k" d="M253 92h20l-2 14h-16z"/>
+</defs>
+<rect width="320" height="140" fill="#e3dacc"/>
+<g filter="url(#g)">
+<path d="M-4 116C20 100 52 98 76 108C104 92 150 88 180 104C204 80 240 62 278 64C298 65 314 72 324 78V140H-4z" fill="#6a9bcc"/>
+<path d="M0 124Q50 114 100 122T200 122T300 120Q312 118 320 119V140H0z" fill="#d4a27f"/>
+<path d="M164 66a10 10 0 0 1 8-14a14 14 0 0 1 26-6a12 12 0 0 1 22 8a8 8 0 0 1 6 12zM282 94a9 9 0 0 1 10-12a13 13 0 0 1 24-2a10 10 0 0 1 10 14z" fill="#faf9f5"/>
+</g>
+<g transform="translate(2.5 2)" filter="url(#g)">
+<use href="#e" fill="#d97757"/>
+<use href="#s" fill="#faf9f5"/>
+<use href="#k" fill="#cc785c"/>
+</g>
+<g fill="none" stroke="#141413" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<use href="#e"/><use href="#k"/>
+<use href="#s" stroke-width="2"/>
+<path d="M254 80l-1 12M270 80l3 12M259 80v12M265 80l2 12M254 98h18" stroke-width="2"/>
+</g>
+</svg>

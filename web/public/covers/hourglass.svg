@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140">
+<defs>
+<filter id="g" x="0" y="0" width="100%" height="100%">
+<feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="43" result="n"/>
+<feColorMatrix in="n" values="0 0 0 0 .98 0 0 0 0 .976 0 0 0 0 .96 2.6 0 0 0 -1.62" result="s"/>
+<feComposite in="s" in2="SourceGraphic" operator="in" result="d"/>
+<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="d"/></feMerge>
+</filter>
+<path id="cp" d="M240 18H294V26H240ZM240 78H294V86H240Z"/>
+<path id="po" d="M243 26h5v52h-5zM286 26h5v52h-5z"/>
+<path id="gl" d="M255 26C255 41 263.5 46 263.5 52C263.5 58 255 63 255 78H279C279 63 270.5 58 270.5 52C270.5 46 279 41 279 26Z"/>
+<path id="b1" d="M210 110H306Q309 117.5 306 125H210Q207 117.5 210 110Z"/><path id="b2" d="M200 98H292Q295 104 292 110H200Q197 104 200 98Z"/><path id="b3" d="M226 86H310Q313 92 310 98H226Q223 92 226 86Z"/>
+<path id="rb" d="M256 97h7v19l-3.5-3.5-3.5 3.5z"/>
+</defs>
+<rect width="320" height="140" fill="#e3dacc"/>
+<g filter="url(#g)">
+<path d="M207.2 21.2A19 19 0 1 0 228.2 45.3A16 16 0 0 1 207.2 21.2Z" fill="#faf9f5"/>
+<path d="M150 140V129Q150 122 157 122H320V140Z" fill="#d4a27f"/>
+</g>
+<g transform="translate(2.5 2)" filter="url(#g)">
+<use href="#b1" fill="#788c5d"/><use href="#b2" fill="#6a9bcc"/><use href="#b3" fill="#d97757"/><use href="#rb" fill="#d97757"/><use href="#po" fill="#d4a27f"/><use href="#gl" fill="#faf9f5"/>
+<path d="M258 40C260.5 45.2 263.5 48.4 263.5 52H270.5C270.5 48.4 273.5 45.2 276 40Z" fill="#d97757"/><path d="M256.2 69C255.5 71.5 255 74.5 255 78H279C279 74.5 278.5 71.5 277.8 69Q267 55 256.2 69Z" fill="#d97757"/><path d="M266 52h2v11h-2z" fill="#d97757"/><use href="#cp" fill="#d4a27f"/>
+</g>
+<g fill="none" stroke="#141413" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<use href="#b1"/><use href="#b2"/><use href="#b3"/><use href="#po"/><use href="#gl"/><use href="#cp"/><use href="#rb"/>
+<path d="M220 110v15M296 110v15M210 98v12M282 98v12M236 86v12M290 86v12" stroke-width="2"/>
+</g>
+</svg>

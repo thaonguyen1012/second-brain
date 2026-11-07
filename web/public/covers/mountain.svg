@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140">
+<defs>
+<filter id="g" x="0" y="0" width="100%" height="100%">
+<feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7" result="n"/>
+<feColorMatrix in="n" values="0 0 0 0 .98 0 0 0 0 .976 0 0 0 0 .96 2.6 0 0 0 -1.62" result="s"/>
+<feComposite in="s" in2="SourceGraphic" operator="in" result="d"/>
+<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="d"/></feMerge>
+</filter>
+<path id="f" d="M264 4l-15 5 15 5zM292 92l-12 4.5 12 4.5zM237 74l-12 4.5 12 4.5z"/>
+</defs>
+<rect width="320" height="140" fill="#e3dacc"/>
+<g filter="url(#g)">
+<path d="M100 140L148 96L170 110L204 72L232 108V140z" fill="#6a9bcc"/>
+<path d="M0 118C60 110 120 114 190 126V140H0z" fill="#788c5d"/>
+</g>
+<g transform="translate(2.5 2)" filter="url(#g)">
+<path d="M176 140L234 52Q240 43 246 46L256 30Q264 18 272 30L320 104V140z" fill="#d97757"/>
+<path d="M244 47L256 30Q264 18 272 30L286 52L278 47L270 55L262 46L253 54z" fill="#faf9f5"/>
+<use href="#f" fill="#6a9bcc"/>
+</g>
+<path d="M222 138L286 117Q296 114 287 110L245 96Q235 92 245 88L268 78Q276 74 270 70L262 60" fill="none" stroke="#faf9f5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<g fill="none" stroke="#141413" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M176 140L234 52Q240 43 246 46L256 30Q264 18 272 30L320 104"/>
+<path d="M244 47L253 54L262 46L270 55L278 47L286 52M264 22V4M292 112V92M237 91V74" stroke-width="2"/>
+<use href="#f" stroke-width="2"/>
+</g>
+</svg>

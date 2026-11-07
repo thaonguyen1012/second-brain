@@ -1,7 +1,6 @@
 import { books, tracks } from '@/lib/books';
-import { markOf } from '@/lib/book-marks';
 import { businessPhases, itStages } from '@/lib/roadmap';
-import { trackFill, trackInk, trackSoft } from '@/lib/track-colors';
+import { trackFill } from '@/lib/track-colors';
 import { ContinueReading, type HeroBook } from '@/components/progress';
 import { ProgressMigrationOffer } from '@/components/progress-migration';
 import { PageHeader } from '@/components/brain/page-header';
@@ -24,9 +23,6 @@ const homeBooks: HeroBook[] = books.map((b) => ({
   title: b.title,
   track: b.track,
   lessonCount: b.lessonCount,
-  mark: markOf(b),
-  soft: trackSoft[b.track],
-  ink: trackInk[b.track],
   fill: trackFill[b.track],
 }));
 const groups = tracks.map(({ slug, title }) => ({ slug, title, fill: trackFill[slug] }));

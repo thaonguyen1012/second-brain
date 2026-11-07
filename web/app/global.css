@@ -193,17 +193,19 @@
 
 /* Sổ tay group colours (DESIGN.md §4): a group wears the hue of the area its handbooks feed (Kinh doanh -> Cơ hội,
    IT -> Công việc, Kỹ năng -> Tuần), so a hue still names one thing; no free hue is left for a seventh meaning.
-   Painted wherever one handbook is shown: its cover (the -soft tint carrying its monogram in the hue, §9a), its
-   dot and its progress indicator. The teal is darker than the pink in both themes, so the two stay apart under
-   red-green colour blindness. */
+   Painted wherever one handbook is shown, on its dot and its progress indicator only (the cover is an
+   illustration, below). The teal is darker than the pink in both themes, so the two stay apart under red-green
+   colour blindness.
+   Handbook covers (DESIGN.md §9a, public/covers/STYLE.md): a printed object, so the same in both themes. The ground
+   is the flat paper of every cover SVG (shown while it loads and when a book has no drawing yet); the ink is the
+   cover name's colour, 13.3:1 on the ground. */
 :root,
 .dark {
   --track-kinh-doanh: var(--area-opportunity);
   --track-it: var(--area-work);
   --track-ky-nang: var(--area-week);
-  --track-kinh-doanh-soft: var(--area-opportunity-soft);
-  --track-it-soft: var(--area-work-soft);
-  --track-ky-nang-soft: var(--area-week-soft);
+  --cover-ground: #e3dacc;
+  --cover-ink: #141413;
 }
 
 @theme inline {
@@ -258,9 +260,8 @@
   --color-track-kinh-doanh: var(--track-kinh-doanh);
   --color-track-it: var(--track-it);
   --color-track-ky-nang: var(--track-ky-nang);
-  --color-track-kinh-doanh-soft: var(--track-kinh-doanh-soft);
-  --color-track-it-soft: var(--track-it-soft);
-  --color-track-ky-nang-soft: var(--track-ky-nang-soft);
+  --color-cover-ground: var(--cover-ground);
+  --color-cover-ink: var(--cover-ink);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
