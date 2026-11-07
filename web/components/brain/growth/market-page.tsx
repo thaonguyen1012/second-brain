@@ -7,6 +7,7 @@ import { growthApi, type ApiJobAd, type ApiMarketReport, type ApiMarketSkill } f
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { hostOf } from '@/lib/labels';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
@@ -15,6 +16,9 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards, describeApiError, openError } from '../api-state';
 import { BrainCard, StatusBadge } from '../brain-card';
 import { ConfirmDelete } from '../confirm-delete';
+import { EmptyPanel } from '../empty-panel';
+import { GhostRows } from '../ghost-rows';
+import { PAGE_WIDTH } from '../layout';
 import { RowMenu } from '../row-menu';
 import { JobAdDialog } from './job-ad-dialog';
 import { MarketSkillTable, MatchedSkill } from './market-chart';
@@ -155,7 +159,7 @@ function Gaps({ gaps, onAdd }: { gaps: ApiMarketSkill[]; onAdd: (name: string) =
   );
 }
 
-/** New tools from the morning brief: stories worth reading in place, so cards, one column. */
+/** New tools from the morning brief: stories worth reading in place, so cards, one column; none yet: one surface. */
 function NewTools({ items }: { items: ApiMarketReport['newTools'] }) {
   return (
     <section className="flex flex-col gap-3" aria-labelledby="new-tools">
@@ -163,7 +167,9 @@ function NewTools({ items }: { items: ApiMarketReport['newTools'] }) {
         <span id="new-tools">Công cụ và kỹ năng mới từ bản tin sáng</span>
       </SectionTitle>
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Tháng này bản tin chưa gắn tin nào là công cụ hay kỹ năng mới.</p>
+        <p className="rounded-xl border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Tháng này bản tin chưa gắn tin nào là công cụ hay kỹ năng mới.
+        </p>
       ) : (
         <>
           {/* DECISIONS 6.1: the two questions, behind a disclosure (DESIGN.md §7: help text is not content) */}
@@ -274,6 +280,12 @@ export function MarketPage() {
   const adList = ads.loading ? [] : (ads.data?.results ?? []);
   const current = thisMonth();
   const empty = !!report.data && report.data.jobAds === 0;
+  // First run = no ad in any month (one row is enough to know); asked only while this month is empty.
+  const askAny = empty && month === current;
+  const anyAds = useApi<Page<ApiJobAd>>(askAny ? 'job-ads:any' : null, () => growthApi.listJobAds({ limit: 1 }));
+  // Only a fresh answer decides: an earlier "none" may be stale after an ad was pasted
+  const checking = askAny && anyAds.loading;
+  const firstRun = askAny && !anyAds.loading && !anyAds.error && anyAds.data?.results.length === 0;
 
   const paste = () => {
     setEditing(null);
@@ -283,6 +295,7 @@ export function MarketPage() {
   const refresh = () => {
     report.reload();
     ads.reload();
+    if (anyAds.data) anyAds.reload();
   };
 
   // ?jobAd=N (Cmd+K result): show the ad's month and open the ad.
@@ -311,36 +324,40 @@ export function MarketPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
-      <div className="flex flex-wrap items-center gap-2">
-        <PeriodStepper
-          name="tháng"
-          label={monthLabel(month)}
-          onPrev={() => setMonth((m) => addMonths(m, -1))}
-          onNext={() => setMonth((m) => addMonths(m, 1))}
-          nextDisabled={month >= current}
-          current={month === current}
-          onCurrent={() => setMonth(current)}
-          currentLabel="Tháng này"
-        />
-        <div className="ms-auto flex flex-wrap gap-2">
-          {/* Icon-only below 640 px, so it carries a tooltip (DESIGN.md D21) */}
-          <Tooltip>
-            <TooltipTrigger
-              render={<Button variant="outline" onClick={refresh} aria-label="Làm mới" />}
-            >
-              <RefreshCw aria-hidden />
-              <span className="max-sm:hidden">Làm mới</span>
-            </TooltipTrigger>
-            <TooltipPopup>Làm mới</TooltipPopup>
-          </Tooltip>
-          {/* While the month is empty the EmptyState button is the one primary (DESIGN.md D2) */}
-          <Button variant={empty ? 'outline' : 'default'} onClick={paste}>
-            <ClipboardPaste aria-hidden />
-            Dán tin tuyển dụng <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
-          </Button>
+    <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
+      {/* No toolbar before the first ad (D26), kept while that is checked (no flicker on a month empty for now); an
+          empty month keeps the stepper but drops "Làm mới" */}
+      {!firstRun && (
+        <div className="flex flex-wrap items-center gap-2">
+          <PeriodStepper
+            name="tháng"
+            label={monthLabel(month)}
+            onPrev={() => setMonth((m) => addMonths(m, -1))}
+            onNext={() => setMonth((m) => addMonths(m, 1))}
+            nextDisabled={month >= current}
+            current={month === current}
+            onCurrent={() => setMonth(current)}
+            currentLabel="Tháng này"
+          />
+          <div className="ms-auto flex flex-wrap gap-2">
+            {/* Icon-only below 640 px, so it carries a tooltip (DESIGN.md D21) */}
+            {!empty && (
+              <Tooltip>
+                <TooltipTrigger render={<Button variant="outline" onClick={refresh} aria-label="Làm mới" />}>
+                  <RefreshCw aria-hidden />
+                  <span className="max-sm:hidden">Làm mới</span>
+                </TooltipTrigger>
+                <TooltipPopup>Làm mới</TooltipPopup>
+              </Tooltip>
+            )}
+            {/* While the month is empty the EmptyState button is the one primary (DESIGN.md D2) */}
+            <Button variant={empty ? 'outline' : 'default'} onClick={paste}>
+              <ClipboardPaste aria-hidden />
+              Dán tin tuyển dụng <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {notice && (
         <p className="text-sm text-muted-foreground" role="status">
@@ -351,17 +368,31 @@ export function MarketPage() {
       <ApiStaleAlert result={report} />
       {report.error && !report.data ? (
         <ApiErrorState error={report.error} onRetry={report.reload} />
-      ) : report.loading && !report.data ? (
+      ) : (report.loading && !report.data) || checking ? (
         <LoadingCards count={2} />
+      ) : firstRun ? (
+        <EmptyPanel
+          area="growth"
+          glyph={Newspaper}
+          title="Chưa có tin tuyển dụng nào"
+          text="Dán 5 đến 10 tin của vai trò nhắm tới; kỹ năng được rút ra trong nền rồi so với ma trận."
+          action={
+            <Button onClick={paste}>
+              <ClipboardPaste aria-hidden />
+              Dán tin đầu tiên
+            </Button>
+          }
+          ghost={<GhostRows variant="chart" caption="Biểu đồ tần suất hiện khi có tin tuyển dụng đầu tiên." />}
+        />
       ) : empty ? (
         <EmptyState
           icon={<Newspaper aria-hidden />}
-          title="Chưa có tin tuyển dụng nào"
+          title={month === current ? 'Tháng này chưa có tin nào' : `${monthLabel(month)} chưa có tin nào`}
           description="Dán 5 đến 10 tin của vai trò nhắm tới; kỹ năng được rút ra trong nền rồi so với ma trận."
         >
           <Button onClick={paste}>
             <ClipboardPaste aria-hidden />
-            Dán tin đầu tiên
+            Dán tin tuyển dụng
           </Button>
         </EmptyState>
       ) : report.data ? (
@@ -389,6 +420,7 @@ export function MarketPage() {
                 onDeleted={() => {
                   ads.mutate((d) => d && { ...d, results: d.results.filter((x) => x.id !== ad.id) });
                   report.reload();
+                  if (anyAds.data) anyAds.reload();
                   setNotice(`Đã xóa "${ad.title}"`);
                 }}
               />

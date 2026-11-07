@@ -10,11 +10,14 @@ import { BillableBar, Swatch } from './billable-bar';
 import { addDays, formatHours, formatWeekRange } from './format';
 
 const pct = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 100) : 0);
+/** "0 giờ" at zero (a week total, not a duration), else the exact compact hours. */
+const hours = (minutes: number) => (minutes === 0 ? '0 giờ' : formatHours(minutes));
 
 /**
- * Week summary (GET /api/time-entries/summary), a flat section: one big number (total hours), one line with the
- * billable / non-billable split, then one bar per project on a shared scale. `refreshKey` changes when the page
- * records or removes time. `onSelectProject` filters the list.
+ * Week summary (GET /api/time-entries/summary), a flat section: the total (18px: the timer above holds the page's big
+ * number), one line with the billable / non-billable split, then one bar per project on a shared scale. A week with
+ * no time keeps that shape at zero: an empty rail instead of the bars. `refreshKey` changes when the page records or
+ * removes time. `onSelectProject` filters the list.
  */
 export function WeekSummary({
   refreshKey,
@@ -67,57 +70,68 @@ export function WeekSummary({
         <ApiErrorState error={summary.error} onRetry={summary.reload} />
       ) : !data ? (
         <Skeleton className="h-24 rounded-xl" aria-label="Đang tải tổng kết tuần" />
-      ) : data.minutesTotal === 0 ? (
-        <p className="text-sm text-muted-foreground">Chưa có giờ nào trong tuần này.</p>
       ) : (
         <>
           <div className="flex flex-col gap-1">
-            <p className="font-heading text-2xl font-semibold tabular-nums">
-              {formatHours(data.minutesTotal)}
+            <p className="font-heading text-lg font-semibold tabular-nums">
+              {hours(data.minutesTotal)}
               <span className="sr-only"> tổng trong tuần</span>
             </p>
             <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground tabular-nums">
               <span className="inline-flex items-center gap-1.5">
                 <Swatch kind="billable" />
-                {formatHours(data.minutesBillable)} tính tiền ({pct(data.minutesBillable, data.minutesTotal)}%)
+                {hours(data.minutesBillable)} tính tiền
+                {data.minutesTotal > 0 && ` (${pct(data.minutesBillable, data.minutesTotal)}%)`}
               </span>
               <span aria-hidden>·</span>
               <span className="inline-flex items-center gap-1.5">
                 <Swatch kind="nonbillable" />
-                {formatHours(data.minutesNonBillable)} không tính tiền
+                {hours(data.minutesNonBillable)} không tính tiền
               </span>
             </p>
           </div>
-          {rows.length > 0 && (
-            <ul className="flex flex-col gap-4" aria-label="Theo dự án">
-              {rows.map((p) => (
-                <li key={p.id} className="flex flex-col gap-1.5">
-                  <div className="flex min-h-7 items-center gap-2">
-                    <span className="min-w-0 truncate text-sm font-medium">{p.title}</span>
-                    {p.client && <span className="truncate text-xs text-muted-foreground">{p.client}</span>}
-                    {onSelectProject && (
-                      <Button
-                        size="xs"
-                        variant="ghost"
-                        className="ms-auto"
-                        aria-label={`Xem các mục giờ của ${p.title} trong tuần này`}
-                        onClick={() => onSelectProject(p.id, data.weekStart)}
-                      >
-                        <ListFilter aria-hidden />
-                        Xem mục
-                      </Button>
-                    )}
-                  </div>
-                  <BillableBar
-                    billable={p.minutesBillable}
-                    nonBillable={p.minutesNonBillable}
-                    scale={scale}
-                    label={p.title}
-                    showTotal
-                  />
-                </li>
-              ))}
-            </ul>
+          {data.minutesTotal === 0 ? (
+            <div className="flex flex-col gap-1.5">
+              <p className="flex min-h-7 items-center text-sm text-muted-foreground">Chưa có giờ nào trong tuần này.</p>
+              <div className="flex items-center gap-2" aria-hidden>
+                <span className="h-3.5 min-w-0 flex-1 rounded-sm bg-muted" />
+                <span className="w-20 shrink-0 text-end text-sm font-medium text-muted-foreground tabular-nums">
+                  0 giờ
+                </span>
+              </div>
+            </div>
+          ) : (
+            rows.length > 0 && (
+              <ul className="flex flex-col gap-4" aria-label="Theo dự án">
+                {rows.map((p) => (
+                  <li key={p.id} className="flex flex-col gap-1.5">
+                    <div className="flex min-h-7 items-center gap-2">
+                      <span className="min-w-0 truncate text-sm font-medium">{p.title}</span>
+                      {p.client && <span className="truncate text-xs text-muted-foreground">{p.client}</span>}
+                      {onSelectProject && (
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          className="ms-auto"
+                          aria-label={`Xem các mục giờ của ${p.title} trong tuần này`}
+                          onClick={() => onSelectProject(p.id, data.weekStart)}
+                        >
+                          <ListFilter aria-hidden />
+                          Xem mục
+                        </Button>
+                      )}
+                    </div>
+                    <BillableBar
+                      billable={p.minutesBillable}
+                      nonBillable={p.minutesNonBillable}
+                      scale={scale}
+                      label={p.title}
+                      showTotal
+                    />
+                  </li>
+                ))}
+              </ul>
+            )
           )}
         </>
       )}

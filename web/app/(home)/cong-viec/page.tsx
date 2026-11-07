@@ -10,7 +10,7 @@ export default function Page() {
       <PageHeader
         title="Dự án"
         nav="/cong-viec/"
-        description="Dự án freelance: khách, cách tính tiền và giá. Giá giờ thực tế chia số tiền cho mọi giờ đã làm, kể cả giờ không tính tiền."
+        description="Dự án freelance: khách, cách tính tiền và giá."
       />
       <ProjectsPage />
     </div>

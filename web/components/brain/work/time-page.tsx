@@ -1,8 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Clock, FolderPlus, Pencil, Plus, X } from 'lucide-react';
+import { Pencil, Plus, X } from 'lucide-react';
 import type { Page } from '@/lib/api/client';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiTimeEntry } from '@/lib/api/work';
@@ -14,11 +13,13 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
-import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
 import { ConfirmDelete, DeleteButton } from '../confirm-delete';
+import { PAGE_WIDTH } from '../layout';
 import { addDays, formatDay, formatMinutes, isTyping } from './format';
+import { ProjectDialog } from './project-dialog';
 import { RowsSkeleton } from './rows-skeleton';
 import { TimeEntryDialog } from './time-entry-dialog';
 import { TimerPanel } from './timer-panel';
@@ -119,6 +120,9 @@ export function TimePage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [summaryKey, setSummaryKey] = useState(0);
+  const [projectDialog, setProjectDialog] = useState(false);
+  // A project added from the timer is picked there at once, so "Bắt đầu" works right after the dialog.
+  const [createdProject, setCreatedProject] = useState<number | null>(null);
 
   const choices = useProjectChoices();
   const week = useWeekObjectives();
@@ -180,9 +184,11 @@ export function TimePage() {
     setDialogOpen(true);
   };
 
-  // No project yet: nothing can be timed or entered, the page shows one empty state instead (D26).
+  // No project yet: the timer still shows, waiting, with "Thêm dự án" in place of the picker; no entry list.
   const noProjects = !!choices.data && choices.projects.length === 0;
   const projectsLoading = !choices.data && !choices.error;
+  // The timer offers open projects only; with none (first run, or all done) it offers "Thêm dự án" instead.
+  const openProjects = choices.projects.filter((p) => p.status === 'active' || p.status === 'planned');
 
   // N opens "Nhập giờ" (T, the timer key, lives in TimerPanel).
   useEffect(() => {
@@ -229,45 +235,51 @@ export function TimePage() {
     changed(`Đã xóa mục giờ của "${gone.projectTitle}"`);
     if (gone.running) timer.reload();
   };
-  // Unfiltered and empty: the empty state's "Nhập giờ" is the one primary; the toolbar's drops to outline (D2).
+  // Unfiltered and empty: no toolbar (D26), one line with an outline "Nhập giờ"; "Bắt đầu" stays the one primary.
   const emptyUnfiltered =
     !filtered && !badRange && !entries.loading && !!entries.data && !entries.error && list.length === 0;
-  const addVariant = emptyUnfiltered ? 'outline' : 'default';
-
-  if (noProjects)
-    return (
-      <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
-        <EmptyState
-          icon={<FolderPlus aria-hidden />}
-          title="Chưa có dự án nào"
-          description="Bấm giờ cần ít nhất một dự án."
-        >
-          <Button render={<Link href="/cong-viec/" />}>
-            <Plus aria-hidden />
-            Thêm dự án
-          </Button>
-        </EmptyState>
-        {/* Without a project the "Chưa có giờ nào" branch is never reached: the timer guide shows here instead */}
-        <EmptyStateGuide guide="work" />
-      </div>
-    );
+  const noticeLine = notice && (
+    <p className="text-sm text-muted-foreground" role="status">
+      {notice}
+    </p>
+  );
+  const nhapGio = (variant: 'default' | 'outline', className?: string) => (
+    <Button variant={variant} className={className} onClick={openNew} aria-keyshortcuts="n">
+      <Plus aria-hidden />
+      Nhập giờ
+      <Kbd
+        className={cn(
+          'pointer-coarse:hidden max-sm:hidden',
+          variant === 'default' && 'bg-primary-foreground/20 text-primary-foreground',
+        )}
+      >
+        N
+      </Kbd>
+    </Button>
+  );
 
   return (
-    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
+    <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
       {projectsLoading ? (
         <Skeleton className="h-24 rounded-xl" aria-label="Đang tải bộ bấm giờ" />
+      ) : choices.error && !choices.data && !timer.running ? (
+        // Unknown project list: say so, never "Chưa có dự án" (it would invite a duplicate project)
+        <ApiErrorState error={choices.error} onRetry={choices.reload} />
       ) : (
         <TimerPanel
           timer={timer}
-          projects={choices.projects.filter((p) => p.status === 'active' || p.status === 'planned')}
+          projects={openProjects}
           objectives={week.objectives}
-          preferredProject={project === 'all' ? null : Number(project)}
+          preferredProject={createdProject ?? (project === 'all' ? null : Number(project))}
           onChanged={(message) => {
             changed(message);
             entries.reload();
           }}
+          onAddProject={choices.data && openProjects.length === 0 ? () => setProjectDialog(true) : undefined}
+          noProjectLabel={noProjects ? 'Chưa có dự án' : 'Không có dự án đang mở'}
         />
       )}
+      {(noProjects || emptyUnfiltered) && noticeLine}
 
       <WeekSummary
         refreshKey={summaryKey}
@@ -279,136 +291,133 @@ export function TimePage() {
         }}
       />
 
-      <section id="time-entries" aria-labelledby="time-entries-title" className="flex scroll-mt-20 flex-col gap-4">
-        <h2 id="time-entries-title" className="font-heading text-lg font-semibold tracking-tight">
-          Các mục giờ
-        </h2>
-        {/* One toolbar of h-8 controls: filters left, "Nhập giờ" right. At 390 px: project + Nhập giờ, then the dates. */}
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap">
-          <ChoiceSelect
-            id="time-filter-project"
-            label="Lọc theo dự án"
-            value={project}
-            onChange={setProject}
-            choices={projectChoices}
-            className="min-w-0 sm:w-auto sm:min-w-40"
-          />
-          <div className="col-span-2 grid grid-cols-2 gap-2 sm:flex">
-            <Label htmlFor="time-filter-from" className="sr-only">
-              Từ ngày
-            </Label>
-            <Input
-              id="time-filter-from"
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="sm:w-auto"
-            />
-            <Label htmlFor="time-filter-to" className="sr-only">
-              Đến ngày
-            </Label>
-            <Input
-              id="time-filter-to"
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="sm:w-auto"
-            />
+      {noProjects ? (
+        // Nothing can be entered yet; the how-to stays one click away
+        <EmptyStateGuide guide="work" />
+      ) : emptyUnfiltered ? (
+        <section aria-labelledby="time-entries-title" className="flex flex-col items-start gap-3">
+          <h2 id="time-entries-title" className="font-heading text-lg font-semibold tracking-tight">
+            Các mục giờ
+          </h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="text-sm text-muted-foreground">Chưa có giờ nào. Bấm giờ ở trên, hoặc nhập tay giờ đã làm.</p>
+            {nhapGio('outline')}
           </div>
-          {filtered && (
-            <Button variant="ghost" className="col-span-2 justify-self-start" onClick={clearFilters}>
-              <X aria-hidden />
-              Xóa bộ lọc
+          <EmptyStateGuide guide="work" className="w-full" />
+        </section>
+      ) : (
+        <section id="time-entries" aria-labelledby="time-entries-title" className="flex scroll-mt-20 flex-col gap-4">
+          <h2 id="time-entries-title" className="font-heading text-lg font-semibold tracking-tight">
+            Các mục giờ
+          </h2>
+          {/* One toolbar of h-8 controls: filters left, "Nhập giờ" right. At 390 px: project + Nhập giờ, then the dates. */}
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap">
+            <ChoiceSelect
+              id="time-filter-project"
+              label="Lọc theo dự án"
+              value={project}
+              onChange={setProject}
+              choices={projectChoices}
+              className="min-w-0 sm:w-auto sm:min-w-40"
+            />
+            <div className="col-span-2 grid grid-cols-2 gap-2 sm:flex">
+              <Label htmlFor="time-filter-from" className="sr-only">
+                Từ ngày
+              </Label>
+              <Input
+                id="time-filter-from"
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="sm:w-auto"
+              />
+              <Label htmlFor="time-filter-to" className="sr-only">
+                Đến ngày
+              </Label>
+              <Input
+                id="time-filter-to"
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="sm:w-auto"
+              />
+            </div>
+            {filtered && (
+              <Button variant="ghost" className="col-span-2 justify-self-start" onClick={clearFilters}>
+                <X aria-hidden />
+                Xóa bộ lọc
+              </Button>
+            )}
+            {nhapGio('default', 'col-start-2 row-start-1 sm:ms-auto')}
+          </div>
+
+          {noticeLine}
+
+          <ApiStaleAlert result={entries} />
+          {badRange ? (
+            <p className="text-sm text-destructive-foreground" role="alert">
+              &quot;Từ ngày&quot; phải trước hoặc bằng &quot;Đến ngày&quot;.
+            </p>
+          ) : entries.error && !entries.data ? (
+            <ApiErrorState error={entries.error} onRetry={entries.reload} />
+          ) : entries.loading && list.length === 0 ? (
+            <RowsSkeleton />
+          ) : list.length === 0 && filtered ? (
+            <p className="text-sm text-muted-foreground">
+              Không có mục nào khớp bộ lọc.{' '}
+              <Button variant="link" size="sm" className="px-0" onClick={clearFilters}>
+                Xóa bộ lọc
+              </Button>
+            </p>
+          ) : (
+            <div className="flex flex-col divide-y rounded-xl border bg-card">
+              {days.map((d) => (
+                <section key={d.date} aria-label={formatDay(d.date)} className="flex flex-col">
+                  <div className="flex h-8 items-center justify-between px-3 text-xs font-medium text-muted-foreground">
+                    <h3>{formatDay(d.date)}</h3>
+                    <span className="tabular-nums">{formatMinutes(d.minutes)}</span>
+                  </div>
+                  <ul className="flex flex-col divide-y border-t">
+                    {d.entries.map((e) => (
+                      <EntryRow
+                        key={e.id}
+                        entry={e}
+                        objectiveTitle={e.objective ? (objectiveTitles.get(e.objective) ?? null) : null}
+                        onEdit={() => {
+                          setEditing(e);
+                          setDialogOpen(true);
+                        }}
+                        onDeleted={() => removeEntry(e)}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          )}
+          {entries.data?.next && !entries.loading && !badRange && (
+            <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
+              Tải thêm
             </Button>
           )}
-          <Button
-            variant={addVariant}
-            className="col-start-2 row-start-1 sm:ms-auto"
-            onClick={openNew}
-            aria-keyshortcuts="n"
-          >
-            <Plus aria-hidden />
-            Nhập giờ
-            <Kbd
-              className={cn(
-                'pointer-coarse:hidden max-sm:hidden',
-                addVariant === 'default' && 'bg-primary-foreground/20 text-primary-foreground',
-              )}
-            >
-              N
-            </Kbd>
-          </Button>
-        </div>
+        </section>
+      )}
 
-        {notice && (
-          <p className="text-sm text-muted-foreground" role="status">
-            {notice}
-          </p>
-        )}
-
-        <ApiStaleAlert result={entries} />
-        {badRange ? (
-          <p className="text-sm text-destructive-foreground" role="alert">
-            &quot;Từ ngày&quot; phải trước hoặc bằng &quot;Đến ngày&quot;.
-          </p>
-        ) : entries.error && !entries.data ? (
-          <ApiErrorState error={entries.error} onRetry={entries.reload} />
-        ) : entries.loading && list.length === 0 ? (
-          <RowsSkeleton />
-        ) : list.length === 0 && filtered ? (
-          <p className="text-sm text-muted-foreground">
-            Không có mục nào khớp bộ lọc.{' '}
-            <Button variant="link" size="sm" className="px-0" onClick={clearFilters}>
-              Xóa bộ lọc
-            </Button>
-          </p>
-        ) : list.length === 0 ? (
-          <>
-            <EmptyState
-              icon={<Clock aria-hidden />}
-              title="Chưa có giờ nào"
-              description="Bấm giờ ở trên, hoặc nhập tay giờ đã làm."
-            >
-              <Button onClick={openNew}>
-                <Plus aria-hidden />
-                Nhập giờ
-              </Button>
-            </EmptyState>
-            {entries.data && !entries.error && <EmptyStateGuide guide="work" />}
-          </>
-        ) : (
-          <div className="flex flex-col divide-y rounded-xl border bg-card">
-            {days.map((d) => (
-              <section key={d.date} aria-label={formatDay(d.date)} className="flex flex-col">
-                <div className="flex h-8 items-center justify-between px-3 text-xs font-medium text-muted-foreground">
-                  <h3>{formatDay(d.date)}</h3>
-                  <span className="tabular-nums">{formatMinutes(d.minutes)}</span>
-                </div>
-                <ul className="flex flex-col divide-y border-t">
-                  {d.entries.map((e) => (
-                    <EntryRow
-                      key={e.id}
-                      entry={e}
-                      objectiveTitle={e.objective ? (objectiveTitles.get(e.objective) ?? null) : null}
-                      onEdit={() => {
-                        setEditing(e);
-                        setDialogOpen(true);
-                      }}
-                      onDeleted={() => removeEntry(e)}
-                    />
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
-        )}
-        {entries.data?.next && !entries.loading && !badRange && (
-          <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-            Tải thêm
-          </Button>
-        )}
-      </section>
-
+      <ProjectDialog
+        open={projectDialog}
+        project={null}
+        onOpenChange={setProjectDialog}
+        onSaved={(saved) => {
+          choices.mutate((d) => d && { ...d, results: [saved, ...d.results.filter((p) => p.id !== saved.id)] });
+          setCreatedProject(saved.id);
+          setProjectDialog(false);
+          setNotice(
+            saved.status === 'active' || saved.status === 'planned'
+              ? `Đã thêm "${saved.title}". Bấm Bắt đầu để bấm giờ.`
+              : `Đã thêm "${saved.title}"`,
+          );
+        }}
+      />
       <TimeEntryDialog
         open={dialogOpen}
         entry={editing}

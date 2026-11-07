@@ -5,6 +5,7 @@ import type { Page } from '@/lib/api/client';
 import { growthApi, type ApiAchievement, type ApiOutcome, type ApiPrediction } from '@/lib/api/growth';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
+import { cn } from '@/lib/utils';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
@@ -14,11 +15,15 @@ import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError, openError }
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
 import { ConfirmDelete } from '../confirm-delete';
+import { EmptyPanel } from '../empty-panel';
+import { GhostRows } from '../ghost-rows';
+import { PAGE_WIDTH } from '../layout';
 import { RowMenu } from '../row-menu';
 import { AchievementDialog } from './achievement-dialog';
+import { AchievementQuickAdd } from './achievement-quick-add';
 import { addDays, formatDay, mondayOf, outcomeOf, outcomes, today, weekLabel } from './labels';
 import { PredictionDialog, type PredictionMode } from './prediction-dialog';
-import { PeriodStepper, SectionTitle, useShortcuts } from './shared';
+import { PeriodStepper, useShortcuts } from './shared';
 
 // --- Brag document -----------------------------------------------------------------------------------
 
@@ -104,8 +109,25 @@ function BragSection() {
   );
   const rows = list.loading ? [] : (list.data?.results ?? []);
   const empty = !!list.data && !list.loading && !list.error && rows.length === 0;
+  // First run = no line in any week: "Mọi tuần" answers it itself, an empty "Tuần này" asks for one row of any week.
+  // A past empty week never counts: the panel hides the stepper, which would leave no way back.
+  const askAny = empty && scope === 'week' && week === thisWeek;
+  const anyLine = useApi<Page<ApiAchievement>>(askAny ? 'achievements:any' : null, () =>
+    growthApi.listAchievements({ limit: 1 }),
+  );
+  // Only a fresh answer decides: an earlier "none" may be stale after a line was added
+  const checking = askAny && anyLine.loading;
+  const firstRun =
+    empty &&
+    (scope === 'all' || (askAny && !anyLine.loading && !anyLine.error && anyLine.data?.results.length === 0));
   // A new line defaults to today when the shown week is this week, otherwise to that week's Friday.
   const defaultDate = scope === 'all' || week === thisWeek ? today() : addDays(week, 4);
+  const added = (a: ApiAchievement, message: string) => {
+    setNotice(message);
+    if (scope === 'week' && mondayOf(a.date) !== week) setWeek(mondayOf(a.date));
+    else list.reload();
+    if (anyLine.data) anyLine.reload();
+  };
 
   const create = () => {
     setEditing(null);
@@ -141,29 +163,33 @@ function BragSection() {
 
   return (
     <section className="flex flex-col gap-6" aria-label="Thành tựu">
-      {/* One toolbar: period and stepper left, "Ghi thành tựu" right; at 390 px the stepper takes row 2 */}
-      <div className="flex flex-wrap items-center gap-2">
-        <ChoiceSelect label="Phạm vi" value={scope} onChange={setScope} choices={scopeChoices} className="w-auto" />
-        {scope === 'week' && (
-          <div className="order-last w-full sm:order-none sm:w-auto">
-            <PeriodStepper
-              name="tuần"
-              label={weekLabel(week)}
-              onPrev={() => setWeek((w) => addDays(w, -7))}
-              onNext={() => setWeek((w) => addDays(w, 7))}
-              nextDisabled={week >= thisWeek}
-              current={week === thisWeek}
-              onCurrent={() => setWeek(thisWeek)}
-              currentLabel="Tuần này"
-            />
-          </div>
-        )}
-        {/* While the list is empty the EmptyState button is the one primary (DESIGN.md D2) */}
-        <Button className="ms-auto" variant={empty ? 'outline' : 'default'} onClick={create}>
-          <Plus aria-hidden />
-          Ghi thành tựu <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
-        </Button>
-      </div>
+      {/* One toolbar: period and stepper left, "Ghi thành tựu" right; at 390 px the stepper takes row 2. None
+          before the first line (D26): the first-run panel carries the add. Kept while that is being checked, so a
+          week that is empty only for now does not make it flicker. */}
+      {!firstRun && (
+        <div className="flex flex-wrap items-center gap-2">
+          <ChoiceSelect label="Phạm vi" value={scope} onChange={setScope} choices={scopeChoices} className="w-auto" />
+          {scope === 'week' && (
+            <div className="order-last w-full sm:order-none sm:w-auto">
+              <PeriodStepper
+                name="tuần"
+                label={weekLabel(week)}
+                onPrev={() => setWeek((w) => addDays(w, -7))}
+                onNext={() => setWeek((w) => addDays(w, 7))}
+                nextDisabled={week >= thisWeek}
+                current={week === thisWeek}
+                onCurrent={() => setWeek(thisWeek)}
+                currentLabel="Tuần này"
+              />
+            </div>
+          )}
+          {/* While the list is empty the EmptyState button is the one primary (DESIGN.md D2) */}
+          <Button className="ms-auto" variant={empty ? 'outline' : 'default'} onClick={create}>
+            <Plus aria-hidden />
+            Ghi thành tựu <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
+          </Button>
+        </div>
+      )}
       {notice && (
         <p className="text-sm text-muted-foreground" role="status">
           {notice}
@@ -172,8 +198,32 @@ function BragSection() {
       <ApiStaleAlert result={list} />
       {list.error && !list.data ? (
         <ApiErrorState error={list.error} onRetry={list.reload} />
-      ) : list.loading && rows.length === 0 ? (
+      ) : (list.loading && rows.length === 0) || checking ? (
         <LoadingRows />
+      ) : firstRun ? (
+        <EmptyPanel
+          area="growth"
+          glyph={Trophy}
+          title="Nhật ký còn trống"
+          text="Mỗi tuần ghi việc đã làm được, kèm kết quả bằng số: nguyên liệu cho CV và case study."
+          action={
+            <Button onClick={create}>
+              <Plus aria-hidden />
+              Ghi thành tựu
+            </Button>
+          }
+          quick={
+            <>
+              <p className="basis-full text-xs text-muted-foreground">Hoặc ghi nhanh một dòng</p>
+              <AchievementQuickAdd
+                date={defaultDate}
+                titlePlaceholder="Giảm build từ 14 GB xuống 1,9 GB"
+                onAdded={(a) => added(a, `Đã ghi "${a.title}"`)}
+              />
+            </>
+          }
+          ghost={<GhostRows />}
+        />
       ) : rows.length === 0 ? (
         <EmptyState
           icon={<Trophy aria-hidden />}
@@ -204,6 +254,7 @@ function BragSection() {
               onDeleted={() => {
                 list.mutate((d) => d && { ...d, results: d.results.filter((x) => x.id !== a.id) });
                 setNotice(`Đã xóa "${a.title}"`);
+                if (anyLine.data) anyLine.reload();
               }}
             />
           ))}
@@ -221,9 +272,7 @@ function BragSection() {
         onOpenChange={setOpen}
         onSaved={(saved, created) => {
           setOpen(false);
-          setNotice(created ? `Đã ghi "${saved.title}"` : `Đã lưu "${saved.title}"`);
-          if (scope === 'week' && mondayOf(saved.date) !== week) setWeek(mondayOf(saved.date));
-          else list.reload();
+          added(saved, created ? `Đã ghi "${saved.title}"` : `Đã lưu "${saved.title}"`);
         }}
       />
     </section>
@@ -365,13 +414,15 @@ function PredictionsSection() {
     }
   };
 
+  const addButton = (
+    <Button className="shrink-0" variant="outline" onClick={() => show(null, 'edit')}>
+      <Plus aria-hidden />
+      Ghi dự đoán <Kbd className="max-sm:hidden pointer-coarse:hidden">P</Kbd>
+    </Button>
+  );
+
   return (
     <section className="flex flex-col gap-4" aria-labelledby="pred-title">
-      <SectionTitle>
-        <span id="pred-title" className="scroll-mt-20">
-          Dự đoán, chấm lại sau 6 tháng
-        </span>
-      </SectionTitle>
       {dueCount > 0 && filter !== 'due' && (
         <Alert variant="warning">
           <CalendarCheck aria-hidden />
@@ -387,62 +438,77 @@ function PredictionsSection() {
           </AlertAction>
         </Alert>
       )}
-      {/* One row: filter left, "Ghi dự đoán" right (it keeps the end of row 1 at 390 px). With no predictions
-          yet there is nothing to filter: the button follows the empty sentence instead of standing alone. */}
-      {!none && (
-        <div className="flex flex-wrap items-center gap-2">
-          <ChoiceSelect label="Lọc dự đoán" value={filter} onChange={setFilter} choices={predChoices} className="w-auto" />
-          <Button className="ms-auto" variant="outline" onClick={() => show(null, 'edit')}>
-            <Plus aria-hidden />
-            Ghi dự đoán <Kbd className="max-sm:hidden pointer-coarse:hidden">P</Kbd>
-          </Button>
-        </div>
-      )}
       {notice && (
         <p className="text-sm text-muted-foreground" role="status">
           {notice}
         </p>
       )}
       <ApiStaleAlert result={list} />
-      {list.error && !list.data ? (
-        <ApiErrorState error={list.error} onRetry={list.reload} />
-      ) : list.loading && rows.length === 0 ? (
-        <LoadingRows />
-      ) : none ? (
-        <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-muted-foreground">
+      {/* One surface: the title, filter and "Ghi dự đoán" in its header, then the rows or one line. With no
+          predictions yet there is nothing to filter. */}
+      <div className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card">
+        {/* 390 px: alone, the button keeps the title's row (the title wraps); with the filter both take row 2 */}
+        <div className={cn('flex min-h-12 items-center gap-2 px-3 py-2', !none && 'flex-wrap')}>
+          <h2
+            id="pred-title"
+            className="me-auto min-w-0 scroll-mt-20 font-heading text-lg font-semibold tracking-tight text-balance"
+          >
+            Dự đoán, chấm lại sau 6 tháng
+          </h2>
+          {none ? (
+            addButton
+          ) : (
+            <div className="flex items-center gap-2 max-sm:w-full">
+              <ChoiceSelect
+                label="Lọc dự đoán"
+                value={filter}
+                onChange={setFilter}
+                choices={predChoices}
+                className="w-auto max-sm:min-w-0 max-sm:flex-1"
+              />
+              {addButton}
+            </div>
+          )}
+        </div>
+        {list.error && !list.data ? (
+          <div className="p-3">
+            <ApiErrorState error={list.error} onRetry={list.reload} />
+          </div>
+        ) : list.loading && rows.length === 0 ? (
+          <div className="flex flex-col gap-2 p-3" aria-busy="true" aria-label="Đang tải">
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+          </div>
+        ) : none ? (
+          <p className="px-3 py-3 text-sm text-muted-foreground">
             Chưa có dự đoán nào. Ghi một dự đoán về AI, kinh tế hay địa chính trị kèm độ tự tin; 6 tháng sau app nhắc
             chấm lại.
           </p>
-          <Button variant="outline" onClick={() => show(null, 'edit')}>
-            <Plus aria-hidden />
-            Ghi dự đoán <Kbd className="max-sm:hidden pointer-coarse:hidden">P</Kbd>
-          </Button>
-        </div>
-      ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Không có mục nào khớp bộ lọc.{' '}
-          <Button variant="link" size="sm" className="px-0" onClick={() => setFilter('all')}>
-            Xóa bộ lọc
-          </Button>
-        </p>
-      ) : (
-        <ul className="flex flex-col divide-y rounded-xl border bg-card">
-          {rows.map((p) => (
-            <PredictionRow
-              key={p.id}
-              p={p}
-              onScore={() => show(p, 'score')}
-              onEdit={() => show(p, 'edit')}
-              onDeleted={() => {
-                list.mutate((d) => d && { ...d, results: d.results.filter((x) => x.id !== p.id) });
-                due.reload();
-                setNotice('Đã xóa dự đoán');
-              }}
-            />
-          ))}
-        </ul>
-      )}
+        ) : rows.length === 0 ? (
+          <p className="px-3 py-3 text-sm text-muted-foreground">
+            Không có mục nào khớp bộ lọc.{' '}
+            <Button variant="link" size="sm" className="px-0" onClick={() => setFilter('all')}>
+              Xóa bộ lọc
+            </Button>
+          </p>
+        ) : (
+          <ul className="flex flex-col divide-y" aria-label="Dự đoán">
+            {rows.map((p) => (
+              <PredictionRow
+                key={p.id}
+                p={p}
+                onScore={() => show(p, 'score')}
+                onEdit={() => show(p, 'edit')}
+                onDeleted={() => {
+                  list.mutate((d) => d && { ...d, results: d.results.filter((x) => x.id !== p.id) });
+                  due.reload();
+                  setNotice('Đã xóa dự đoán');
+                }}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
       {list.data?.next && !list.loading && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
           Tải thêm
@@ -473,7 +539,7 @@ function PredictionsSection() {
 /** Nhật ký thành tựu: weekly brag document and the predictions list (DECISIONS 4.8, 6.2, 6.5). */
 export function BragPage() {
   return (
-    <div className="flex flex-col gap-8 px-4 pb-12 sm:px-8">
+    <div className={cn(PAGE_WIDTH, 'flex flex-col gap-8 px-4 pb-12 sm:px-8')}>
       <BragSection />
       <PredictionsSection />
     </div>

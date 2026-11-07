@@ -10,10 +10,11 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
-import { EmptyStateGuide } from '@/components/stageshow/lazy';
-import { ApiErrorState, ApiStaleAlert, EmptyState, describeApiError } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
+import { EmptyPanel } from '../empty-panel';
+import { PAGE_WIDTH } from '../layout';
 import { RowMenu } from '../row-menu';
 import { BillableLegend, MiniBillableBar } from './billable-bar';
 import { formatHours, formatMoney } from './format';
@@ -180,12 +181,12 @@ export function ProjectsPage() {
     setDialogOpen(true);
   };
   const filtered = status !== 'all';
-  // Unfiltered and empty: "Thêm dự án" in the empty state is the one primary; the toolbar's drops to outline.
+  // Unfiltered and empty: the first-run panel carries the one "Thêm dự án"; no toolbar until a project exists (D26).
   const emptyUnfiltered = !filtered && !projects.loading && !!projects.data && !projects.error && list.length === 0;
   const anyMinutes = list.some((p) => p.minutesTotal > 0);
 
   return (
-    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
+    <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
       <TimerPanel
         compact
         timer={timer}
@@ -197,19 +198,21 @@ export function ProjectsPage() {
         }}
       />
 
-      <div className="flex items-center gap-2">
-        <ChoiceSelect
-          label="Trạng thái"
-          value={status}
-          onChange={setStatus}
-          choices={statusChoices}
-          className="min-w-0 flex-1 sm:w-auto sm:flex-none"
-        />
-        <Button variant={emptyUnfiltered ? 'outline' : 'default'} className="ms-auto shrink-0" onClick={openNew}>
-          <Plus aria-hidden />
-          Thêm dự án
-        </Button>
-      </div>
+      {!emptyUnfiltered && (
+        <div className="flex items-center gap-2">
+          <ChoiceSelect
+            label="Trạng thái"
+            value={status}
+            onChange={setStatus}
+            choices={statusChoices}
+            className="min-w-0 flex-1 sm:w-auto sm:flex-none"
+          />
+          <Button className="ms-auto shrink-0" onClick={openNew}>
+            <Plus aria-hidden />
+            Thêm dự án
+          </Button>
+        </div>
+      )}
 
       {notice && (
         <p className="text-sm text-muted-foreground" role="status">
@@ -230,34 +233,49 @@ export function ProjectsPage() {
           </Button>
         </p>
       ) : list.length === 0 ? (
-        <>
-          <EmptyState
-            icon={<FolderPlus aria-hidden />}
-            title="Chưa có dự án nào"
-            description="Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế."
-          >
+        <EmptyPanel
+          area="work"
+          glyph={FolderPlus}
+          title="Chưa có dự án nào"
+          text="Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế."
+          action={
             <Button onClick={openNew}>
               <Plus aria-hidden />
               Thêm dự án
             </Button>
-          </EmptyState>
-          {/* The how under the unfiltered empty list (D26, stageshow README: Dự án with no status filter) */}
-          {projects.data && !projects.error && <EmptyStateGuide guide="work" />}
-        </>
+          }
+          guide="work"
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {anyMinutes && <BillableLegend className="justify-end" />}
           <div className="flex flex-col divide-y rounded-xl border bg-card">
-            <div
-              className={cn(ROW_GRID, 'h-8 text-xs font-medium text-muted-foreground max-md:hidden')}
-              aria-hidden
-            >
-              <span>Trạng thái</span>
-              <span>Dự án</span>
-              <span className="text-end">Giờ</span>
-              <span className="text-end">Giá giờ thực tế</span>
-              <span className="text-end">Đã kiếm</span>
-              <span className="w-15" />
+            {/* Column labels for the eye (the rows carry their own text); only the rate's definition is focusable */}
+            <div className={cn(ROW_GRID, 'h-8 text-xs font-medium text-muted-foreground max-md:hidden')}>
+              <span aria-hidden>Trạng thái</span>
+              <span aria-hidden>Dự án</span>
+              <span className="text-end" aria-hidden>
+                Giờ
+              </span>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      className="cursor-help justify-self-end rounded-sm text-end underline decoration-dotted underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    />
+                  }
+                >
+                  Giá giờ thực tế
+                </TooltipTrigger>
+                <TooltipPopup className="max-w-64">
+                  Số tiền chia cho mọi giờ đã làm, kể cả giờ không tính tiền.
+                </TooltipPopup>
+              </Tooltip>
+              <span className="text-end" aria-hidden>
+                Đã kiếm
+              </span>
+              <span className="w-15" aria-hidden />
             </div>
             <ul className="flex flex-col divide-y" aria-label="Dự án">
               {list.map((p) => (

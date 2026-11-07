@@ -1,6 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { Loader2, Play, Square } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Loader2, Play, Plus, Square } from 'lucide-react';
 import type { ApiObjective } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
 import type { ApiProject, ApiTimeEntry } from '@/lib/api/work';
@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { ApiErrorState, describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { fieldErrors, formatClock, formatMinutes, isTyping } from './format';
@@ -68,8 +69,10 @@ function KeyHint({ k }: { k: string }) {
 /**
  * The one timer (POST /api/time-entries/timer/start|stop). Shows the running entry from GET timer, so a reload
  * keeps it. `T` starts or stops it when focus is not in a field. `onChanged` lets the page refresh its lists.
- * Renders nothing with no open project and nothing running. `compact` (Dự án): only a one-line strip while a
- * timer runs; T still starts the last-used project there, and the strip then appears.
+ * Idle, it shows 0:00:00 (Giờ's big number) and the start form. With no open project it renders nothing, unless
+ * `onAddProject` is given: then `noProjectLabel` and "Thêm dự án" take the picker's place and "Bắt đầu" waits.
+ * `compact` (Dự án): only a one-line strip while a timer runs; T still starts the last-used project there, and the
+ * strip then appears.
  */
 export function TimerPanel({
   timer,
@@ -78,6 +81,8 @@ export function TimerPanel({
   preferredProject,
   onChanged,
   compact = false,
+  onAddProject,
+  noProjectLabel = 'Chưa có dự án',
 }: {
   timer: TimerState;
   projects: ApiProject[];
@@ -86,6 +91,10 @@ export function TimerPanel({
   preferredProject?: number | null;
   onChanged: (message: string, entry: ApiTimeEntry | null) => void;
   compact?: boolean;
+  /** Opens the add-project dialog in place; the page then passes the new project in `projects` (and as preferred). */
+  onAddProject?: () => void;
+  /** The line before "Thêm dự án" ("Chưa có dự án"; the page says when only finished projects exist). */
+  noProjectLabel?: string;
 }) {
   const [picked, setPicked] = useState<number | null>(null);
   const [note, setNote] = useState('');
@@ -94,12 +103,31 @@ export function TimerPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const running = timer.running;
+  const startButton = useRef<HTMLButtonElement>(null);
+  const focusStart = useRef(false);
 
   const ids = new Set(projects.map((p) => p.id));
   const fallback = [preferredProject, readLastProject(), projects[0]?.id].find(
     (id): id is number => typeof id === 'number' && ids.has(id),
   );
   const projectId = picked !== null && ids.has(picked) ? picked : (fallback ?? null);
+
+  // "Thêm dự án" is gone once a project exists: after its dialog has closed, give focus to "Bắt đầu" if it was lost.
+  useEffect(() => {
+    if (!focusStart.current || projects.length === 0) return;
+    focusStart.current = false;
+    let frame = 0;
+    let tries = 0;
+    const step = () => {
+      if (document.querySelector('[role="dialog"]') && tries++ < 90) {
+        frame = window.requestAnimationFrame(step);
+        return;
+      }
+      if (!document.activeElement || document.activeElement === document.body) startButton.current?.focus();
+    };
+    frame = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(frame);
+  }, [projects.length]);
 
   const start = async () => {
     if (projectId === null || busy) return;
@@ -193,7 +221,7 @@ export function TimerPanel({
 
   if (timer.error && !timer.data) return <ApiErrorState error={timer.error} onRetry={timer.reload} />;
   if (!timer.data) return <Skeleton className="h-24 rounded-xl" aria-label="Đang tải bộ bấm giờ" />;
-  if (!running && projects.length === 0) return null;
+  if (!running && projects.length === 0 && !onAddProject) return null;
 
   const objectiveChoices = [
     { value: 'none', label: 'Không gắn mục tiêu' },
@@ -230,39 +258,71 @@ export function TimerPanel({
           }}
         >
           <h2 className="text-sm font-medium">Bấm giờ</h2>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_auto_minmax(0,1fr)_auto]">
-            <ChoiceSelect
-              label="Dự án"
-              value={String(projectId ?? '')}
-              onChange={(v) => setPicked(Number(v))}
-              choices={projects.map((p) => ({ value: String(p.id), label: p.title }))}
-            />
-            <Input
-              aria-label="Ghi chú (đang làm gì)"
-              placeholder="Đang làm gì? (không bắt buộc)"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              maxLength={500}
-            />
-            <label className="flex h-9 items-center gap-2 whitespace-nowrap text-sm sm:h-8">
-              <Checkbox checked={billable} onCheckedChange={setBillable} />
-              Tính tiền
-            </label>
-            {objectiveChoices.length > 1 ? (
-              <ChoiceSelect
-                label="Mục tiêu tuần này"
-                value={objective}
-                onChange={setObjective}
-                choices={objectiveChoices}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+            {/* Idle: the clock at zero keeps the panel's shape (Toggl); the running one replaces it */}
+            <span className="font-heading text-2xl font-semibold tabular-nums" aria-hidden>
+              {formatClock(0)}
+            </span>
+            <div
+              className={cn(
+                'grid min-w-0 flex-1 gap-2 sm:grid-cols-2',
+                // without a project the first cell holds a line and a button: it takes the width it needs
+                projects.length > 0
+                  ? 'xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_auto_minmax(0,1fr)_auto]'
+                  : 'xl:grid-cols-[auto_minmax(0,1.5fr)_auto_minmax(0,1fr)_auto]',
+              )}
+            >
+              {projects.length > 0 ? (
+                <ChoiceSelect
+                  label="Dự án"
+                  value={String(projectId ?? '')}
+                  onChange={(v) => setPicked(Number(v))}
+                  choices={projects.map((p) => ({ value: String(p.id), label: p.title }))}
+                />
+              ) : (
+                <div className="flex h-9 min-w-0 items-center gap-2 sm:h-8">
+                  <span className="text-sm whitespace-nowrap text-muted-foreground">{noProjectLabel}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      focusStart.current = true;
+                      onAddProject?.();
+                    }}
+                  >
+                    <Plus aria-hidden />
+                    Thêm dự án
+                  </Button>
+                </div>
+              )}
+              <Input
+                aria-label="Ghi chú (đang làm gì)"
+                placeholder="Đang làm gì? (không bắt buộc)"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={500}
               />
-            ) : (
-              <span className="hidden xl:block" />
-            )}
-            <Button type="submit" disabled={busy || projectId === null} aria-keyshortcuts="t">
-              {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
-              Bắt đầu
-              <KeyHint k="T" />
-            </Button>
+              <label className="flex h-9 items-center gap-2 whitespace-nowrap text-sm sm:h-8">
+                <Checkbox checked={billable} onCheckedChange={setBillable} />
+                Tính tiền
+              </label>
+              {objectiveChoices.length > 1 ? (
+                <ChoiceSelect
+                  label="Mục tiêu tuần này"
+                  value={objective}
+                  onChange={setObjective}
+                  choices={objectiveChoices}
+                />
+              ) : (
+                <span className="hidden xl:block" />
+              )}
+              <Button ref={startButton} type="submit" disabled={busy || projectId === null} aria-keyshortcuts="t">
+                {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
+                Bắt đầu
+                <KeyHint k="T" />
+              </Button>
+            </div>
           </div>
         </form>
       )}

@@ -2,18 +2,19 @@
 import { useMemo, useRef, useState } from 'react';
 import { ListChecks, Plus, Search } from 'lucide-react';
 import { growthApi, listAll, type ApiFreshness, type ApiSkill, type ApiSkillDetail } from '@/lib/api/growth';
-import { useApi } from '@/lib/api/use-api';
+import { toApiError, useApi } from '@/lib/api/use-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
-import { EmptyStateGuide } from '@/components/stageshow/lazy';
-import { ApiErrorState, ApiStaleAlert, EmptyState } from '../api-state';
+import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
-import { freshness, freshnessOrder } from './labels';
+import { EmptyPanel } from '../empty-panel';
+import { PAGE_WIDTH } from '../layout';
+import { fieldErrors, freshness, freshnessOrder } from './labels';
 import { SkillDialog } from './skill-dialog';
 import { SkillSheet } from './skill-sheet';
 import { useShortcuts } from './shared';
@@ -23,6 +24,9 @@ type Filter = ApiFreshness | 'all';
 const loadSkills = () => listAll(growthApi.listSkills({ limit: 200 }));
 
 const matrixGrid = 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6';
+
+/** First-run quick adds: skills the handbooks teach (Sổ tay 1-5, An ninh mạng, PM); one click creates one. */
+const suggestedSkills = ['Excel', 'SQL', 'Python', 'Business English', 'An ninh mạng', 'Quản lý dự án'];
 
 /**
  * A matrix tile (DECISIONS 9.1: a matrix, staleness by colour, no number): one bordered container, the freshness dot
@@ -69,6 +73,7 @@ export function SkillsPage() {
   const [editing, setEditing] = useState<ApiSkillDetail | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [adding, setAdding] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   // ?id=N (Cmd+K result): open that skill's sheet.
   useOpenFromUrl('id', setOpenId);
@@ -108,33 +113,53 @@ export function SkillsPage() {
   };
   useShortcuts({ n: create, '/': () => searchRef.current?.focus() });
 
+  /** A suggested skill: created on click (POST /api/skills), then its sheet opens for the first evidence. */
+  const quickAdd = async (name: string) => {
+    if (adding) return;
+    setAdding(name);
+    setNotice(null);
+    try {
+      const saved = await growthApi.createSkill({ name });
+      setNotice(`Đã thêm "${saved.name}"`);
+      skills.reload();
+      setOpenId(saved.id);
+    } catch (err) {
+      const e = toApiError(err);
+      setNotice((e.status === 400 && fieldErrors(e.body, { name: 'Tên' })) || describeApiError(e).title);
+    } finally {
+      setAdding(null);
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-6 px-4 pb-12 sm:px-8">
-      {/* 390 px: filter + "Thêm kỹ năng" on row 1, search full width on row 2 (DESIGN.md §6 Toolbar) */}
-      <div className="flex flex-wrap items-center gap-2">
-        <ChoiceSelect label="Độ mới" value={filter} onChange={setFilter} choices={filterChoices} className="w-auto" />
-        <div className="relative order-last w-full sm:order-none sm:w-64">
-          <Search
-            className="pointer-events-none absolute start-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <Input
-            ref={searchRef}
-            data-local-search
-            type="search"
-            aria-label="Tìm kỹ năng"
-            placeholder="Tìm theo tên hoặc tên khác"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="ps-6"
-          />
+    <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
+      {/* 390 px: filter + "Thêm kỹ năng" on row 1, search full width on row 2 (DESIGN.md §6 Toolbar). Hidden while
+          the matrix is empty: the first-run panel carries the one add (D26). */}
+      {!empty && (
+        <div className="flex flex-wrap items-center gap-2">
+          <ChoiceSelect label="Độ mới" value={filter} onChange={setFilter} choices={filterChoices} className="w-auto" />
+          <div className="relative order-last w-full sm:order-none sm:w-64">
+            <Search
+              className="pointer-events-none absolute start-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              ref={searchRef}
+              data-local-search
+              type="search"
+              aria-label="Tìm kỹ năng"
+              placeholder="Tìm theo tên hoặc tên khác"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="ps-6"
+            />
+          </div>
+          <Button className="ms-auto" onClick={create}>
+            <Plus aria-hidden />
+            Thêm kỹ năng <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
+          </Button>
         </div>
-        {/* While the matrix is empty the EmptyState button is the one primary (DESIGN.md D2) */}
-        <Button className="ms-auto" variant={empty ? 'outline' : 'default'} onClick={create}>
-          <Plus aria-hidden />
-          Thêm kỹ năng <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
-        </Button>
-      </div>
+      )}
 
       {notice && (
         <p className="text-sm text-muted-foreground" role="status">
@@ -154,19 +179,38 @@ export function SkillsPage() {
           ))}
         </ul>
       ) : empty ? (
-        <>
-          <EmptyState
-            icon={<ListChecks aria-hidden />}
-            title="Ma trận còn trống"
-            description="Thêm các kỹ năng nền và kỹ năng của vai trò nhắm tới, rồi gắn bằng chứng: thứ đã ship, case study, bài viết."
-          >
+        <EmptyPanel
+          area="growth"
+          glyph={ListChecks}
+          title="Ma trận còn trống"
+          text="Thêm kỹ năng nền và kỹ năng của vai trò nhắm tới, rồi gắn bằng chứng: thứ đã ship, case study, bài viết."
+          action={
             <Button onClick={create}>
               <Plus aria-hidden />
               Thêm kỹ năng đầu tiên
             </Button>
-          </EmptyState>
-          {!skills.error && <EmptyStateGuide guide="skill" />}
-        </>
+          }
+          quick={
+            <>
+              <p className="basis-full text-xs text-muted-foreground">Thêm nhanh từ Sổ tay</p>
+              {suggestedSkills.map((name) => (
+                <Button
+                  key={name}
+                  size="sm"
+                  variant="outline"
+                  loading={adding === name}
+                  disabled={adding !== null}
+                  aria-label={`Thêm kỹ năng ${name}`}
+                  onClick={() => void quickAdd(name)}
+                >
+                  <Plus aria-hidden />
+                  {name}
+                </Button>
+              ))}
+            </>
+          }
+          guide="skill"
+        />
       ) : shown.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Không có mục nào khớp bộ lọc.{' '}

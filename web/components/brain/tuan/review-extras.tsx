@@ -1,14 +1,14 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { opportunitiesApi } from '@/lib/api/opportunities';
-import { type ApiAchievement, type ApiOpportunityDecision, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
+import type { ApiAchievement, ApiOpportunityDecision, ApiWeekOpportunities } from '@/lib/api/weeks';
 import { decisionOf, formatDate, opportunityHref } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { StatusBadge } from '../brain-card';
+import { AchievementQuickAdd } from '../growth/achievement-quick-add';
 import { DuePredictionList, PREDICTIONS_HREF, useDuePredictions } from '../due-predictions';
 import { WeekSection, WriteError } from './week-section';
 import { addDays, shortDate, todayPrague } from './week-utils';
@@ -156,30 +156,10 @@ export function ReviewAchievements({
   achievements: ApiAchievement[];
   onAdded: (a: ApiAchievement) => void;
 }) {
-  const [title, setTitle] = useState('');
-  const [impact, setImpact] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
   // Dated inside the reviewed week: today for the running week, its Sunday for a past one.
   const today = todayPrague();
   const sunday = addDays(start, 6);
   const date = today < start ? start : today > sunday ? sunday : today;
-
-  async function add() {
-    if (!title.trim() || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const a = await weeksApi.addAchievement({ title: title.trim(), impact: impact.trim(), date });
-      onAdded(a);
-      setTitle('');
-      setImpact('');
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <WeekSection
@@ -215,35 +195,7 @@ export function ReviewAchievements({
           ))}
         </ul>
       )}
-      <form
-        className="flex flex-col gap-2 sm:flex-row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void add();
-        }}
-      >
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Đã làm gì"
-          aria-label="Thành tựu"
-          maxLength={200}
-          className="sm:flex-[3]"
-        />
-        <Input
-          value={impact}
-          onChange={(e) => setImpact(e.target.value)}
-          placeholder="Con số tác động"
-          aria-label="Tác động (con số)"
-          maxLength={200}
-          className="sm:flex-[2]"
-        />
-        <Button type="submit" variant="outline" disabled={!title.trim()} loading={busy}>
-          <Plus aria-hidden />
-          Thêm
-        </Button>
-      </form>
-      <WriteError error={error} />
+      <AchievementQuickAdd date={date} onAdded={onAdded} />
     </WeekSection>
   );
 }
