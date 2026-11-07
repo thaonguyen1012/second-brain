@@ -34,10 +34,10 @@ interface Form {
   source: string;
 }
 
-const fromProject = (p: ApiProject | null): Form => ({
+const fromProject = (p: ApiProject | null, initialStatus?: ApiItemStatus): Form => ({
   title: p?.title ?? '',
   client: p?.client ?? '',
-  status: p?.status ?? 'active',
+  status: p?.status ?? initialStatus ?? 'active',
   billing: p?.billing ?? 'hourly',
   price: p?.price ?? '',
   hourlyRate: p?.hourlyRate ?? '',
@@ -56,12 +56,14 @@ function money(v: string): string | null | undefined {
 
 function ProjectForm({
   project,
+  initialStatus,
   onSaved,
 }: {
   project: ApiProject | null;
+  initialStatus?: ApiItemStatus;
   onSaved: (p: ApiProject, created: boolean) => void;
 }) {
-  const [form, setForm] = useState<Form>(() => fromProject(project));
+  const [form, setForm] = useState<Form>(() => fromProject(project, initialStatus));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -202,15 +204,20 @@ function ProjectForm({
   );
 }
 
-/** Create (project = null) or edit a project: POST/PATCH /api/projects. */
+/**
+ * Create (project = null) or edit a project: POST/PATCH /api/projects. `initialStatus` preselects the status of a
+ * new project (a board lane's "Thêm dự án"); without it a new project starts as active.
+ */
 export function ProjectDialog({
   open,
   project,
+  initialStatus,
   onOpenChange,
   onSaved,
 }: {
   open: boolean;
   project: ApiProject | null;
+  initialStatus?: ApiItemStatus;
   onOpenChange: (open: boolean) => void;
   onSaved: (p: ApiProject, created: boolean) => void;
 }) {
@@ -221,7 +228,14 @@ export function ProjectDialog({
           <DialogTitle>{project ? 'Sửa dự án' : 'Thêm dự án'}</DialogTitle>
           <DialogDescription>Khách, cách tính tiền và giá. Không làm hóa đơn.</DialogDescription>
         </DialogHeader>
-        {open && <ProjectForm key={project?.id ?? 'new'} project={project} onSaved={onSaved} />}
+        {open && (
+          <ProjectForm
+            key={project?.id ?? `new-${initialStatus ?? ''}`}
+            project={project}
+            initialStatus={initialStatus}
+            onSaved={onSaved}
+          />
+        )}
       </DialogPopup>
     </Dialog>
   );

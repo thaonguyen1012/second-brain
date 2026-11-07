@@ -63,7 +63,8 @@ Numbers that line up or change in place get `tabular-nums`. Dates are `formatDat
   skills, opportunities, search results): rows in one container, `rounded-xl border bg-card divide-y`, hover fill
   `hover:bg-accent`, selection `bg-accent` + `aria-selected`. **Card** only when the record carries an image or an
   excerpt worth reading in place (inbox entry, brief story) or it is a dashboard tile on Hôm nay; cards stack with
-  `gap-3`. Never a card per row of a list of more than ~5 plain records.
+  `gap-3`. Never a card per row of a list of more than ~5 plain records, except in a board view (§6 "Board"), where
+  the cards are the thing moved; the same records keep their rows in the list view beside it.
 - **Radii:** containers `rounded-xl`, controls `rounded-lg` (Button default), row and hover fills `rounded-md`,
   badges `rounded-sm`, avatars/dots `rounded-full`. `rounded-2xl`/`rounded-3xl` are legacy: do not add more.
   Nested shapes: inner radius = outer radius - padding.
@@ -189,7 +190,8 @@ so the near pairs that remain are listed under the palette, not hidden.
     and would vanish on an accent-filled card.
   - Stageshow wells (guides, /gioi-thieu/ tiles) keep their `secondary` ground (`--card` in dark) and add the 1px
     `--border`; a guide in an empty panel's slot (`variant="flush"`) has neither: the slot's `bg-well` is its ground.
-  - Blue stays the accent for the primary action, links and focus (plus the data blue of chart marks); surfaces
+  - Blue stays the accent for the primary action, links and focus (plus the data blue of chart marks and a board's
+    drop target, which takes the focus ring: like focus, it says where the action lands); surfaces
     never get a blue tint, and area tints appear only as the header band and as marks (§9a); cards and list
     containers stay white. Wells are `bg-well`.
   - Focus ring (`--ring`) opaque, >= 3:1 against the page, the sidebar and every surface (WCAG 1.4.11): light
@@ -213,7 +215,9 @@ so the near pairs that remain are listed under the palette, not hidden.
   states. Components
   already size their icons: do not override.
 - **Icons earn their place:** nav items, a verb with a standard glyph (Plus, Trash2, ExternalLink, Pencil), a
-  state colour alone cannot carry (spinner, error). **No icon beside headings, card titles or section titles**,
+  state colour alone cannot carry (spinner, error), and the tabs of a view switch that changes the layout (Dự án:
+  `List` "Danh sách", `SquareKanban` "Bảng"; the Tabs' own icon size, 16px from `sm`). Tabs that filter one layout
+  (Inbox, Tuần, Thư viện) stay text only. **No icon beside headings, card titles or section titles**,
   except: the title icon of an area page (`PageHeader nav`: the icon of the page's own sidebar row, ink colour, no
   tile, centred on the title's first line, `aria-hidden`; server-rendered, except on /co-hoi/ where the client list
   and detail views render the header) and the heading of a Hôm nay tile, which starts with the icon of where its link
@@ -237,7 +241,28 @@ so the near pairs that remain are listed under the palette, not hidden.
 - **Badges:** status via `StatusBadge` + `lib/labels.ts`; tags as `outline` badges or plain muted `#tag` text,
   one style app-wide; at most 3 badges before the title. Badges are labels, never buttons or tabs.
 - **View switches:** `Tabs` (`components/ui/tabs`, default segmented or `underline`) for in-page views and for
-  route halves (Thư viện Item / Ghi chú). Never filled primary buttons as tabs.
+  route halves (Thư viện Item / Ghi chú). Never filled primary buttons as tabs. A view switch sits first in the
+  toolbar; the filters that belong to one view follow it only in that view. The view lives in the URL
+  (`?view=board`, the default view has no parameter), the last choice in localStorage (the URL wins), switched with
+  `router.replace` without scrolling.
+- **Board** (Dự án, owner 07/11/2026: "như page All task trên ClickUp, có dạng list và board"; `work/project-board.tsx`,
+  pure logic in `lib/project-board.ts`): one lane per status in `lib/labels.ts` order. A lane is a well (`rounded-xl
+  bg-well p-2 gap-2 min-h-40`) headed by its `StatusBadge` and count (`text-xs` muted `tabular-nums`), ending in a
+  ghost `xs` "+ Thêm dự án" that opens the dialog with that status; empty, it says "Chưa có dự án" quietly. A card is
+  a white surface (`rounded-lg border bg-card p-3 gap-2`): title (`text-sm font-medium`, 2 lines, a button that
+  opens the edit dialog) with the `RowMenu` at its end, the row's meta text (up to 2 lines, so a long client never
+  cuts the price), then a footer only when there is something to say (the `bw-red` now dot, hours with
+  `MiniBillableBar`, "thực tế" rate). Lanes are the one place a card sits in a well (§9a). Moving: native HTML5 drag
+  and drop (no library); the dragged card dims to `opacity-50`,
+  the lane under the pointer takes `ring-2 ring-inset ring-ring` (counted dragenter/dragleave, no flicker), an empty
+  lane shows a dashed "Thả dự án vào đây" box of the same size while a drag runs; drops of files or text from
+  elsewhere are ignored. The card menu's "Chuyển sang ..." (one item per other status) is the keyboard and touch
+  way, the same code path. A move is optimistic (the card lands on top of its new lane at once), then the server's
+  record replaces it; a refused move puts it back where it was and shows one error `Alert` "Không đổi được trạng
+  thái: ..." with "Đóng". Every move is read out in a polite live region, never as a visible line that would push
+  the board down. From a 56rem board (`@4xl` container query: on a 1024px screen the sidebar takes the rest) the
+  lanes are a 4-column grid; narrower, they keep `w-72` and scroll sideways inside the board (`snap-x`), which
+  bleeds into the page gutters so the next lane peeks in; the page never scrolls sideways.
 - **Toolbar:** one row, `h-8` controls: filters (`ChoiceSelect`/`Select`) left, the primary action right; wraps
   to two rows at 390 px with the primary action keeping the end of the first row or full width, never orphaned.
 - **Overlays:** `Dialog` for create/edit forms (fields via `Field`, errors via `fieldErrors()` under the field);
@@ -319,7 +344,8 @@ wins.
   area (no hue per area, §4). Hôm nay, Inbox, capture, Giới thiệu, Hướng dẫn and personal page have none.
 - **Well.** The second container type: `rounded-xl bg-well`, no border, only for secondary, passive regions (Hôm
   nay rail tiles, the right slot of a first-run empty panel, help rails). Never inside a card, and no card inside a
-  well.
+  well, except a board's lanes (§6 "Board"): the lane is the grey ground the white cards are moved across, so the
+  cards stay surfaces and the lane stays borderless.
 - **Cover.** A handbook's cover is a flat `--track-<slug>-soft` tint carrying its monogram (`lib/book-marks.ts`) in
   the group hue, Geist 600 24px. It appears as the 80px full-bleed top band of a Sổ tay card and as the 64px tile of
   the Hôm nay hero. It is a mark, not a surface: no shapes, images, gradients or shadows.
@@ -380,11 +406,12 @@ Spacing and layout
 Containers
 - **D12** No bordered or tinted box inside another box (inputs, code and the handbook cover
   excepted); no card in a well, no well in a card (the first-run panel's slot, a full-bleed half parted by the
-  panel's own divider, excepted, §9a).
-- **D13** A homogeneous list of more than ~5 records is rows in one container, not a stack of cards.
+  panel's own divider, and the cards in a board's lanes excepted, §6 "Board", §9a).
+- **D13** A homogeneous list of more than ~5 records is rows in one container, not a stack of cards (a board view's
+  lanes excepted; its list view keeps the rows).
 - **D14** Radii from §3 (`xl` containers, `lg` controls, `md` fills, `sm` badges); nested radii concentric.
 - **D15** A container is a surface (border + `bg-card`) or, for secondary content only, a well (`bg-well`, no
-  border); inside it, a fill or a divider.
+  border); inside it, a fill or a divider. A board lane is a well holding card surfaces (§6 "Board").
 
 Colour
 - **D16** Only token colours (the brand mark's own three hues excepted, §4); status colours match `lib/labels.ts`, the same status the same colour everywhere; an
@@ -398,7 +425,8 @@ Colour
 - **D19** Light and dark both read: muted text legible, no hard-coded white/black surfaces, focus ring visible.
 - **D29** Surfaces and contrast (§4, §9a): white page; white bordered surfaces; borderless grey wells for secondary
   regions; one neutral band (the well) behind area headers; grey sidebar with a darker current row (light) / darkest page and
-  sidebar, lighter surfaces (dark); border visible; blue only on the primary action, links, focus and chart marks;
+  sidebar, lighter surfaces (dark); border visible; blue only on the primary action, links, focus, chart marks and a
+  board's drop target;
   focus ring >= 3:1 on page, sidebar, surfaces, wells and bands; no container left transparent on the page.
 
 Icons
@@ -407,7 +435,7 @@ Icons
   line); no emoji as icons.
 - **D21** No decorative icon beside headings or card titles (an area page's title icon and the icon of a Hôm nay
   tile heading excepted, §5); no nav icon as an empty state glyph; icon-only buttons have a
-  tooltip.
+  tooltip; icons in tabs only on a view switch that changes the layout (List / Board, §5).
 
 Components
 - **D22** Row actions: <= 3 visible, the rest in a Menu; delete goes through the confirm dialog.

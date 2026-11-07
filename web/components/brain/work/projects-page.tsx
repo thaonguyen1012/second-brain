@@ -1,14 +1,16 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Clock, FolderPlus, Pencil, Play, Plus } from 'lucide-react';
-import type { ApiItemStatus, Page } from '@/lib/api/client';
+import { Clock, FolderPlus, List, Pencil, Play, Plus, SquareKanban } from 'lucide-react';
+import { api, type ApiItemStatus, type Page } from '@/lib/api/client';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiProject } from '@/lib/api/work';
 import { itemStatusOf, itemStatuses } from '@/lib/labels';
+import { loadAllPages } from '@/lib/project-board';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
+import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
@@ -18,10 +20,13 @@ import { PAGE_WIDTH } from '../layout';
 import { RowMenu } from '../row-menu';
 import { BillableLegend, MiniBillableBar } from './billable-bar';
 import { formatHours, formatMoney } from './format';
+import { BoardSkeleton, MoveFailedAlert, ProjectBoard, useProjectMoves } from './project-board';
 import { ProjectDialog } from './project-dialog';
+import { canStartTimer, projectMeta } from './project-meta';
 import { RowsSkeleton } from './rows-skeleton';
 import { TimerPanel } from './timer-panel';
-import { sortProjectChoices, useProjectChoices, useTimer, useWeekObjectives } from './use-work';
+import { useProjectsView, type ProjectsView } from './use-projects-view';
+import { sortProjectChoices, useTimer, useWeekObjectives } from './use-work';
 
 type StatusFilter = ApiItemStatus | 'all';
 const statusChoices = [{ value: 'all' as const, label: 'Mọi trạng thái' }, ...itemStatuses];
@@ -30,13 +35,12 @@ const statusChoices = [{ value: 'all' as const, label: 'Mọi trạng thái' }, 
 const ROW_GRID =
   'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 md:grid-cols-[5rem_minmax(0,1fr)_6rem_8rem_8rem_auto]';
 
-function agreedPrice(p: ApiProject): string {
-  return (
-    (p.billing === 'hourly'
-      ? p.hourlyRate && `${formatMoney(p.hourlyRate, p.currency)}/giờ`
-      : p.price && `${formatMoney(p.price, p.currency)} trọn gói`) || 'chưa có giá'
+/** Every project (all cursor pages, at most 20 of 100), newest first: one list for both views. */
+const loadProjects = () =>
+  loadAllPages<ApiProject>(
+    () => workApi.listProjects({ limit: 100 }),
+    (next) => api.page<ApiProject>(next),
   );
-}
 
 function ProjectRow({
   project: p,
@@ -50,8 +54,6 @@ function ProjectRow({
   onStart: () => void;
 }) {
   const s = itemStatusOf(p.status);
-  const canStart = !running && (p.status === 'active' || p.status === 'planned');
-  const meta = [p.client || 'Chưa ghi khách', agreedPrice(p)].join(' · ');
   return (
     <li className={cn(ROW_GRID, 'min-h-14 py-2')}>
       <span className="flex max-md:hidden">
@@ -67,7 +69,7 @@ function ProjectRow({
         </p>
         <p className="truncate text-xs text-muted-foreground">
           <span className="md:hidden">{s.label} · </span>
-          {meta}
+          {projectMeta(p)}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1">
@@ -81,7 +83,7 @@ function ProjectRow({
       </span>
       <span className="text-end text-sm tabular-nums max-md:hidden">{formatMoney(p.earned, p.currency) || '—'}</span>
       <div className="flex items-center justify-end gap-1">
-        {canStart ? (
+        {canStartTimer(p, running) ? (
           <Tooltip>
             <TooltipTrigger
               render={
@@ -111,41 +113,94 @@ function ProjectRow({
   );
 }
 
-/** Dự án: projects with client, billing and price, earned and effective hourly rate (Harvest style). */
+function ProjectList({
+  projects,
+  runningId,
+  onEdit,
+  onStart,
+}: {
+  projects: ApiProject[];
+  runningId: number | null;
+  onEdit: (p: ApiProject) => void;
+  onStart: (p: ApiProject) => void;
+}) {
+  return (
+    <div className="flex flex-col divide-y rounded-xl border bg-card">
+      {/* Column labels for the eye (the rows carry their own text); only the rate's definition is focusable */}
+      <div className={cn(ROW_GRID, 'h-8 text-xs font-medium text-muted-foreground max-md:hidden')}>
+        <span aria-hidden>Trạng thái</span>
+        <span aria-hidden>Dự án</span>
+        <span className="text-end" aria-hidden>
+          Giờ
+        </span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                className="cursor-help justify-self-end rounded-sm text-end underline decoration-dotted underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              />
+            }
+          >
+            Giá giờ thực tế
+          </TooltipTrigger>
+          <TooltipPopup className="max-w-64">Số tiền chia cho mọi giờ đã làm, kể cả giờ không tính tiền.</TooltipPopup>
+        </Tooltip>
+        <span className="text-end" aria-hidden>
+          Đã kiếm
+        </span>
+        <span className="w-15" aria-hidden />
+      </div>
+      <ul className="flex flex-col divide-y" aria-label="Dự án">
+        {projects.map((p) => (
+          <ProjectRow
+            key={p.id}
+            project={p}
+            running={runningId === p.id}
+            onEdit={() => onEdit(p)}
+            onStart={() => onStart(p)}
+          />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Dự án: projects with client, billing and price, earned and effective hourly rate (Harvest style), in two views
+ * like ClickUp's "All tasks": Danh sách (the list, filterable by status) and Bảng (one lane per status; dragging a
+ * card or its menu changes the status). Both views show one list of every project, so a change in one is in the
+ * other without a reload.
+ */
 export function ProjectsPage() {
+  const [view, setView] = useProjectsView();
   const [status, setStatus] = useState<StatusFilter>('all');
   const [editing, setEditing] = useState<ApiProject | null>(null);
+  const [newStatus, setNewStatus] = useState<ApiItemStatus | undefined>(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [focusId, setFocusId] = useState<number | null>(null);
 
-  const projects = useApi<Page<ApiProject>>(`work:projects:${status}`, () =>
-    workApi.listProjects({ limit: 100, ...(status !== 'all' && { status }) }),
-  );
-  // With no status filter the page list already holds every project: build the timer choices from it
-  // instead of asking the API for the same rows (with their rate aggregates) a second time.
-  const choices = useProjectChoices(status !== 'all');
+  const projects = useApi<Page<ApiProject>>('work:projects:all', loadProjects);
+  const moves = useProjectMoves(projects);
   const { objectives } = useWeekObjectives();
   const timer = useTimer();
+  const runningId = timer.running?.project ?? null;
 
-  const list = projects.loading ? [] : (projects.data?.results ?? []);
-  const allProjects = useMemo(
-    () => (status === 'all' ? sortProjectChoices(projects.data?.results ?? []) : choices.projects),
-    [status, projects.data, choices.projects],
+  const all = useMemo(() => projects.data?.results ?? [], [projects.data]);
+  const list = useMemo(() => (status === 'all' ? all : all.filter((p) => p.status === status)), [all, status]);
+  const choices = useMemo(
+    () => sortProjectChoices(all).filter((p) => p.status === 'active' || p.status === 'planned'),
+    [all],
   );
+
   const upsert = (saved: ApiProject, created: boolean) =>
     projects.mutate((d) => {
       if (!d) return d;
       const rest = d.results.filter((p) => p.id !== saved.id);
-      if (status !== 'all' && saved.status !== status) return { ...d, results: rest };
       return { ...d, results: created ? [saved, ...rest] : d.results.map((p) => (p.id === saved.id ? saved : p)) };
     });
-
-  /** Totals change when a timer stops: refresh the cards from the API. */
-  const refresh = () => {
-    projects.reload();
-    if (status !== 'all') choices.reload();
-  };
 
   const startFor = async (p: ApiProject) => {
     // The backend stops a running timer before starting the new one (Harvest): say so.
@@ -157,15 +212,15 @@ export function ProjectsPage() {
           ? `Đã dừng giờ của "${stopped.projectTitle}" và bắt đầu bấm giờ cho "${p.title}", chưa gắn mục tiêu tuần`
           : `Bắt đầu bấm giờ cho "${p.title}", chưa gắn mục tiêu tuần`,
       );
-      refresh();
+      // totals change when a timer starts or stops: refresh the rows and cards from the API
+      projects.reload();
     } catch (err) {
       setNotice(describeApiError(toApiError(err)).title);
     }
   };
 
   const loadMore = async () => {
-    const next = projects.data?.next;
-    if (!next) return;
+    if (!projects.data?.next) return;
     setLoadingMore(true);
     try {
       await appendNextPage(projects);
@@ -176,44 +231,72 @@ export function ProjectsPage() {
     }
   };
 
-  const openNew = () => {
+  const openNew = (initial?: ApiItemStatus) => {
     setEditing(null);
+    setNewStatus(initial);
     setDialogOpen(true);
   };
-  const filtered = status !== 'all';
+  const openEdit = (p: ApiProject) => {
+    setEditing(p);
+    setDialogOpen(true);
+  };
+  const moveCard = async (p: ApiProject, to: ApiItemStatus, via: 'drag' | 'menu') => {
+    if (via === 'menu') setFocusId(p.id);
+    const ok = await moves.move(p, to);
+    // back in its old lane the card is a new element again: the focus follows it there
+    if (!ok && via === 'menu') setFocusId(p.id);
+  };
+  const clearFocus = useCallback(() => setFocusId(null), []);
+
+  const filtered = view === 'list' && status !== 'all';
   // Unfiltered and empty: the first-run panel carries the one "Thêm dự án"; no toolbar until a project exists (D26).
   const toolbar = useToolbarState({
-    rows: list.length,
+    rows: all.length,
     filtered,
     loading: projects.loading,
     failed: !!projects.error && !projects.data,
     count: 'projects',
   });
-  const anyMinutes = list.some((p) => p.minutesTotal > 0);
+  const anyMinutes = (view === 'list' ? list : all).some((p) => p.minutesTotal > 0);
 
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
       <TimerPanel
         compact
         timer={timer}
-        projects={allProjects.filter((p) => p.status === 'active' || p.status === 'planned')}
+        projects={choices}
         objectives={objectives}
         onChanged={(message) => {
           setNotice(message);
-          refresh();
+          projects.reload();
         }}
       />
 
       {toolbar !== 'hide' && (
-        <div className={cn('flex items-center gap-2', toolbar === 'wait' && 'invisible')}>
-          <ChoiceSelect
-            label="Trạng thái"
-            value={status}
-            onChange={setStatus}
-            choices={statusChoices}
-            className="min-w-0 flex-1 sm:w-auto sm:flex-none"
-          />
-          <Button className="ms-auto shrink-0" onClick={openNew}>
+        // At 390 px the view switch and "Thêm dự án" keep the first row; the list's filter takes the second
+        <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
+          <Tabs value={view} onValueChange={(v) => setView(v as ProjectsView)}>
+            <TabsList aria-label="Kiểu xem">
+              <TabsTab value="list">
+                <List aria-hidden />
+                Danh sách
+              </TabsTab>
+              <TabsTab value="board">
+                <SquareKanban aria-hidden />
+                Bảng
+              </TabsTab>
+            </TabsList>
+          </Tabs>
+          {view === 'list' && (
+            <ChoiceSelect
+              label="Trạng thái"
+              value={status}
+              onChange={setStatus}
+              choices={statusChoices}
+              className="order-last w-full sm:order-none sm:w-auto"
+            />
+          )}
+          <Button className="ms-auto shrink-0" onClick={() => openNew()}>
             <Plus aria-hidden />
             Thêm dự án
           </Button>
@@ -225,12 +308,34 @@ export function ProjectsPage() {
           {notice}
         </p>
       )}
+      {/* Moves are announced here, not in the visible notice: a line appearing above the board would push it down */}
+      <p className="sr-only" role="status">
+        {moves.announcement}
+      </p>
+      {moves.failure && <MoveFailedAlert failure={moves.failure} onClose={moves.dismissFailure} />}
 
       <ApiStaleAlert result={projects} />
       {projects.error && !projects.data ? (
         <ApiErrorState error={projects.error} onRetry={projects.reload} />
-      ) : projects.loading && list.length === 0 ? (
-        <RowsSkeleton />
+      ) : !projects.data ? (
+        view === 'board' ? (
+          <BoardSkeleton />
+        ) : (
+          <RowsSkeleton />
+        )
+      ) : all.length === 0 && !filtered ? (
+        <EmptyPanel
+          glyph={FolderPlus}
+          title="Chưa có dự án nào"
+          text="Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế."
+          action={
+            <Button onClick={() => openNew()}>
+              <Plus aria-hidden />
+              Thêm dự án
+            </Button>
+          }
+          guide="work"
+        />
       ) : list.length === 0 && filtered ? (
         <p className="text-sm text-muted-foreground">
           Không có mục nào khớp bộ lọc.{' '}
@@ -238,68 +343,29 @@ export function ProjectsPage() {
             Xóa bộ lọc
           </Button>
         </p>
-      ) : list.length === 0 ? (
-        <EmptyPanel
-          glyph={FolderPlus}
-          title="Chưa có dự án nào"
-          text="Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế."
-          action={
-            <Button onClick={openNew}>
-              <Plus aria-hidden />
-              Thêm dự án
-            </Button>
-          }
-          guide="work"
-        />
       ) : (
         <div className="flex flex-col gap-2">
           {anyMinutes && <BillableLegend className="justify-end" />}
-          <div className="flex flex-col divide-y rounded-xl border bg-card">
-            {/* Column labels for the eye (the rows carry their own text); only the rate's definition is focusable */}
-            <div className={cn(ROW_GRID, 'h-8 text-xs font-medium text-muted-foreground max-md:hidden')}>
-              <span aria-hidden>Trạng thái</span>
-              <span aria-hidden>Dự án</span>
-              <span className="text-end" aria-hidden>
-                Giờ
-              </span>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      className="cursor-help justify-self-end rounded-sm text-end underline decoration-dotted underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                    />
-                  }
-                >
-                  Giá giờ thực tế
-                </TooltipTrigger>
-                <TooltipPopup className="max-w-64">
-                  Số tiền chia cho mọi giờ đã làm, kể cả giờ không tính tiền.
-                </TooltipPopup>
-              </Tooltip>
-              <span className="text-end" aria-hidden>
-                Đã kiếm
-              </span>
-              <span className="w-15" aria-hidden />
-            </div>
-            <ul className="flex flex-col divide-y" aria-label="Dự án">
-              {list.map((p) => (
-                <ProjectRow
-                  key={p.id}
-                  project={p}
-                  running={timer.running?.project === p.id}
-                  onEdit={() => {
-                    setEditing(p);
-                    setDialogOpen(true);
-                  }}
-                  onStart={() => void startFor(p)}
-                />
-              ))}
-            </ul>
-          </div>
+          {view === 'board' ? (
+            <ProjectBoard
+              projects={all}
+              ranks={moves.ranks}
+              pending={moves.pending}
+              runningId={runningId}
+              focusId={focusId}
+              onFocused={clearFocus}
+              onEdit={openEdit}
+              onStart={(p) => void startFor(p)}
+              onMove={(p, to, via) => void moveCard(p, to, via)}
+              onAdd={openNew}
+            />
+          ) : (
+            <ProjectList projects={list} runningId={runningId} onEdit={openEdit} onStart={(p) => void startFor(p)} />
+          )}
         </div>
       )}
-      {projects.data?.next && !projects.loading && (
+      {/* Only past the 20-page cap of loadProjects */}
+      {projects.data?.next && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
           Tải thêm
         </Button>
@@ -308,10 +374,12 @@ export function ProjectsPage() {
       <ProjectDialog
         open={dialogOpen}
         project={editing}
+        initialStatus={newStatus}
         onOpenChange={setDialogOpen}
         onSaved={(saved, created) => {
           upsert(saved, created);
-          if (status !== 'all') choices.reload();
+          // a new project, or one whose status changed, lands on top of its lane like a moved card
+          if (created || editing?.status !== saved.status) moves.bump(saved.id);
           setDialogOpen(false);
           setNotice(created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`);
         }}
