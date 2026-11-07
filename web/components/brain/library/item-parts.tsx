@@ -2,14 +2,27 @@
 import Link from 'next/link';
 import { Briefcase, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
 import type { ApiItem, ApiItemStatus } from '@/lib/api/client';
+import { itemPicture } from '@/lib/item-picture';
 import { formatDate, itemStatusOf, itemTypeLabel } from '@/lib/labels';
 import { itemDateLabel, itemSourceLabel } from '@/lib/library-labels';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
 import { StatusBadge } from '../brain-card';
 import { RowMenu } from '../row-menu';
 import { gapLabel, missingOutput } from './done-output';
+import { RowPicture } from './item-image';
 import { onRowClick } from './list-rows';
+
+/**
+ * The List's shared subgrid. With pictures (some row has one): a flush 56px picture track first, and the status moves
+ * from its badge into the meta line below md, as on Dự án, so the title keeps its room at 390 px (DESIGN.md §3).
+ */
+export function itemListGrid(withPicture: boolean): string {
+  return withPicture
+    ? 'grid-cols-[3.5rem_minmax(0,1fr)_auto] sm:grid-cols-[3.5rem_minmax(0,1fr)_auto_auto] md:grid-cols-[3.5rem_auto_minmax(0,1fr)_auto_auto]'
+    : 'grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]';
+}
 
 // The parts of an Item on Thư viện: its row in the List, the body of its card on the Bảng (components/brain/
 // status-board.tsx) and the menu entries both share.
@@ -66,12 +79,15 @@ export function ItemMenuItems({
 
 export function ItemRow({
   item,
+  withPicture,
   onEdit,
   onStep,
   onWriteNote,
   onRate,
 }: {
   item: ApiItem;
+  /** The list has a picture track (itemListGrid). */
+  withPicture: boolean;
   onEdit: () => void;
   onStep: (to: ApiItemStatus) => void;
   onWriteNote: () => void;
@@ -96,10 +112,15 @@ export function ItemRow({
     // One row of the shared subgrid (status | title over meta | rating | actions), DESIGN.md §3 "list row beats card"
     <li
       data-card-id={item.id}
-      className="col-span-full grid min-h-14 grid-cols-subgrid items-center px-3 py-2 transition-colors hover:bg-accent has-focus-visible:bg-accent"
+      className={cn(
+        'col-span-full grid min-h-14 grid-cols-subgrid items-center py-2 transition-colors hover:bg-accent has-focus-visible:bg-accent',
+        // a picture is flush with the list's start edge, clipped by its radius; the text keeps 12px from it
+        withPicture ? 'ps-0 pe-3' : 'px-3',
+      )}
       onClick={(e) => onRowClick(e, onEdit)}
     >
-      <span className="flex">
+      {withPicture && <RowPicture picture={itemPicture(item)} />}
+      <span className={cn('flex', withPicture && 'max-md:hidden')}>
         <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">
@@ -111,6 +132,7 @@ export function ItemRow({
           {item.title}
         </button>
         <p className="truncate text-xs text-muted-foreground">
+          {withPicture && <span className="md:hidden">{s.label} · </span>}
           {meta}
           {gap && (
             <>

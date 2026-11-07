@@ -374,6 +374,23 @@ wins.
   text sits beside or below it; never a tile, a rounded picture or a padded box inside the card. A book with no
   drawing yet shows the ground with its name. No gradients, glows, shadows, purple, sparkles, emoji or text in a
   drawing.
+- **Item images** (owner 07/11/2026: "Item có thể thêm ảnh bìa để dễ hình dung", "Dự án có thể thêm logo"; DECISIONS
+  9.6). One picture per Item, chosen by `itemPicture()` (`lib/item-picture.ts`): its own image (uploaded, or the OG
+  image of its link; a small local webp from `/api/items/{id}/image`), else the Sổ tay cover of a handbook course
+  (`BookCover`), else nothing. The shape follows the type: a 2:3 **poster** for books and films, a **logo** for
+  projects, a landscape **cover** for the rest. Pictures follow the split-card rule above: flush, clipped by the
+  container's radius, no frame, no text or scrim, never dimmed by status (`opacity-50` means "being dragged"). Where
+  (`library/item-image.tsx`): a list row (Thư viện, Công việc) gets one flush 56px square track at its start
+  (`RowPicture`), shown only when a listed row has a picture, and then the status leaves its badge for the meta line
+  below `md` so the title keeps its room at 390 px; a board card shows a cover or a handbook band flush on top (16:7),
+  a poster as a flush 4rem start column (2:3 at the card's minimum height), a logo as a 40px square before the title.
+  A logo is the one inset picture: `object-contain` on `--logo-ground`, white in both themes (a sticker; the logo keeps
+  its transparency and most logos are drawn for a light page), `rounded-md` on cards. No picture: the row keeps an
+  empty track and the card stays text-only; never a placeholder drawing. Pictures are decorative (`alt=""`,
+  `aria-hidden`): the row or card names the record. The dialogs' "Ảnh bìa" / "Logo" field (`library/item-image-field.tsx`)
+  previews at the card's shape and offers "Tải ảnh lên" / "Đổi ảnh", "Lấy ảnh từ link" (an http(s) source, never for
+  projects, whose OG image is a banner) and ghost "Bỏ ảnh"; every change waits for "Lưu" and "Hủy" drops it, so no
+  confirm dialog; a wrong file is refused before any upload, under the field. A handbook course has no field.
 - **Width.** App content is capped at `max-w-7xl`, left-aligned with the title; bands stay full-bleed. Hôm nay has
   a 320px rail from `xl`.
 - **First-run empty panel.** The missing object's glyph (32px, muted ink, no tile), title ("Chưa có <object> nào"),
@@ -399,8 +416,9 @@ wins.
 
 Shared pieces: `PageHeader` (the band, `components/brain/page-header.tsx`), `components/brain/layout.tsx`
 (`PAGE_WIDTH`, `wellClass`, `SectionHeader`), `week-strip.tsx` (`WeekStrip`, `dayLevel`),
-`ghost-rows.tsx`, `empty-panel.tsx` (client; never imported on Hôm nay), `EmptyStateGuide variant="flush"` and
-`components/book-cover.tsx` (`BookCover`, server and client alike; the drawings in `public/covers/`).
+`ghost-rows.tsx`, `empty-panel.tsx` (client; never imported on Hôm nay), `EmptyStateGuide variant="flush"`,
+`components/book-cover.tsx` (`BookCover`, server and client alike; the drawings in `public/covers/`) and
+`components/brain/library/item-image.tsx` (`RowPicture`, `boardMedia`; the dialogs' field in `item-image-field.tsx`).
 
 ## 10. Review checklist (cite by ID; each is checkable on a screenshot)
 
@@ -448,7 +466,9 @@ Colour
 - **D17** No purple, gradient, glow, coloured shadow or gradient text; `bw-red` only on the continue/now marker; no
   area or group hue that reads as the primary blue, `bw-red`, destructive red or a status colour.
 - **D18** AI results carry a plain "tự động" label or prefix; no sparkle, wand, bot or star as an AI marker.
-- **D19** Light and dark both read: muted text legible, no hard-coded white/black surfaces, focus ring visible.
+- **D19** Light and dark both read: muted text legible, no hard-coded white/black surfaces, focus ring visible. The
+  printed objects are the documented exceptions, the same in both themes: the handbook covers (`--cover-ground`) and
+  the project logos' ground (`--logo-ground`, §9a "Item images").
 - **D29** Surfaces and contrast (§4, §9a): white page; white bordered surfaces; borderless grey wells for secondary
   regions; one neutral band (the well) behind area headers; grey sidebar with a darker current row (light) / darkest page and
   sidebar, lighter surfaces (dark); border visible; blue only on the primary action, links, focus, chart marks and a

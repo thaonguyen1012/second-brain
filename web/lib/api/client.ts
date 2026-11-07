@@ -77,14 +77,16 @@ export const API_WRITE_EVENT = 'brain:api-write';
 export async function request<T>(method: Method, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (method !== 'GET') headers['X-CSRFToken'] = csrfToken();
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  // A FormData body (a file upload) goes as it is: the browser writes multipart/form-data with its boundary.
+  const form = body instanceof FormData;
+  if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
   let res: Response;
   try {
     res = await fetch(path, {
       method,
       headers,
       credentials: 'same-origin',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : form ? body : JSON.stringify(body),
       signal,
     });
   } catch (err) {
@@ -93,7 +95,8 @@ export async function request<T>(method: Method, path: string, body?: unknown, s
   }
   const json = (res.headers.get('content-type') ?? '').includes('application/json');
   if (!res.ok) {
-    const reachable = json && ![502, 503, 504].includes(res.status);
+    // 413 is nginx's own HTML page for a body over its limit: an answer about the request, not "offline"
+    const reachable = (json || res.status === 413) && ![502, 503, 504].includes(res.status);
     const errBody: unknown = json ? await res.json().catch(() => undefined) : undefined;
     throw new ApiError(res.status, `${method} ${path}: ${res.status}`, reachable, errBody);
   }

@@ -40,3 +40,17 @@ export async function loadAllItems(): Promise<ApiItem[]> {
 /** Links an inbox entry to an Item (`null` unlinks); the status is left as it is. */
 export const linkInboxItem = (entry: number, item: number | null): Promise<ApiInboxEntry> =>
   api.triageInboxEntry(entry, { item });
+
+/** An Item's image (a cover, poster or project logo; DECISIONS 9.6). Every call answers the whole Item, except remove. */
+export const itemImageApi = {
+  /** Re-encoded on the server (webp, at most 600 px); replaces the current image. */
+  upload: (id: number, file: Blob, signal?: AbortSignal) => {
+    const form = new FormData();
+    form.append('file', file, file instanceof File ? file.name : 'image');
+    return request<ApiItem>('POST', `/api/items/${id}/image`, form, signal);
+  },
+  /** The OG image of `url` (default: the Item's source), fetched by the next run_jobs (202, imagePending). */
+  fetchFromLink: (id: number, url?: string) =>
+    request<ApiItem>('POST', `/api/items/${id}/image/fetch`, url ? { url } : {}),
+  remove: (id: number) => request<void>('DELETE', `/api/items/${id}/image`),
+};

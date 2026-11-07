@@ -19,7 +19,9 @@ import { Label } from '@/components/ui/label';
 import { describeApiError } from './api-state';
 import { ChoiceSelect } from './choice-select';
 import { ConfirmDelete } from './confirm-delete';
+import { handbookForSource } from '@/lib/item-picture';
 import { DoneOutputHint, missingOutput } from './library/done-output';
+import { ItemImageField, KEEP_IMAGE, applyImageChange, imageErrorText, type ImageChange } from './library/item-image-field';
 
 interface Form {
   title: string;
@@ -53,14 +55,17 @@ function ItemForm({
 }: {
   item: ApiItem | null;
   draft?: Partial<ApiItemRequest>;
-  onSaved: (item: ApiItem, created: boolean) => void;
+  onSaved: (item: ApiItem, created: boolean, imageError?: string) => void;
   onDeleted?: (item: ApiItem) => void;
   onWriteNote?: (item: ApiItem) => void;
   focusRating?: boolean;
 }) {
   const [form, setForm] = useState<Form>(() => fromItem(item, draft));
+  const [image, setImage] = useState<ImageChange>(KEEP_IMAGE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A handbook course shows its Sổ tay cover (lib/item-picture.ts): no picture of its own to choose.
+  const handbook = form.type === 'course' && handbookForSource(form.source) !== undefined;
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
   // "Done needs an output" follows the form as typed (status, type, rating) and the saved note count.
   const gap = item
@@ -98,8 +103,18 @@ function ItemForm({
     setError(null);
     try {
       const saved = item ? await api.updateItem(item.id, body) : await api.createItem(body);
-      onSaved(saved, !item);
-      return saved;
+      // The picture goes after the record (a new Item needs its id). If only the picture fails, the record is saved
+      // all the same: the dialog closes and the page says what happened to the picture.
+      let final = saved;
+      let imageError: string | undefined;
+      try {
+        const picture = await applyImageChange(saved.id, image);
+        if (picture) final = { ...saved, ...picture };
+      } catch (err) {
+        imageError = imageErrorText(toApiError(err));
+      }
+      onSaved(final, !item, imageError);
+      return final;
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
@@ -159,6 +174,17 @@ function ItemForm({
           <Label htmlFor="item-source">Nguồn (tác giả, nền tảng, link)</Label>
           <Input id="item-source" value={form.source} onChange={(e) => set('source', e.target.value)} />
         </div>
+        {!handbook && (
+          <ItemImageField
+            type={form.type}
+            source={form.source}
+            imageUrl={item?.imageUrl}
+            pending={item?.imagePending}
+            change={image}
+            onChange={setImage}
+            disabled={busy}
+          />
+        )}
         <div className="grid gap-4 sm:grid-cols-[1fr_7rem]">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="item-tags">Tag (cách nhau bằng dấu phẩy)</Label>
@@ -234,7 +260,8 @@ export function ItemDialog({
   item: ApiItem | null;
   draft?: Partial<ApiItemRequest>;
   onOpenChange: (open: boolean) => void;
-  onSaved: (item: ApiItem, created: boolean) => void;
+  /** After a save; `imageError` says why the picture change failed when the record itself was saved. */
+  onSaved: (item: ApiItem, created: boolean, imageError?: string) => void;
   /** Where the focus goes when the dialog closes (default: the control that opened it, if it still exists). */
   finalFocus?: ComponentProps<typeof DialogPopup>['finalFocus'];
   /** Shows "Xóa" (with confirmation) when editing; called after DELETE /api/items/{id}. */

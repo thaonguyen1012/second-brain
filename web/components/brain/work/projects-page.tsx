@@ -8,6 +8,7 @@ import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiProject } from '@/lib/api/work';
 import { itemStatusOf, itemStatuses } from '@/lib/labels';
 import { PROJECT_BOARD } from '@/lib/status-board';
+import { itemPicture } from '@/lib/item-picture';
 import { useBoardView } from '@/lib/use-board-view';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
 import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { PAGE_WIDTH } from '../layout';
+import { RowPicture, boardMedia } from '../library/item-image';
 import { RowMenu } from '../row-menu';
 import { BoardSkeleton, BoardStatus, StatusBoard, recordFocusTarget, useStatusMoves } from '../status-board';
 import { ViewSwitch } from '../view-switch';
@@ -33,9 +35,17 @@ import { sortProjectChoices, useTimer, useWeekObjectives } from './use-work';
 type StatusFilter = ApiItemStatus | 'all';
 const statusChoices = [{ value: 'all' as const, label: 'Mọi trạng thái' }, ...itemStatuses];
 
-/** One grid for the header and every row, so the number columns line up (DESIGN.md §3 "Columns"). */
-const ROW_GRID =
-  'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 md:grid-cols-[5rem_minmax(0,1fr)_6rem_8rem_8rem_auto]';
+/**
+ * One grid for the header and every row, so the number columns line up (DESIGN.md §3 "Columns"). With logos (some
+ * project has one): a flush 56px logo track first, like Thư viện's picture track.
+ */
+const rowGrid = (withLogo: boolean) =>
+  withLogo
+    ? 'grid grid-cols-[3.5rem_minmax(0,1fr)_auto_auto] items-center gap-3 ps-0 pe-3 md:grid-cols-[3.5rem_5rem_minmax(0,1fr)_6rem_8rem_8rem_auto]'
+    : 'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 md:grid-cols-[5rem_minmax(0,1fr)_6rem_8rem_8rem_auto]';
+
+/** A project's logo as an Item picture (lib/item-picture.ts). */
+const logoOf = (p: ApiProject) => itemPicture({ type: 'project', imageUrl: p.imageUrl });
 
 /** Every project (all cursor pages, at most 20 of 100), newest first: one list for both views. */
 const loadProjects = () =>
@@ -47,17 +57,20 @@ const loadProjects = () =>
 function ProjectRow({
   project: p,
   running,
+  withLogo,
   onEdit,
   onStart,
 }: {
   project: ApiProject;
   running: boolean;
+  withLogo: boolean;
   onEdit: () => void;
   onStart: () => void;
 }) {
   const s = itemStatusOf(p.status);
   return (
-    <li className={cn(ROW_GRID, 'min-h-14 py-2')}>
+    <li className={cn(rowGrid(withLogo), 'min-h-14 py-2')}>
+      {withLogo && <RowPicture picture={logoOf(p)} />}
       <span className="flex max-md:hidden">
         <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
       </span>
@@ -126,10 +139,13 @@ function ProjectList({
   onEdit: (p: ApiProject) => void;
   onStart: (p: ApiProject) => void;
 }) {
+  const withLogo = projects.some((p) => logoOf(p) !== null);
   return (
-    <div className="flex flex-col divide-y rounded-xl border bg-card">
+    // overflow-hidden: a flush logo is clipped by the list's radius
+    <div className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card">
       {/* Column labels for the eye (the rows carry their own text); only the rate's definition is focusable */}
-      <div className={cn(ROW_GRID, 'h-8 text-xs font-medium text-muted-foreground max-md:hidden')}>
+      <div className={cn(rowGrid(withLogo), 'h-8 text-xs font-medium text-muted-foreground max-md:hidden')}>
+        {withLogo && <span aria-hidden />}
         <span aria-hidden>Trạng thái</span>
         <span aria-hidden>Dự án</span>
         <span className="text-end" aria-hidden>
@@ -159,6 +175,7 @@ function ProjectList({
             key={p.id}
             project={p}
             running={runningId === p.id}
+            withLogo={withLogo}
             onEdit={() => onEdit(p)}
             onStart={() => onStart(p)}
           />
@@ -346,6 +363,7 @@ export function ProjectsPage() {
                   onStart={() => void startFor(p)}
                 />
               )}
+              renderMedia={(p) => boardMedia(logoOf(p))}
             />
           ) : (
             <ProjectList projects={list} runningId={runningId} onEdit={openEdit} onStart={(p) => void startFor(p)} />
@@ -365,13 +383,14 @@ export function ProjectsPage() {
         initialStatus={newStatus}
         onOpenChange={setDialogOpen}
         finalFocus={() => recordFocusTarget(returnTo.current) ?? null}
-        onSaved={(saved, created) => {
+        onSaved={(saved, created, imageError) => {
           returnTo.current = saved.id;
           upsert(saved, created);
           // a new project, or one whose status changed, lands on top of its lane like a moved card
           if (created || editing?.status !== saved.status) moves.bump(saved.id);
           setDialogOpen(false);
-          setNotice(created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`);
+          const done = created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`;
+          setNotice(imageError ? `${done}, nhưng chưa lưu được logo: ${imageError}.` : done);
         }}
       />
     </div>

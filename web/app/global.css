@@ -198,7 +198,9 @@
    colour blindness.
    Handbook covers (DESIGN.md §9a, public/covers/STYLE.md): a printed object, so the same in both themes. The ground
    is the flat paper of every cover SVG (shown while it loads and when a book has no drawing yet); the ink is the
-   cover name's colour, 13.3:1 on the ground. */
+   cover name's colour, 13.3:1 on the ground.
+   Project logos (DESIGN.md §9a "Item images"): an uploaded logo keeps its transparency, and most logos are drawn for
+   a light page, so they sit on white in both themes, like a printed sticker (the one documented white surface, D19). */
 :root,
 .dark {
   --track-kinh-doanh: var(--area-opportunity);
@@ -206,6 +208,7 @@
   --track-ky-nang: var(--area-week);
   --cover-ground: #e3dacc;
   --cover-ink: #141413;
+  --logo-ground: #ffffff;
 }
 
 @theme inline {
@@ -262,6 +265,7 @@
   --color-track-ky-nang: var(--track-ky-nang);
   --color-cover-ground: var(--cover-ground);
   --color-cover-ink: var(--cover-ink);
+  --color-logo-ground: var(--logo-ground);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);

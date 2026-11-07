@@ -14,6 +14,7 @@ import { loadAllPages } from '@/lib/api/pages';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { itemStatusOf, itemStatuses, itemTypes } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
+import { itemPicture } from '@/lib/item-picture';
 import { useProgress } from '@/lib/progress';
 import { ITEM_BOARD, laneOf } from '@/lib/status-board';
 import { useBoardView } from '@/lib/use-board-view';
@@ -27,7 +28,8 @@ import { ItemDialog } from './item-dialog';
 import { PAGE_WIDTH } from './layout';
 import { noteDraftForItem } from './library/done-output';
 import { handbooks, importHandbooks } from './library/handbook-import';
-import { ItemCardBody, ItemMenuItems, ItemRow } from './library/item-parts';
+import { boardMedia } from './library/item-image';
+import { ItemCardBody, ItemMenuItems, ItemRow, itemListGrid } from './library/item-parts';
 import { FilteredEmpty, RowsSkeleton } from './library/list-rows';
 import { NoteDialog } from './library/note-dialog';
 import { useItemIndex } from './library/use-item-index';
@@ -84,6 +86,8 @@ export function LibraryPage() {
   const ready = items.dataKey === key && items.data !== undefined;
   const all = useMemo(() => (items.dataKey === key ? (items.data?.results ?? []) : []), [items.dataKey, items.data, key]);
   const list = useMemo(() => (status === 'all' ? all : all.filter((i) => laneOf(i) === status)), [all, status]);
+  // the List's picture track only when a shown row has a picture, like Dự án's hours legend (anyMinutes)
+  const withPicture = useMemo(() => list.some((i) => itemPicture(i) !== null), [list]);
 
   const openEdit = (item: ApiItem, rating = false) => {
     returnTo.current = item.id;
@@ -305,17 +309,19 @@ export function LibraryPage() {
               onRate={() => openEdit(item, true)}
             />
           )}
+          renderMedia={(item) => boardMedia(itemPicture(item))}
         />
       ) : (
         // One container, rows on a shared subgrid so status, rating and actions line up (DESIGN.md §3 Columns)
         <ul
           aria-label="Item"
-          className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 divide-y overflow-hidden rounded-xl border bg-card sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
+          className={cn('grid gap-x-3 divide-y overflow-hidden rounded-xl border bg-card', itemListGrid(withPicture))}
         >
           {list.map((item) => (
             <ItemRow
               key={item.id}
               item={item}
+              withPicture={withPicture}
               onEdit={() => openEdit(item)}
               onRate={() => openEdit(item, true)}
               onStep={(to) => void step(item, to)}
@@ -340,13 +346,14 @@ export function LibraryPage() {
           setDialogOpen(o);
           if (!o) setFocusRating(false);
         }}
-        onSaved={(saved, created) => {
+        onSaved={(saved, created, imageError) => {
           returnTo.current = saved.id;
           upsert(saved, created);
           // a new Item, or one whose status changed, lands on top of its lane like a moved card
           if (created || editing?.status !== saved.status) moves.bump(saved.id);
           setDialogOpen(false);
-          setNotice(created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`);
+          const done = created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`;
+          setNotice(imageError ? `${done}, nhưng chưa lưu được ảnh: ${imageError}.` : done);
         }}
         onDeleted={(deleted) => {
           removeItem(deleted.id);

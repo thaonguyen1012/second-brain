@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { MenuItem, MenuSeparator } from '@/components/ui/menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from './brain-card';
+import type { BoardMedia } from './library/item-image';
 import { RowMenu } from './row-menu';
 
 // Bảng: the records of a page in one lane per status (DESIGN.md §6 "Board"), shared by Dự án and Thư viện; a page
@@ -212,6 +213,7 @@ function BoardCard({
   onOpen,
   onMove,
   menu,
+  media,
   children,
 }: {
   id: number;
@@ -228,6 +230,8 @@ function BoardCard({
   onMove: (to: ApiItemStatus) => void;
   /** The record's own menu entries, before "Chuyển sang ...". */
   menu: ReactNode;
+  /** The record's picture and where it sits (Thư viện covers, project logos). */
+  media: BoardMedia | null;
   /** Meta lines and footer under the title. */
   children: ReactNode;
 }) {
@@ -243,20 +247,13 @@ function BoardCard({
     return () => window.cancelAnimationFrame(frame);
   }, [focus, onFocused]);
 
-  return (
-    <li
-      data-card-id={id}
-      draggable={!pending}
-      aria-busy={pending || undefined}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      className={cn(
-        'flex flex-col gap-2 rounded-lg border bg-card p-3 transition-opacity duration-150 motion-reduce:transition-none',
-        !pending && 'cursor-grab active:cursor-grabbing',
-        dimmed && 'opacity-50',
-      )}
-    >
-      <div className="flex items-start gap-1">
+  const placement = media?.placement;
+  // A flush picture (top band, start column) fills the card to its clipped edges; the text keeps the card's padding.
+  const flush = placement === 'top' || placement === 'start';
+  const content = (
+    <>
+      <div className={cn('flex items-start', placement === 'inline' ? 'gap-2' : 'gap-1')}>
+        {placement === 'inline' && <span className="shrink-0">{media?.node}</span>}
         <button
           ref={titleRef}
           type="button"
@@ -285,6 +282,27 @@ function BoardCard({
         </span>
       </div>
       {children}
+    </>
+  );
+  return (
+    <li
+      data-card-id={id}
+      draggable={!pending}
+      aria-busy={pending || undefined}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className={cn(
+        'rounded-lg border bg-card transition-opacity duration-150 motion-reduce:transition-none',
+        flush ? 'overflow-hidden' : 'flex flex-col gap-2 p-3',
+        placement === 'start' && 'grid grid-cols-[4rem_minmax(0,1fr)]',
+        !pending && 'cursor-grab active:cursor-grabbing',
+        dimmed && 'opacity-50',
+      )}
+    >
+      {/* pictures never start their own drag (draggable={false}, BookCover's img too): the whole card moves */}
+      {placement === 'top' && <div className="[&_img]:pointer-events-none">{media?.node}</div>}
+      {placement === 'start' && <div className="relative min-h-24 [&_img]:pointer-events-none">{media?.node}</div>}
+      {flush ? <div className="flex min-w-0 flex-col gap-2 p-3">{content}</div> : content}
     </li>
   );
 }
@@ -402,6 +420,8 @@ export interface StatusBoardProps<T extends BoardCardRecord> {
   renderBody: (record: T) => ReactNode;
   /** The record's own menu entries; the board adds a separator and "Chuyển sang ..." (disabled while pending). */
   renderMenu: (record: T) => ReactNode;
+  /** The record's picture and its place on the card (library/item-image.tsx boardMedia), or null. */
+  renderMedia?: (record: T) => BoardMedia | null;
 }
 
 /**
@@ -417,6 +437,7 @@ export function StatusBoard<T extends BoardCardRecord>({
   onAdd,
   renderBody,
   renderMenu,
+  renderMedia,
 }: StatusBoardProps<T>) {
   const { ranks, pending, focusId, clearFocus, move } = moves;
   const lanes = useMemo(() => groupByStatus(records, ranks), [records, ranks]);
@@ -485,6 +506,7 @@ export function StatusBoard<T extends BoardCardRecord>({
                   onOpen={() => onOpen(record)}
                   onMove={(to) => void move(record, to, 'menu')}
                   menu={renderMenu(record)}
+                  media={renderMedia?.(record) ?? null}
                 >
                   {renderBody(record)}
                 </BoardCard>

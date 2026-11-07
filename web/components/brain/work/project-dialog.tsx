@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
+import { ItemImageField, KEEP_IMAGE, applyImageChange, imageErrorText, type ImageChange } from '../library/item-image-field';
 import { billingChoices, fieldErrors } from './format';
 
 interface Form {
@@ -61,9 +62,10 @@ function ProjectForm({
 }: {
   project: ApiProject | null;
   initialStatus?: ApiItemStatus;
-  onSaved: (p: ApiProject, created: boolean) => void;
+  onSaved: (p: ApiProject, created: boolean, imageError?: string) => void;
 }) {
   const [form, setForm] = useState<Form>(() => fromProject(project, initialStatus));
+  const [logo, setLogo] = useState<ImageChange>(KEEP_IMAGE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -95,7 +97,16 @@ function ProjectForm({
     setError(null);
     try {
       const saved = project ? await workApi.updateProject(project.id, body) : await workApi.createProject(body);
-      onSaved(saved, !project);
+      // The logo goes after the project (a new one needs its id; a project is an Item, so /api/items/{id}/image).
+      let final = saved;
+      let imageError: string | undefined;
+      try {
+        const picture = await applyImageChange(saved.id, logo);
+        if (picture) final = { ...saved, imageUrl: picture.imageUrl };
+      } catch (err) {
+        imageError = imageErrorText(toApiError(err));
+      }
+      onSaved(final, !project, imageError);
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
@@ -183,6 +194,14 @@ function ProjectForm({
           <Label htmlFor="project-source">Nguồn (kênh tìm được khách, link)</Label>
           <Input id="project-source" value={form.source} onChange={(e) => set('source', e.target.value)} />
         </div>
+        <ItemImageField
+          type="project"
+          source={form.source}
+          imageUrl={project?.imageUrl}
+          change={logo}
+          onChange={setLogo}
+          disabled={busy}
+        />
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="project-tags">Tag (cách nhau bằng dấu phẩy)</Label>
           <Input id="project-tags" value={form.tags} onChange={(e) => set('tags', e.target.value)} />
@@ -220,7 +239,8 @@ export function ProjectDialog({
   project: ApiProject | null;
   initialStatus?: ApiItemStatus;
   onOpenChange: (open: boolean) => void;
-  onSaved: (p: ApiProject, created: boolean) => void;
+  /** After a save; `imageError` says why the logo change failed when the project itself was saved. */
+  onSaved: (p: ApiProject, created: boolean, imageError?: string) => void;
   /** Where the focus goes when the dialog closes (default: the control that opened it, if it still exists). */
   finalFocus?: ComponentProps<typeof DialogPopup>['finalFocus'];
 }) {
