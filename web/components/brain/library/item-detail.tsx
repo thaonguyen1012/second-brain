@@ -17,6 +17,7 @@ import { AreaTile } from '../page-header';
 import { DiscardChanges } from './discard-changes';
 import { DoneOutputHint, missingOutput } from './done-output';
 import { DetailPicture } from './item-image';
+import { ItemMentions } from './item-mentions';
 import { ItemNotes } from './item-notes';
 
 // The Item page (DECISIONS 9.8 points 1-2), one component for both places it shows: the Sheet beside Thư viện (peek)
@@ -216,6 +217,8 @@ export function ItemDetail({
           onDirtyChange?.(d);
         }}
       />
+
+      <ItemMentions itemId={item.id} />
 
       {/* Inside the Sheet's tree, so Base UI nests them (focus returns into the Sheet, a click in them is no
           "outside press" that closes it). */}

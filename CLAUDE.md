@@ -124,7 +124,9 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  services.items; status moves started_at/finished_at in apply_status_dates, used by every
                                  Item write incl. /api/projects) + Note (markdown, M2M Item; never sent to an LLM);
                                  /api/items* (?q= title/source/exact tag; DELETE: links set null, 409 for a project with
-                                 time entries), /api/notes* (?q= title/markdown, ?item=). Every owned row has a DELETE
+                                 time entries), /api/notes* (?q= title/markdown, ?item=), /api/items/{id}/mentions
+                                 (mentions.py: opportunities and skills that use the Item as evidence, "Được nhắc tới
+                                 ở"). Every owned row has a DELETE
                                  (204; 404 for another owner). Item image (cover; project logo): image_path (webp in
                                  THUMBS_DIR), only through services.set_image (row lock, `expect`; any other change
                                  ends the Item's waiting or running fetch, so it never undoes it); /api/items/{id}/image

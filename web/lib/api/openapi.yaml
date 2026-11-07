@@ -541,6 +541,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Item'
           description: ''
+  /api/items/{id}/mentions:
+    get:
+      operationId: getItemMentions
+      description: |-
+        Where the Item is used ("Được nhắc tới ở" on the Item page): the opportunities that hold it as
+        evidence, with the stance of each row, and the skills that do, with their freshness. 404 for another
+        owner's Item.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - items
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemMentions'
+          description: ''
   /api/market/job-ads:
     get:
       operationId: listJobAds
@@ -2800,6 +2824,22 @@ components:
       - id
       - title
       - type
+    ItemMentions:
+      type: object
+      description: 'GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8):
+        newest evidence first in both.'
+      properties:
+        opportunities:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpportunityMention'
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillMention'
+      required:
+      - opportunities
+      - skills
     ItemRequest:
       type: object
       properties:
@@ -3602,6 +3642,46 @@ components:
       - title
       - updatedAt
       - whyNow
+    OpportunityMention:
+      type: object
+      description: An opportunity that uses the Item as evidence (supports or contradicts).
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        decision:
+          $ref: '#/components/schemas/OpportunityDecisionEnum'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpportunityMentionEvidence'
+      required:
+      - decision
+      - evidence
+      - id
+      - title
+    OpportunityMentionEvidence:
+      type: object
+      description: One evidence row of an opportunity that points at the Item.
+      properties:
+        id:
+          type: integer
+        stance:
+          $ref: '#/components/schemas/EvidenceStanceEnum'
+        title:
+          type: string
+        note:
+          type: string
+        date:
+          type: string
+          format: date
+      required:
+      - date
+      - id
+      - note
+      - stance
+      - title
     PageWork:
       type: object
       properties:
@@ -4907,6 +4987,44 @@ components:
         * `fresh` - Fresh
         * `aging` - Aging
         * `faded` - Faded
+    SkillMention:
+      type: object
+      description: A skill that uses the Item as evidence, with its freshness from
+        all its evidence.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        freshness:
+          $ref: '#/components/schemas/SkillFreshnessEnum'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillMentionEvidence'
+      required:
+      - evidence
+      - freshness
+      - id
+      - name
+    SkillMentionEvidence:
+      type: object
+      description: One evidence row of a skill that points at the Item.
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        note:
+          type: string
+        date:
+          type: string
+          format: date
+      required:
+      - date
+      - id
+      - note
+      - title
     SkillRef:
       type: object
       properties:

@@ -9,6 +9,7 @@ export type ApiNoteCreate = Schemas['NoteWriteRequest'];
 export type ApiNotePatch = Schemas['PatchedNoteWriteRequest'];
 export type ApiNoteQuery = NonNullable<operations['listNotes']['parameters']['query']>;
 export type ApiNoteSearchHit = Schemas['NoteSearchHit'];
+export type ApiItemMentions = Schemas['ItemMentions'];
 
 export const notesApi = {
   /** Newest created first; `q` matches title or markdown, `item` keeps notes linked to that Item. */
@@ -22,6 +23,12 @@ export const notesApi = {
   update: (id: number, body: ApiNotePatch) => request<ApiNote>('PATCH', `/api/notes/${id}`, body),
   delete: (id: number) => request<void>('DELETE', `/api/notes/${id}`),
 };
+
+/**
+ * Where an Item is used ("Được nhắc tới ở", DECISIONS 9.8): the opportunities that hold it as evidence (with the
+ * stance of each row) and the skills that do (with their freshness), newest evidence first.
+ */
+export const getItemMentions = (id: number) => request<ApiItemMentions>('GET', `/api/items/${id}/mentions`);
 
 /** Upper bound for loadAllItems(): 10 pages of 200 (the backend's max page size). */
 const ITEM_PAGES = 10;

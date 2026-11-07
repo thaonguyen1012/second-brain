@@ -3,8 +3,10 @@ from django.contrib.auth.models import User
 from django.core.validators import URLValidator
 from rest_framework import serializers
 
+from growth.models import Freshness
 from library.models import Item, Note
 from library.services import image_url, normalize_tags
+from opportunities.models import Evidence, Opportunity
 
 MAX_MARKDOWN = 200_000
 IMAGE_UNREADABLE = "Không đọc được ảnh. Chỉ nhận JPEG, PNG, GIF hoặc WebP."
@@ -138,3 +140,47 @@ class NoteSearchHitSerializer(serializers.Serializer[object]):
 
 class NoteSearchSerializer(serializers.Serializer[object]):
     results = NoteSearchHitSerializer(many=True)
+
+
+class OpportunityMentionEvidenceSerializer(serializers.Serializer[object]):
+    """One evidence row of an opportunity that points at the Item."""
+
+    id = serializers.IntegerField()
+    stance = serializers.ChoiceField(choices=Evidence.Stance.choices)
+    title = serializers.CharField()
+    note = serializers.CharField()
+    date = serializers.DateField()
+
+
+class OpportunityMentionSerializer(serializers.Serializer[object]):
+    """An opportunity that uses the Item as evidence (supports or contradicts)."""
+
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    decision = serializers.ChoiceField(choices=Opportunity.Decision.choices)
+    evidence = OpportunityMentionEvidenceSerializer(many=True)
+
+
+class SkillMentionEvidenceSerializer(serializers.Serializer[object]):
+    """One evidence row of a skill that points at the Item."""
+
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    note = serializers.CharField()
+    date = serializers.DateField()
+
+
+class SkillMentionSerializer(serializers.Serializer[object]):
+    """A skill that uses the Item as evidence, with its freshness from all its evidence."""
+
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    freshness = serializers.ChoiceField(choices=Freshness.choices)
+    evidence = SkillMentionEvidenceSerializer(many=True)
+
+
+class ItemMentionsSerializer(serializers.Serializer[object]):
+    """GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8): newest evidence first in both."""
+
+    opportunities = OpportunityMentionSerializer(many=True)
+    skills = SkillMentionSerializer(many=True)

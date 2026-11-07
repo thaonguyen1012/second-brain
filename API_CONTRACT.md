@@ -196,6 +196,24 @@ Automatic fetch: creating an Item, or a `PATCH` that changes its `source`, queue
 true` in that answer) when the Item has no image, its `source` is an http(s) URL and it is not a project (a page's
 banner makes a poor logo). Handbook courses (source `/docs/...`) and sources that are plain text are skipped.
 
+### Where an Item is used
+
+`GET /api/items/{id}/mentions` ("Được nhắc tới ở" on the Item page, DECISIONS 9.8): the owner's opportunities that
+hold the Item as evidence, with the stance of each such row, and the skills that do, with their freshness (from all
+their evidence, as on `/api/skills`). Both lists follow their newest evidence `date`, and so do the rows inside each.
+Read only; `404` for an unknown id or another owner's Item. A fixed number of queries whatever the number of rows.
+
+```json
+200 { "opportunities": [ { "id": 2, "title": "Bakery stock", "decision": "keep",
+                           "evidence": [ { "id": 8, "stance": "supports", "title": "Deep Work", "note": "",
+                                           "date": "2026-11-02" } ] } ],
+      "skills": [ { "id": 3, "name": "Django", "freshness": "fresh",
+                    "evidence": [ { "id": 5, "title": "Pekárna eshop", "note": "", "date": "2026-10-01" } ] } ] }
+```
+
+Notes that link the Item with `[[ ]]` will join this answer once those links are read out of the markdown (DECISIONS
+9.8, order point 3).
+
 ## Notes (`/api/notes`)
 
 A note is markdown linked to any number of the owner's Items (DECISIONS 4.1). Note bodies stay private: they are

@@ -250,6 +250,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/items/{id}/mentions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Where the Item is used ("Được nhắc tới ở" on the Item page): the opportunities that hold it as
+         *     evidence, with the stance of each row, and the skills that do, with their freshness. 404 for another
+         *     owner's Item.
+         */
+        get: operations["getItemMentions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/market/job-ads": {
         parameters: {
             query?: never;
@@ -1211,6 +1232,11 @@ export interface components {
             readonly title: string;
             readonly type: components["schemas"]["TypeEnum"];
         };
+        /** @description GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8): newest evidence first in both. */
+        ItemMentions: {
+            opportunities: components["schemas"]["OpportunityMention"][];
+            skills: components["schemas"]["SkillMention"][];
+        };
         ItemRequest: {
             type: components["schemas"]["TypeEnum"];
             status?: components["schemas"]["ItemStatusEnum"];
@@ -1513,6 +1539,22 @@ export interface components {
             updatedAt: string;
             evidence: components["schemas"]["Evidence"][];
             scoreHistory: components["schemas"]["ScoreSnapshot"][];
+        };
+        /** @description An opportunity that uses the Item as evidence (supports or contradicts). */
+        OpportunityMention: {
+            id: number;
+            title: string;
+            decision: components["schemas"]["OpportunityDecisionEnum"];
+            evidence: components["schemas"]["OpportunityMentionEvidence"][];
+        };
+        /** @description One evidence row of an opportunity that points at the Item. */
+        OpportunityMentionEvidence: {
+            id: number;
+            stance: components["schemas"]["EvidenceStanceEnum"];
+            title: string;
+            note: string;
+            /** Format: date */
+            date: string;
         };
         PageWork: {
             book: string;
@@ -2091,6 +2133,21 @@ export interface components {
          * @enum {string}
          */
         SkillFreshnessEnum: "fresh" | "aging" | "faded";
+        /** @description A skill that uses the Item as evidence, with its freshness from all its evidence. */
+        SkillMention: {
+            id: number;
+            name: string;
+            freshness: components["schemas"]["SkillFreshnessEnum"];
+            evidence: components["schemas"]["SkillMentionEvidence"][];
+        };
+        /** @description One evidence row of a skill that points at the Item. */
+        SkillMentionEvidence: {
+            id: number;
+            title: string;
+            note: string;
+            /** Format: date */
+            date: string;
+        };
         SkillRef: {
             id: number;
             name: string;
@@ -2743,6 +2800,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Item"];
+                };
+            };
+        };
+    };
+    getItemMentions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemMentions"];
                 };
             };
         };

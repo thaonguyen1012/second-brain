@@ -18,13 +18,14 @@ from core.pagination import NewestFirstCursor
 from core.serializers import ErrorSerializer
 from core.services import thumbnails
 from core.views import thumbnail_response
-from library import services
+from library import mentions, services
 from library.models import Item, Note
 from library.serializers import (
     IMAGE_UNREADABLE,
     NO_HTTP_LINK,
     ItemImageFetchSerializer,
     ItemImageUploadSerializer,
+    ItemMentionsSerializer,
     ItemSerializer,
     NoteSearchSerializer,
     NoteSerializer,
@@ -100,6 +101,17 @@ class ItemView(APIView):
             detail = "Dự án đã có giờ làm. Hãy xóa các mục giờ làm trước."
             return Response({"detail": detail}, status=status.HTTP_409_CONFLICT)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ItemMentionsView(APIView):
+    @extend_schema(responses=ItemMentionsSerializer, operation_id="getItemMentions")
+    def get(self, request: Request, pk: int) -> Response:
+        """Where the Item is used ("Được nhắc tới ở" on the Item page): the opportunities that hold it as
+        evidence, with the stance of each row, and the skills that do, with their freshness. 404 for another
+        owner's Item."""
+        user = request_user(request)
+        item = get_object_or_404(Item, pk=pk, user=user)
+        return Response(ItemMentionsSerializer(mentions.item_mentions(user, item)).data)
 
 
 class ItemImageView(APIView):

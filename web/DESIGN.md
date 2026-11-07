@@ -333,7 +333,11 @@ so the near pairs that remain are listed under the palette, not hidden.
   editor replaces), then the save keys hint, ghost "Hủy" and a filled `sm` "Lưu" (Cmd/Ctrl+Enter saves, Escape
   cancels); an untouched template is not saved. Unsaved text is never dropped silently: Hủy, Escape, closing the
   Sheet and leaving the page by a link ask "Bỏ các thay đổi chưa lưu?" (`discard-changes.tsx`, "Tiếp tục sửa" first),
-  a reload asks through the browser.
+  a reload asks through the browser. Last comes "Được nhắc tới ở" (h2, `library/item-mentions.tsx`, from
+  `GET /api/items/{id}/mentions`): under a muted `text-xs` label per kind ("Cơ hội", "Kỹ năng"), rows in one container
+  each, a row's title a link to its page; an opportunity's meta says each evidence row's stance in words (`font-medium`)
+  and date, its decision badge at the end; a skill starts with its freshness dot and says the freshness word and the
+  evidence dates; with neither, one muted line.
 - **Tables** for numeric or time data (Giờ, thị trường): header `text-xs font-medium text-muted-foreground`,
   rows `h-10` with `divide-y`, no vertical cell borders, numbers right-aligned `tabular-nums`. Add the Space UI
   table component from the registry when first needed rather than styling `<table>` by hand.
