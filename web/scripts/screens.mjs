@@ -5,7 +5,8 @@
 //
 // Needs the whole stack on one origin (make dev: proxy :8080 -> Django + Next). Uses the installed Google Chrome
 // (channel 'chrome'); never downloads a browser. Read-only: it never clicks anything that writes, and every
-// non-GET request to /api/ is aborted and reported. Files are named <slug>--<width>--<theme>.png.
+// non-GET request to /api/ is aborted and reported. Files are named <slug>--<width>--<theme>.png. Against `next dev`
+// the dev overlay (nextjs-portal) is hidden from the shots; issues it reports are listed as a warning instead.
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
@@ -25,6 +26,7 @@ const PAGES = [
   ['phat-trien-thi-truong', '/phat-trien/thi-truong/'],
   ['phat-trien-thanh-tuu', '/phat-trien/thanh-tuu/'],
   ['tuan', '/tuan/'], // opens Kế hoạch, the same view as ?tab=ke-hoach
+  ['tuan-ke-hoach', '/tuan/?tab=ke-hoach'],
   ['tuan-nhin-lai', '/tuan/?tab=nhin-lai'],
   ['co-hoi', '/co-hoi/'],
   ['cong-viec', '/cong-viec/'],
@@ -80,6 +82,24 @@ async function waitForData(page, timeout = 15_000) {
     .catch(() => false);
   await page.evaluate(() => document.fonts.ready);
   return settled;
+}
+
+/**
+ * Hides the Next dev overlay (`next dev` only; the badge and issue pill would sit over the sidebar) and returns
+ * the number of issues it reported, so a hidden error still shows up as a warning.
+ */
+async function hideDevOverlay(page) {
+  return page
+    .evaluate(() => {
+      const portal = document.querySelector('nextjs-portal');
+      if (!portal) return 0;
+      // the issue pill is always in the shadow DOM; it has a size only while it shows issues
+      const pill = portal.shadowRoot?.querySelector('[data-issues]');
+      const issues = pill && pill.getBoundingClientRect().width > 0 ? 1 : 0;
+      for (const el of document.querySelectorAll('nextjs-portal')) el.style.setProperty('display', 'none', 'important');
+      return issues;
+    })
+    .catch(() => 0);
 }
 
 /** Scrolls through the page so lazy images and on-view guides load, then back to the top. */
@@ -148,6 +168,7 @@ async function shoot(browser, base, outDir, job) {
       await answered;
       await waitForData(page, 10_000);
       await page.waitForTimeout(300);
+      if (await hideDevOverlay(page)) notes.push('Next dev overlay reports issues');
       await page.screenshot({ path: path.join(outDir, file), animations: 'disabled' });
     } else {
       await scrollThrough(page);
@@ -156,6 +177,7 @@ async function shoot(browser, base, outDir, job) {
       if (/\bdark\b/.test(theClass) !== (theme === 'dark')) notes.push(`theme not applied (html class "${theClass}")`);
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
       if (scrollWidth > viewport.width) notes.push(`horizontal overflow: scrollWidth ${scrollWidth} > ${viewport.width}`);
+      if (await hideDevOverlay(page)) notes.push('Next dev overlay reports issues');
       await page.screenshot({ path: path.join(outDir, file), fullPage: true, animations: 'disabled' });
     }
   } catch (err) {

@@ -163,7 +163,7 @@ function BrainPage({ show, compact }: { show: boolean; compact: boolean }) {
         <Bar w={compact ? 180 : 250} h={7} tone={2} />
       </div>
       <div className="bm-toggle">
-        Cách thu thập từ trình duyệt và điện thoại
+        Thu thập từ trình duyệt
         <ChevronUp size={14} strokeWidth={2} aria-hidden />
       </div>
       <div className="bm-help">

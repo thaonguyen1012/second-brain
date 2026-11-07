@@ -5,7 +5,7 @@ Cmd+K). Not for Stageshow guides and intro pictures (they follow `.claude/skills
 (Fumadocs, `#nd-page .prose`). Target: a screen that could sit next to Linear, Raycast or Notion and not look
 generated. Space UI (`components/ui`, `components/spaceui`, tokens in `app/global.css`) is the source of truth; a
 missing component is added with `npx shadcn@latest add @spaceui/<name>`, never hand-written. Reviews cite rules
-by ID (D1...D29, last section).
+by ID (D1...D31, last section).
 
 ## 1. Principles
 
@@ -30,7 +30,7 @@ URLs, keys and aligned numbers. Weights 400, 500, 600 only (no 700). Sentence ca
 | Role | Classes | px / line | Where |
 |---|---|---|---|
 | Page title | `font-heading text-3xl font-semibold tracking-tight` | 30 / 36 | `PageHeader` h1, one per page |
-| Big number | `font-heading text-2xl font-semibold tabular-nums` | 24 / 32 | at most one per screen (timer, count) |
+| Big number | `font-heading text-2xl font-semibold tabular-nums` | 24 / 32 | at most one per screen (timer, count, week rhythm); cover monograms are 24px marks. `StatRow` values use `text-lg` |
 | Section | `font-heading text-lg font-semibold tracking-tight` | 18 / 28 | h2 inside a page |
 | Card title | `font-heading text-[15px] font-semibold leading-5` | 15 / 20 | `BrainCard` title only |
 | Group / row title | `text-sm font-medium` (group heading: `font-semibold`) | 14 / 20 | list rows, card headers, dialog fields |
@@ -48,6 +48,7 @@ Numbers that line up or change in place get `tabular-nums`. Dates are `formatDat
 - **Gutters:** `px-4` (16px) at 390 px, `sm:px-8` (32px) from 640 px, the same as `PageHeader`; every block's left
   edge aligns with the title row's left edge (the area tile when there is one, §5). Top bar `h-16`. No horizontal
   page scroll at 390 px.
+- **Widths:** content `max-w-7xl`; Hôm nay main + `20rem` rail from `xl`; reading views `max-w-2xl`/`3xl`.
 - **Rhythm:** title to its meta 2-4px (`gap-0.5`/`gap-1`); row to row 0 (divider) or 4px; group to group 24-32px
   (`gap-6`/`gap-8`); page header to first content 24px (`pb-6`). A title is always closer to its own meta than to
   the next record.
@@ -79,26 +80,27 @@ data, the primary action or the "now" marker. Without purple there are more mean
 so the near pairs that remain are listed under the palette, not hidden.
 
 - **Neutrals carry the page.** Text, surfaces, borders and fills stay neutral; body text is never coloured.
-  Colour sits on small marks only: icons, tiles, dots, bars, status chips, chart marks and the blue primary.
+  Colour sits on marks (icons, tiles, covers, dots, bars, chips, chart marks), the area header band and the blue
+  primary.
 - **Blue `primary` is for the one primary action** of a view (filled `Button` default; hover and press darken it to
   `--primary-hover`, 10% toward black, so its label keeps >= 6:1) and for links/focus. It is not a selected-tab
   colour, not a heading colour, not a decoration, never an area or group colour. Sidebar row icons are not blue
   either: they take the row's text colour (owner, 06/11/2026, "icon cùng đen với chữ"; one area hue per icon was
   messy, 04/11, and the one blue that followed was dropped too).
 - **Area colours** (`--area-<key>`; `AreaKey` and `areaIcon` in `lib/app-nav.ts`, the tile tint in
-  `components/brain/page-header.tsx`): one per sidebar area. Only on: the page title tile of the area's pages
-  (`PageHeader nav`: the icon of the page's own sidebar row on `--area-<key>-soft`) and the icon of a Hôm nay tile,
-  the icon of the row its link opens. Not in the sidebar (its icons take the text colour, see above). Never on
-  text, borders, surfaces, buttons, badges or charts. **Hôm nay has no hue of its own**: it gathers every area, so its icon is the
+  `components/brain/page-header.tsx`): one per sidebar area. Only on: the title tile, the header band of the area's
+  pages, the tile of the area's first-run empty panel, and the icon of a Hôm nay tile. Never on text, borders,
+  cards, buttons, badges or charts. **Hôm nay has no hue of its own**: it gathers every area, so its icon is the
   neutral ink and its tile the muted fill (the sun's yellow is the `warning` of the Inbox count). Pages outside the
   six areas (Inbox, capture, Giới thiệu, Hướng dẫn, personal page) get no tile; the Inbox's colour stays the `warning` tone
   of its count.
-- **Group colours** (`--track-<slug>`, `trackFill`/`trackUnderline` in `lib/track-colors.ts`): a Sổ tay group wears
+- **Group colours** (`--track-<slug>` and its `-soft` cover tint; `trackFill`/`trackSoft`/`trackInk`/`trackUnderline`
+  in `lib/track-colors.ts`): a Sổ tay group wears
   the hue of the area its handbooks feed, so the hue keeps one meaning: Kinh doanh -> Cơ hội (orange: business
   ideas), IT -> Công việc (teal: paid technical work), Kỹ năng -> Tuần (pink: học cách học and project management
-  are practised in the weekly plan and review). Blue is the "Học ngay" button, so no group is blue. Only on Sổ tay:
-  the dot of a book card, its progress indicator (on the gray rail; a started book always shows a 6px sliver and
-  "<1%") and the 2px underline of its jump link. Never on text, never on another page.
+  are practised in the weekly plan and review). Blue is the "Học ngay" button, so no group is blue. Wherever one
+  handbook is shown (Sổ tay cards, rows and jump dots; the Hôm nay hero, its in-progress rows, the Sổ tay tile and
+  the roadmap rows): its cover, its dot and its progress indicator. Never on text.
 - **Status colours come from `lib/labels.ts` tones only** (`Tone` -> `Badge` variant): `info` = active/keep,
   `success` = done/build, `warning` = needs attention (Inbox), `error` = failed, `secondary` = planned/undecided,
   `outline` = dropped/archived. The same status has the same colour on every page; a colour never means two things.
@@ -135,6 +137,18 @@ so the near pairs that remain are listed under the palette, not hidden.
   | `--area-work` = `--track-it` | Công việc, IT | `#00635d` | 7.1 / 6.5 / 5.6 / 5.7 | `#1db9ad` | 7.5 / 8.1 / 6.1 / 5.4 |
   | `--chart-data` (= billable, objective) | every chart | `#2a78d6` | 4.4 on card | `#3987e5` | 5.1 on card |
   | `--chart-nonbillable` | Công việc | `#86b6ef` | 2.1 on card (labelled) | `#1c5cab` | 2.8 on card (labelled) |
+  | `--track-<slug>-soft` (= the area `-soft`) | handbook cover (§9a) | hue 14% over card | monogram = the hue's soft column above: 3.4-5.8 | hue 22% over card | 4.5-7.3 |
+  | `--area-week-wash` | Tuần band | `#fdf5f8` (6% over page) | muted text 7.2 · hue 3.9 · soft tile 1.10 | `#1c171b` (10%) | muted text 6.7 · hue 10.8 · soft tile 1.48 |
+  | `--area-growth-wash` | Phát triển band | `#f5f7f1` | muted text 7.2 · hue 4.1 · soft tile 1.11 | `#161913` | muted text 6.8 · hue 10.3 · soft tile 1.47 |
+  | `--area-library-wash` | Thư viện band | `#f7f4f1` | muted text 7.0 · hue 6.6 · soft tile 1.14 | `#171413` | muted text 7.0 · hue 5.9 · soft tile 1.33 |
+  | `--area-opportunity-wash` | Cơ hội band | `#fdf5f2` | muted text 7.2 · hue 3.75 · soft tile 1.10 | `#1c1512` | muted text 6.9 · hue 8.0 · soft tile 1.40 |
+  | `--area-work-wash` | Công việc band | `#f1f5f5` | muted text 7.0 · hue 6.5 · soft tile 1.14 | `#0f1718` | muted text 6.9 · hue 7.4 · soft tile 1.38 |
+  | `--well` | wells (§9a) | `oklch(0.977 0 0)` ≈ `#f7f7f7` | muted text 7.2 · area hues 3.8-6.8 · data 4.1 · nonbillable 2.0 · muted fill 1.11 | `hsl(0 0% 6%)` = `#0f0f0f` | muted text 7.3 · area hues 6.2-11.7 · data 5.3 · nonbillable 2.9 · muted fill 1.16 |
+
+  On a band or a well the link blue stays >= 4.55:1 (light) / 7.1:1 (dark) and the focus ring >= 3.3:1 / 7.1:1. A
+  soft tile is only 1.10-1.14:1 on its own band in light (the title tile's edge is faint there), so its icon (>= 3.4:1)
+  carries the mark. Near miss: the `bw-red` today ring on the week strip is 2.9:1 on the light well (3.1 on white);
+  today is also the last solid cell before the dashed ones, and named in the cell's title and the strip's label.
 
   Distance (OKLab ΔE ×100, normal / the lower of protan and deutan; dataviz validator), light | dark:
   - Sidebar neighbours >= 15.4 / 10.7 | 12.8 / 6.8 (Thư viện and Cơ hội: the brown stays darker than the orange).
@@ -177,8 +191,10 @@ so the near pairs that remain are listed under the palette, not hidden.
     dark), never a fill: the selected card keeps `bg-card` in both themes, because `Kbd` chips are `bg-accent`
     and would vanish on an accent-filled card.
   - Stageshow wells (guides, /gioi-thieu/ tiles) keep their `secondary` ground (`--card` in dark) and add the 1px
-    `--border`.
-  - Blue stays the accent for the primary action, links and focus (plus the data blue of chart marks); surfaces never get a blue or area tint (the 36px title tile is a mark, not a surface).
+    `--border`; a guide in an empty panel's slot (`variant="flush"`) has neither: the slot's `bg-well` is its ground.
+  - Blue stays the accent for the primary action, links and focus (plus the data blue of chart marks); surfaces
+    never get a blue tint, and area tints appear only as the header band and as marks (§9a); cards and list
+    containers stay white. Wells are `bg-well`.
   - Focus ring (`--ring`) opaque, >= 3:1 against the page, the sidebar and every surface (WCAG 1.4.11): light
     `#3582ff` is 3.6:1 on white and 3.3:1 on the grey sidebar; dark `#6aa5ff` 7:1 or more. Never lower it with
     `/50` or alpha.
@@ -195,7 +211,8 @@ so the near pairs that remain are listed under the palette, not hidden.
 - **lucide-react only**, default stroke (2) everywhere in a screen. Never mix stroke widths or filled and outline
   glyphs in one view. No hand-drawn SVG glyphs; the brand mark (§4) is the one drawing that is not lucide.
 - **One size per context:** 16px (`size-4`) in buttons, nav, toolbars, rows; 14px (`size-3.5`) in badges, meta
-  lines and `xs` buttons; 18px only in `EmptyMedia`; 20px (`size-5`) only in the page title tile. Components
+  lines and `xs` buttons; 24px in the 48px tile of a first-run empty panel; 16px in other empty states; 20px
+  (`size-5`) only in the page title tile. Components
   already size their icons: do not override.
 - **Icons earn their place:** nav items, a verb with a standard glyph (Plus, Trash2, ExternalLink, Pencil), a
   state colour alone cannot carry (spinner, error). **No icon beside headings, card titles or section titles**,
@@ -238,7 +255,8 @@ so the near pairs that remain are listed under the palette, not hidden.
   keyboard-driven list; hidden on touch / below `sm` (`max-sm:hidden` or `pointer-coarse:hidden`). The full
   legend lives behind one "Phím tắt" control, not as a bar of 10 keys.
 - **States:** `LoadingCards`/`Skeleton` at the real row or card geometry; `ApiErrorState` (with "Thử lại") when
-  nothing loaded, `ApiStaleAlert` when old rows stay; `EmptyState` for empty lists.
+  nothing loaded, `ApiStaleAlert` when old rows stay; `EmptyPanel` for a list's first run (§9a), `EmptyState` for
+  filtered-empty.
 - **Sidebar** (`components/app-shell.tsx`, `lib/app-nav.ts`; owner's references, 04/11 and 06/11/2026): a 64px header
   (the `Brain` tile, "Alex's Brain" alone, no tagline (owner), a ghost `icon-sm` "Ẩn menu" button; its border
   continues the top bar's), then three tiers parted by hairlines (`TierLine`: a `border-t` in `--sidebar-border`,
@@ -260,11 +278,9 @@ so the near pairs that remain are listed under the palette, not hidden.
   (notes, journal, review questions) get air (`max-w-2xl`, `leading-relaxed`). Enlarge the focal content before
   adding anatomy. No empty bands mid-page, no rows spread to fill height.
 - **Help text is not content.** Page description <= 2 lines; setup and how-to text (bookmarklet, PWA, keys)
-  goes behind a disclosure, a help popover or `/huong-dan/`, never above the main list.
-- **Empty state = one message:** `EmptyMedia` icon, title saying what is missing ("Chưa có cơ hội nào"), one
-  sentence on what to do, at most one action, which is then the only primary on the screen (the toolbar
-  duplicate drops to `outline` or hides). A guide (`EmptyStateGuide`) under it shows the how; it does not repeat
-  the sentence. Size the empty box to its content; no tall dashed void.
+  goes behind a disclosure, a help popover or `/huong-dan/`, never above the main list, except the Hôm nay setup
+  checklist (§9a), placed under the hero.
+- **Empty state:** First-run: the empty panel (§9a). Filtered: "Xóa bộ lọc". Cleared: one line.
 - **Filtered empty** ("Không có mục nào khớp bộ lọc") shows a "Xóa bộ lọc" link, no guide, no icon art.
 
 ## 8. Motion
@@ -295,6 +311,38 @@ so the near pairs that remain are listed under the palette, not hidden.
    `market-page.tsx`), purple accents, eyebrow caps, the same gray card for every object.* Fix: show the
    object's own content (thumbnail, week number, timer, numbers), say what the AI did in words.
 
+## 9a. Owner 07/11/2026: fuller and warmer
+
+Owner ("hơi trống và trắng"): the page stays white and the sidebar grey; colour may now come from content and from
+each area's room, and empty pages show what they will become. Where this section and §2–§7 differ, this section
+wins.
+
+- **Header band.** An area page's `PageHeader` sits on a full-bleed `bg-area-<key>-wash` band (6% of the hue over
+  the page, 10% in dark) with `border-b`. Hôm nay, Inbox, capture, Giới thiệu, Hướng dẫn and personal page have none. Text
+  on the band stays neutral.
+- **Well.** The second container type: `rounded-xl bg-well`, no border, only for secondary, passive regions (Hôm
+  nay rail tiles, the right slot of a first-run empty panel, help rails). Never inside a card, and no card inside a
+  well.
+- **Cover.** A handbook's cover is a flat `--track-<slug>-soft` tint carrying its monogram (`lib/book-marks.ts`) in
+  the group hue, Geist 600 24px. It appears as the 80px full-bleed top band of a Sổ tay card and as the 64px tile of
+  the Hôm nay hero. It is a mark, not a surface: no shapes, images, gradients or shadows.
+- **Width.** App content is capped at `max-w-7xl`, left-aligned with the title; bands stay full-bleed. Hôm nay has
+  a 320px rail from `xl`.
+- **First-run empty panel.** Area tile (48px, 24px object glyph), title, one sentence, one primary; optionally up to
+  6 outline `sm` quick actions or one inline form built from the owner's own content; beside it, the area's guide
+  (open until hidden) or up to 3 static ghost rows / one ghost chart in the real geometry. The toolbar is hidden
+  until the list has a record or a filter is set. A cleared list is one line with no action.
+- **Week strip.** 7 cells T2–CN: `chart-data` = a lesson done, `chart-nonbillable` = other activity only, `muted` =
+  nothing, dashed = future, `bw-red` ring = today.
+- **Setup checklist.** Hôm nay may show one dismissible card under the hero: at most 5 steps, ticked only from real
+  data, gone at 5/5.
+- **No gamification.** No streaks, flames, XP, badges, confetti or progress rings; a missed day is a muted cell,
+  never red. No seeded sample rows.
+
+Shared pieces: `PageHeader` (the band, `components/brain/page-header.tsx`), `components/brain/layout.tsx`
+(`PAGE_WIDTH`, `wellClass`, `SectionHeader`, `StatRow`), `week-strip.tsx` (`WeekStrip`, `dayLevel`),
+`ghost-rows.tsx`, `empty-panel.tsx` (client; never imported on Hôm nay) and `EmptyStateGuide variant="flush"`.
+
 ## 10. Review checklist (cite by ID; each is checkable on a screenshot)
 
 Take screenshots at 1440 px and 390 px, light and dark, with data and empty.
@@ -303,8 +351,10 @@ Hierarchy
 - **D1** The eye lands first on the screen's focal object (§1.2), not on chrome, help text or a guide.
 - **D2** At most one filled blue button per view region (page toolbar, dialog footer, empty state); none duplicated.
   Exception: "Học ngay" on each Sổ tay book card (§6).
-- **D3** One page title (30px); sections 18px; nothing else above 18px except one big number.
-- **D4** Page description <= 2 lines on desktop; no setup/how-to text above the main content.
+- **D3** One page title (30px); sections 18px; nothing else above 18px except one 24px big number and the 24px cover
+  monograms.
+- **D4** Page description <= 2 lines on desktop; no setup/how-to text above the main content (the Hôm nay setup
+  checklist sits under the hero).
 
 Type
 - **D5** No text under 12px (chart ticks 11px and the Inbox count badge excepted); sizes only from §2.
@@ -317,32 +367,34 @@ Spacing and layout
 - **D9** Title-to-meta gap is smaller than record-to-record gap; rows are 32/40/56px, no fat rows.
 - **D10** Words sit >= 12px from container edges; no edges 1-3px apart; no element touching another.
 - **D11** At 390 px: no horizontal scroll, no clipped label, no orphaned button on its own line.
+- **D30** Content is capped at `max-w-7xl` and left-aligned; no single column stretched across ultra-wide screens.
 
 Containers
-- **D12** No bordered or tinted box inside another box (inputs and code excepted).
+- **D12** No bordered or tinted box inside another box (inputs, code and marks such as title tile, empty tile and
+  cover excepted); no card in a well, no well in a card.
 - **D13** A homogeneous list of more than ~5 records is rows in one container, not a stack of cards.
 - **D14** Radii from §3 (`xl` containers, `lg` controls, `md` fills, `sm` badges); nested radii concentric.
-- **D15** A container on the page is a surface (border + `bg-card`, D29); inside it, a fill or a divider, not a
-  second border; large shadows only on floating layers.
+- **D15** A container is a surface (border + `bg-card`) or, for secondary content only, a well (`bg-well`, no
+  border); inside it, a fill or a divider.
 
 Colour
 - **D16** Only token colours (the brand mark's own three hues excepted, §4); status colours match `lib/labels.ts`, the same status the same colour everywhere; an
-  area colour only on its title tile and Hôm nay tile icon (Hôm nay itself neutral), a group colour
-  (its area's hue) only on Sổ tay card dots, progress indicators and jump-link underlines; no coloured body text;
+  area colour only on its title tile, header band, first-run empty tile and Hôm nay tile icon; a group colour only
+  where one handbook is shown (cover, dot, progress indicator); no coloured body text;
   data colours (`--chart-*`, statuses, progress) never greyed out, every chart in the data blue, never in an area
   or group hue.
 - **D17** No purple, gradient, glow, coloured shadow or gradient text; `bw-red` only on the continue/now marker; no
   area or group hue that reads as the primary blue, `bw-red`, destructive red or a status colour.
 - **D18** AI results carry a plain "tự động" label or prefix; no sparkle, wand, bot or star as an AI marker.
 - **D19** Light and dark both read: muted text legible, no hard-coded white/black surfaces, focus ring visible.
-- **D29** Surfaces and contrast (§4): white page with white bordered surfaces and a grey sidebar whose current row
-  is a darker grey (light) / darkest page and sidebar, lighter surfaces (dark); border visible; blue only on the
-  primary action, links, focus and chart marks; focus ring >= 3:1 on page, sidebar and surfaces; no container left
-  transparent on the page.
+- **D29** Surfaces and contrast (§4, §9a): white page; white bordered surfaces; borderless grey wells for secondary
+  regions; area wash bands behind area headers; grey sidebar with a darker current row (light) / darkest page and
+  sidebar, lighter surfaces (dark); border visible; blue only on the primary action, links, focus and chart marks;
+  focus ring >= 3:1 on page, sidebar, surfaces, wells and bands; no container left transparent on the page.
 
 Icons
 - **D20** lucide only (the brand mark excepted: 28px in the sidebar header, no tile), one stroke width, 16px in
-  controls/rows/nav, 14px in badges/meta, 20px in the title tile; no emoji as icons.
+  controls/rows/nav, 14px in badges/meta, 20px in the title tile, 24px in the empty-panel tile; no emoji as icons.
 - **D21** No decorative icon beside headings or card titles (the area's nav icon on an area page's title tile and the
   icon of a Hôm nay tile heading excepted, §5); no nav icon as an empty state glyph; icon-only buttons have a
   tooltip.
@@ -354,8 +406,9 @@ Components
 - **D25** Badges: <= 3 per record, one tag style app-wide, never used as buttons or tabs.
 
 States and motion
-- **D26** Empty state: icon, title, one sentence, <= 1 action (the only primary); box sized to its content;
-  a guide below adds the how without repeating the text; filtered-empty offers "Xóa bộ lọc".
+- **D26** First-run empty = the §9a panel (one primary, ≤ 6 quick actions or one inline form, a guide or ≤ 3 ghost
+  rows beside it, toolbar hidden); cleared = one line; filtered = "Xóa bộ lọc".
 - **D27** Loading skeleton matches the real geometry; errors use `ApiErrorState` / `ApiStaleAlert` with "Thử lại".
 - **D28** Nothing animates on load; transitions <= 200 ms (overlays <= 250 ms); every looping animation stops
   under reduced motion.
+- **D31** Week strip and checklist follow §9a; no streaks, XP, badges, rings or confetti; missed days are muted.

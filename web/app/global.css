@@ -17,7 +17,8 @@
    current row a darker grey (neutral-200, owner 06/11); in dark the page and the sidebar are the darkest layer and surfaces are lighter. Fills
    (--muted/--accent/--secondary) are darker than the page and the sidebar so tabs and hovers still show. The focus
    ring is opaque: light #3582ff is 3.6:1 on white and 3.3:1 on the sidebar (60% was 2.1:1); dark #6aa5ff is 7.0:1 or
-   more.
+   more. Owner 07/11/2026 (DESIGN.md §9a, "hơi trống và trắng"): a borderless grey well (--well) for secondary
+   regions and a 6% area wash band (--area-<key>-wash) behind an area page's header; the page and cards stay white.
    Fumadocs reads --color-fd-*; those are mapped onto the same tokens below so lesson pages match. */
 
 :root {
@@ -73,6 +74,16 @@
   --area-library-soft: color-mix(in oklab, var(--area-library) 14%, var(--card));
   --area-opportunity-soft: color-mix(in oklab, var(--area-opportunity) 14%, var(--card));
   --area-work-soft: color-mix(in oklab, var(--area-work) 14%, var(--card));
+  /* Area wash (owner, 07/11/2026; DESIGN.md §9a): 6% of the hue over the page, only as the full-bleed band behind
+     an area page's PageHeader. muted-foreground keeps >= 7.0:1 on it, the hue itself >= 3.75:1. */
+  --area-week-wash: color-mix(in oklab, var(--area-week) 6%, var(--background));
+  --area-growth-wash: color-mix(in oklab, var(--area-growth) 6%, var(--background));
+  --area-library-wash: color-mix(in oklab, var(--area-library) 6%, var(--background));
+  --area-opportunity-wash: color-mix(in oklab, var(--area-opportunity) 6%, var(--background));
+  --area-work-wash: color-mix(in oklab, var(--area-work) 6%, var(--background));
+  /* The well (§9a): the borderless grey of secondary regions (Hôm nay rail, an empty panel's right slot), between
+     the white page and the neutral-100 sidebar; muted-foreground 7.2:1 on it. */
+  --well: oklch(0.977 0 0);
   --sidebar: var(--color-neutral-100);
   /* The current sidebar row (app-shell.tsx): a darker grey than the sidebar, one step past its hover fill */
   --sidebar-current: var(--color-neutral-200);
@@ -140,6 +151,14 @@
   --area-library-soft: color-mix(in oklab, var(--area-library) 22%, var(--card));
   --area-opportunity-soft: color-mix(in oklab, var(--area-opportunity) 22%, var(--card));
   --area-work-soft: color-mix(in oklab, var(--area-work) 22%, var(--card));
+  /* Wash bands stepped for dark: 10% over the zinc-950 page; muted-foreground >= 6.7:1, the hue >= 5.9:1. */
+  --area-week-wash: color-mix(in oklab, var(--area-week) 10%, var(--background));
+  --area-growth-wash: color-mix(in oklab, var(--area-growth) 10%, var(--background));
+  --area-library-wash: color-mix(in oklab, var(--area-library) 10%, var(--background));
+  --area-opportunity-wash: color-mix(in oklab, var(--area-opportunity) 10%, var(--background));
+  --area-work-wash: color-mix(in oklab, var(--area-work) 10%, var(--background));
+  /* The well between the page (zinc-950) and the card (8%); muted-foreground 7.3:1 on it. */
+  --well: hsl(0deg 0% 6%);
   /* The sidebar is the page's layer. Its hover is the faint popover step and the current row the zinc-800 fill, so
      the current row stays the strongest step (as in light, where both are greys darker than the sidebar). */
   --sidebar: var(--background);
@@ -187,13 +206,17 @@
 
 /* Sổ tay group colours (DESIGN.md §4): a group wears the hue of the area its handbooks feed (Kinh doanh -> Cơ hội,
    IT -> Công việc, Kỹ năng -> Tuần), so a hue still names one thing; no free hue is left for a seventh meaning.
-   Painted only on Sổ tay, as the card dot, the progress indicator and the jump-link underline. The teal is darker
-   than the pink in both themes, so the two stay apart under red-green colour blindness. */
+   Painted wherever one handbook is shown: its cover (the -soft tint carrying its monogram in the hue, §9a), its
+   dot and its progress indicator. The teal is darker than the pink in both themes, so the two stay apart under
+   red-green colour blindness. */
 :root,
 .dark {
   --track-kinh-doanh: var(--area-opportunity);
   --track-it: var(--area-work);
   --track-ky-nang: var(--area-week);
+  --track-kinh-doanh-soft: var(--area-opportunity-soft);
+  --track-it-soft: var(--area-work-soft);
+  --track-ky-nang-soft: var(--area-week-soft);
 }
 
 @theme inline {
@@ -244,9 +267,18 @@
   --color-area-library-soft: var(--area-library-soft);
   --color-area-opportunity-soft: var(--area-opportunity-soft);
   --color-area-work-soft: var(--area-work-soft);
+  --color-area-week-wash: var(--area-week-wash);
+  --color-area-growth-wash: var(--area-growth-wash);
+  --color-area-library-wash: var(--area-library-wash);
+  --color-area-opportunity-wash: var(--area-opportunity-wash);
+  --color-area-work-wash: var(--area-work-wash);
+  --color-well: var(--well);
   --color-track-kinh-doanh: var(--track-kinh-doanh);
   --color-track-it: var(--track-it);
   --color-track-ky-nang: var(--track-ky-nang);
+  --color-track-kinh-doanh-soft: var(--track-kinh-doanh-soft);
+  --color-track-it-soft: var(--track-it-soft);
+  --color-track-ky-nang-soft: var(--track-ky-nang-soft);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -315,8 +347,8 @@
   * {
     @apply border-border outline-ring;
   }
-  /* A surface re-declares the page token, so what is still painted with bg-background (outline Badge, ring
-     offsets) takes the surface colour instead of showing page-coloured patches (a no-op on the white light page,
+  /* A surface (and a well) re-declares the page token, so what is still painted with bg-background (outline Badge,
+     ring offsets) takes the surface colour instead of showing page-coloured patches (a no-op on the white light page,
      needed in dark where the page is darker than a card). Form controls (Input, Select,
      Textarea, Checkbox, Radio) are bg-popover in components/ui, white on the page and on a surface alike. */
   .bg-card,
@@ -325,6 +357,9 @@
   }
   .bg-popover {
     --background: var(--popover);
+  }
+  .bg-well {
+    --background: var(--well);
   }
   body {
     @apply bg-background text-foreground;

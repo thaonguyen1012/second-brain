@@ -24,7 +24,7 @@ const guides: { guide: EmptyGuideName; href: string; label: string; text?: strin
     href: '/inbox/',
     label: 'Mở Inbox',
     text:
-      'Cài một lần: ở trang Inbox, mở "Cách thu thập từ trình duyệt và điện thoại", nhấn ⌘⇧B để hiện thanh dấu trang ' +
+      'Cài một lần: ở trang Inbox, tìm ô "Thu thập từ trình duyệt" cạnh danh sách, nhấn ⌘⇧B để hiện thanh dấu trang ' +
       'rồi kéo nút Lưu vào Brain lên đó. Sau đó ở trang bất kỳ, bấm Lưu vào Brain trên thanh dấu trang (bôi đen một đoạn ' +
       'trước nếu muốn lưu kèm), rồi nhấn Enter trong cửa sổ nhỏ. Bookmarklet trỏ về đúng địa chỉ bạn kéo nó từ đó.',
   },

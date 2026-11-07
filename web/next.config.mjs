@@ -11,6 +11,8 @@ const config = {
   basePath,
   assetPrefix: basePath || undefined,
   reactStrictMode: true,
+  // No dev indicator badge over the sidebar in `next dev` (it covered "Hướng dẫn"); build errors still show.
+  devIndicators: false,
   // markdown is compiled at request time by the server, keep these packages out of the bundle
   // content/ is read from CONTENT_DIR at runtime, never copied into the standalone bundle
   outputFileTracingExcludes: { '*': ['./content/docs/**'] },

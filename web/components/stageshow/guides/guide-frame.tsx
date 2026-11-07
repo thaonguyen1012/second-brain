@@ -13,9 +13,11 @@ import { cn } from '@/lib/utils';
  * try/catch (private windows, blocked storage), with an in-memory copy so the toggle still works for the
  * session when storage is unavailable. On /huong-dan/ the frame is not hideable (`hideable={false}`: always
  * open, only "Xem lại") and uses the page variant (an 18px section title without the "Hướng dẫn: " prefix). The
- * frame aligns to the page gutter (no mx-auto) like every other block (DESIGN.md D8). Below sm the controls are
- * icon-only with a tooltip, so the title keeps one line. This file never imports the kit: the guide itself
- * arrives as a next/dynamic component from lazy.tsx.
+ * frame aligns to the page gutter (no mx-auto) like every other block (DESIGN.md D8). The flush variant fills the
+ * right slot of a first-run empty panel (components/brain/empty-panel.tsx, DESIGN.md §9a): open unless the owner
+ * hid it, the stage without a ground, edge or radius of its own (the slot's well is its ground), and `fallback`
+ * (ghost rows) in its place while hidden. Below sm the controls are icon-only with a tooltip, so the title keeps one
+ * line. This file never imports the kit: the guide itself arrives as a next/dynamic component from lazy.tsx.
  */
 
 const KEY = 'alex-brain:guide-hidden:';
@@ -103,6 +105,7 @@ export function GuideFrame({
   defaultHidden = false,
   hideable = true,
   variant = 'empty',
+  fallback,
   className,
 }: {
   /** Storage key part, one per guide */
@@ -119,8 +122,13 @@ export function GuideFrame({
    * still gets "Ẩn hướng dẫn" for this visit only, never stored, so its motion can be stopped (WCAG 2.2.2).
    */
   hideable?: boolean;
-  /** 'empty' under an empty state (quiet 14px title); 'page' as a section of /huong-dan/ (18px title) */
-  variant?: 'empty' | 'page';
+  /**
+   * 'empty' under an empty state (quiet 14px title); 'page' as a section of /huong-dan/ (18px title); 'flush' fills
+   * an empty panel's slot (its stage has no frame of its own, see above)
+   */
+  variant?: 'empty' | 'page' | 'flush';
+  /** Flush only: shown under the header while the guide is hidden (the empty panel's ghost rows) */
+  fallback?: ReactNode;
   className?: string;
 }) {
   const stored = useSyncExternalStore(
@@ -133,14 +141,28 @@ export function GuideFrame({
   const hidden = hideable ? stored : stoppable && hiddenHere;
   const [run, setRun] = useState(0);
   const headingId = `guide-${id}`;
+  const flush = variant === 'flush';
   return (
-    <section aria-labelledby={headingId} className={cn('flex w-full max-w-[600px] flex-col gap-2', className)}>
-      <div className="flex flex-nowrap items-center gap-2">
+    <section
+      aria-labelledby={headingId}
+      data-guide-flush={flush || undefined}
+      className={cn(
+        'flex w-full flex-col',
+        flush
+          ? // the slot's well is the ground: no radius, ground or border of the stage's own (guide CSS is unlayered,
+            // hence the important flags); lazy.tsx's placeholders follow data-guide-flush
+            '[&_.ss-fit]:after:hidden! [&_.ss-stage]:rounded-none! [&_.ss-stage]:bg-transparent!'
+          : 'max-w-[600px] gap-2',
+        className,
+      )}
+    >
+      <div className={cn('flex flex-nowrap items-center gap-2', flush && 'min-h-12 px-4 py-2')}>
         <h2
           id={headingId}
           className={cn(
             // closed under an empty state, the toggle follows the title instead of floating 600px away
-            'min-w-0 truncate',
+            'min-w-0 scroll-mt-20',
+            flush ? 'text-pretty' : 'truncate',
             variant === 'empty' && hidden ? 'flex-initial' : 'flex-1',
             variant === 'page'
               ? 'font-heading text-lg font-semibold tracking-tight'
@@ -164,6 +186,7 @@ export function GuideFrame({
         </div>
       </div>
       {!hidden && <Guide key={run} className="w-full" />}
+      {flush && hidden && fallback && <div className="px-6 pt-2 pb-6">{fallback}</div>}
     </section>
   );
 }

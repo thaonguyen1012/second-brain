@@ -1,5 +1,6 @@
 'use client';
 import dynamic from 'next/dynamic';
+import type { ReactNode } from 'react';
 import { GuideFrame } from './guides/guide-frame';
 
 /*
@@ -9,12 +10,20 @@ import { GuideFrame } from './guides/guide-frame';
  * the DOM. The placeholder keeps the guide's box so the page does not jump when the chunk arrives. Like the
  * Stage, it switches on its container's width, not the viewport's: below 560 px the compact design at
  * 358 x 470 (never wider; narrower containers scale it down), from 560 px the wide design, 600 x 452 at most.
+ * Under a `data-ss-wide` host (the empty panel's side slot) it keeps the wide shape, like the Stage; in a flush
+ * frame (`data-guide-flush`) it has no edge or ground, as the stage it stands for.
  */
+
+/** Wide shape under data-ss-wide, frameless under data-guide-flush (class strings written out for Tailwind). */
+const hostAware =
+  '[[data-ss-wide]_&]:aspect-[600/452] [[data-ss-wide]_&]:max-w-[600px] [[data-guide-flush]_&]:rounded-none [[data-guide-flush]_&]:border-0 [[data-guide-flush]_&]:bg-transparent';
 
 function GuidePlaceholder() {
   return (
     <div aria-hidden className="@container w-full">
-      <div className="mx-auto aspect-[358/470] w-full max-w-[358px] rounded-3xl border bg-secondary @min-[560px]:aspect-[600/452] @min-[560px]:max-w-[600px]" />
+      <div
+        className={`mx-auto aspect-[358/470] w-full max-w-[358px] rounded-3xl border bg-secondary @min-[560px]:aspect-[600/452] @min-[560px]:max-w-[600px] ${hostAware}`}
+      />
     </div>
   );
 }
@@ -25,7 +34,7 @@ const InboxTriage = dynamic(() => import('./guides/inbox-triage'), {
 });
 
 // The page guides shown in empty states (all, the Inbox too, share the 600 x 452 / 358 x 470 design); the
-// bookmarklet guide shows in the Inbox's "Cách thu thập" help instead.
+// bookmarklet guide shows in the Inbox's "Thu thập từ trình duyệt" box instead.
 const WeekRitual = dynamic(() => import('./guides/week-ritual'), { ssr: false, loading: GuidePlaceholder });
 const OpportunityEvidence = dynamic(() => import('./guides/opportunity-evidence'), {
   ssr: false,
@@ -38,7 +47,9 @@ const LibraryItem = dynamic(() => import('./guides/library-item'), { ssr: false,
 function SquarePlaceholder() {
   return (
     <div aria-hidden className="@container w-full">
-      <div className="mx-auto aspect-[358/356] w-full max-w-[358px] rounded-3xl border bg-secondary @min-[560px]:aspect-[600/452] @min-[560px]:max-w-[600px]" />
+      <div
+        className={`mx-auto aspect-[358/356] w-full max-w-[358px] rounded-3xl border bg-secondary @min-[560px]:aspect-[600/452] @min-[560px]:max-w-[600px] ${hostAware}`}
+      />
     </div>
   );
 }
@@ -62,23 +73,28 @@ export type EmptyGuideName = keyof typeof emptyGuides;
 
 /**
  * A how-to guide under a page's empty state, closed until "Xem hướng dẫn" (`open` starts it open); the open or
- * hidden choice is remembered per guide (localStorage). /huong-dan/ passes `variant="page" hideable={false} open`:
- * an 18px section title, always open, only "Xem lại".
+ * hidden choice is remembered per guide (localStorage) and wins over `open`. /huong-dan/ passes
+ * `variant="page" hideable={false} open`: an 18px section title, always open, only "Xem lại". The first-run empty
+ * panel passes `variant="flush"`: open by default, no frame of its own, `fallback` (ghost rows) while hidden.
  * Render it only when the list is loaded, without error, and truly empty (no filter), never while loading.
  * The Inbox guide loops; the others play once when scrolled into view and offer "Xem lại".
  */
 export function EmptyStateGuide({
   guide,
-  open = false,
+  open,
   hideable = true,
   variant = 'empty',
+  fallback,
   className,
 }: {
   guide: EmptyGuideName;
+  /** Start open when nothing is stored (default: false, true for the flush variant) */
   open?: boolean;
   /** false: ignore the stored hidden choice and offer no hide toggle (see GuideFrame) */
   hideable?: boolean;
-  variant?: 'empty' | 'page';
+  variant?: 'empty' | 'page' | 'flush';
+  /** Flush only: what the slot shows while the guide is hidden */
+  fallback?: ReactNode;
   className?: string;
 }) {
   const g = emptyGuides[guide];
@@ -88,9 +104,10 @@ export function EmptyStateGuide({
       title={g.title}
       Guide={g.Guide}
       replay={g.replay}
-      defaultHidden={!open}
+      defaultHidden={!(open ?? variant === 'flush')}
       hideable={hideable}
       variant={variant}
+      fallback={fallback}
       className={className}
     />
   );

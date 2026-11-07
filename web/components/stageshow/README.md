@@ -26,7 +26,7 @@ design is 358 x 356 so its desktop browser stays landscape, with its own placeho
 | `work-timer` | start the timer on a project, time-lapse, T stops, the week summary fills | once, ~10 s | Dự án (no status filter) and Giờ (no filter) empty |
 | `skill-freshness` | add evidence to a faded skill, it turns fresh, then 3 and 6 months later it fades | once, ~12 s | Kỹ năng matrix empty |
 | `library-item` | add a book, Xong asks for an output, write the note, the reminder leaves | once, ~12 s | Thư viện empty, no filter |
-| `capture-bookmarklet` | Cmd+Shift+B shows the bookmarks bar, "Lưu vào Brain" dragged onto it, an article loaded, the bookmark clicked, the popup filled in, Enter saves | once, ~14 s | Inbox "Cách thu thập" help (open with the panel), `/huong-dan/` |
+| `capture-bookmarklet` | Cmd+Shift+B shows the bookmarks bar, "Lưu vào Brain" dragged onto it, an article loaded, the bookmark clicked, the popup filled in, Enter saves | once, ~14 s | Inbox "Thu thập từ trình duyệt" box, `/huong-dan/` |
 
 Pages use `EmptyStateGuide guide="..."` from `lazy.tsx`: it wraps the guide in `guides/guide-frame.tsx`, a header
 with "Xem lại" (guides that play once) and "Ẩn hướng dẫn" / "Xem hướng dẫn". Under an empty state a guide starts
@@ -37,6 +37,15 @@ when the list is loaded, has no error and is empty without a filter. `/huong-dan
 one too, each through the same frame (so the looping Inbox guide can be hidden there, WCAG 2.2.2); the sidebar
 footer and `/gioi-thieu/` link to it. The lazy placeholder switches on its container's width like the Stage
 (compact 358 x 470 below 560 px), so the page does not jump when a guide arrives.
+
+**Flush variant** (web/DESIGN.md §9a): the first-run empty panel (`components/brain/empty-panel.tsx`) shows its
+page's guide in its right slot with `EmptyStateGuide guide="..." variant="flush" fallback={<GhostRows />}`. It is
+open by default (the stored hidden choice still wins), keeps "Xem lại" and "Ẩn hướng dẫn", and has no frame of its
+own: `guide-frame.tsx` removes the stage's radius, ground and `::after` border with important Tailwind variants
+(guide CSS is unlayered), so the slot's `bg-well` is the ground. While hidden, the slot shows `fallback`. When the
+slot sits beside the message (at most 34rem wide) the panel marks it `data-ss-wide`, so the Stage keeps the wide
+design scaled down instead of the 358 px compact one; the placeholders in `lazy.tsx` follow `data-ss-wide` and
+`data-guide-flush` too.
 
 Guides and intro pictures import each kit part from its own file (`../kit/stage`, `../kit/motion/Collapse`,
 `../kit/controls/Field`...), never from the `kit/index.ts` barrel: the barrel pulls in the CSS of every part
