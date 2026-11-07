@@ -1,17 +1,21 @@
 """Library: Items and Notes (DECISIONS 4.1). Note bodies are private: they are never sent to an LLM."""
 
+import datetime as dt
 import re
-from collections.abc import Iterable
+from collections.abc import Container, Iterable
 from typing import Any
 
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Count, ProtectedError, Q, QuerySet
+from django.utils import timezone
 
 from core.services.search import normalize_query
 from library.models import Item, Note
 
 MAX_TAGS = 30
+# Item fields an API write may set (POST/PATCH /api/items; /api/projects sends a subset).
+ITEM_FIELDS = ("type", "status", "title", "tags", "source", "rating", "started_at", "finished_at")
 NOTE_FIELDS = ("title", "markdown")
 EXCERPT_CHARS = 120
 EXCERPT_BEFORE = 40
@@ -42,6 +46,60 @@ def items(user: User, query: str = "") -> QuerySet[Item]:
             Q(title__icontains=query) | Q(source__icontains=query) | Q(tags__contains=[query.lower()])
         )
     return rows
+
+
+def apply_status_dates(item: Item, previous: str | None, explicit: Container[str] = ()) -> list[str]:
+    """Move the start and finish dates with a status change, so Items finished anywhere (Thư viện, the Dự án
+    board) reach the week review, which reads finished_at. `previous` is the status before the write (None for
+    a new Item); `item.status` is the new one.
+
+    * active: started_at = now when it is empty; finished_at cleared;
+    * done: finished_at = now when it is empty (started_at unchanged, it may stay empty);
+    * planned: both cleared;
+    * dropped: finished_at cleared (started_at unchanged).
+
+    No status change leaves both dates alone, and a date named in `explicit` (sent by the client in the same
+    request) wins over the rule. Sets the fields on `item` without saving; returns the names it changed. Every
+    API write of an Item's status goes through here (create_item and update_item below).
+    """
+    if item.status == previous:
+        return []
+    now = timezone.now()
+    rule: dict[str, dt.datetime | None] = {}
+    if item.status == Item.Status.ACTIVE:
+        rule = {"started_at": item.started_at or now, "finished_at": None}
+    elif item.status == Item.Status.DONE:
+        rule = {"finished_at": item.finished_at or now}
+    elif item.status == Item.Status.PLANNED:
+        rule = {"started_at": None, "finished_at": None}
+    elif item.status == Item.Status.DROPPED:
+        rule = {"finished_at": None}
+    changed = []
+    for field, value in rule.items():
+        if field not in explicit and getattr(item, field) != value:
+            setattr(item, field, value)
+            changed.append(field)
+    return changed
+
+
+def create_item(user: User, data: dict[str, Any]) -> Item:
+    """A new Item from validated ITEM_FIELDS; its status sets the dates (apply_status_dates)."""
+    item = Item(user=user, **{f: data[f] for f in ITEM_FIELDS if f in data})
+    apply_status_dates(item, None, data)
+    item.save()
+    return item
+
+
+def update_item(item: Item, data: dict[str, Any]) -> Item:
+    """Write the ITEM_FIELDS present in `data` (a partial update); a status change moves the dates."""
+    previous = item.status
+    fields = [f for f in ITEM_FIELDS if f in data]
+    for field in fields:
+        setattr(item, field, data[field])
+    fields += apply_status_dates(item, previous, data)
+    if fields:
+        item.save(update_fields=[*fields, "updated_at"])
+    return item
 
 
 def delete_item(item: Item) -> None:

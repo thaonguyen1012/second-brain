@@ -46,7 +46,9 @@ class ItemListView(generics.ListCreateAPIView[Item]):
         return items
 
     def perform_create(self, serializer: BaseSerializer[Item]) -> None:
-        serializer.save(user=request_user(self.request))
+        """A status other than planned sets the start or finish date (services.apply_status_dates)."""
+        user = request_user(self.request)
+        serializer.instance = services.create_item(user, dict(serializer.validated_data))
 
 
 class ItemView(APIView):
@@ -57,11 +59,12 @@ class ItemView(APIView):
 
     @extend_schema(request=ItemSerializer, responses=ItemSerializer, operation_id="updateItem")
     def patch(self, request: Request, pk: int) -> Response:
+        """A status change moves startedAt / finishedAt unless the body sets them (apply_status_dates)."""
         item = get_object_or_404(services.items(request_user(request)), pk=pk)
         body = ItemSerializer(item, data=request.data, partial=True)
         body.is_valid(raise_exception=True)
-        body.save()
-        return Response(body.data)
+        services.update_item(item, dict(body.validated_data))
+        return Response(ItemSerializer(item).data)
 
     @extend_schema(responses={204: None, 409: ErrorSerializer}, operation_id="deleteItem")
     def delete(self, request: Request, pk: int) -> Response:

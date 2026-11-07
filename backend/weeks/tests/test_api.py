@@ -129,6 +129,24 @@ def test_get_review_lists_body_of_work_per_day(client: Client) -> None:
     assert client.get(f"/api/weeks/{MON + dt.timedelta(weeks=1)}/review").status_code == 404
 
 
+def test_items_marked_done_through_the_api_reach_the_review(client: Client) -> None:
+    # Thư viện and the Dự án board send only the status; the API sets finishedAt.
+    headers = csrf(client)
+    book = send(client, "post", "/api/items", {"type": "book", "title": "Deep Work"}, headers).json()
+    send(client, "patch", f"/api/items/{book['id']}", {"status": "done"}, headers)
+    shop = send(client, "post", "/api/projects", {"title": "Shop", "status": "active"}, headers).json()
+    send(client, "patch", f"/api/projects/{shop['id']}", {"status": "done"}, headers)
+    send(client, "post", "/api/items", {"type": "film", "title": "Still planned"}, headers)
+
+    start = client.get("/api/weeks/current").json()["startDate"]
+    days = {d["date"]: d for d in client.get(f"/api/weeks/{start}/review").json()["days"]}
+    finished = days[timezone.localdate().isoformat()]["itemsFinished"]
+    assert finished == [
+        {"id": book["id"], "title": "Deep Work", "type": "book"},
+        {"id": shop["id"], "title": "Shop", "type": "project"},
+    ]
+
+
 def test_update_review(client: Client) -> None:
     headers = csrf(client)
     body = {"reviewWin": "Week API", "reviewChangedMind": "Less is more."}

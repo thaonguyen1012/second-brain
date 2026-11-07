@@ -139,6 +139,13 @@ response 201 { "id": 1, "type": "book", "status": "planned", "title": "Deep Work
 `type`: course, book, film, article, project. `status`: planned, active, done, dropped. Tags are lowercased and
 deduplicated; `rating` is 1-10 or null.
 
+The dates follow the status on every write (`POST`/`PATCH` here and on `/api/projects`), so an Item marked done
+anywhere counts in the week review (by `finishedAt`): a change to `active` sets `startedAt` to now when it is empty
+and clears `finishedAt`; to `done` sets `finishedAt` to now when it is empty (`startedAt` is kept and may stay
+`null`); to `planned` clears both; to `dropped` clears `finishedAt` (`startedAt` is kept). Creating an Item with a
+status applies the same rule. A `startedAt` or `finishedAt` sent in the same request wins over the rule, and a write
+that does not change the status leaves both dates alone.
+
 ## Notes (`/api/notes`)
 
 A note is markdown linked to any number of the owner's Items (DECISIONS 4.1). Note bodies stay private: they are
@@ -284,6 +291,8 @@ all hours spent, non-billable included (Harvest style); `null` without time or w
 one. `POST /api/projects` (`201`) creates the Item and its details; `PATCH /api/projects/{id}` changes any of them.
 Fields: `title` (required on create), `status`, `tags`, `source`, `startedAt`, `finishedAt`, `client`,
 `billing` (fixed, hourly), `price`, `hourlyRate`, `currency`. An hourly project without `hourlyRate` answers `400`.
+A `status` change (the Dự án board sends only `status`) moves `startedAt` and `finishedAt` by the Items rule: active
+sets the start, done the finish, planned clears both, dropped clears the finish; dates sent in the same request win.
 
 Time entries:
 

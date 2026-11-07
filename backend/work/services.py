@@ -10,6 +10,7 @@ from django.db.models import Q, QuerySet, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
+from library import services as library_services
 from library.models import Item
 from work.models import ProjectDetails, TimeEntry
 
@@ -89,22 +90,19 @@ def totals(item: Item) -> dict[str, Any]:
 
 
 def create_project(user: User, data: dict[str, Any]) -> Item:
+    """The Item goes through library's create_item, so its status sets the dates like any Item."""
     with transaction.atomic():
-        item = Item.objects.create(
-            user=user, type=Item.Type.PROJECT, **{f: data[f] for f in ITEM_FIELDS if f in data}
-        )
+        fields = {f: data[f] for f in ITEM_FIELDS if f in data}
+        item = library_services.create_item(user, {**fields, "type": Item.Type.PROJECT})
         ProjectDetails.objects.create(item=item, **{f: data[f] for f in DETAIL_FIELDS if f in data})
     return item
 
 
 def update_project(item: Item, data: dict[str, Any]) -> Item:
-    """Item fields and details in one write; details are created for a project Item that has none."""
+    """Item fields and details in one write; details are created for a project Item that has none. A status
+    change moves the dates (library's update_item, the Dự án board's drag and drop)."""
     with transaction.atomic():
-        item_fields = [f for f in ITEM_FIELDS if f in data]
-        for field in item_fields:
-            setattr(item, field, data[field])
-        if item_fields:
-            item.save(update_fields=[*item_fields, "updated_at"])
+        library_services.update_item(item, {f: data[f] for f in ITEM_FIELDS if f in data})
         details = details_of(item)
         for field in DETAIL_FIELDS:
             if field in data:
