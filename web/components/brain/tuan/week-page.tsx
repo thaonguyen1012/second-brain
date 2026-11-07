@@ -17,12 +17,16 @@ import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
+import { cn } from '@/lib/utils';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards } from '../api-state';
+import { useInboxCount } from '../inbox-count';
 import { KeyLegend } from '../key-legend';
+import { PAGE_WIDTH } from '../layout';
 import type { BookIndex } from './body-of-work';
 import type { ObjectivesUpdate } from './objectives-editor';
 import { PlanPanel } from './plan-panel';
 import { ReviewPanel } from './review-panel';
+import { checkProgress, reviewChecks } from './review-rhythm';
 import { addDays, isMonday, isoWeek, mondayOf, todayPrague, weekdayIndex, weekRange } from './week-utils';
 
 type Tab = 'plan' | 'review';
@@ -100,6 +104,19 @@ function defaultTab(start: string, current: string): Tab {
   if (start < current) return 'review';
   if (start > current) return 'plan';
   return weekdayIndex(todayPrague()) >= 4 ? 'review' : 'plan';
+}
+
+/** The skeleton in the tab's shape (DESIGN.md D27): one surface for the plan; the review's two columns from xl. */
+function WeekLoading({ tab }: { tab: Tab }) {
+  if (tab === 'plan') return <LoadingCards count={1} />;
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] xl:items-start">
+      <LoadingCards count={2} />
+      <div className="max-xl:hidden">
+        <LoadingCards count={3} />
+      </div>
+    </div>
+  );
 }
 
 function relativeName(start: string, current: string): string | null {
@@ -215,100 +232,151 @@ export function WeekPage({ books }: { books: BookIndex }) {
       return { ...d, review: { ...d.review, opportunities: { withEvidence: set(withEvidence), stale: set(stale) } } };
     });
 
+  // Next week's objectives tick the checklist's last line. GET /review only reads (404 = never opened, null),
+  // unlike GET /plan, so looking never creates next week.
+  const next = addDays(start, 7);
+  const nextKey = start < latest && data?.review ? `week-next:${next}` : null;
+  const nextWeek = useApi(nextKey, () => weeksApi.getReview(next));
+  const nextCount =
+    nextKey === null || nextWeek.error || nextWeek.dataKey !== nextKey
+      ? undefined
+      : nextWeek.data
+        ? nextWeek.data.week.objectives.filter((o) => o.status !== 'dropped').length
+        : null;
+
+  const inbox = useInboxCount();
+  const checks =
+    data?.plan && data.review
+      ? reviewChecks({
+          inbox,
+          objectives: data.plan.week.objectives,
+          // The brag lines added in this review count at once (the server counts the same rows).
+          rhythm: data.review.rhythm && { ...data.review.rhythm, achievements: data.review.achievements.length },
+          nextWeek: nextCount,
+          onNextWeek: start < latest ? () => go(next, 'plan') : undefined,
+        })
+      : null;
+  const progress = checks && checkProgress(checks);
+
   const name = relativeName(start, current);
   const wk = data?.plan?.week;
+  // One status (DESIGN.md D25, D31): from review time (past weeks, Friday on, or a journal already saved) the
+  // neutral step count, the success badge once every check is done; before that, a planned week's badge.
+  const reviewTime = start < current || (start === current && weekdayIndex(todayPrague()) >= 4) || !!wk?.reviewedAt;
+  const reviewed = reviewTime && !!progress && progress.total > 0 && progress.done === progress.total;
+  const steps = !reviewed && progress && reviewTime ? `${progress.done}/${progress.total} bước` : null;
+  const badge = reviewed ? 'Đã nhìn lại' : !steps && wk?.plannedAt ? 'Đã lên kế hoạch' : null;
 
   return (
-    <div className="flex flex-col gap-4 px-4 pb-12 sm:px-8">
-      <nav aria-label="Chọn tuần" className="flex flex-wrap items-center gap-2">
-        <WeekArrow label="Tuần trước" shortcut="[" onClick={() => go(addDays(start, -7))}>
-          <ChevronLeft aria-hidden />
-        </WeekArrow>
-        <WeekArrow label="Tuần sau" shortcut="]" disabled={start >= latest} onClick={() => go(addDays(start, 7))}>
-          <ChevronRight aria-hidden />
-        </WeekArrow>
-        <h2 className="flex flex-wrap items-baseline gap-x-2 font-heading text-lg font-semibold tracking-tight" aria-live="polite">
-          <span>Tuần {isoWeek(start)}</span>
-          <span className="text-sm font-normal text-muted-foreground tabular-nums">
-            {weekRange(start)}
-            {name ? ` · ${name}` : ''}
-          </span>
-        </h2>
-        {/* One status badge (DESIGN.md D25): the furthest step of the ritual this week has reached */}
-        {(wk?.reviewedAt || wk?.plannedAt) && (
-          <Badge variant="success">{wk?.reviewedAt ? 'Đã nhìn lại' : 'Đã lên kế hoạch'}</Badge>
-        )}
-        <div className="ms-auto flex items-center gap-2">
-          {start !== current && (
-            <Button size="sm" variant="ghost" onClick={() => go(current)}>
-              Về tuần này
-            </Button>
-          )}
-          <KeyLegend keys={keyHelp} title="Phím tắt của Tuần" />
+    <div className={cn(PAGE_WIDTH, 'px-4 pb-12 sm:px-8')}>
+      {/* Below xl both rituals are one reading column (max-w-3xl), and the week row with its tabs ends on its edge */}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="gap-4 max-xl:max-w-3xl">
+        {/* One row: the week (arrows, number, range, status) and, at its end, the ritual tabs and the key legend;
+            min-h-9 keeps its height while the tabs wait for data */}
+        <div className="flex min-h-9 flex-wrap items-center gap-x-4 gap-y-3">
+          <nav aria-label="Chọn tuần" className="flex min-w-0 flex-1 basis-72 items-center gap-2">
+            <WeekArrow label="Tuần trước" shortcut="[" onClick={() => go(addDays(start, -7))}>
+              <ChevronLeft aria-hidden />
+            </WeekArrow>
+            <WeekArrow label="Tuần sau" shortcut="]" disabled={start >= latest} onClick={() => go(addDays(start, 7))}>
+              <ChevronRight aria-hidden />
+            </WeekArrow>
+            <h2
+              className="flex min-w-0 flex-wrap items-baseline gap-x-2 font-heading text-lg font-semibold tracking-tight"
+              aria-live="polite"
+            >
+              <span>Tuần {isoWeek(start)}</span>
+              <span className="text-sm font-normal text-muted-foreground tabular-nums">
+                {/* Lines break only after a "·", never inside "Tuần này" or "1/6 bước" */}
+                {[weekRange(start), name, steps]
+                  .filter((part): part is string => !!part)
+                  .map((part) => part.replaceAll(' ', '\u00a0'))
+                  .join('\u00a0· ')}
+                {/* Below sm the status joins this line instead of wrapping alone as a badge (D11) */}
+                {badge && <span className="sm:hidden">{`\u00a0· ${badge.replaceAll(' ', '\u00a0')}`}</span>}
+              </span>
+              {badge && (
+                <Badge variant="success" className="self-center max-sm:hidden">
+                  {badge}
+                </Badge>
+              )}
+            </h2>
+          </nav>
+          <div className="flex items-center gap-2">
+            {start !== current && (
+              <Button size="sm" variant="ghost" onClick={() => go(current)}>
+                Về tuần này
+              </Button>
+            )}
+            {data?.plan && (
+              <TabsList aria-label="Nghi thức tuần">
+                <TabsTab value="plan">Kế hoạch</TabsTab>
+                <TabsTab value="review">Nhìn lại</TabsTab>
+              </TabsList>
+            )}
+            <KeyLegend keys={keyHelp} title="Phím tắt của Tuần" />
+          </div>
         </div>
-      </nav>
 
-      {data && <ApiStaleAlert result={week} />}
-      {week.error && !data ? (
-        <ApiErrorState error={week.error} onRetry={week.reload} />
-      ) : !data ? (
-        <LoadingCards count={3} />
-      ) : !data.plan ? (
-        <EmptyState
-          icon={<CalendarPlus aria-hidden />}
-          title="Tuần này chưa được mở"
-          description={`Không có kế hoạch hay nhìn lại nào cho tuần ${weekRange(start)}.`}
-        >
-          <Button variant="outline" onClick={() => setOpened(start)}>
-            Mở tuần này để ghi lại
-          </Button>
-        </EmptyState>
-      ) : (
-        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="gap-4">
-          <TabsList aria-label="Nghi thức tuần">
-            <TabsTab value="plan">Kế hoạch</TabsTab>
-            <TabsTab value="review">Nhìn lại</TabsTab>
-          </TabsList>
-          <TabsPanel value="plan" keepMounted>
-            <PlanPanel
-              key={start}
-              start={start}
-              weekName={start === current ? 'tuần này' : start === latest ? 'tuần tới' : `tuần ${weekRange(start)}`}
-              week={data.plan.week}
-              carryCandidates={data.plan.carryCandidates}
-              onWeek={onWeek}
-              onObjectives={onObjectives}
-              onCarried={onCarried}
-            />
-          </TabsPanel>
-          <TabsPanel value="review" keepMounted>
-            {data.review ? (
-              <ReviewPanel
+        {data && <ApiStaleAlert result={week} />}
+        {week.error && !data ? (
+          <ApiErrorState error={week.error} onRetry={week.reload} />
+        ) : !data ? (
+          <WeekLoading tab={tab} />
+        ) : !data.plan ? (
+          <EmptyState
+            icon={<CalendarPlus aria-hidden />}
+            title="Tuần này chưa được mở"
+            description={`Không có kế hoạch hay nhìn lại nào cho tuần ${weekRange(start)}.`}
+          >
+            <Button variant="outline" onClick={() => setOpened(start)}>
+              Mở tuần này để ghi lại
+            </Button>
+          </EmptyState>
+        ) : (
+          <>
+            <TabsPanel value="plan" keepMounted>
+              <PlanPanel
                 key={start}
                 start={start}
+                weekName={start === current ? 'tuần này' : start === latest ? 'tuần tới' : `tuần ${weekRange(start)}`}
                 week={data.plan.week}
-                review={data.review}
-                books={books}
+                carryCandidates={data.plan.carryCandidates}
                 onWeek={onWeek}
                 onObjectives={onObjectives}
-                onAchievement={onAchievement}
-                onOpportunity={onOpportunity}
-                onNextWeek={start < latest ? () => go(addDays(start, 7), 'plan') : undefined}
+                onCarried={onCarried}
               />
-            ) : (
-              <LoadingCards count={2} />
-            )}
-          </TabsPanel>
-        </Tabs>
-      )}
-      {/* How the ritual goes: under the empty state of a week never opened, and under the real form of a blank
-          week (no objectives, never planned or reviewed), which is what a new user meets */}
-      {data &&
-        !week.error &&
-        (!data.plan ||
-          (data.plan.week.objectives.length === 0 && !data.plan.week.plannedAt && !data.plan.week.reviewedAt)) && (
-          <EmptyStateGuide guide="week" className={data.plan ? 'mt-4' : undefined} />
+            </TabsPanel>
+            <TabsPanel value="review" keepMounted>
+              {data.review && checks ? (
+                <ReviewPanel
+                  key={start}
+                  start={start}
+                  week={data.plan.week}
+                  review={data.review}
+                  books={books}
+                  checks={checks}
+                  onWeek={onWeek}
+                  onObjectives={onObjectives}
+                  onAchievement={onAchievement}
+                  onOpportunity={onOpportunity}
+                  onPlan={() => setTab('plan')}
+                />
+              ) : (
+                <WeekLoading tab="review" />
+              )}
+            </TabsPanel>
+          </>
         )}
+        {/* How the ritual goes: under the empty state of a week never opened, and under the real form of a blank
+            week (no objectives, never planned or reviewed), which is what a new user meets */}
+        {data &&
+          !week.error &&
+          (!data.plan ||
+            (data.plan.week.objectives.length === 0 && !data.plan.week.plannedAt && !data.plan.week.reviewedAt)) && (
+            <EmptyStateGuide guide="week" className={data.plan ? 'mt-4' : undefined} />
+          )}
+      </Tabs>
     </div>
   );
 }

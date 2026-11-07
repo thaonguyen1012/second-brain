@@ -177,8 +177,9 @@ export function PlanPanel({
 }) {
   return (
     // One surface for the ritual (DESIGN.md D12): objectives on the left, the journal on the right, a hairline
-    // between them; the shorter column no longer leaves a floating card above an empty band.
-    <div className="grid rounded-xl border bg-card lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    // between them; the shorter column no longer leaves a floating card above an empty band. Two columns from xl,
+    // where the page lifts its max-w-3xl reading cap.
+    <div className="grid rounded-xl border bg-card xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col divide-y">
         {carryCandidates.length > 0 && <CarryOver start={start} weekName={weekName} candidates={carryCandidates} onCarried={onCarried} />}
         <WeekSection id="week-objectives" title="Mục tiêu tuần">
@@ -186,7 +187,7 @@ export function PlanPanel({
           <ObjectivesEditor start={start} objectives={week.objectives} onChange={onObjectives} />
         </WeekSection>
       </div>
-      <div className="min-w-0 border-t lg:border-t-0 lg:border-l">
+      <div className="min-w-0 border-t xl:border-t-0 xl:border-l">
         <PlanJournal start={start} weekName={weekName} week={week} onSaved={onWeek} />
       </div>
     </div>

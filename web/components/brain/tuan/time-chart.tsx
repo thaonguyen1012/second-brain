@@ -164,6 +164,41 @@ function DayColumns({ days }: { days: ApiDayWork[] }) {
   );
 }
 
+/**
+ * The chart at zero hours: the real frame (the 1h line, the baseline, the T2...CN axis of DayColumns, shorter) with
+ * no bars, and the message and the way to log time over it, so the section keeps its shape before any data.
+ */
+function EmptyFrame({ days }: { days: ApiDayWork[] }) {
+  return (
+    <div className="flex gap-2">
+      <div className="relative h-24 w-7 shrink-0 text-end text-[11px] text-muted-foreground tabular-nums" aria-hidden>
+        <span className="absolute right-0 bottom-full translate-y-1/2">1h</span>
+        <span className="absolute right-0 bottom-0 translate-y-1/2">0</span>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div className="relative h-24">
+          <div className="absolute inset-x-0 top-0 border-t border-border" aria-hidden />
+          <div className="absolute inset-x-0 bottom-0 border-t border-border" aria-hidden />
+          <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-2">
+            <p className="text-sm text-muted-foreground">Chưa có giờ nào tuần này</p>
+            <Button size="xs" variant="outline" render={<Link href="/cong-viec/gio/" />}>
+              Bấm giờ
+            </Button>
+          </div>
+        </div>
+        <div className="flex text-center text-[11px] text-muted-foreground" aria-hidden>
+          {days.map((d, i) => (
+            <span key={d.date} className="flex-1">
+              {weekdayShort[i]}
+              <span className="hidden sm:inline"> {shortDate(d.date)}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Header cell of DayTable (DESIGN.md §6 Tables: 40px rows, 12px medium muted header, no vertical borders). */
 const HEAD = 'h-10 px-2 text-xs font-medium text-muted-foreground first:ps-0 last:pe-0';
 const CELL = 'px-2 first:ps-0 last:pe-0';
@@ -253,13 +288,7 @@ export function TimeChart({ days, time }: { days: ApiDayWork[]; time: ApiWeekTim
       }
     >
       {total === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Chưa có giờ nào được ghi trong tuần này. Ghi giờ ở{' '}
-          <Link href="/cong-viec/gio/" className="text-primary underline-offset-4 hover:underline">
-            Công việc · Giờ
-          </Link>{' '}
-          và gắn với một mục tiêu để biết bao nhiêu giờ đi đúng hướng.
-        </p>
+        <EmptyFrame days={days} />
       ) : (
         <>
           <WeekSplit time={time} />

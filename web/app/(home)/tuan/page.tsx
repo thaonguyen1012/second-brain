@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { books, bookUrl } from '@/lib/books';
 import { LoadingCards } from '@/components/brain/api-state';
+import { PAGE_WIDTH } from '@/components/brain/layout';
 import { PageHeader } from '@/components/brain/page-header';
 import type { BookIndex } from '@/components/brain/tuan/body-of-work';
 import { WeekPage } from '@/components/brain/tuan/week-page';
@@ -22,7 +23,7 @@ export default function Page() {
       {/* The week comes from ?w= (useSearchParams): rendered in the browser, never during next build. */}
       <Suspense
         fallback={
-          <div className="px-4 pb-12 sm:px-8">
+          <div className={`${PAGE_WIDTH} px-4 pb-12 sm:px-8`}>
             <LoadingCards count={3} />
           </div>
         }

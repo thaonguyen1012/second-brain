@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import type { ApiWeek } from '@/lib/api/client';
 import { type ApiReviewField, type ApiReviewPatch, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ export function ReviewJournal({
 
   const dirtyFields = reviewQuestions.map((q) => q.field).filter((f) => answers[f] !== saved[f]);
   const dirty = dirtyFields.length > 0;
+  const answered = reviewQuestions.filter((q) => saved[q.field].trim() !== '').length;
 
   useEffect(() => {
     if (!dirty) return;
@@ -85,19 +87,61 @@ export function ReviewJournal({
 
   return (
     // The column around it carries id="week-review-journal" (the "Trả lời 6 câu" anchor), so the heading's id differs.
-    <WeekSection id="week-review-journal-title" title="Nhật ký nhìn lại">
+    <WeekSection
+      id="week-review-journal-title"
+      title="Nhật ký nhìn lại"
+      action={
+        // Answers saved and the save state in one meta line; the save button shows below only while needed
+        <span className="text-xs text-muted-foreground tabular-nums" aria-live="polite">
+          {answered}/{reviewQuestions.length} câu
+          {state === 'saving' ? (
+            ' · Đang lưu…'
+          ) : dirty ? (
+            <>
+              {' · Chưa lưu'}
+              {/* Key hint only where a keyboard is likely (DESIGN.md D24) */}
+              <span className="max-sm:hidden pointer-coarse:hidden">
+                {' · '}
+                <SaveKeys /> để lưu
+              </span>
+            </>
+          ) : reviewedAt ? (
+            ` · Đã lưu lúc ${clockTime(reviewedAt)}`
+          ) : null}
+        </span>
+      }
+    >
       <div className="flex flex-col gap-4">
         {reviewQuestions.map((q, i) => {
           const id = `review-${q.field}`;
+          const done = saved[q.field].trim() !== '';
           return (
             <div key={q.field} className="flex flex-col gap-1.5">
               <label htmlFor={id} className="flex items-baseline gap-2 text-sm font-medium">
-                <span className="text-muted-foreground tabular-nums">{i + 1}.</span>
+                {/* An answered (saved) question shows a check in place of its number */}
+                <span className="flex w-4 shrink-0 justify-center self-center text-muted-foreground tabular-nums">
+                  {done ? (
+                    <>
+                      <CheckCircle2 className="size-4 text-success-foreground" aria-hidden />
+                      <span className="sr-only">Đã trả lời: </span>
+                    </>
+                  ) : (
+                    `${i + 1}.`
+                  )}
+                </span>
                 {q.label}
               </label>
-              {q.hint && <p className="text-xs text-muted-foreground">{q.hint}</p>}
+              {/* The hint is the placeholder; screen readers get it as the description too */}
+              {q.hint && (
+                <p id={`${id}-hint`} className="sr-only">
+                  {q.hint}
+                </p>
+              )}
               <Textarea
                 id={id}
+                aria-describedby={q.hint ? `${id}-hint` : undefined}
+                placeholder={q.hint || undefined}
+                className="[&_textarea]:min-h-8.5"
                 value={answers[q.field]}
                 onChange={(e) => setAnswers((a) => ({ ...a, [q.field]: e.target.value }))}
                 onBlur={() => answers[q.field] !== saved[q.field] && void save([q.field])}
@@ -107,7 +151,7 @@ export function ReviewJournal({
                     void save(dirtyFields);
                   }
                 }}
-                rows={3}
+                rows={1}
               />
               {q.field === 'reviewOpportunityEvidence' && suggestion && !answers[q.field].trim() && (
                 <Button
@@ -125,31 +169,13 @@ export function ReviewJournal({
       </div>
       {/* Same as Kế hoạch's save (DESIGN.md D2, §1.5): outline, shown only while there is something to save; each
           field also saves on blur and with Cmd/Ctrl+Enter, so nothing blue sits idle at the end of the journal. */}
-      <div className="flex min-h-8 flex-wrap items-center gap-2">
-        {(dirty || state === 'saving') && (
+      {(dirty || state === 'saving') && (
+        <div className="flex">
           <Button variant="outline" size="sm" onClick={() => void save(dirtyFields)} loading={state === 'saving'}>
             Lưu nhìn lại
           </Button>
-        )}
-        <span className="text-xs text-muted-foreground" aria-live="polite">
-          {state === 'saving' ? (
-            'Đang lưu…'
-          ) : dirty ? (
-            <>
-              Chưa lưu
-              {/* Key hint only where a keyboard is likely (DESIGN.md D24) */}
-              <span className="max-sm:hidden pointer-coarse:hidden">
-                {' · '}
-                <SaveKeys /> để lưu
-              </span>
-            </>
-          ) : reviewedAt ? (
-            `Đã lưu lúc ${clockTime(reviewedAt)}`
-          ) : (
-            'Chưa nhìn lại tuần này'
-          )}
-        </span>
-      </div>
+        </div>
+      )}
       <WriteError error={error} />
     </WeekSection>
   );
