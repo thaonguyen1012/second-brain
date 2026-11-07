@@ -8,8 +8,10 @@ from django.contrib.auth.models import User
 from django.core.management import CommandError, call_command
 from django.db import connection
 
-from core.services import backup
+from core.services import backup, thumbnails
+from core.testing import image_bytes
 from inbox.models import InboxEntry
+from library.models import Item
 
 
 def touch(directory: Path, *names: str) -> None:
@@ -85,6 +87,40 @@ def test_backup_files_are_owner_only(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert fresh.stat().st_mode & 0o777 == 0o700
 
 
+def test_the_image_mirror_copies_new_files_only_and_never_deletes(tmp_path: Path) -> None:
+    source, mirror = tmp_path / "thumbs", tmp_path / "backups" / "thumbs"
+    new, kept, gone = ("a" * 32 + ".webp", "b" * 32 + ".webp", "c" * 32 + ".webp")
+    source.mkdir()
+    (source / new).write_bytes(b"new image")
+    (source / kept).write_bytes(b"same name, same bytes")
+    (source / "x1y2.tmp").write_bytes(b"being written")  # store()'s temporary file
+    (source / "notes.txt").write_bytes(b"not an image")
+    mirror.mkdir(parents=True, mode=0o755)
+    (mirror / kept).write_bytes(b"copied last night")
+    (mirror / gone).write_bytes(b"removed from the app since")
+
+    assert backup.mirror_images(source, mirror) == 1
+    assert sorted(p.name for p in mirror.iterdir()) == sorted([new, kept, gone])
+    assert (mirror / new).read_bytes() == b"new image"
+    assert (mirror / kept).read_bytes() == b"copied last night"  # an existing name is never rewritten
+    assert (mirror / new).stat().st_mode & 0o777 == 0o600
+    assert mirror.stat().st_mode & 0o777 == 0o700
+    assert backup.mirror_images(source, mirror) == 0
+    assert backup.mirror_images(tmp_path / "missing", tmp_path / "empty") == 0
+    assert backup.missing_images([new, "d" * 32 + ".webp", "../etc/passwd"], mirror) == [
+        "../etc/passwd",
+        "d" * 32 + ".webp",
+    ]
+
+
+@pytest.mark.django_db
+def test_image_names_of_a_dump_made_before_item_images() -> None:
+    # An older dump has no library_item.image_path: that column is skipped instead of failing the check.
+    with backup.connect(connection.settings_dict, connection.settings_dict["NAME"]) as conn:
+        assert backup.referenced_images(conn, (("library_item", "no_such_column"),)) == set()
+        assert backup.referenced_images(conn) == set()  # both real columns exist (no committed rows)
+
+
 def test_restore_check_without_dumps_fails(tmp_path: Path) -> None:
     with pytest.raises(CommandError, match="no dump"):
         call_command("restore_check", dir=tmp_path)
@@ -92,10 +128,14 @@ def test_restore_check_without_dumps_fails(tmp_path: Path) -> None:
 
 @pytest.mark.skipif(not shutil.which("pg_dump"), reason="PostgreSQL client tools are not installed")
 @pytest.mark.django_db(transaction=True)
-def test_backup_then_restore_check_round_trip(tmp_path: Path, client: Any) -> None:
+def test_backup_then_restore_check_round_trip(tmp_path: Path, client: Any, settings: Any) -> None:
+    settings.THUMBS_DIR = tmp_path / "media"
     client.get("/api/me")
     user = User.objects.get(username="dev@localhost")
-    InboxEntry.objects.create(user=user, url="https://example.com/a")
+    cover = thumbnails.store(thumbnails.to_webp(image_bytes(), thumbnails.ITEM_SIZES))
+    never_stored = "e" * 32 + ".webp"  # a row naming a file that is not on disk
+    InboxEntry.objects.create(user=user, url="https://example.com/a", og_image_path=never_stored)
+    Item.objects.create(user=user, type="book", title="Dune", image_path=cover)
     touch(tmp_path, "2026-01-01.dump", "2026-01-02.dump")
 
     out = StringIO()
@@ -104,12 +144,16 @@ def test_backup_then_restore_check_round_trip(tmp_path: Path, client: Any) -> No
     assert len(dumps) == 2 and dumps[0].name == "2026-01-02.dump"
     assert "removed 2026-01-01.dump" in out.getvalue()
     assert not list(tmp_path.glob("*.partial"))
+    assert f"images: 1 copied to {tmp_path / 'thumbs'}" in out.getvalue()
+    assert (tmp_path / "thumbs" / cover).read_bytes() == (tmp_path / "media" / cover).read_bytes()
 
     InboxEntry.objects.create(user=user, text="written after the dump")
     out = StringIO()
     call_command("restore_check", dir=tmp_path, stdout=out)
     text = out.getvalue()
     assert "restored into" in text and "inbox_inboxentry: dump 1, live 2" in text
+    assert "images: 2 referenced, 1 missing from the backup" in text
+    assert f"  missing: {never_stored}" in text
 
     # The throwaway database is gone and the live one is untouched.
     with connection.cursor() as cur:

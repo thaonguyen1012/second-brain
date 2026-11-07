@@ -75,6 +75,25 @@ def test_delete_entry_keeps_evidence_and_drops_unused_thumbnail(
     assert client.delete(f"/api/inbox/{twin.pk}", headers=headers).status_code == 404
 
 
+def test_delete_entry_keeps_a_thumbnail_an_item_uses(
+    client: Client, settings: Any, tmp_path: Path, django_capture_on_commit_callbacks: Any
+) -> None:
+    settings.THUMBS_DIR = tmp_path
+    (tmp_path / IMAGE).write_bytes(b"webp")
+    user = owner(client)
+    entry = InboxEntry.objects.create(user=user, url="https://a.test/1", og_image_path=IMAGE)
+    item = Item.objects.create(user=stranger(), type="article", title="Post", image_path=IMAGE)
+    with django_capture_on_commit_callbacks(execute=True):
+        assert client.delete(f"/api/inbox/{entry.pk}", headers=csrf(client)).status_code == 204
+    assert (tmp_path / IMAGE).exists()  # an Item (of any owner) still shows it
+    item.image_path = ""
+    item.save()
+    entry = InboxEntry.objects.create(user=user, url="https://a.test/1", og_image_path=IMAGE)
+    with django_capture_on_commit_callbacks(execute=True):
+        assert client.delete(f"/api/inbox/{entry.pk}", headers=csrf(client)).status_code == 204
+    assert not (tmp_path / IMAGE).exists()
+
+
 def test_delete_another_owners_entry_answers_404(client: Client) -> None:
     entry = InboxEntry.objects.create(user=stranger(), text="theirs")
     assert client.delete(f"/api/inbox/{entry.pk}", headers=csrf(client)).status_code == 404

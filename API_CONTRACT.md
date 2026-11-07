@@ -80,7 +80,9 @@ like every unsafe method. What points at the deleted row is kept and unlinked: t
 (evidence keeps its `title` snapshot), notes lose the Item from `items`. Deletable: `/api/items/{id}`,
 `/api/notes/{id}`, `/api/inbox/{id}`, `/api/weeks/{start}/objectives/{id}`, `/api/time-entries/{id}`,
 `/api/opportunities/{id}/evidence/{evidenceId}`, `/api/skills/{id}/evidence/{evidenceId}`, `/api/achievements/{id}`,
-`/api/predictions/{id}`, `/api/market/job-ads/{id}`.
+`/api/predictions/{id}`, `/api/market/job-ads/{id}`, and `/api/items/{id}/image` (removes the Item's image, also
+`204` when it has none; see Items). Image files are shared by content: one goes, after the commit, only when no
+Item or inbox entry of any owner still names it.
 
 ## GET /api/status
 
@@ -117,24 +119,33 @@ yet has `objectivesOpen: 0`). One COUNT or EXISTS query per number. `401` when n
 A copy of all the owner's data (DECISIONS 4.7), the same files as `manage.py export`, streamed as
 `200 application/zip` with `Content-Disposition: attachment; filename="alex-brain-<date>.zip"` and
 `Cache-Control: no-store`. Inside the folder `alex-brain-<date>/`: `notes/<id>-<slug>.md` (YAML front matter + the
-markdown), `data/<table>.json` for every other owned model, `manifest.json` (`exportedAt`, `owner`, `counts`).
-Never the User row, sessions, jobs, LLM calls or the LLM cache. `401` when not logged in.
+markdown), `data/<table>.json` for every other owned model, `images/<name>.webp` (each image file the owner's Items
+use, once; `<name>` is the Item's `image_path` in `data/items.json`; stored in the zip without compression),
+`manifest.json` (`exportedAt`, `owner`, `counts`; `counts.images` is the number of image files). Inbox thumbnails
+are left out: they come from the link and can be fetched again. Never the User row, sessions, jobs, LLM calls or
+the LLM cache. `401` when not logged in.
 
 ## Items (`/api/items`)
 
 `GET /api/items?type=book&status=active&q=deep` lists items (all filters optional; `q` matches title or source,
 or is exactly one of the tags). `GET /api/items/{id}` reads one (with `noteCount`). `POST /api/items` creates one, `PATCH /api/items/{id}` changes any writable field.
 `DELETE /api/items/{id}` (`204`) unlinks notes, inbox entries, evidence and achievements and removes the project's
-details; a project with time entries answers `409` `{ "detail": "..." }` (delete its time entries first).
+details and the Item's image; a project with time entries answers `409` `{ "detail": "..." }` (delete its time
+entries first).
 
 ```json
 request  { "type": "book", "title": "Deep Work", "tags": ["Focus"], "source": "Cal Newport", "rating": 9 }
 response 201 { "id": 1, "type": "book", "status": "planned", "title": "Deep Work", "tags": ["focus"],
                "source": "Cal Newport", "rating": 9, "createdAt": "...", "updatedAt": "...",
-               "startedAt": null, "finishedAt": null, "noteCount": 0 }
+               "startedAt": null, "finishedAt": null, "noteCount": 0,
+               "imageUrl": null, "imagePending": false }
 ```
 
-`noteCount` (read only) is the number of notes linked to the Item.
+`noteCount` (read only) is the number of notes linked to the Item. `imageUrl` (read only) is where the Item's image
+loads, `/api/items/1/image?v=3f2a9c1e` (`v` changes with the image, so a replaced image never comes from the browser
+cache), or `null` without an image. `imagePending` (read only) is `true` while a fetch of the image from a link waits
+for the background job or runs. Every Item answer (list, one, create, update, upload, fetch) carries both, without a
+query per row. The image cannot be set through this body, only through the endpoints below.
 
 `type`: course, book, film, article, project. `status`: planned, active, done, dropped. Tags are lowercased and
 deduplicated; `rating` is 1-10 or null.
@@ -145,6 +156,36 @@ and clears `finishedAt`; to `done` sets `finishedAt` to now when it is empty (`s
 `null`); to `planned` clears both; to `dropped` clears `finishedAt` (`startedAt` is kept). Creating an Item with a
 status applies the same rule. A `startedAt` or `finishedAt` sent in the same request wins over the rule, and a write
 that does not change the status leaves both dates alone.
+
+### Item image
+
+One image per Item (DECISIONS 9.6): the cover of a book or film, the logo of a project (a project is an Item, so it
+uses these endpoints too). The server stores it re-encoded as webp, at most 600 px on the longer side and 200 KB,
+without EXIF; never the uploaded bytes. Every endpoint answers `404` for an unknown id or another owner's Item and
+`401` when not logged in; writes need the CSRF header.
+
+* `GET /api/items/{id}/image`: the webp (`Content-Type: image/webp`, `Cache-Control: private, max-age=86400`), `404`
+  when the Item has no image. Load it through `imageUrl`. Not in the OpenAPI schema (not JSON).
+* `POST /api/items/{id}/image`: `multipart/form-data` with the file in the field `file` (the only multipart body of
+  the API; a JSON body answers `415`). JPEG, PNG, GIF or WebP, at most 10 MB (`ITEM_IMAGE_MAX_BYTES`). The server
+  reads the bytes, not the type the browser sends. Sets or replaces the image and answers `200` with the Item.
+  `400 { "file": ["..."] }` when the file is missing (`Chọn một ảnh để tải lên.`), too big (`Ảnh lớn hơn 10 MB.`) or
+  not a readable image, such as SVG, HEIC, PDF or a decompression bomb (`Không đọc được ảnh. Chỉ nhận JPEG, PNG, GIF
+  hoặc WebP.`). In production nginx accepts up to 10 MB on this path only (2 MB everywhere else).
+* `DELETE /api/items/{id}/image`: removes the image, `204` (also when there is none).
+* `POST /api/items/{id}/image/fetch`: `{ "url": "https://..." }` (optional, default the Item's `source`) takes the
+  image from a link: the URL itself when it answers with an image, else the page's `og:image`. It answers `202` with
+  the Item (`imagePending: true`) at once; the request is made later by the background job (`run_jobs`, every 5
+  minutes), through the same SSRF guard as the inbox. The image then appears in the Item's `imageUrl` (reload the
+  Item). It replaces only the image the Item had when the fetch was asked: an upload made meanwhile wins. A page
+  without an image, a refused address or an unreadable image ends without an image; a network error is retried.
+  Asking again while a fetch waits keeps one job (the newer link wins); after a fetch has ended it runs again.
+  `400 { "url": ["Item chưa có link http(s)."] }` when there is no `url` and the source is not an http(s) URL (an
+  invalid `url` answers `400` with the URL message). Allowed for every type (the UI hides it for projects).
+
+Automatic fetch: creating an Item, or a `PATCH` that changes its `source`, queues the same fetch (`imagePending:
+true` in that answer) when the Item has no image, its `source` is an http(s) URL and it is not a project (a page's
+banner makes a poor logo). Handbook courses (source `/docs/...`) and sources that are plain text are skipped.
 
 ## Notes (`/api/notes`)
 
@@ -186,11 +227,15 @@ response 201 { "id": 7, "url": "https://example.com/post", "text": "", "status":
 
 Only `http` and `https` URLs are accepted. `GET /api/inbox?status=inbox&q=bakery` lists entries (`q` matches
 `ogTitle`, `text` or `url`). `GET /api/inbox/count?status=inbox` answers `{ "count": 12 }` (one COUNT, `status`
-defaults to inbox; the badge in the top bar). `DELETE /api/inbox/{id}` (`204`) removes an entry and its thumbnail file when no other
-entry uses it; evidence made from it keeps its title. `PATCH /api/inbox/{id}`
+defaults to inbox; the badge in the top bar). `DELETE /api/inbox/{id}` (`204`) removes an entry and its thumbnail file
+when no other entry and no Item (of any owner) uses that file; evidence made from it keeps its title.
+`PATCH /api/inbox/{id}`
 records the weekly triage and accepts only `{ "status": "inbox|later|archived", "item": <item id>|null }`.
 `archivedAt` is set when the status becomes archived, kept while it stays
-archived and cleared (`null`) when it leaves the archive.
+archived and cleared (`null`) when it leaves the archive. Linking an Item that has no image gives it its own copy of
+the entry's thumbnail (re-encoded for Items, no network request; the Item's `imageUrl`); an Item that has an image
+keeps it. An entry linked before its unfurl finished passes the thumbnail on when the unfurl stores it. Unlinking or
+deleting the entry later leaves the Item's image alone.
 `suggestedDestination` is one of read_later, book, opportunity, note (or empty until processed).
 `itemTitle` and `itemType` (read only) label the linked Item, `null` when `item` is `null`.
 
@@ -278,7 +323,8 @@ A project is an Item with `type: "project"`; its id is the Item id. Money is a d
 `currency` (ISO 4217, default `CZK`). Minute totals count finished entries only (not a running timer).
 
 ```json
-200 { "id": 4, "title": "Eshop", "status": "active", "tags": ["sme"], "source": "", "client": "Pekárna",
+200 { "id": 4, "title": "Eshop", "status": "active", "tags": ["sme"], "source": "",
+      "imageUrl": "/api/items/4/image?v=3f2a9c1e", "client": "Pekárna",
       "billing": "hourly", "price": null, "hourlyRate": "800.00", "currency": "CZK",
       "minutesTotal": 480, "minutesBillable": 360, "minutesNonBillable": 120,
       "earned": "4800.00", "effectiveRate": "600.00",
@@ -286,7 +332,9 @@ A project is an Item with `type: "project"`; its id is the Item id. Money is a d
 ```
 
 `earned` is the agreed `price` (fixed) or billable hours × `hourlyRate` (hourly). `effectiveRate` = `earned` /
-all hours spent, non-billable included (Harvest style); `null` without time or without a price.
+all hours spent, non-billable included (Harvest style); `null` without time or without a price. `imageUrl` (read
+only) is the project's logo, the Item image (`null` without one): set, replaced and removed through
+`/api/items/{id}/image` (see Items). A project never fetches its logo from `source` by itself.
 `GET /api/projects?status=active` lists projects (cursor pagination, newest first), `GET /api/projects/{id}` reads
 one. `POST /api/projects` (`201`) creates the Item and its details; `PATCH /api/projects/{id}` changes any of them.
 Fields: `title` (required on create), `status`, `tags`, `source`, `startedAt`, `finishedAt`, `client`,

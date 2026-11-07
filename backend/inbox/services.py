@@ -7,6 +7,7 @@ from core.services import jobs, thumbnails
 from core.services.search import normalize_query
 from inbox import tagging
 from inbox.models import InboxEntry
+from library import services as library
 
 TRIAGE_FIELDS = ("status", "item")
 
@@ -35,12 +36,12 @@ def entries(user: User, status: str | None = None, query: str = "") -> QuerySet[
 
 def delete_entry(entry: InboxEntry) -> None:
     """Evidence made from the entry keeps its title snapshot (link set to null); pending unfurl and tag jobs
-    find nothing and stop. The thumbnail file goes too unless another entry has the same image."""
+    find nothing and stop. The thumbnail file goes too, after the commit, unless another entry or an Item
+    still uses the same file."""
     image = entry.og_image_path
     with transaction.atomic():
         entry.delete()
-        if image and not InboxEntry.objects.filter(og_image_path=image).exists():
-            transaction.on_commit(lambda: thumbnails.discard(image))
+        transaction.on_commit(lambda: thumbnails.discard_if_unused(image))
 
 
 def set_status(entry: InboxEntry, status: str) -> None:
@@ -55,7 +56,8 @@ def set_status(entry: InboxEntry, status: str) -> None:
 
 
 def triage_entry(entry: InboxEntry, changes: dict[str, object]) -> InboxEntry:
-    """Apply the weekly-review decision (status, linked Item); only TRIAGE_FIELDS can change."""
+    """Apply the weekly-review decision (status, linked Item); only TRIAGE_FIELDS can change. Linking an Item
+    that has no image gives it a copy of the entry's thumbnail (no network; an image is never replaced)."""
     fields = [f for f in TRIAGE_FIELDS if f in changes]
     if "item" in changes:
         entry.item = changes["item"]  # type: ignore[assignment]  # an owned Item or None (serializer)
@@ -63,4 +65,6 @@ def triage_entry(entry: InboxEntry, changes: dict[str, object]) -> InboxEntry:
         set_status(entry, str(changes["status"]))
         fields.append("archived_at")
     entry.save(update_fields=[*fields, "updated_at"])
+    if "item" in changes and entry.item is not None and not entry.item.image_path:
+        library.image_from_thumbnail(entry.item.pk, entry.og_image_path)
     return entry

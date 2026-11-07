@@ -2,10 +2,14 @@
 
 * backup: `pg_dump -Fc` of the configured database into BACKUP_DIR/<YYYY-MM-DD>.dump (written to a
   `.partial` file, then renamed), keeping the newest `keep` dated dumps; a second run on the same day replaces
-  that day's file.
+  that day's file. Then the stored images (THUMBS_DIR: Item images, inbox thumbnails) are mirrored into
+  BACKUP_DIR/thumbs/: new files only, never a deletion, so every dump kept can find its images.
 * restore_check: restores the newest dump into a throwaway database named `<db>_restore_check_<pid>`, counts
-  the rows of every table, compares them with the live database, then drops the throwaway database. It never
+  the rows of every table, compares them with the live database, lists the image names the restored rows
+  refer to (the command reports those missing from the mirror), then drops the throwaway database. It never
   writes to the configured database.
+
+A real restore is pg_restore of a dump plus copying BACKUP_DIR/thumbs/* into THUMBS_DIR (deploy/README.md).
 
 The pg tools match the server's major version when a versioned install exists (Homebrew `postgresql@16`,
 Debian `/usr/lib/postgresql/16`), because pg_dump 17 output can carry settings a 16 server rejects. PG_BIN_DIR
@@ -18,6 +22,7 @@ import os
 import re
 import shutil
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -26,9 +31,13 @@ import psycopg
 from psycopg import sql
 
 DUMP_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}\.dump$")
+IMAGE_NAME = re.compile(r"^[0-9A-Za-z]{32}\.webp$")  # a stored image (core/services/thumbnails.py)
+MIRROR = "thumbs"  # BACKUP_DIR/thumbs: the image mirror next to the dumps
 THROWAWAY_SUFFIX = "_restore_check_"
 # Tables whose emptiness after a restore means the dump is broken (they always hold rows once migrated).
 MUST_HAVE_ROWS = ("django_migrations", "django_content_type")
+# (table, column) of the rows that name a stored image; a column missing from an older dump is skipped.
+IMAGE_COLUMNS = (("library_item", "image_path"), ("inbox_inboxentry", "og_image_path"))
 
 
 class BackupError(RuntimeError):
@@ -42,6 +51,7 @@ class RestoreReport:
     counts: dict[str, int]
     live: dict[str, int]
     differences: dict[str, tuple[int, int]] = field(default_factory=dict)
+    images: set[str] = field(default_factory=set)  # image names the restored rows refer to
 
     @property
     def total(self) -> int:
@@ -141,6 +151,66 @@ def backup(db: dict[str, Any], directory: Path, day: str, keep: int) -> tuple[Pa
     return target, rotate(directory, keep)
 
 
+def mirror_images(source: Path, target: Path) -> int:
+    """Copy the stored images of `source` (THUMBS_DIR) that `target` (BACKUP_DIR/thumbs) lacks; returns how
+    many it copied.
+
+    Never deletes and never rewrites: a name is the hash of the bytes, so it always means the same image, and
+    an image removed from the app stays restorable with every dump that still names it. Like the dumps, the
+    folder is owner-only (0700) and each file 0600; a file is written as `.partial`, then renamed, so an
+    interrupted copy never leaves a truncated image under a real name. Other files (temporary ones) are
+    skipped.
+    """
+    target.mkdir(mode=0o700, parents=True, exist_ok=True)
+    target.chmod(0o700)
+    if not source.is_dir():
+        return 0
+    copied = 0
+    for path in sorted(source.iterdir()):
+        mirrored = target / path.name
+        if not IMAGE_NAME.match(path.name) or not path.is_file() or mirrored.exists():
+            continue
+        partial = mirrored.with_name(mirrored.name + ".partial")
+        try:
+            with path.open("rb") as image:
+                fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(fd, "wb") as copy:
+                    shutil.copyfileobj(image, copy)
+        except FileNotFoundError:  # discarded by the app since the listing
+            partial.unlink(missing_ok=True)
+            continue
+        partial.chmod(0o600)
+        partial.replace(mirrored)
+        copied += 1
+    return copied
+
+
+def referenced_images(
+    conn: psycopg.Connection[Any], columns: Iterable[tuple[str, str]] = IMAGE_COLUMNS
+) -> set[str]:
+    """The image names that rows of a database refer to (`columns`: table, column); a column the database
+    does not have is skipped (a dump made before Items had images lacks library_item.image_path)."""
+    names: set[str] = set()
+    for table, column in columns:
+        present = conn.execute(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = %s AND column_name = %s",
+            (table, column),
+        ).fetchone()
+        if present is None:
+            continue
+        query = sql.SQL("SELECT DISTINCT {column} FROM {table} WHERE {column} <> ''").format(
+            column=sql.Identifier(column), table=sql.Identifier("public", table)
+        )
+        names.update(str(row[0]) for row in conn.execute(query).fetchall())
+    return names
+
+
+def missing_images(names: Iterable[str], mirror: Path) -> list[str]:
+    """The names without a file in the image mirror, sorted."""
+    return sorted(n for n in names if not IMAGE_NAME.match(n) or not (mirror / n).is_file())
+
+
 def table_counts(conn: psycopg.Connection[Any]) -> dict[str, int]:
     """Exact row count of every table in the public schema."""
     tables = [
@@ -163,7 +233,8 @@ def throwaway_name(live: str) -> str:
 
 
 def restore_check(db: dict[str, Any], dump: Path) -> RestoreReport:
-    """Restore `dump` into a throwaway database, count rows, compare with the live database, drop it."""
+    """Restore `dump` into a throwaway database, count rows, compare with the live database, collect the
+    image names its rows refer to, drop it."""
     live_name: str = db["NAME"]
     name = throwaway_name(live_name)
     if name == live_name or THROWAWAY_SUFFIX not in name:
@@ -187,6 +258,7 @@ def restore_check(db: dict[str, Any], dump: Path) -> RestoreReport:
                 raise BackupError(f"pg_restore failed: {exc.stderr.strip()}") from exc
             with connect(db, name) as restored:
                 counts = table_counts(restored)
+                images = referenced_images(restored)
         finally:
             admin.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(name)))
         live = table_counts(admin)
@@ -198,7 +270,9 @@ def restore_check(db: dict[str, Any], dump: Path) -> RestoreReport:
         for t in sorted(set(counts) | set(live))
         if counts.get(t, 0) != live.get(t, 0)
     }
-    return RestoreReport(dump=dump, database=name, counts=counts, live=live, differences=differences)
+    return RestoreReport(
+        dump=dump, database=name, counts=counts, live=live, differences=differences, images=images
+    )
 
 
 def human_size(n: int) -> str:

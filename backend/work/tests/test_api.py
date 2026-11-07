@@ -87,6 +87,22 @@ def test_list_projects_with_totals(client: Client) -> None:
     assert client.get("/api/projects?status=done").json()["results"] == []
 
 
+def test_projects_carry_their_logo_url_without_extra_queries(client: Client) -> None:
+    user = owner(client)
+    logo = "a" * 32 + ".webp"
+    shop = project(user, "Shop")
+    Item.objects.filter(pk=shop.pk).update(image_path=logo)
+    project(user, "No logo")
+    for i in range(3):
+        project(user, f"More {i}")
+    with CaptureQueriesContext(connection) as queries:
+        rows = {p["title"]: p for p in client.get("/api/projects").json()["results"]}
+    assert len(queries) <= 4  # the logo comes from the same row: no query per project
+    expected = f"/api/items/{shop.pk}/image?v=aaaaaaaa"  # a project is an Item: the Item image endpoint
+    assert rows["Shop"]["imageUrl"] == expected and rows["No logo"]["imageUrl"] is None
+    assert client.get(f"/api/projects/{shop.pk}").json()["imageUrl"] == expected
+
+
 def test_get_project(client: Client) -> None:
     user = owner(client)
     item = project(user, billing="fixed", price=Decimal("1000"))

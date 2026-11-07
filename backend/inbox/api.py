@@ -1,6 +1,4 @@
-from django.conf import settings
 from django.db.models import QuerySet
-from django.http import FileResponse, Http404, HttpResponse
 from django.http.response import HttpResponseBase
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
@@ -13,7 +11,7 @@ from rest_framework.views import APIView
 
 from core.authentication import request_user
 from core.pagination import NewestFirstCursor
-from core.services import thumbnails
+from core.views import thumbnail_response
 from inbox import services
 from inbox.models import InboxEntry
 from inbox.serializers import InboxCountSerializer, InboxEntrySerializer, InboxTriageSerializer
@@ -86,13 +84,4 @@ class InboxThumbnailView(APIView):
     @extend_schema(exclude=True)
     def get(self, request: Request, pk: int) -> HttpResponseBase:
         entry = get_object_or_404(InboxEntry, pk=pk, user=request_user(request))
-        path = thumbnails.path_of(entry.og_image_path)
-        if path is None:
-            raise Http404
-        if settings.DEBUG:
-            response: HttpResponseBase = FileResponse(path.open("rb"), content_type="image/webp")
-        else:
-            response = HttpResponse(content_type="image/webp")
-            response["X-Accel-Redirect"] = f"/internal/thumbs/{path.name}"
-        response["Cache-Control"] = "private, max-age=86400"
-        return response
+        return thumbnail_response(entry.og_image_path)

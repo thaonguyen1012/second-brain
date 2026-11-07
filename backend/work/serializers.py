@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from library.models import Item
-from library.services import normalize_tags
+from library.services import image_url, normalize_tags
 from weeks.models import Objective
 from work import services
 from work.models import ProjectDetails, TimeEntry
@@ -24,6 +24,9 @@ class ProjectSerializer(serializers.Serializer[Any]):
     status = serializers.ChoiceField(choices=Item.Status.choices)
     tags = serializers.ListField(child=serializers.CharField())
     source = serializers.CharField()  # type: ignore[assignment]
+    imageUrl = serializers.CharField(
+        allow_null=True, help_text="The logo: the Item's image, changed through /api/items/{id}/image."
+    )
     client = serializers.CharField()
     billing = serializers.ChoiceField(choices=ProjectDetails.Billing.choices)
     price = _money(allow_null=True)
@@ -48,6 +51,7 @@ class ProjectSerializer(serializers.Serializer[Any]):
                 "status": instance.status,
                 "tags": instance.tags,
                 "source": instance.source,
+                "imageUrl": image_url(instance),
                 "client": details.client,
                 "billing": details.billing,
                 "price": details.price,

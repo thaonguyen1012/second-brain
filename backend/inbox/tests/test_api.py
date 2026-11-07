@@ -1,8 +1,13 @@
+from pathlib import Path
+from typing import Any
+
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
+from PIL import Image
 
-from core.testing import csrf, send
+from core.services import thumbnails
+from core.testing import csrf, image_bytes, send
 from inbox.models import InboxEntry
 from library.models import Item
 
@@ -92,3 +97,33 @@ def test_triage_sets_and_clears_archived_at(client: Client) -> None:
     assert (data["status"], data["archivedAt"]) == ("later", None)
     data = send(client, "patch", f"/api/inbox/{entry_id}", {"status": "archived"}, headers).json()
     assert data["archivedAt"] and data["archivedAt"] >= archived_at
+
+
+def test_linking_gives_the_item_its_own_copy_of_the_thumbnail(
+    client: Client, settings: Any, tmp_path: Path
+) -> None:
+    settings.THUMBS_DIR = tmp_path
+    client.get("/api/me")
+    user = User.objects.get(username="dev@localhost")
+    thumbnail = thumbnails.store(thumbnails.to_webp(image_bytes((1600, 900))))  # an inbox card, 1200 px
+    entry = InboxEntry.objects.create(user=user, url="https://blog.test/p", og_image_path=thumbnail)
+    headers = csrf(client)
+    item_id = send(client, "post", "/api/items", {"type": "article", "title": "A post"}, headers).json()["id"]
+
+    send(client, "patch", f"/api/inbox/{entry.pk}", {"item": item_id}, headers)
+    copy = Item.objects.get(pk=item_id).image_path
+    assert copy and copy != thumbnail  # re-encoded: the Item's own, lighter file
+    with Image.open(tmp_path / copy) as image:
+        assert max(image.size) == thumbnails.ITEM_SIZES[0]
+    assert (tmp_path / thumbnail).is_file()  # the entry keeps its card
+    expected = f"/api/items/{item_id}/image?v={copy[:8]}"
+    assert client.get(f"/api/items/{item_id}").json()["imageUrl"] == expected
+
+    # An Item that has an image keeps it; an entry without a thumbnail gives nothing.
+    pictured = Item.objects.create(user=user, type="book", title="B", image_path="d" * 32 + ".webp")
+    send(client, "patch", f"/api/inbox/{entry.pk}", {"item": pictured.pk}, headers)
+    assert Item.objects.get(pk=pictured.pk).image_path == "d" * 32 + ".webp"
+    bare = Item.objects.create(user=user, type="book", title="C")
+    text = InboxEntry.objects.create(user=user, text="an idea")
+    send(client, "patch", f"/api/inbox/{text.pk}", {"item": bare.pk, "status": "archived"}, headers)
+    assert Item.objects.get(pk=bare.pk).image_path == ""

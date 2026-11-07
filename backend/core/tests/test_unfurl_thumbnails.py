@@ -4,9 +4,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from django.contrib.auth.models import User
 from PIL import Image
 
 from core.services import safe_fetch, thumbnails, unfurl
+from core.testing import image_bytes
+from inbox.models import InboxEntry
+from library.models import Item
 
 
 def page(
@@ -69,6 +73,45 @@ def test_thumbnail_refuses_bombs_and_non_images(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
     with pytest.raises(thumbnails.ThumbnailError):
         thumbnails.to_webp(_noise_png(20))  # 400 px > limit
+
+
+def test_stored_files_are_readable_by_the_web_server(settings: Any, tmp_path: Path) -> None:
+    # nginx runs as another user than Django and run_jobs and sends the file itself (X-Accel-Redirect).
+    settings.THUMBS_DIR = tmp_path
+    name = thumbnails.store(thumbnails.to_webp(image_bytes(), thumbnails.ITEM_SIZES))
+    assert (tmp_path / name).stat().st_mode & 0o777 == 0o644
+    assert thumbnails.store(thumbnails.to_webp(image_bytes(), thumbnails.ITEM_SIZES)) == name  # same bytes
+    assert [p.name for p in tmp_path.iterdir()] == [name]  # no temporary file left
+
+
+def test_item_sizes_bound_the_longer_side() -> None:
+    webp = thumbnails.to_webp(image_bytes((900, 1800)), thumbnails.ITEM_SIZES)
+    with Image.open(io.BytesIO(webp)) as image:
+        assert image.size == (300, 600)
+
+
+@pytest.mark.django_db
+def test_a_file_goes_only_when_no_row_of_any_owner_names_it(settings: Any, tmp_path: Path) -> None:
+    settings.THUMBS_DIR = tmp_path
+    name = thumbnails.store(thumbnails.to_webp(image_bytes()))
+    alex = User.objects.create(username="alex@x", email="alex@x")
+    other = User.objects.create(username="other@x", email="other@x")
+    assert not thumbnails.in_use(name)
+    entry = InboxEntry.objects.create(user=other, url="https://a.test/", og_image_path=name)
+    item = Item.objects.create(user=alex, type="book", title="Dune", image_path=name)
+    assert thumbnails.in_use(name)
+    thumbnails.discard_if_unused(name)
+    assert (tmp_path / name).is_file()
+    entry.delete()
+    assert thumbnails.in_use(name)  # the Item still names it
+    thumbnails.discard_if_unused(name)
+    assert (tmp_path / name).is_file()
+    item.delete()
+    assert not thumbnails.in_use(name)
+    thumbnails.discard_if_unused(name)
+    assert not (tmp_path / name).exists()
+    thumbnails.discard_if_unused("")  # nothing to do
+    thumbnails.discard_if_unused("../outside.webp")  # not a stored name: never touched
 
 
 def test_malformed_og_image_is_ignored() -> None:

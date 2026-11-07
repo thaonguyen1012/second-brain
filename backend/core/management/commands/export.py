@@ -12,7 +12,8 @@ from core.services.users import get_or_create_owner
 class Command(BaseCommand):
     help = (
         "Export the owner's data (DECISIONS 4.7): notes as markdown with front matter in <out>/notes/, every "
-        "other model as JSON in <out>/data/. No secrets, no Job or LlmCache rows."
+        "other model as JSON in <out>/data/, the Item images in <out>/images/. No secrets, no Job or "
+        "LlmCache rows."
     )
 
     def add_arguments(self, parser: CommandParser) -> None:
@@ -27,5 +28,8 @@ class Command(BaseCommand):
         owner = get_or_create_owner(options["owner"] or settings.OWNER_EMAIL or settings.DEV_USER_EMAIL)
         out: Path = options["out"] or settings.BASE_DIR / "exports" / timezone.localdate().isoformat()
         counts = export.export(owner, out.resolve())
+        images = counts.pop("images", 0)
         total = sum(counts.values())
-        self.stdout.write(f"{total} rows ({counts['notes']} notes) exported to {out.resolve()}")
+        self.stdout.write(
+            f"{total} rows ({counts['notes']} notes) and {images} images exported to {out.resolve()}"
+        )

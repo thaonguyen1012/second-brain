@@ -16,7 +16,8 @@ from django.utils import timezone
 
 from brief.models import DailyBrief
 from core.models import Job, LlmCache, LlmCall
-from core.services import export
+from core.services import export, thumbnails
+from core.testing import image_bytes
 from inbox.models import InboxEntry
 from library.models import Item, Note
 from weeks.models import Objective, Week
@@ -141,9 +142,39 @@ def test_export_writes_notes_and_json_without_secrets(client: Client, tmp_path: 
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     assert manifest["owner"] == "dev@localhost" and manifest["counts"]["notes"] == 2
 
-    dump = "\n".join(p.read_text() for p in tmp_path.rglob("*") if p.is_file())
+    dump = b"\n".join(p.read_bytes() for p in tmp_path.rglob("*") if p.is_file())  # images are binary
     for leaked in ("THEIR", "pbkdf2", "hunter2", "CACHED OUTPUT", "entry_id", "SECRET"):
-        assert leaked not in dump
+        assert leaked.encode() not in dump
+
+
+def test_export_copies_the_owners_item_images(client: Client, settings: Any, tmp_path: Path) -> None:
+    thumbs, out = tmp_path / "thumbs", tmp_path / "out"
+    settings.THUMBS_DIR = thumbs
+    user, other = owner(client), stranger()
+    cover = thumbnails.store(thumbnails.to_webp(image_bytes(color="red"), thumbnails.ITEM_SIZES))
+    logo = thumbnails.store(thumbnails.to_webp(image_bytes(color="blue"), thumbnails.ITEM_SIZES))
+    theirs = thumbnails.store(thumbnails.to_webp(image_bytes(color="green"), thumbnails.ITEM_SIZES))
+    card = thumbnails.store(thumbnails.to_webp(image_bytes(color="white")))
+    lost = "f" * 32 + ".webp"
+    Item.objects.create(user=user, type="book", title="Dune", image_path=cover)
+    Item.objects.create(user=user, type="film", title="Dune (2021)", image_path=cover)  # one file, twice
+    Item.objects.create(user=user, type="project", title="Shop", image_path=logo)
+    Item.objects.create(user=user, type="book", title="Lost", image_path=lost)  # its file is gone
+    Item.objects.create(user=other, type="book", title="theirs", image_path=theirs)
+    InboxEntry.objects.create(user=user, url="https://a.test/", og_image_path=card)  # can be fetched again
+    (out / "images").mkdir(parents=True)
+    (out / "images" / ("0" * 32 + ".webp")).write_bytes(b"removed since the last export")
+    (out / "images" / "README.txt").write_text("mine")
+
+    stdout = StringIO()
+    call_command("export", "--owner", "dev@localhost", "--out", str(out), stdout=stdout)
+    assert "and 2 images exported" in stdout.getvalue()
+    assert sorted(p.name for p in (out / "images").iterdir()) == sorted([cover, logo, "README.txt"])
+    for name in (cover, logo):
+        assert (out / "images" / name).read_bytes() == (thumbs / name).read_bytes()
+    assert json.loads((out / "manifest.json").read_text())["counts"]["images"] == 2
+    items = json.loads((out / "data" / "items.json").read_text())
+    assert {row["fields"]["image_path"] for row in items} == {cover, logo, lost}
 
 
 def test_tables_are_written_in_batches_with_djangos_json(

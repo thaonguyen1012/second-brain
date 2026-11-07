@@ -38,9 +38,13 @@ if AUTH_MODE == "cf_access" and not DEBUG and not (OWNER_EMAIL and CF_ACCESS_TEA
 CONTENT_DIR = Path(env.str("CONTENT_DIR", default=str(REPO_DIR / "web" / "content" / "docs")))
 # Attachments: Django authorises /files/<path>, nginx serves it from /internal/files/ (X-Accel-Redirect).
 FILES_DIR = Path(env.str("FILES_DIR", default=str(REPO_DIR / "web" / "public" / "files")))
-# Inbox link thumbnails (webp written by run_jobs); nginx serves them from /internal/thumbs/.
+# Stored images (webp): inbox link thumbnails and Item images; nginx serves them from /internal/thumbs/.
+# Django writes here too (uploads, removals), so the folder must be writable by it, not only by run_jobs.
 THUMBS_DIR = Path(env.str("THUMBS_DIR", default=str(BASE_DIR / "media" / "thumbs")))
-# make backup (DECISIONS 10.1): pg_dump -Fc files <date>.dump, the newest BACKUP_KEEP kept.
+# Largest Item image upload (POST /api/items/{id}/image); nginx allows 10m on that route (site.conf).
+ITEM_IMAGE_MAX_BYTES = env.int("ITEM_IMAGE_MAX_BYTES", default=10 * 1024 * 1024)
+# make backup (DECISIONS 10.1): pg_dump -Fc files <date>.dump, the newest BACKUP_KEEP kept; the images of
+# THUMBS_DIR are mirrored into BACKUP_DIR/thumbs/ (new files only, never deleted).
 BACKUP_DIR = Path(env.str("BACKUP_DIR", default=str(BASE_DIR / "backups")))
 BACKUP_KEEP = env.int("BACKUP_KEEP", default=14)
 

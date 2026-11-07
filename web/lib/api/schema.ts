@@ -100,7 +100,8 @@ export interface paths {
         };
         /**
          * @description A copy of all the owner's data (DECISIONS 4.7) as a zip, the same files as `manage.py export`:
-         *     notes/*.md, data/*.json, manifest.json. No secrets: no password hash, sessions, jobs or LLM rows.
+         *     notes/*.md, data/*.json, images/*.webp (Item images), manifest.json. No secrets: no password hash,
+         *     sessions, jobs or LLM rows.
          */
         get: operations["downloadExport"];
         put?: never;
@@ -195,7 +196,54 @@ export interface paths {
         delete: operations["deleteItem"];
         options?: never;
         head?: never;
+        /**
+         * @description A status change moves startedAt / finishedAt unless the body sets them (apply_status_dates); a new
+         *     http(s) source of an Item without an image queues its image.
+         */
         patch: operations["updateItem"];
+        trace?: never;
+    };
+    "/api/items/{id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Set (or replace) the image from a file: JPEG, PNG, GIF or WebP up to 10 MB, stored re-encoded as a
+         *     webp of at most 600 px. Answers the Item; the replaced file goes unless another row uses it.
+         */
+        post: operations["uploadItemImage"];
+        /** @description Remove the image (also when there is none); the file goes unless another row uses it. */
+        delete: operations["deleteItemImage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/items/{id}/image/fetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Take the image from a link, in the background: the og:image of the page, or the URL itself when it
+         *     is an image (`url`, default the Item's source). Answers 202 with the Item (imagePending true) at once;
+         *     run_jobs makes the request, so the image appears within about 5 minutes. It replaces only the image
+         *     the Item had when asked (an upload made meanwhile wins).
+         */
+        post: operations["fetchItemImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/market/job-ads": {
@@ -1130,6 +1178,28 @@ export interface components {
             finishedAt?: string | null;
             /** @default 0 */
             readonly noteCount: number;
+            readonly imageUrl: string | null;
+            /** @default false */
+            readonly imagePending: boolean;
+        };
+        /**
+         * @description POST /api/items/{id}/image/fetch: the link to take the image from; empty or left out = the Item's
+         *     source.
+         */
+        ItemImageFetchRequest: {
+            /** @description An http(s) page (its og:image is taken) or image; default the Item's source. */
+            url?: string;
+        };
+        /**
+         * @description POST /api/items/{id}/image as multipart/form-data. The bytes are read by Pillow and re-encoded as webp;
+         *     the content type the browser sends is ignored.
+         */
+        ItemImageUploadRequest: {
+            /**
+             * Format: binary
+             * @description JPEG, PNG, GIF or WebP, at most 10 MB.
+             */
+            file: string;
         };
         /** @description Just enough of an Item to label a link to it (badges on notes), so lists never need every Item. */
         ItemLabel: {
@@ -1798,6 +1868,8 @@ export interface components {
             status: components["schemas"]["ItemStatusEnum"];
             tags: string[];
             source: string;
+            /** @description The logo: the Item's image, changed through /api/items/{id}/image. */
+            imageUrl: string | null;
             client: string;
             billing: components["schemas"]["BillingEnum"];
             /** Format: decimal */
@@ -2592,6 +2664,76 @@ export interface operations {
         };
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+        };
+    };
+    uploadItemImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ItemImageUploadRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+        };
+    };
+    deleteItemImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    fetchItemImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ItemImageFetchRequest"];
+            };
+        };
+        responses: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

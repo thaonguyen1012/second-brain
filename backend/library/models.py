@@ -38,6 +38,11 @@ class Item(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
+    # The cover (the logo of a project, DECISIONS 9.6): a file name under THUMBS_DIR, content addressed like
+    # InboxEntry.og_image_path, so rows of any owner may share a file (thumbnails.discard_if_unused). Set
+    # only through library.services.set_image, never by the API body. db_default keeps a column DEFAULT, so
+    # a process still running the code from before this field can INSERT Items during a deploy.
+    image_path = models.CharField(max_length=100, blank=True, default="", db_default="")
 
     class Meta:
         # (type, status) and (created_at) from DECISIONS 10.2; finished_at for the week review's body of work.

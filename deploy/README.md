@@ -102,19 +102,28 @@ To stop it: `launchctl bootout gui/$(id -u)/com.example.brain.jobs` (then delete
 DECISIONS 10.1, until the VPS exists: the dev database is the real data.
 
 ```
-make backup          # pg_dump -Fc -> backend/backups/<date>.dump (gitignored), keeps the newest 14
+make backup          # pg_dump -Fc -> backend/backups/<date>.dump (gitignored), keeps the newest 14,
+                     # then copies new images of THUMBS_DIR into backend/backups/thumbs/
 make restore-check   # restores the newest dump into a throwaway database, prints row counts, drops it
 ```
 
 * A second backup on the same day replaces that day's file. `BACKUP_DIR` and `BACKUP_KEEP` in `backend/.env` change
   the folder and the count; `manage.py restore_check --dump <file>` checks an older dump.
+* Images (Item covers and logos, inbox thumbnails) are files in `THUMBS_DIR`, not rows, so the backup also copies
+  every image that `BACKUP_DIR/thumbs/` does not have yet (0600 files in a 0700 folder). It never deletes there: a
+  name is the hash of the bytes, so an image removed from the app stays available to the older dumps that name it.
 * `restore-check` never writes to the dev database: it creates `alex_brain_restore_check_<pid>`, restores into it with
   `pg_restore --exit-on-error`, compares the row counts with the live database (a difference only means rows were
-  written after the dump) and drops it, also when the restore fails. Run it once a month (the restore drill).
+  written after the dump) and drops it, also when the restore fails. Run it once a month (the restore drill). It also
+  prints `images: N referenced, M missing from the backup` (the image names in the restored rows that have no file in
+  `thumbs/` next to the dump, up to 10 listed); that line is information and does not fail the check.
 * The tools match the server version (Homebrew `postgresql@16` when the server is 16, since a pg_dump 17 file can
   carry settings a 16 server rejects); `PG_BIN_DIR=/path/to/bin` overrides.
 * Restoring for real (only after a loss; this replaces the data): stop Django and the jobs, then
-  `dropdb alex_brain && createdb alex_brain && pg_restore --no-owner --no-acl -d alex_brain backend/backups/<date>.dump`.
+  `dropdb alex_brain && createdb alex_brain && pg_restore --no-owner --no-acl -d alex_brain backend/backups/<date>.dump`,
+  and copy the images back: `cp backend/backups/thumbs/*.webp "$THUMBS_DIR"/ && chmod 644 "$THUMBS_DIR"/*.webp`
+  (the `THUMBS_DIR` of `backend/.env`, default `backend/media/thumbs/`; 0644 because nginx, another user, sends them
+  on the VPS). A real restore is always both: the dump and the images.
 * The dumps sit on the same disk as the database: copy `backend/backups/` to another disk or cloud folder now and then.
   They are not encrypted (the encrypted upload to object storage belongs to the VPS, see "Still to do"). Each dump is
   the whole database (password hash, sessions, every note): `manage.py backup` writes them 0600 in a 0700 folder, and
@@ -153,6 +162,9 @@ attachment whose name has Vietnamese characters (checks that nginx decodes the X
 
 * Nightly encrypted `pg_dump` to object storage, monthly restore drill (DECISIONS 10.1). The laptop part exists
   (`make backup`, `make restore-check`, launchd agent above); the VPS still needs a cron/systemd timer running
-  `manage.py backup` in the django container, encryption (age or gpg) and the upload.
+  `manage.py backup` in the django container, encryption (age or gpg) and the upload, of the dumps and of
+  `BACKUP_DIR/thumbs/` (the images; the django container mounts the `thumbs` volume read-write for uploads).
+* After the first deploy with Item images: restart django and jobs together right after `migrate`, so no old
+  process discards an image file that an Item now shares with an inbox entry.
 * Uptime Kuma on `/healthz`; switch the CSP from report-only to enforcing after a week without violations in the browser
   console (there is no report endpoint yet).

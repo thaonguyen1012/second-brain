@@ -12,8 +12,9 @@ from core.services import backup
 class Command(BaseCommand):
     help = (
         "pg_dump -Fc of the configured database into BACKUP_DIR/<date>.dump (DECISIONS 10.1), keeping "
-        "the newest BACKUP_KEEP dated dumps. `make backup`; deploy/launchd/com.example.brain.backup.plist "
-        "runs it nightly."
+        "the newest BACKUP_KEEP dated dumps, then copy the images of THUMBS_DIR that BACKUP_DIR/thumbs/ "
+        "lacks (never deleting any). `make backup`; deploy/launchd/com.example.brain.backup.plist runs it "
+        "nightly."
     )
 
     def add_arguments(self, parser: CommandParser) -> None:
@@ -36,3 +37,9 @@ class Command(BaseCommand):
             f"{dump} ({backup.human_size(dump.stat().st_size)}); dated dumps kept: {len(kept)}"
             + (f", removed {', '.join(p.name for p in removed)}" if removed else "")
         )
+        mirror = directory / backup.MIRROR
+        try:
+            copied = backup.mirror_images(Path(settings.THUMBS_DIR), mirror)
+        except OSError as exc:
+            raise CommandError(f"the dump is written, but copying the images failed: {exc}") from exc
+        self.stdout.write(f"images: {copied} copied to {mirror}")

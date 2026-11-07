@@ -8,6 +8,8 @@ from django.utils import timezone
 from core.services import jobs, safe_fetch, thumbnails, unfurl
 from inbox import tagging
 from inbox.models import InboxEntry
+from library import services as library
+from library.models import Item
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +39,15 @@ def unfurl_entry(payload: dict[str, Any]) -> None:
     if not _save(
         entry, "og_title", "og_description", "og_site_name", "og_image_path", "unfurled_at", "error"
     ):
-        # deleted while the page or image was fetched: the new file has no row to refer to it
-        image = entry.og_image_path
-        if image and not InboxEntry.objects.filter(og_image_path=image).exists():
-            thumbnails.discard(image)
+        # deleted while the page or image was fetched: the new file may have no row to refer to it
+        thumbnails.discard_if_unused(entry.og_image_path)
         return
     tagging.enqueue(entry)
+    if entry.og_image_path:
+        # linked to an Item before the unfurl finished: that Item gets the thumbnail as a link does
+        linked = Item.objects.filter(inbox_entries=entry.pk, image_path="").values_list("pk", flat=True)
+        if (item_id := linked.first()) is not None:
+            library.image_from_thumbnail(item_id, entry.og_image_path)
 
 
 def _save(entry: InboxEntry, *fields: str) -> bool:

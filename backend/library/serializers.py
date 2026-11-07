@@ -1,10 +1,20 @@
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.validators import URLValidator
 from rest_framework import serializers
 
 from library.models import Item, Note
-from library.services import normalize_tags
+from library.services import image_url, normalize_tags
 
 MAX_MARKDOWN = 200_000
+IMAGE_UNREADABLE = "Không đọc được ảnh. Chỉ nhận JPEG, PNG, GIF hoặc WebP."
+NO_HTTP_LINK = "Item chưa có link http(s)."
+_PICK_IMAGE = "Chọn một ảnh để tải lên."
+
+
+def image_too_large() -> str:
+    """'Ảnh lớn hơn 10 MB.' with the configured limit (ITEM_IMAGE_MAX_BYTES)."""
+    return f"Ảnh lớn hơn {round(settings.ITEM_IMAGE_MAX_BYTES / 2**20, 1):g} MB."
 
 
 class ItemSerializer(serializers.ModelSerializer[Item]):
@@ -15,6 +25,10 @@ class ItemSerializer(serializers.ModelSerializer[Item]):
     finishedAt = serializers.DateTimeField(source="finished_at", required=False, allow_null=True)
     # Annotated by services.items() (no per-row query); a new Item has none yet.
     noteCount = serializers.IntegerField(source="note_count", read_only=True, default=0)
+    # The image is changed only through /api/items/{id}/image*, never by this body.
+    imageUrl = serializers.SerializerMethodField()
+    # Annotated by services.items(): an image fetch for the Item waits for run_jobs or runs.
+    imagePending = serializers.BooleanField(source="image_pending", read_only=True, default=False)
 
     class Meta:
         model = Item
@@ -31,10 +45,44 @@ class ItemSerializer(serializers.ModelSerializer[Item]):
             "startedAt",
             "finishedAt",
             "noteCount",
+            "imageUrl",
+            "imagePending",
         ]
 
     def validate_tags(self, value: list[str]) -> list[str]:
         return normalize_tags(value)
+
+    def get_imageUrl(self, item: Item) -> str | None:
+        return image_url(item)
+
+
+class ItemImageUploadSerializer(serializers.Serializer[object]):
+    """POST /api/items/{id}/image as multipart/form-data. The bytes are read by Pillow and re-encoded as webp;
+    the content type the browser sends is ignored."""
+
+    file = serializers.FileField(
+        help_text="JPEG, PNG, GIF or WebP, at most 10 MB.",
+        error_messages={
+            "required": _PICK_IMAGE,
+            "null": _PICK_IMAGE,
+            "invalid": _PICK_IMAGE,
+            "no_name": _PICK_IMAGE,
+            "empty": IMAGE_UNREADABLE,
+        },
+    )
+
+
+class ItemImageFetchSerializer(serializers.Serializer[object]):
+    """POST /api/items/{id}/image/fetch: the link to take the image from; empty or left out = the Item's
+    source."""
+
+    url = serializers.CharField(
+        max_length=2000,
+        required=False,
+        allow_blank=True,
+        validators=[URLValidator(schemes=["http", "https"])],
+        help_text="An http(s) page (its og:image is taken) or image; default the Item's source.",
+    )
 
 
 class ItemLabelSerializer(serializers.ModelSerializer[Item]):

@@ -5,7 +5,10 @@ WORKDIR /app
 COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY . .
-RUN useradd --system --uid 10001 app && mkdir -p /srv/alex-brain/staticfiles && chown app /srv/alex-brain/staticfiles
+# thumbs: stored images (THUMBS_DIR). A new named volume copies this folder's owner, so the app user can write.
+RUN useradd --system --uid 10001 app \
+    && mkdir -p /srv/alex-brain/staticfiles /srv/alex-brain/thumbs \
+    && chown app /srv/alex-brain/staticfiles /srv/alex-brain/thumbs
 USER app
 EXPOSE 8000
 # migrate + collectstatic on start (both idempotent), then gunicorn

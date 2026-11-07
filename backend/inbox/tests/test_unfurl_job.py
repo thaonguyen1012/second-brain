@@ -15,6 +15,7 @@ from core.services import safe_fetch
 from core.testing import csrf, send
 from core.tests.fakenet import FakeNet, html
 from inbox.models import InboxEntry
+from library.models import Item
 
 pytestmark = pytest.mark.django_db
 
@@ -126,3 +127,29 @@ def test_entry_deleted_during_unfurl_leaves_no_thumbnail(
     assert not InboxEntry.objects.filter(pk=entry_id).exists()
     assert list(tmp_path.glob("*.webp")) == []
     assert not Job.objects.filter(kind="tag").exists()
+
+
+def test_unfurl_fills_an_item_linked_before_it_finished(client: Client, net: FakeNet, tmp_path: Path) -> None:
+    headers = csrf(client)
+    entry_id = send(client, "post", "/api/inbox", {"url": "https://blog.test/p"}, headers).json()["id"]
+    item_id = send(client, "post", "/api/items", {"type": "article", "title": "A post"}, headers).json()["id"]
+    send(client, "patch", f"/api/inbox/{entry_id}", {"item": item_id}, headers)  # "Thành item" at once
+    assert Item.objects.get(pk=item_id).image_path == ""  # no thumbnail yet
+
+    call_command("run_jobs", stdout=io.StringIO())
+    thumbnail = InboxEntry.objects.get(pk=entry_id).og_image_path
+    copy = Item.objects.get(pk=item_id).image_path
+    assert thumbnail and copy and copy != thumbnail
+    assert {p.name for p in tmp_path.glob("*.webp")} == {thumbnail, copy}
+
+
+def test_unfurl_keeps_the_image_of_a_linked_item(client: Client, net: FakeNet) -> None:
+    headers = csrf(client)
+    entry_id = send(client, "post", "/api/inbox", {"url": "https://blog.test/p"}, headers).json()["id"]
+    item = Item.objects.create(
+        user_id=client.session["_auth_user_id"], type="article", title="A", image_path="e" * 32 + ".webp"
+    )
+    InboxEntry.objects.filter(pk=entry_id).update(item=item)
+    call_command("run_jobs", stdout=io.StringIO())
+    assert InboxEntry.objects.get(pk=entry_id).og_image_path
+    assert Item.objects.get(pk=item.pk).image_path == "e" * 32 + ".webp"

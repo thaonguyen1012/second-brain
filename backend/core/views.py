@@ -1,9 +1,11 @@
 import mimetypes
 from urllib.parse import quote
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import connection
-from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
+from django.http.response import HttpResponseBase
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -17,7 +19,7 @@ from rest_framework.views import APIView
 
 from core.authentication import request_user
 from core.serializers import CountsSerializer, StatusSerializer
-from core.services import counts, export, status
+from core.services import counts, export, status, thumbnails
 from core.services.files import attachments_root, resolve_attachment
 
 
@@ -70,7 +72,8 @@ class ExportView(APIView):
     )
     def get(self, request: Request) -> StreamingHttpResponse:
         """A copy of all the owner's data (DECISIONS 4.7) as a zip, the same files as `manage.py export`:
-        notes/*.md, data/*.json, manifest.json. No secrets: no password hash, sessions, jobs or LLM rows."""
+        notes/*.md, data/*.json, images/*.webp (Item images), manifest.json. No secrets: no password hash,
+        sessions, jobs or LLM rows."""
         folder = f"alex-brain-{timezone.localdate().isoformat()}"
         response = StreamingHttpResponse(
             export.stream_zip(request_user(request), folder), content_type="application/zip"
@@ -80,6 +83,22 @@ class ExportView(APIView):
         response["X-Content-Type-Options"] = "nosniff"
         response["X-Accel-Buffering"] = "no"  # nginx passes the chunks on as they come
         return response
+
+
+def thumbnail_response(name: str) -> HttpResponseBase:
+    """A stored image (core/services/thumbnails.py: inbox thumbnails, Item images), once the caller has
+    checked the owner of the row naming it. nginx sends the bytes from its internal /internal/thumbs/ location
+    (X-Accel-Redirect); Django streams them itself only in DEBUG. 404 when there is no such file."""
+    path = thumbnails.path_of(name)
+    if path is None:
+        raise Http404
+    if settings.DEBUG:
+        response: HttpResponseBase = FileResponse(path.open("rb"), content_type="image/webp")
+    else:
+        response = HttpResponse(content_type="image/webp")
+        response["X-Accel-Redirect"] = f"/internal/thumbs/{path.name}"
+    response["Cache-Control"] = "private, max-age=86400"
+    return response
 
 
 # Types a browser may show inline; everything else (HTML, SVG, XML, office files...) downloads.

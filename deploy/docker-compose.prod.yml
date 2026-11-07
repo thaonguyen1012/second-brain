@@ -30,7 +30,8 @@ services:
       - ../web/content/docs:/srv/alex-brain/content:ro
       - ${FILES_DIR:?set in deploy/.env}:/srv/alex-brain/files:ro
       - staticfiles:/srv/alex-brain/staticfiles
-      - thumbs:/srv/alex-brain/thumbs:ro
+      # read-write: Item image uploads are written here and replaced or removed images are deleted
+      - thumbs:/srv/alex-brain/thumbs
     depends_on:
       db: { condition: service_healthy }
 

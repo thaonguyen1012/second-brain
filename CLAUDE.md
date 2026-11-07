@@ -102,13 +102,19 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  as a zip, the "Tải bản sao dữ liệu" button on Phát triển); services/search.py
                                  (`?q=` normaliser)
   progress/                      progress API (API_CONTRACT.md); logic in services.py, thin views
-  library/                       Item (type, status, tags ArrayField, rating; noteCount annotated by services.items) +
-                                 Note (markdown, M2M Item; never sent to an LLM); /api/items* (?q= title/source/exact
-                                 tag; DELETE: links set null, 409 for a project with time entries), /api/notes* (?q=
-                                 title/markdown, ?item=). Every owned row has a DELETE (204; 404 for another owner)
+  library/                       Item (type, status, tags ArrayField, rating; noteCount + imagePending annotated by
+                                 services.items; status moves started_at/finished_at in apply_status_dates, used by every
+                                 Item write incl. /api/projects) + Note (markdown, M2M Item; never sent to an LLM);
+                                 /api/items* (?q= title/source/exact tag; DELETE: links set null, 409 for a project with
+                                 time entries), /api/notes* (?q= title/markdown, ?item=). Every owned row has a DELETE
+                                 (204; 404 for another owner). Item image (cover; project logo): image_path (webp in
+                                 THUMBS_DIR), only through services.set_image (row lock, `expect`); /api/items/{id}/image
+                                 GET|POST multipart|DELETE, /image/fetch (202) and the automatic fetch (create or new
+                                 http(s) source, not projects) queue the `item_image` job (jobs.py, one key per Item,
+                                 re-armed); linking an inbox entry copies its thumbnail
   inbox/                         InboxEntry (url|text, triage status + archived_at set/cleared by triage_entry, OG
                                  unfurl fields, LLM suggestions); /api/inbox (?q= og title/text/url; DELETE also drops
-                                 an unused thumbnail)
+                                 a thumbnail no entry or Item uses)
   weeks/                         Week (Monday start, Europe/Prague; planning journal, 6 review questions) +
                                  Objective (open|done|dropped, carried_from); /api/weeks*, review = body of work per day
                                  (inbox by archived_at) + minutes for objectives vs other (from work.TimeEntry) +
@@ -141,14 +147,17 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  tagging.py (`news_tag`, `brief_intro`); /api/news*, /api/brief/*;
                                  POST /api/opportunities/{id}/evidence/news (the "evidence for" button)
   core/services/backup.py        `manage.py backup` (make backup: pg_dump -Fc -> backend/backups/<date>.dump, gitignored,
-                                 newest 14 kept) and `restore_check` (make restore-check: newest dump -> throwaway db,
-                                 row counts vs live, dropped); never writes to the dev database
+                                 newest 14 kept; image mirror: new THUMBS_DIR files -> backups/thumbs/, never deleted)
+                                 and `restore_check` (make restore-check: newest dump -> throwaway db, row counts vs live,
+                                 images referenced/missing from the mirror, dropped); never writes to the dev database
   core/pagination.py, admin.py   NewestFirstCursor (cursor pagination for lists), OwnedAdmin (sets user on create)
   core/services/jobs.py          Job table queue: enqueue (idempotency key), @handler(kind), RetryLater (429),
                                  @periodic schedulers (run first by run_jobs, e.g. `feeds:2026-11-02T06`, `brief:2026-11-02`);
                                  `manage.py run_jobs` (cron) is the only place that makes outbound requests
   core/services/safe_fetch.py    SSRF-guarded GET (public IPs only, pinned IP, 3 redirects, 10 s, 2 MB);
-                                 unfurl.py (OG card, nh3), thumbnails.py (webp <= 200 KB in THUMBS_DIR, X-Accel)
+                                 unfurl.py (OG card, nh3), thumbnails.py (webp <= 200 KB in THUMBS_DIR, content addressed,
+                                 0644; SIZES for inbox cards, ITEM_SIZES 600/400 for Item images; discard_if_unused
+                                 counts both tables; served by core/views.thumbnail_response, X-Accel)
   core/services/llm.py           the only LLM caller (LLM_PROVIDER=gemini now, anthropic later): count tokens,
                                  budget guard (LLM_MONTHLY_BUDGET_USD), JSON schema call, LlmCall row, LlmCache
   prompts/, evals/               versioned prompts (inbox_tag, jd_skills, news_tag, brief_intro); golden sets for

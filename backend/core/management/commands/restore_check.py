@@ -7,11 +7,14 @@ from django.db import connection
 
 from core.services import backup
 
+SHOWN_MISSING = 10
+
 
 class Command(BaseCommand):
     help = (
         "Restore the newest dump of BACKUP_DIR (or --dump) into a throwaway database, count the rows of "
-        "every table, compare with the live database, then drop the throwaway database (DECISIONS 10.1)."
+        "every table, compare with the live database, report the images its rows name that the mirror next "
+        "to the dump (thumbs/) lacks, then drop the throwaway database (DECISIONS 10.1)."
     )
 
     def add_arguments(self, parser: CommandParser) -> None:
@@ -45,3 +48,13 @@ class Command(BaseCommand):
                 self.stdout.write(f"  {table}: dump {restored}, live {live}")
         else:
             self.stdout.write("Row counts match the live database.")
+        # Informational, never a failure: a missing image means that row shows no picture after a restore.
+        mirror = dump.resolve().parent / backup.MIRROR
+        missing = backup.missing_images(report.images, mirror)
+        self.stdout.write(
+            f"images: {len(report.images)} referenced, {len(missing)} missing from the backup ({mirror})"
+        )
+        for name in missing[:SHOWN_MISSING]:
+            self.stdout.write(f"  missing: {name}")
+        if len(missing) > SHOWN_MISSING:
+            self.stdout.write(f"  ... and {len(missing) - SHOWN_MISSING} more")

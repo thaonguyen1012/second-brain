@@ -46,7 +46,8 @@ fields, LLM suggestions, `processed` + `error`). Endpoints `GET/POST /api/items`
 Ingest returns at once; `POST /api/inbox` with a URL enqueues an `unfurl` Job. `manage.py run_jobs` (cron; the
 `jobs` service in deploy/) fetches the page through `core/services/safe_fetch.py` (SSRF guard), stores the OG
 card as plain text and the og:image as a re-encoded webp in `THUMBS_DIR`, served by
-`/api/inbox/{id}/thumbnail` through X-Accel-Redirect to nginx `/internal/thumbs/` (Django streams it in DEBUG).
+`/api/inbox/{id}/thumbnail` through X-Accel-Redirect to nginx `/internal/thumbs/` (Django streams it in DEBUG;
+`core/views.thumbnail_response`, shared with the Item image, below).
 After the unfurl (or at once for text), a `tag` job asks the LLM for tags, a one-line summary and a destination
 through `core/services/llm.py`, the only LLM caller: it counts tokens, refuses the call when the month's cost plus
 the estimate passes `LLM_MONTHLY_BUDGET_USD`, calls the provider with a JSON schema, validates the reply with
@@ -163,8 +164,9 @@ achievements, predictions, job ads, opportunity evidence and week objectives; an
 Links follow the models' `on_delete`: inbox entries, evidence, skill evidence and achievements keep their row with
 the link set to null (evidence keeps its title snapshot), notes lose the link, a carried objective keeps its title
 with `carried_from` null, time entries lose their objective. `TimeEntry.project` is `PROTECT`: deleting a project
-Item with logged time answers 409, the time entries go first. Deleting an inbox entry also removes its thumbnail
-file when no other entry uses it (content addressed). Lists of items, inbox, opportunities and skills take `?q=`
+Item with logged time answers 409, the time entries go first. Deleting an inbox entry (or an Item) also removes its
+image file after the commit when no other inbox entry or Item of any owner names it (content addressed:
+`thumbnails.discard_if_unused`). Lists of items, inbox, opportunities and skills take `?q=`
 (`core/services/search.py`: icontains on titles and short fields, never note markdown); `Item` carries an annotated
 `noteCount`. Morning-brief feedback lives on `NewsItem` (`feedback` useful/not_useful/"" + `feedback_at`, `PATCH
 /api/news/{id}`); `manage.py export_brief_feedback` writes rated items into `backend/evals/news_tag/fb-<id>.json`
@@ -174,10 +176,28 @@ counts by kind, never keys or error texts. `GET /api/counts` (`core/services/cou
 numbers, one COUNT/EXISTS per list on the list endpoints' own querysets with the pages' default filters (this
 week, this month: Europe/Prague), read-only (no Week row created). `manage.py export --out <dir>` (`core/services/export.py`, DECISIONS
 4.7): `notes/<id>-<slug>.md` with YAML front matter (id, title, items, created, updated) and `data/<table>.json`
-(Django serializer) for every other owned model, plus `manifest.json`; never the User row, sessions, `Job`,
+(Django serializer) for every other owned model, then `images/<name>.webp` (each file the owner's Items name, once,
+read in 64 kB chunks; stale images of an earlier folder export are removed like stale notes; inbox thumbnails stay
+out, they can be fetched again), plus `manifest.json` (`counts.images`); never the User row, sessions, `Job`,
 `LlmCall` or `LlmCache`; a test fails when a new model is neither exported nor excluded. `GET /api/export`
 streams the same files (`export_files()`) as `alex-brain-<date>.zip` (`stream_zip()`: ZipFile on an unseekable sink,
-one chunk per file, `X-Accel-Buffering: no`); the Phát triển page links it as a plain download.
+one chunk per file, text deflated, webp stored as it is, `X-Accel-Buffering: no`); the Phát triển page links it as a
+plain download.
+
+Item images (DECISIONS 9.6): `Item.image_path` (migration library 0003, `db_default=""` so an older process can still
+insert) names one webp in `THUMBS_DIR`, the same content-addressed store as the inbox thumbnails
+(`core/services/thumbnails.py`: `to_webp(data, sizes)`, `ITEM_SIZES` = 600/400 px for Items, `store()` writes 0644 for
+nginx). Every change goes through `library/services.set_image(item_id, name, expect)`: a row lock, then the replaced
+file is discarded after the commit unless another row uses it; with `expect`, nothing changes when the image moved
+on meanwhile (a newer upload wins over a fetch). Sources: `POST /api/items/{id}/image` (multipart, the app's only
+non-JSON body; `MultiPartParser` on that view only, 10 MB `ITEM_IMAGE_MAX_BYTES`, Pillow sniffs the bytes), `POST
+/api/items/{id}/image/fetch` (202) or the automatic fetch on create and on a new http(s) `source` (not projects), both
+queue one `item_image` job per Item (`library/jobs.py`, registered in `LibraryConfig.ready()`; the job key is
+re-armed when it already ran) that run_jobs runs through safe_fetch (the URL as an image, else its og:image), and
+linking an inbox entry (`triage_entry`, or the unfurl job for an entry linked before it finished), which re-encodes
+the entry's thumbnail into the Item's own file without network. `GET /api/items/{id}/image` answers through
+`core/views.thumbnail_response` (X-Accel-Redirect, DEBUG streams). Item JSON carries `imageUrl` (`?v=` = start of the
+name) and `imagePending` (an `Exists` on the Job key, annotated by `services.items()`), projects `imageUrl`.
 
 Web UI, part C (daily use in the UI): "Hôm nay" adds, per brief card, "Đưa vào Inbox" (`POST /api/inbox` with the
 URL; sent ids remembered per browser in localStorage `brain:brief-sent-to-inbox`, since the API has no link from
@@ -217,12 +237,17 @@ nothing is cached offline. All of this is Next routes, so nginx and the dev prox
 
 Backups (DECISIONS 10.1, laptop): `make backup` = `manage.py backup` (`core/services/backup.py`): `pg_dump -Fc
 --no-owner --no-acl` of the configured database into `BACKUP_DIR/<date>.dump` (default `backend/backups/`,
-gitignored; written as `.partial`, then renamed; the newest `BACKUP_KEEP` = 14 dated dumps kept). The pg tools
+gitignored; written as `.partial`, then renamed; the newest `BACKUP_KEEP` = 14 dated dumps kept), then
+`mirror_images()` copies the images of `THUMBS_DIR` that `BACKUP_DIR/thumbs/` lacks (0600 files, 0700 folder,
+`.partial` then rename) and never deletes there, since a name always means the same bytes. The pg tools
 match the server's major version (`/opt/homebrew/opt/postgresql@16/bin` etc., `PG_BIN_DIR` overrides), the password
 goes through `PGPASSWORD`. `make restore-check` = `manage.py restore_check`: restores the newest dump into a
 throwaway `<db>_restore_check_<pid>` database, counts the rows of every table, fails when `django_migrations` or
-`django_content_type` is empty, prints the differences with the live database (rows written since the dump), and
-drops the throwaway database in a `finally`; it never writes to the dev database.
+`django_content_type` is empty, prints the differences with the live database (rows written since the dump) and
+`images: N referenced, M missing from the backup` (Item `image_path`, when the dump has that column, and inbox
+`og_image_path` names without a file in the mirror next to the dump; information only), and drops the throwaway
+database in a `finally`; it never writes to the dev database. A real restore is `pg_restore` plus copying
+`BACKUP_DIR/thumbs/*` into `THUMBS_DIR`.
 `deploy/launchd/com.example.brain.backup.plist` (not installed) runs the backup nightly at 02:30.
 
 Web UI, part D (guides and intro): `web/components/stageshow/` holds the Stageshow kit (`kit/`, MIT, brands left

@@ -1,4 +1,6 @@
 import datetime as dt
+from pathlib import Path
+from typing import Any
 
 import pytest
 from django.contrib.auth.models import User
@@ -83,6 +85,35 @@ def test_delete_item_keeps_linked_rows(client: Client) -> None:
     win.refresh_from_db()
     assert (proof.item, proof.title, skill_proof.item, win.project) == (None, "Shop", None, None)
     assert client.get(f"/api/opportunities/{opportunity.pk}").json()["evidence"][0]["title"] == "Shop"
+
+
+def test_delete_item_discards_its_image_unless_another_row_uses_it(
+    client: Client, settings: Any, tmp_path: Path, django_capture_on_commit_callbacks: Any
+) -> None:
+    settings.THUMBS_DIR = tmp_path
+    shared_inbox, shared_item, alone = (c * 32 + ".webp" for c in "abc")
+    for name in (shared_inbox, shared_item, alone):
+        (tmp_path / name).write_bytes(b"webp")
+    user, other = owner(client), stranger()
+    InboxEntry.objects.create(user=other, url="https://a.test/", og_image_path=shared_inbox)
+    Item.objects.create(user=other, type="book", title="theirs", image_path=shared_item)
+    mine = [
+        Item.objects.create(user=user, type="book", title=n, image_path=n)
+        for n in (shared_inbox, shared_item, alone)
+    ]
+    headers = csrf(client)
+    for item in mine:
+        with django_capture_on_commit_callbacks(execute=True):
+            assert client.delete(f"/api/items/{item.pk}", headers=headers).status_code == 204
+    assert {p.name for p in tmp_path.iterdir()} == {shared_inbox, shared_item}
+    # A refused delete (a project with logged time) keeps its image and the file.
+    logo = "d" * 32 + ".webp"
+    (tmp_path / logo).write_bytes(b"webp")
+    project = Item.objects.create(user=user, type="project", title="Shop", image_path=logo)
+    TimeEntry.objects.create(user=user, project=project, date=dt.date(2026, 11, 2), minutes=30)
+    with django_capture_on_commit_callbacks(execute=True):
+        assert client.delete(f"/api/items/{project.pk}", headers=headers).status_code == 409
+    assert Item.objects.get(pk=project.pk).image_path == logo and (tmp_path / logo).is_file()
 
 
 def test_delete_project_with_time_entries_is_refused(client: Client) -> None:

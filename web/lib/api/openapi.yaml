@@ -182,7 +182,8 @@ paths:
       operationId: downloadExport
       description: |-
         A copy of all the owner's data (DECISIONS 4.7) as a zip, the same files as `manage.py export`:
-        notes/*.md, data/*.json, manifest.json. No secrets: no password hash, sessions, jobs or LLM rows.
+        notes/*.md, data/*.json, images/*.webp (Item images), manifest.json. No secrets: no password hash,
+        sessions, jobs or LLM rows.
       tags:
       - export
       security:
@@ -413,6 +414,9 @@ paths:
           description: ''
     patch:
       operationId: updateItem
+      description: |-
+        A status change moves startedAt / finishedAt unless the body sets them (apply_status_dates); a new
+        http(s) source of an Item without an image queues its image.
       parameters:
       - in: path
         name: id
@@ -458,6 +462,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+          description: ''
+  /api/items/{id}/image:
+    post:
+      operationId: uploadItemImage
+      description: |-
+        Set (or replace) the image from a file: JPEG, PNG, GIF or WebP up to 10 MB, stored re-encoded as a
+        webp of at most 600 px. Answers the Item; the replaced file goes unless another row uses it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - items
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ItemImageUploadRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: ''
+    delete:
+      operationId: deleteItemImage
+      description: Remove the image (also when there is none); the file goes unless
+        another row uses it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - items
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/items/{id}/image/fetch:
+    post:
+      operationId: fetchItemImage
+      description: |-
+        Take the image from a link, in the background: the og:image of the page, or the URL itself when it
+        is an image (`url`, default the Item's source). Answers 202 with the Item (imagePending true) at once;
+        run_jobs makes the request, so the image appears within about 5 minutes. It replaces only the image
+        the Item had when asked (an upload made meanwhile wins).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - items
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemImageFetchRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
           description: ''
   /api/market/job-ads:
     get:
@@ -2655,13 +2735,50 @@ components:
           type: integer
           readOnly: true
           default: 0
+        imageUrl:
+          type: string
+          nullable: true
+          readOnly: true
+        imagePending:
+          type: boolean
+          readOnly: true
+          default: false
       required:
       - createdAt
       - id
+      - imagePending
+      - imageUrl
       - noteCount
       - title
       - type
       - updatedAt
+    ItemImageFetchRequest:
+      type: object
+      description: |-
+        POST /api/items/{id}/image/fetch: the link to take the image from; empty or left out = the Item's
+        source.
+      properties:
+        url:
+          description: An http(s) page (its og:image is taken) or image; default the
+            Item's source.
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2000
+          - type: string
+            maxLength: 0
+    ItemImageUploadRequest:
+      type: object
+      description: |-
+        POST /api/items/{id}/image as multipart/form-data. The bytes are read by Pillow and re-encoded as webp;
+        the content type the browser sends is ignored.
+      properties:
+        file:
+          type: string
+          format: binary
+          description: JPEG, PNG, GIF or WebP, at most 10 MB.
+      required:
+      - file
     ItemLabel:
       type: object
       description: Just enough of an Item to label a link to it (badges on notes),
@@ -4218,6 +4335,10 @@ components:
             type: string
         source:
           type: string
+        imageUrl:
+          type: string
+          nullable: true
+          description: 'The logo: the Item''s image, changed through /api/items/{id}/image.'
         client:
           type: string
         billing:
@@ -4274,6 +4395,7 @@ components:
       - finishedAt
       - hourlyRate
       - id
+      - imageUrl
       - minutesBillable
       - minutesNonBillable
       - minutesTotal

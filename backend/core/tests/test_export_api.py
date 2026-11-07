@@ -13,7 +13,8 @@ from django.test import Client
 from django.utils import timezone
 
 from core.models import Job, LlmCache, LlmCall
-from core.services import export
+from core.services import export, thumbnails
+from core.testing import image_bytes
 from inbox.models import InboxEntry
 from library.models import Item, Note
 
@@ -69,7 +70,7 @@ def test_export_streams_a_zip_of_the_owners_data(client: Client, settings: Any) 
     assert manifest["owner"] == "dev@localhost"
     assert manifest["counts"]["notes"] == 1 and manifest["counts"]["inbox_entries"] == 1
 
-    dump = "\n".join(archive.read(name).decode() for name in names)
+    dump = b"\n".join(archive.read(name) for name in names)  # bytes: images are binary
     for leaked in (
         "THEIR",
         "pbkdf2",
@@ -80,20 +81,29 @@ def test_export_streams_a_zip_of_the_owners_data(client: Client, settings: Any) 
         "test-secret-key-123",
         settings.SECRET_KEY,
     ):
-        assert leaked not in dump
+        assert leaked.encode() not in dump
 
 
-def test_export_zip_matches_the_command(client: Client, tmp_path: Any) -> None:
+def test_export_zip_matches_the_command(client: Client, settings: Any, tmp_path: Any) -> None:
+    settings.THUMBS_DIR = tmp_path / "thumbs"
     user = owner(client)
     Note.objects.create(user=user, title="One", markdown="body")
-    Item.objects.create(user=user, type="film", title="Film")
-    call_command("export", "--owner", "dev@localhost", "--out", str(tmp_path), stdout=io.StringIO())
+    poster = thumbnails.store(thumbnails.to_webp(image_bytes((900, 1200)), thumbnails.ITEM_SIZES))
+    Item.objects.create(user=user, type="film", title="Film", image_path=poster)
+    out = tmp_path / "out"
+    call_command("export", "--owner", "dev@localhost", "--out", str(out), stdout=io.StringIO())
     _, archive = download(client)
-    for name in archive.namelist():
-        relative = name.split("/", 1)[1]
+    assert archive.testzip() is None
+    relatives = {name.split("/", 1)[1]: name for name in archive.namelist()}
+    assert f"images/{poster}" in relatives
+    for relative, name in relatives.items():
         if relative == "manifest.json":
             continue  # exportedAt differs
-        assert archive.read(name) == (tmp_path / relative).read_bytes()
+        assert archive.read(name) == (out / relative).read_bytes()
+    # The webp is stored as it is (already compressed); text is deflated.
+    assert archive.getinfo(relatives[f"images/{poster}"]).compress_type == zipfile.ZIP_STORED
+    assert archive.getinfo(relatives["data/items.json"]).compress_type == zipfile.ZIP_DEFLATED
+    assert json.loads(archive.read(relatives["manifest.json"]))["counts"]["images"] == 1
 
 
 def test_export_of_an_empty_account(client: Client) -> None:

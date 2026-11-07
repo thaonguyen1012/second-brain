@@ -1,10 +1,12 @@
 """`manage.py export` and GET /api/export (DECISIONS 4.7: the data is Alex's): notes as markdown files with
-front matter, every other model of the owner as JSON (Django's serializer: pk, model, fields; links are ids).
+front matter, every other model of the owner as JSON (Django's serializer: pk, model, fields; links are ids),
+and the owner's Item images as images/<name>.webp (the name is the Item's image_path in data/items.json).
 The command writes a folder, the endpoint streams the same files as a zip. Both read every table in batches
-(TABLE_BATCH rows), never a whole table at once.
+(TABLE_BATCH rows) and every image in FILE_CHUNK pieces, never a whole table or file at once.
 
 Never exported: the User row (password hash), sessions, Job and LlmCache rows, LlmCall (not owned data), and
 nothing from settings or the environment. A test checks that every model with owner data is listed here.
+Inbox thumbnails stay out too: they come from the link and can be fetched again.
 """
 
 import json
@@ -13,6 +15,7 @@ import zipfile
 from collections.abc import Iterator
 from itertools import batched
 from pathlib import Path
+from typing import BinaryIO
 
 from django.contrib.auth.models import User
 from django.core import serializers
@@ -22,6 +25,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from brief.models import BriefEntry, DailyBrief, NewsItem, Source
+from core.services import thumbnails
 from growth.models import Achievement, JobAd, Prediction, Skill, SkillEvidence
 from inbox.models import InboxEntry
 from library.models import Item, Note
@@ -56,6 +60,8 @@ TABLES: dict[str, tuple[type[Model], str]] = {
 }
 EXPORTED_MODELS: frozenset[type[Model]] = frozenset({Note, *(model for model, _ in TABLES.values())})
 NOTE_FILE = re.compile(r"^\d+(-[a-z0-9-]+)?\.md$")
+IMAGE_FILE = re.compile(r"^[0-9A-Za-z]{32}\.webp$")  # a stored image's name (thumbnails.store)
+FILE_CHUNK = 64 * 1024
 
 
 def note_file_name(note: Note) -> str:
@@ -104,11 +110,31 @@ def _manifest(user: User, counts: dict[str, int]) -> Iterator[bytes]:
     yield (json.dumps(manifest, indent=2) + "\n").encode()
 
 
+def _open_image(name: str) -> BinaryIO | None:
+    """The stored file, opened before its entry is written (a file discarded meanwhile is simply left out)."""
+    path = thumbnails.path_of(name)
+    if path is None:
+        return None
+    try:
+        return path.open("rb")
+    except OSError:
+        return None
+
+
+def _file_chunks(handle: BinaryIO) -> Iterator[bytes]:
+    with handle:
+        while chunk := handle.read(FILE_CHUNK):
+            yield chunk
+
+
 def export_files(user: User) -> Iterator[tuple[str, Iterator[bytes]]]:
-    """Every file of an export as (relative path, UTF-8 chunks): notes/*.md, data/*.json, then manifest.json.
+    """Every file of an export as (relative path, chunks): notes/*.md, data/*.json (UTF-8), images/*.webp,
+    then manifest.json.
 
     Each file's chunks must be consumed before the next file is taken (both writers below do): the queries run
-    in batches while the chunks are read, and the manifest (last) holds the row counts gathered on the way.
+    in batches while the chunks are read, and the manifest (last) holds the counts gathered on the way.
+    Images: each file the owner's Items name, once (Items may share a file), sorted; one whose file is missing
+    is left out of the export and of counts["images"].
     """
     counts: dict[str, int] = {}
     notes = Note.objects.filter(user=user).prefetch_related("items").order_by("pk")
@@ -122,21 +148,32 @@ def export_files(user: User) -> Iterator[tuple[str, Iterator[bytes]]]:
         rows = model._default_manager.filter(**{owner: user}).order_by("pk").iterator(chunk_size=TABLE_BATCH)
         yield f"data/{name}.json", _table_json(rows, counts, name)
 
+    images = Item.objects.filter(user=user).exclude(image_path="").order_by("image_path")
+    n = 0
+    for image in images.values_list("image_path", flat=True).distinct():
+        if (handle := _open_image(image)) is not None:
+            yield f"images/{image}", _file_chunks(handle)
+            n += 1
+    counts["images"] = n
+
     yield "manifest.json", _manifest(user, counts)
 
 
 def export(user: User, out: Path) -> dict[str, int]:
-    """Write <out>/notes/*.md and <out>/data/*.json (+ manifest.json); returns row counts by file.
+    """Write <out>/notes/*.md, <out>/data/*.json and <out>/images/*.webp (+ manifest.json); returns the
+    counts by file (rows, and images under "images").
 
-    The export mirrors the database: note files from an earlier export (`<id>-<slug>.md`) are replaced, so a
-    renamed or deleted note leaves no stale file. Nothing else in `out` is touched.
+    The export mirrors the database: note files from an earlier export (`<id>-<slug>.md`) and images
+    (`<name>.webp`) are replaced, so a renamed or deleted note or a removed image leaves no stale file.
+    Nothing else in `out` is touched.
     """
-    notes_dir, data_dir = out / "notes", out / "data"
-    for folder in (out, notes_dir, data_dir):
+    notes_dir, data_dir, images_dir = out / "notes", out / "data", out / "images"
+    for folder in (out, notes_dir, data_dir, images_dir):
         folder.mkdir(mode=0o700, parents=True, exist_ok=True)
-    for old in notes_dir.iterdir():
-        if old.is_file() and NOTE_FILE.match(old.name):
-            old.unlink()
+    for folder, exported in ((notes_dir, NOTE_FILE), (images_dir, IMAGE_FILE)):
+        for old in folder.iterdir():
+            if old.is_file() and exported.match(old.name):
+                old.unlink()
 
     for name, chunks in export_files(user):
         with (out / name).open("wb") as f:
@@ -170,12 +207,15 @@ class _Chunks:
 
 
 def stream_zip(user: User, folder: str) -> Iterator[bytes]:
-    """The export as a zip, yielded file by file (deflated); every path sits under `folder/`."""
+    """The export as a zip, yielded file by file; every path sits under `folder/`. Text is deflated; the webp
+    images are stored as they are (already compressed)."""
     sink = _Chunks()
     with zipfile.ZipFile(sink, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name, chunks in export_files(user):
+            info = zipfile.ZipInfo(f"{folder}/{name}")
+            info.compress_type = zipfile.ZIP_STORED if name.endswith(".webp") else zipfile.ZIP_DEFLATED
             # The size is unknown up front (written batch by batch), so allow a zip64 entry
-            with archive.open(f"{folder}/{name}", "w", force_zip64=True) as entry:
+            with archive.open(info, "w", force_zip64=True) as entry:
                 for chunk in chunks:
                     entry.write(chunk)
                     yield sink.take()
