@@ -15,6 +15,12 @@ export interface ProgressSnapshot {
   /** done[bookSlug][pageSlug] === true when the page is marked "Đã học xong". */
   done: Record<string, Record<string, true>>;
   lastVisited: LastVisited | null;
+  /**
+   * True once the store has read its source: at once for localStorage, after the API store's first GET (answered or
+   * failed). The stores always set it; a plain parsed copy (migration.ts) leaves it out. "Hôm nay" shows a skeleton
+   * until then, so a first-visit fallback never flashes before the stored pointer arrives.
+   */
+  loaded?: boolean;
 }
 
 export type ProgressListener = (snapshot: ProgressSnapshot) => void;

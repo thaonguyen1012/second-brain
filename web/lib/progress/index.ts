@@ -20,7 +20,7 @@ export async function refreshProgress(): Promise<void> {
   if (s instanceof ApiProgressStore) await s.refresh();
 }
 
-const EMPTY: ProgressSnapshot = { done: {}, lastVisited: null };
+const EMPTY: ProgressSnapshot = { done: {}, lastVisited: null, loaded: false };
 
 /** Current progress snapshot; re-renders on every change (also from other tabs). */
 export function useProgress(): ProgressSnapshot {

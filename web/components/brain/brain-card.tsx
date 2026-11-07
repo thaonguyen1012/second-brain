@@ -55,8 +55,14 @@ export function BrainCard({
     >
       <div className="flex gap-3">
         {isLocal(thumbnail) && (
+          // A link card's picture keeps its og:image shape (1.91:1) from sm; a 56px square on phones.
           // eslint-disable-next-line @next/next/no-img-element -- local webp thumbnail, already sized at ingest
-          <img src={thumbnail} alt="" loading="lazy" className="size-14 shrink-0 rounded-lg object-cover sm:size-16" />
+          <img
+            src={thumbnail}
+            alt=""
+            loading="lazy"
+            className="size-14 shrink-0 self-start rounded-lg object-cover sm:aspect-[1.91/1] sm:h-auto sm:w-40"
+          />
         )}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           {badges && <div className="flex flex-wrap items-center gap-1.5 pb-0.5">{badges}</div>}

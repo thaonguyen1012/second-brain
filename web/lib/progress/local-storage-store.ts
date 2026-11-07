@@ -1,7 +1,7 @@
 import type { LastVisited, ProgressListener, ProgressSnapshot, ProgressStore } from './store';
 
 const KEY = 'alex-brain:progress:v1';
-const EMPTY: ProgressSnapshot = { done: {}, lastVisited: null };
+const EMPTY: ProgressSnapshot = { done: {}, lastVisited: null, loaded: false };
 
 /** localStorage implementation; every storage access is guarded (private mode, quota, SSR). */
 export class LocalStorageProgressStore implements ProgressStore {
@@ -12,14 +12,15 @@ export class LocalStorageProgressStore implements ProgressStore {
   private load() {
     if (this.loaded) return;
     this.loaded = true;
+    this.snapshot = { done: {}, lastVisited: null, loaded: true };
     try {
       const raw = window.localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<ProgressSnapshot>;
-        this.snapshot = { done: parsed.done ?? {}, lastVisited: parsed.lastVisited ?? null };
+        this.snapshot = { done: parsed.done ?? {}, lastVisited: parsed.lastVisited ?? null, loaded: true };
       }
     } catch {
-      this.snapshot = EMPTY;
+      // unreadable or blocked storage: start empty (still loaded)
     }
     try {
       window.addEventListener('storage', (e) => {
@@ -35,7 +36,8 @@ export class LocalStorageProgressStore implements ProgressStore {
 
   private save() {
     try {
-      window.localStorage.setItem(KEY, JSON.stringify(this.snapshot));
+      const { done, lastVisited } = this.snapshot; // `loaded` is runtime state, not stored
+      window.localStorage.setItem(KEY, JSON.stringify({ done, lastVisited }));
     } catch {
       // storage unavailable or full: keep the in-memory state
     }

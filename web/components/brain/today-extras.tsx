@@ -10,15 +10,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { describeApiError } from './api-state';
 import { DuePredictionList, PREDICTIONS_HREF, useDuePredictions } from './due-predictions';
-import { Panel } from './today';
+import { Panel, TileError } from './today-main';
 
 /**
- * Predictions whose 6 months are up (DECISIONS 4.8), with a link to score them on Thành tựu. Nothing at all once
- * the list is known to be empty: the home grid then keeps two columns (app/(home)/page.tsx).
+ * Predictions whose 6 months are up (DECISIONS 4.8), with a link to score them on Thành tựu. Rarely due, so nothing
+ * shows while loading or once the list is known to be empty: a tile that appears and vanishes would push the setup
+ * checklist and the roadmap below the rail (phone, lg) up and down on every visit.
  */
 export function TodayPredictions({ className }: { className?: string }) {
   const due = useDuePredictions();
-  if (due.data && due.data.results.length === 0) return null;
+  const failed = due.error && !due.data;
+  if (!failed && (!due.data || due.data.results.length === 0)) return null;
   return (
     <Panel
       title="Dự đoán cần chấm lại"
@@ -26,7 +28,7 @@ export function TodayPredictions({ className }: { className?: string }) {
       linkLabel="Thành tựu"
       className={className}
     >
-      <DuePredictionList due={due} />
+      {failed ? <TileError text="Chưa đọc được dự đoán" onRetry={due.reload} /> : <DuePredictionList due={due} />}
     </Panel>
   );
 }

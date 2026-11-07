@@ -1,7 +1,7 @@
 import { api, type ApiProgressSnapshot } from '@/lib/api/client';
 import type { LastVisited, ProgressListener, ProgressSnapshot, ProgressStore } from './store';
 
-const EMPTY: ProgressSnapshot = { done: {}, lastVisited: null };
+const EMPTY: ProgressSnapshot = { done: {}, lastVisited: null, loaded: false };
 const LAST_VISITED_DEBOUNCE_MS = 1500;
 
 function fromApi(s: ApiProgressSnapshot): ProgressSnapshot {
@@ -10,7 +10,7 @@ function fromApi(s: ApiProgressSnapshot): ProgressSnapshot {
     done[book] = {};
     for (const [page, isDone] of Object.entries(pages)) if (isDone) done[book][page] = true;
   }
-  return { done, lastVisited: s.lastVisited ?? null };
+  return { done, lastVisited: s.lastVisited ?? null, loaded: true };
 }
 
 /** Django-backed store (API_CONTRACT.md): loaded once, then kept in memory with optimistic updates. */
@@ -33,6 +33,8 @@ export class ApiProgressStore implements ProgressStore {
       this.snapshot = fromApi(await api.getProgress());
     } catch (err) {
       console.error('progress: load failed', err);
+      // answered, even if with an error: the page stops waiting and shows what it has
+      if (!this.snapshot.loaded) this.snapshot = { ...this.snapshot, loaded: true };
     }
     this.emit();
   }
