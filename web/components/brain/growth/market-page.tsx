@@ -372,14 +372,14 @@ export function MarketPage() {
         <LoadingCards count={2} />
       ) : firstRun ? (
         <EmptyPanel
-          area="growth"
           glyph={Newspaper}
           title="Chưa có tin tuyển dụng nào"
           text="Dán 5 đến 10 tin của vai trò nhắm tới; kỹ năng được rút ra trong nền rồi so với ma trận."
           action={
-            <Button onClick={paste}>
+            <Button onClick={paste} aria-keyshortcuts="n">
               <ClipboardPaste aria-hidden />
               Dán tin đầu tiên
+              <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
             </Button>
           }
           ghost={<GhostRows variant="chart" caption="Biểu đồ tần suất hiện khi có tin tuyển dụng đầu tiên." />}

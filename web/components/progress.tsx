@@ -42,6 +42,16 @@ export function VisitTracker({ url, title }: { url: string; title: string }) {
 /** Pages marked done in a book. */
 export const doneIn = (done: ProgressSnapshot['done'], book: string) => Object.keys(done[book] ?? {}).length;
 
+/** new: no lesson done (a visit alone does not count); finished: every lesson done; started: in between. */
+export type BookState = 'new' | 'started' | 'finished';
+export function bookState(done: ProgressSnapshot['done'], book: string, total: number): BookState {
+  const n = doneIn(done, book);
+  return n === 0 ? 'new' : n >= total ? 'finished' : 'started';
+}
+
+/** The one verb of each state, on the Hôm nay hero and on the Sổ tay cards alike. */
+export const bookVerb: Record<BookState, string> = { new: 'Học ngay', started: 'Học tiếp', finished: 'Ôn lại' };
+
 /** "12%", or "<1%" while the first lessons of a long book round to 0 (colour still arrives with the first one). */
 export function percent(done: number, total: number): string {
   const exact = total ? Math.min(100, (done / total) * 100) : 0;
@@ -65,7 +75,8 @@ export function BookProgress({
   fill: string;
   className?: string;
 }) {
-  const done = doneIn(useProgress().done, book);
+  const progress = useProgress();
+  const done = doneIn(progress.done, book);
   const pct = percent(done, total);
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
@@ -74,9 +85,14 @@ export function BookProgress({
           <ProgressIndicator className={cn(fill, done > 0 && 'min-w-1.5')} />
         </ProgressTrack>
       </Progress>
-      <p className="text-xs text-muted-foreground tabular-nums">
-        {done > 0 ? `${done}/${total} bài · ${pct}` : `${total} bài · chưa bắt đầu`}
-      </p>
+      {/* until the store answers, a line of the text's height, never a "chưa bắt đầu" that is not known yet */}
+      {progress.loaded === false ? (
+        <Skeleton className="h-4 w-28" />
+      ) : (
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {done > 0 ? `${done}/${total} bài · ${pct}` : `${total} bài · chưa bắt đầu`}
+        </p>
+      )}
     </div>
   );
 }
@@ -95,14 +111,22 @@ export interface HeroBook {
   fill: string;
 }
 
+/** The hero's lead before the book title, by the state of the last visited book. */
+const heroLead: Record<BookState, string> = {
+  new: 'Xem gần nhất',
+  started: 'Tiếp tục học',
+  finished: 'Đã học xong',
+};
+
 export const bookHref = (b: { slug: string; track: string }, page = '') =>
   `/docs/${b.track}/${b.slug}/${page ? `${page}/` : ''}`;
 
 /**
  * The focal block of "Hôm nay" (DESIGN.md §1.2, §9a): the book's cover, the last visited page, the book's progress
  * and the page's one filled button; below a divider, up to two other books with lessons done. With no last visited
- * page it suggests the first book of the roadmap (`start`). A skeleton holds the place until the store has loaded,
- * so the suggestion never flashes before the stored pointer arrives.
+ * page it suggests the first book of the roadmap (`start`). Lead and verb follow the book's state as the Sổ tay card
+ * does (`bookState`): a visit with no lesson done is "Xem gần nhất" and "Học ngay", never "Tiếp tục học". A skeleton
+ * holds the place until the store has loaded, so the suggestion never flashes before the stored pointer arrives.
  */
 export function ContinueReading({
   books,
@@ -120,6 +144,8 @@ export function ContinueReading({
   const resumed = last && books.find((b) => b.slug === last.bookSlug);
   const book = resumed || books.find((b) => b.slug === start.slug);
   if (!book) return null;
+  const state = bookState(done, book.slug, book.lessonCount);
+  const lead = resumed ? heroLead[state] : 'Gợi ý từ lộ trình';
   const others = books
     .filter((b) => b !== book && doneIn(done, b.slug) > 0)
     .sort((a, b) => doneIn(done, b.slug) - doneIn(done, a.slug))
@@ -128,7 +154,7 @@ export function ContinueReading({
     'outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset';
   return (
     <section
-      aria-label={resumed ? 'Tiếp tục học' : 'Bắt đầu học'}
+      aria-label={lead}
       className={cn('overflow-hidden rounded-xl border bg-card shadow-depth-1', className)}
     >
       <Link
@@ -148,7 +174,7 @@ export function ContinueReading({
         </span>
         <span className="flex min-w-0 flex-col gap-1">
           <span className="truncate text-xs text-muted-foreground">
-            {resumed ? `Tiếp tục học · ${book.title}` : `Gợi ý từ lộ trình · ${start.phase}`}
+            {lead} · {resumed ? book.title : start.phase}
           </span>
           <span className="line-clamp-2 font-heading text-lg font-semibold tracking-tight">
             {/* the book's own root page is "Mở đầu sổ tay", so the book name is never said twice */}
@@ -157,7 +183,7 @@ export function ContinueReading({
           <BookProgress book={book.slug} total={book.lessonCount} fill={book.fill} className="mt-1 max-w-md" />
         </span>
         <Button render={<span />} className="col-span-2 sm:col-span-1">
-          {resumed ? 'Học tiếp' : 'Bắt đầu học'}
+          {bookVerb[state]}
           <ArrowRight aria-hidden />
         </Button>
       </Link>
@@ -172,9 +198,12 @@ export function ContinueReading({
                   <span aria-hidden className={cn('size-2 shrink-0 rounded-full', b.fill)} />
                   <span className="min-w-0 flex-1 truncate">{b.title}</span>
                   <span className="text-xs text-muted-foreground tabular-nums">{pct}</span>
-                  <span aria-hidden className="h-1.5 w-16 overflow-hidden rounded-full bg-input max-sm:hidden">
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-16 overflow-hidden rounded-full bg-input forced-colors:outline max-sm:hidden"
+                  >
                     <span
-                      className={cn('block h-full min-w-1.5', b.fill)}
+                      className={cn('block h-full min-w-1.5 forced-colors:bg-[CanvasText]', b.fill)}
                       style={{ width: `${Math.min(100, (n / (b.lessonCount || 1)) * 100)}%` }}
                     />
                   </span>

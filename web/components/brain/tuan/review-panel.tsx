@@ -130,7 +130,7 @@ export function ReviewPanel({
       {/* The journal scrolls with the page (no inner scroll area): 'Lưu nhìn lại' is always reachable */}
       <div
         id="week-review-journal"
-        className="min-w-0 scroll-mt-20 rounded-xl border bg-card xl:col-start-1 xl:row-start-2"
+        className="min-w-0 rounded-xl border bg-card xl:col-start-1 xl:row-start-2"
       >
         <ReviewJournal start={start} week={week} opportunities={review.opportunities} onSaved={onWeek} />
       </div>

@@ -26,7 +26,7 @@ export function OpportunitiesView() {
       <PageHeader
         title="Cơ hội"
         nav="/co-hoi/"
-        description="Giả thuyết kinh doanh: bằng chứng ủng hộ hay phản bác, điểm tự chấm và hạn quyết định giữ, bỏ hay làm."
+        description="Giả thuyết kinh doanh: bằng chứng, điểm tự chấm và hạn quyết định giữ, bỏ hay làm."
       />
       <div className="flex flex-col gap-8 px-4 pb-12 sm:px-8">
         <OpportunityList />

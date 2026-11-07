@@ -202,14 +202,14 @@ function BragSection() {
         <LoadingRows />
       ) : firstRun ? (
         <EmptyPanel
-          area="growth"
           glyph={Trophy}
-          title="Nhật ký còn trống"
+          title="Chưa có thành tựu nào"
           text="Mỗi tuần ghi việc đã làm được, kèm kết quả bằng số: nguyên liệu cho CV và case study."
           action={
-            <Button onClick={create}>
+            <Button onClick={create} aria-keyshortcuts="n">
               <Plus aria-hidden />
               Ghi thành tựu
+              <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
             </Button>
           }
           quick={
@@ -451,7 +451,7 @@ function PredictionsSection() {
         <div className={cn('flex min-h-12 items-center gap-2 px-3 py-2', !none && 'flex-wrap')}>
           <h2
             id="pred-title"
-            className="me-auto min-w-0 scroll-mt-20 font-heading text-lg font-semibold tracking-tight text-balance"
+            className="me-auto min-w-0 font-heading text-lg font-semibold tracking-tight text-balance"
           >
             Dự đoán, chấm lại sau 6 tháng
           </h2>

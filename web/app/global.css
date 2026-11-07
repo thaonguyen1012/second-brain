@@ -352,6 +352,16 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* The app shell's sticky top bar (h-16, app-shell.tsx): keyboard focus and hash jumps stop below it, never under it
+   (WCAG 2.4.11), so app pages need no scroll-mt of their own. Sổ tay stacks its sticky group row under the bar
+   (`data-sticky-groups`). Lesson pages (Fumadocs, no app shell) keep their own heading margins. */
+html:has([data-slot='sidebar-wrapper']) {
+  scroll-padding-top: 4.5rem;
+}
+html:has([data-sticky-groups]) {
+  scroll-padding-top: 7.5rem;
+}
+
 html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;

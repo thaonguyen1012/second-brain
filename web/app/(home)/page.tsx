@@ -48,9 +48,10 @@ const start = { slug: businessPhases[0].items[0].books[0], phase: businessPhases
  * "Hôm nay" (DECISIONS 4.4, 9.3; DESIGN.md §9a): the resume hero, then from xl a 20rem rail of status tiles (week
  * rhythm, objectives, inbox, handbooks, predictions due) beside the setup checklist, the roadmap's next steps and
  * today's brief; the background status line closes the page. A prerendered static shell: every date and number is
- * computed in the browser. DOM order is the phone order (hero, rail, setup, roadmap, brief); the rail spans the
- * five rows, so its extra height lands in the last `1fr` row and the main column keeps no gaps. Between lg and xl the
- * rail is two columns; below lg one (beside the 224px sidebar at md, a half-width tile cannot hold the week strip).
+ * computed in the browser. DOM order is the phone order and the tab order (hero, setup, rail, roadmap, brief: the
+ * checklist under the hero, §9a); the rail spans the five rows, so its extra height lands in the last `1fr` row and
+ * the main column keeps no gaps. Between lg and xl the rail is two columns; below lg one (beside the 224px sidebar
+ * at md, a half-width tile cannot hold the week strip).
  */
 export default function HomePage() {
   return (
@@ -61,6 +62,7 @@ export default function HomePage() {
 
       <div className="grid w-full max-w-7xl gap-6 px-4 pb-8 sm:px-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:grid-rows-[auto_auto_auto_auto_1fr] xl:items-start">
         <ContinueReading books={homeBooks} start={start} className="xl:col-start-1" />
+        <TodaySetup className="xl:col-start-1" />
         <aside
           aria-label="Tuần, inbox và sổ tay"
           className="grid gap-4 lg:grid-cols-2 xl:col-start-2 xl:row-span-5 xl:row-start-1 xl:grid-cols-1"
@@ -71,7 +73,6 @@ export default function HomePage() {
           <TodayBooks books={homeBooks} groups={groups} />
           <TodayPredictions className="lg:col-span-2 xl:col-span-1" />
         </aside>
-        <TodaySetup className="xl:col-start-1" />
         <TodayRoadmap books={homeBooks} business={business} it={it} className="xl:col-start-1" />
         <TodayBrief className="xl:col-start-1" />
       </div>

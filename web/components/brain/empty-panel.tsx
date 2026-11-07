@@ -1,29 +1,56 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import type { AreaKey } from '@/lib/app-nav';
 import { EmptyStateGuide, type EmptyGuideName } from '@/components/stageshow/lazy';
 import { cn } from '@/lib/utils';
 import { GhostRows } from './ghost-rows';
+import { type CountKey, useNavCounts, useNavCountsPending } from './nav-counts';
 
 // The first-run empty panel (DESIGN.md §9a, D26): what a list page shows before its first record, unfiltered. Its
 // own file on purpose: api-state.tsx is in the Hôm nay bundle, and this one pulls in the Stageshow wrappers, so
 // nothing on Hôm nay may import it. Filtered-empty keeps EmptyState with "Xóa bộ lọc"; a cleared list is one line.
 
-/** The page's area. Owner 07/11/2026: no colour per area, so every area renders the same; kept for the callers. */
-export type EmptyPanelArea = Exclude<AreaKey, 'today'> | 'neutral';
+/**
+ * Whether a list page with a first-run panel shows its toolbar (DESIGN.md §9a, D26: hidden until the list has a
+ * record or a filter is set), one rule for every such page. With rows, a filter or a failed load: shown (the error
+ * state keeps the add action next to "Thử lại"). Loaded and empty: hidden, the panel carries the one primary. While
+ * the list loads, the sidebar count (GET /api/counts, `count`) decides, so a first-run page never flashes the
+ * toolbar and a page with records never jumps down when they arrive (first load, reload on tab focus). On a cold
+ * load, before the counts' first answer, 'wait': the caller keeps the toolbar's place but invisible. Counts that
+ * failed are unknown: shown, as before the counts existed.
+ */
+export function useToolbarState({
+  rows,
+  filtered,
+  loading,
+  failed,
+  count,
+}: {
+  rows: number;
+  filtered: boolean;
+  loading: boolean;
+  failed: boolean;
+  count: CountKey;
+}): 'show' | 'wait' | 'hide' {
+  const counts = useNavCounts();
+  const pending = useNavCountsPending();
+  if (rows > 0 || filtered || failed) return 'show';
+  if (!loading) return 'hide';
+  if (counts) return counts[count] === 0 ? 'hide' : 'show';
+  return pending ? 'wait' : 'show';
+}
 
 /** The @3xl container width (48rem) from which the slot sits beside the message. */
 const BESIDE_PX = 768;
 
 /**
- * One surface: on the left the missing object's glyph (32px, muted ink, no tile), the title, one sentence, the one
- * primary `action` and optional `quick` actions (at most 6 outline `sm` Buttons, or one inline form); on the right,
+ * One surface: on the left the missing object's glyph (32px, muted ink, no tile), the title ("Chưa có <object>
+ * nào"), one sentence, the one primary `action` (with its Kbd when the page has a shortcut) and optional `quick`
+ * actions (at most 6 outline `sm` Buttons with a + icon, or one inline form with a one-line caption); on the right,
  * from a 48rem container, a well with the page's `guide` (open unless the owner hid it) or `ghost`. While the guide is
  * hidden the slot shows `ghost`, by default three ghost rows. Without `guide` and `ghost` there is no slot.
  */
 export function EmptyPanel({
-  area,
   glyph: Glyph,
   title,
   text,
@@ -33,7 +60,6 @@ export function EmptyPanel({
   ghost,
   className,
 }: {
-  area: EmptyPanelArea;
   /** The missing object (BookPlus, FlaskConical...), never the page's nav icon (D21) */
   glyph: LucideIcon;
   title: string;
@@ -65,7 +91,8 @@ export function EmptyPanel({
   return (
     <div ref={shell} className={cn('@container overflow-hidden rounded-xl border bg-card', className)}>
       <div className={cn('grid', hasSlot && '@3xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]')}>
-        <div className="flex min-w-0 flex-col items-start gap-3 p-6">
+        {/* beside the slot (taller, a guide or ghost rows) the message sits in the middle, not over a white gap */}
+        <div className={cn('flex min-w-0 flex-col items-start gap-3 p-6', hasSlot && '@3xl:justify-center')}>
           <span aria-hidden className="flex h-9 items-center text-muted-foreground">
             <Glyph className="size-8 forced-colors:text-inherit" strokeWidth={1.5} absoluteStrokeWidth />
           </span>

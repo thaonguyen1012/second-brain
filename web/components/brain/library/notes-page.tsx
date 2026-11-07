@@ -25,10 +25,9 @@ import {
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { ConfirmDelete, DeleteButton } from '../confirm-delete';
-import { EmptyPanel } from '../empty-panel';
+import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { KeyLegend } from '../key-legend';
 import { PAGE_WIDTH } from '../layout';
-import { useNavCounts } from '../nav-counts';
 import { RowMenu } from '../row-menu';
 import { NoteDialog, type NoteDraft } from './note-dialog';
 import type { ItemLabel } from './item-picker';
@@ -296,10 +295,8 @@ export function NotesPage() {
   const failed = !!notes.error && !notes.data;
   const firstLoad = notes.loading && shown.length === 0;
   // The toolbar waits for a first note, a query or an Item filter (DESIGN.md §9a): with no notes the empty panel's
-  // "Viết ghi chú" is the one primary (D2). While the list loads it stays unless the sidebar count already says 0, so
-  // the notes never jump down when they arrive (first load, reload on tab focus).
-  const counts = useNavCounts();
-  const showToolbar = shown.length > 0 || filtered || (notes.loading && counts?.notes !== 0);
+  // "Viết ghi chú" is the one primary (D2). The shared rule (empty-panel.tsx) reads the sidebar count meanwhile.
+  const toolbar = useToolbarState({ rows: shown.length, filtered, loading: notes.loading, failed, count: 'notes' });
   const clearFilters = () => {
     setQuery('');
     setCursor(0);
@@ -310,8 +307,8 @@ export function NotesPage() {
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
       {/* One toolbar row: search left, "Ghi chú mới" keeps the end of row 1 at 390 px (icon only there) */}
-      {showToolbar && (
-        <div className="flex flex-wrap items-center gap-2">
+      {toolbar !== 'hide' && (
+        <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
           <div className="relative min-w-0 flex-1 sm:w-80 sm:flex-none">
             <Search
               className="pointer-events-none absolute start-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
@@ -393,7 +390,6 @@ export function NotesPage() {
         <FilteredEmpty onClear={clearFilters}>Không có ghi chú nào khớp bộ lọc.</FilteredEmpty>
       ) : shown.length === 0 ? (
         <EmptyPanel
-          area="library"
           glyph={NotebookPen}
           title="Chưa có ghi chú nào"
           text="Ghi lại điều đáng nhớ và gắn vào item."
@@ -405,6 +401,7 @@ export function NotesPage() {
           }
           quick={templates.map((t) => (
             <Button key={t.label} variant="outline" size="sm" onClick={() => openEditor(null, t.markdown)}>
+              <Plus aria-hidden />
               {t.label}
             </Button>
           ))}

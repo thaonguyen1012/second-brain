@@ -15,10 +15,9 @@ import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
 import { ApiErrorState, ApiStaleAlert, describeApiError, openError } from './api-state';
 import { StatusBadge } from './brain-card';
 import { ChoiceSelect } from './choice-select';
-import { EmptyPanel } from './empty-panel';
+import { EmptyPanel, useToolbarState } from './empty-panel';
 import { ItemDialog } from './item-dialog';
 import { PAGE_WIDTH } from './layout';
-import { useNavCounts } from './nav-counts';
 import { gapLabel, missingOutput, noteDraftForItem } from './library/done-output';
 import { handbooks, importHandbooks } from './library/handbook-import';
 import { FilteredEmpty, RowsSkeleton, onRowClick } from './library/list-rows';
@@ -244,16 +243,25 @@ export function LibraryPage() {
   const failed = !!items.error && !items.data;
   const firstLoad = items.loading && list.length === 0;
   // The toolbar waits for a first record or a filter (DESIGN.md §9a): an empty library shows only the empty panel,
-  // whose "Thêm item" is the one primary (D2). While the list loads it stays unless the sidebar count already says 0,
-  // so a library with records never jumps down when they arrive (first load, reload on tab focus).
-  const counts = useNavCounts();
-  const showToolbar = list.length > 0 || !unfiltered || (items.loading && counts?.items !== 0);
+  // whose "Thêm item" is the one primary (D2). The shared rule (empty-panel.tsx) reads the sidebar count meanwhile.
+  const toolbar = useToolbarState({
+    rows: list.length,
+    filtered: !unfiltered,
+    loading: items.loading,
+    failed,
+    count: 'items',
+  });
 
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
       {/* 390 px: the two filters share row 1, "Thêm item" takes row 2 at full width (DESIGN.md §6 Toolbar, D11) */}
-      {showToolbar && (
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+      {toolbar !== 'hide' && (
+        <div
+          className={cn(
+            'grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center',
+            toolbar === 'wait' && 'invisible',
+          )}
+        >
           <ChoiceSelect
             label="Loại"
             value={type}
@@ -297,7 +305,6 @@ export function LibraryPage() {
         </FilteredEmpty>
       ) : list.length === 0 ? (
         <EmptyPanel
-          area="library"
           glyph={BookPlus}
           title="Chưa có item nào"
           text="Thêm sách, phim, khóa học, bài viết hoặc dự án; mục từ inbox cũng có thể thành item."
@@ -314,7 +321,7 @@ export function LibraryPage() {
               onClick={() => void addHandbooks()}
               disabled={importing !== null || loaded === false}
             >
-              {importing && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />}
+              {importing ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Plus aria-hidden />}
               {importing
                 ? `Đang thêm ${importing.sent}/${importing.total} khóa học…`
                 : `Thêm ${handbooks.length} khóa học từ Sổ tay`}

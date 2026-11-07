@@ -52,7 +52,11 @@ export default function HandbooksPage() {
 
       {/* Jump links to the three groups, kept under the top bar while scrolling (full-bleed, flush with the band:
           -mt-6 takes back the header's margin). The dot is the group colour; the text stays neutral. */}
-      <nav aria-label="Nhóm sổ tay" className="sticky top-16 z-10 -mt-6 mb-6 border-b bg-background/95 py-2">
+      <nav
+        aria-label="Nhóm sổ tay"
+        data-sticky-groups
+        className="sticky top-16 z-10 -mt-6 mb-6 border-b bg-background/95 py-2"
+      >
         <div className={cn(column, 'flex flex-wrap items-center gap-x-1')}>
           {tracks.map((t, i) => (
             <Button
@@ -82,8 +86,8 @@ export default function HandbooksPage() {
             <section
               key={track.slug}
               id={`track-${track.slug}`}
-              // Clears the top bar and the sticky jump row when a jump link scrolls here.
-              className="flex scroll-mt-32 flex-col gap-3 sm:gap-4"
+              // A jump link lands below the top bar and the sticky group row (scroll-padding, app/global.css).
+              className="flex flex-col gap-3 sm:gap-4"
               aria-labelledby={`track-${track.slug}-title`}
             >
               <div className="flex flex-col gap-1">
@@ -105,10 +109,11 @@ export default function HandbooksPage() {
         })}
       </div>
 
-      {/* mt-6 below sm: the same 24px as between the groups, which keeps the phone page short. */}
-      <footer className="mt-6 border-t py-4 text-sm text-muted-foreground sm:mt-12 sm:py-6">
+      {/* mt-6 below sm: the same 24px as between the groups; there the links stand alone on one line (P2: the phone
+          page stays under 2,200 px), the question joins them from sm. */}
+      <footer className="mt-6 border-t py-3 text-sm text-muted-foreground sm:mt-12 sm:py-6">
         <p className={column}>
-          Alex&apos;s Brain là gì và được xây thế nào?{' '}
+          <span className="max-sm:hidden">Alex&apos;s Brain là gì và được xây thế nào? </span>
           <Link href="/gioi-thieu/" className={footerLink}>
             Giới thiệu và case study
           </Link>

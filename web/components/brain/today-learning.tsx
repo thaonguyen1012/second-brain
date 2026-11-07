@@ -5,7 +5,6 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ChevronRight, Circle, CircleCheck } from 'lucide-react';
-import type { ApiCounts } from '@/lib/api/client';
 import { weeksApi } from '@/lib/api/weeks';
 import { useApi } from '@/lib/api/use-api';
 import { addDays, mondayOf, todayPrague } from '@/lib/dates';
@@ -14,26 +13,29 @@ import { Button } from '@/components/ui/button';
 import { MenuItem } from '@/components/ui/menu';
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { bookHref, doneIn, percent, type HeroBook } from '@/components/progress';
+import { bookHref, bookState, doneIn, percent, type HeroBook } from '@/components/progress';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from './layout';
-import { useNavCounts } from './nav-counts';
+import { type CountKey, useNavCounts } from './nav-counts';
 import { RowMenu } from './row-menu';
 import { Panel, TileError } from './today-main';
 import { dayLabel, isoWeek, weekdayIndex } from './tuan/week-utils';
-import { WeekStrip, dayLevel, type DayLevel, type StripDay } from './week-strip';
+import { StripLegend, WeekStrip, dayLevel, type DayLevel, type StripDay } from './week-strip';
 
 /** Study days a week aims for (no streaks: a missed day is a muted cell, DESIGN.md D31). */
-export const WEEK_TARGET_DAYS = 5;
+const WEEK_TARGET_DAYS = 5;
 
 const fmt = (n: number) => n.toLocaleString('vi-VN');
 
-/** A 64px (or full-width) bar in a book's group colour; the number beside it carries the meaning. */
+/**
+ * A 64px (or full-width) bar in a book's group colour; the number beside it carries the meaning. Forced colours
+ * draw the rail's outline and a CanvasText fill, as ui/progress.tsx does.
+ */
 function Bar({ done, total, fill, className }: { done: number; total: number; fill: string; className?: string }) {
   return (
-    <span aria-hidden className={cn('block h-1.5 overflow-hidden rounded-full bg-input', className)}>
+    <span aria-hidden className={cn('block h-1.5 overflow-hidden rounded-full bg-input forced-colors:outline', className)}>
       <span
-        className={cn('block h-full', done > 0 && 'min-w-1.5', fill)}
+        className={cn('block h-full forced-colors:bg-[CanvasText]', done > 0 && 'min-w-1.5', fill)}
         style={{ width: `${total ? Math.min(100, (done / total) * 100) : 0}%` }}
       />
     </span>
@@ -78,7 +80,9 @@ export function TodayRhythm() {
           <span className="text-xs text-muted-foreground">ngày học</span>
         </p>
       </div>
-      <p className="text-xs text-muted-foreground">Mục tiêu {WEEK_TARGET_DAYS} ngày có bài học mỗi tuần</p>
+      {/* the cell colours in words, as on Tuần; "mục tiêu" stays the word for the week's objectives */}
+      <StripLegend />
+      <p className="text-xs text-muted-foreground">Nhắm tới {WEEK_TARGET_DAYS} ngày có bài học mỗi tuần</p>
     </Panel>
   );
 }
@@ -93,11 +97,11 @@ export interface BookGroup {
 /** Lessons done in a book, never above its lesson count (a renamed page can leave an old mark behind). */
 const doneOf = (done: Parameters<typeof doneIn>[0], b: HeroBook) => Math.min(b.lessonCount, doneIn(done, b.slug));
 
-/** The handbooks in numbers, never empty: lessons done of all, books in progress, one bar per group. */
+/** The handbooks in numbers, never empty: lessons done of all, books in progress (as Sổ tay counts them), one bar per group. */
 export function TodayBooks({ books, groups }: { books: HeroBook[]; groups: BookGroup[] }) {
   const { done, loaded } = useProgress();
   const sum = (list: HeroBook[], f: (b: HeroBook) => number) => list.reduce((n, b) => n + f(b), 0);
-  const started = books.filter((b) => doneOf(done, b) > 0 && doneOf(done, b) < b.lessonCount).length;
+  const started = books.filter((b) => bookState(done, b.slug, b.lessonCount) === 'started').length;
   return (
     <Panel title="Sổ tay" href="/phat-trien/" linkLabel="Sổ tay">
       {!loaded ? (
@@ -134,10 +138,16 @@ export function TodayBooks({ books, groups }: { books: HeroBook[]; groups: BookG
   );
 }
 
-type CountKey = { [K in keyof ApiCounts]: ApiCounts[K] extends number ? K : never }[keyof ApiCounts];
+interface SetupStep {
+  key: CountKey;
+  label: string;
+  hint: string;
+  action: string;
+  href: string;
+}
 
 /** The five first steps of the second brain, each ticked by its sidebar count (GET /api/counts). */
-const steps: readonly { key: CountKey; label: string; hint: string; action: string; href: string }[] = [
+const steps: readonly SetupStep[] = [
   {
     key: 'items',
     label: 'Thêm khóa học vào Thư viện',
@@ -148,7 +158,7 @@ const steps: readonly { key: CountKey; label: string; hint: string; action: stri
   {
     key: 'objectivesOpen',
     label: 'Chọn 3 ưu tiên tuần này',
-    hint: 'Ba việc quan trọng nhất của tuần, nhìn lại vào cuối tuần.',
+    hint: 'Ba kết quả muốn có trong tuần, nhìn lại vào cuối tuần.',
     action: 'Chọn ưu tiên',
     href: '/tuan/?tab=ke-hoach',
   },
@@ -203,12 +213,22 @@ function writeSetup(state: SetupState) {
 }
 
 /**
+ * From Friday the week that is ending is not planned any more: like the Tuần tile (today-main.tsx), the objectives
+ * step points to next week's plan. Its tick still comes from this week's open objectives, so it ticks on Monday.
+ */
+function stepFor(s: SetupStep, today: string): SetupStep {
+  if (s.key !== 'objectivesOpen' || weekdayIndex(today) < 4) return s;
+  return { ...s, label: 'Chọn 3 ưu tiên tuần tới', href: `/tuan/?w=${addDays(mondayOf(today), 7)}&tab=ke-hoach` };
+}
+
+/**
  * "Thiết lập bộ não thứ hai" (DESIGN.md §9a): five steps ticked only from real data; a step ticked once stays ticked
  * (deleting the only note does not undo it). Only the next open step shows its hint and button. Gone at 5/5, after
  * "Ẩn", or while the counts are unknown (API absent). While the sidebar's counts are on their way, a card this
  * browser has not hidden or finished holds its place, so the roadmap and brief below do not jump down.
  */
 export function TodaySetup({ className }: { className?: string }) {
+  const today = todayPrague();
   const counts = useNavCounts();
   const [stored, setStored] = useState<SetupState>(readSetup);
   const [waited, setWaited] = useState(false);
@@ -257,7 +277,7 @@ export function TodaySetup({ className }: { className?: string }) {
         </div>
       </div>
       <ol className="divide-y border-t">
-        {steps.map((s) =>
+        {steps.map((step) => stepFor(step, today)).map((s) =>
           isDone(s.key) ? (
             <li key={s.key} className="flex h-10 items-center gap-3 px-4 text-sm text-muted-foreground">
               <CircleCheck aria-hidden className="size-4 shrink-0 text-success-foreground" />
@@ -266,7 +286,7 @@ export function TodaySetup({ className }: { className?: string }) {
                 <span className="sr-only"> (xong)</span>
               </span>
             </li>
-          ) : s === next ? (
+          ) : s.key === next?.key ? (
             <li
               key={s.key}
               className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-4 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]"

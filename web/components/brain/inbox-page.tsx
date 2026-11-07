@@ -568,9 +568,8 @@ export function InboxPage() {
         <LoadingCards />
       ) : firstRun ? (
         <EmptyPanel
-          area="neutral"
           glyph={Inbox}
-          title="Inbox trống"
+          title="Chưa có mục nào trong Inbox"
           text="Dán một link hoặc ghi một ý tưởng vào ô ở trên; mỗi mục sẽ hiện ở đây thành một thẻ để xử lý bằng phím."
         />
       ) : shown.length === 0 ? (

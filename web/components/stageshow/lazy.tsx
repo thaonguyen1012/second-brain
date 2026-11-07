@@ -33,8 +33,9 @@ const InboxTriage = dynamic(() => import('./guides/inbox-triage'), {
   loading: GuidePlaceholder,
 });
 
-// The page guides shown in empty states (all, the Inbox too, share the 600 x 452 / 358 x 470 design); the
-// bookmarklet guide shows in the Inbox's "Thu thập từ trình duyệt" box instead.
+// The page guides (all share the 600 x 452 / 358 x 470 design), shown in empty states and on /huong-dan/; the Inbox
+// guide only on /huong-dan/ (the Inbox's empty state has none), and the bookmarklet guide in the Inbox's "Thu thập từ
+// trình duyệt" box.
 const WeekRitual = dynamic(() => import('./guides/week-ritual'), { ssr: false, loading: GuidePlaceholder });
 const OpportunityEvidence = dynamic(() => import('./guides/opportunity-evidence'), {
   ssr: false,

@@ -13,7 +13,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
-import { EmptyPanel } from '../empty-panel';
+import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { PAGE_WIDTH } from '../layout';
 import { RowMenu } from '../row-menu';
 import { BillableLegend, MiniBillableBar } from './billable-bar';
@@ -182,7 +182,13 @@ export function ProjectsPage() {
   };
   const filtered = status !== 'all';
   // Unfiltered and empty: the first-run panel carries the one "Thêm dự án"; no toolbar until a project exists (D26).
-  const emptyUnfiltered = !filtered && !projects.loading && !!projects.data && !projects.error && list.length === 0;
+  const toolbar = useToolbarState({
+    rows: list.length,
+    filtered,
+    loading: projects.loading,
+    failed: !!projects.error && !projects.data,
+    count: 'projects',
+  });
   const anyMinutes = list.some((p) => p.minutesTotal > 0);
 
   return (
@@ -198,8 +204,8 @@ export function ProjectsPage() {
         }}
       />
 
-      {!emptyUnfiltered && (
-        <div className="flex items-center gap-2">
+      {toolbar !== 'hide' && (
+        <div className={cn('flex items-center gap-2', toolbar === 'wait' && 'invisible')}>
           <ChoiceSelect
             label="Trạng thái"
             value={status}
@@ -234,7 +240,6 @@ export function ProjectsPage() {
         </p>
       ) : list.length === 0 ? (
         <EmptyPanel
-          area="work"
           glyph={FolderPlus}
           title="Chưa có dự án nào"
           text="Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế."

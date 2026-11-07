@@ -6,7 +6,12 @@ import { API_WRITE_EVENT, api, type ApiCounts } from '@/lib/api/client';
 // fires API_WRITE_EVENT); the last two only while a sidebar is mounted. A refresh asked for while one is in flight
 // runs again after it, so a write is never answered by numbers read before it. null = unknown (API absent or not
 // signed in): no counts show.
+/** The numeric counts (every key but `timerRunning`). */
+export type CountKey = { [K in keyof ApiCounts]: ApiCounts[K] extends number ? K : never }[keyof ApiCounts];
+
 let counts: ApiCounts | null = null;
+/** false until the first answer (or failure): null counts then mean "not asked yet", not "unknown" */
+let settled = false;
 let inflight = false;
 let again = false;
 let started = false;
@@ -30,6 +35,7 @@ export function refreshNavCounts(): void {
     )
     .finally(() => {
       inflight = false;
+      settled = true;
       for (const l of listeners) l();
       if (again) {
         again = false;
@@ -70,4 +76,9 @@ const snapshot = () => counts;
 /** The counts, or null while unknown. The first fetch comes from the sidebar's navigation effect. */
 export function useNavCounts(): ApiCounts | null {
   return useSyncExternalStore(subscribe, snapshot, () => null);
+}
+
+/** True until the first GET /api/counts has answered or failed (a cold load); false afterwards, refreshes included. */
+export function useNavCountsPending(): boolean {
+  return useSyncExternalStore(subscribe, () => !settled, () => true);
 }

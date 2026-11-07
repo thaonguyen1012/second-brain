@@ -27,7 +27,7 @@ export function WeekSection({
   className?: string;
 }) {
   return (
-    <section aria-labelledby={id} className={cn('flex min-w-0 scroll-mt-20 flex-col gap-3 p-4 sm:p-6', className)}>
+    <section aria-labelledby={id} className={cn('flex min-w-0 flex-col gap-3 p-4 sm:p-6', className)}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 id={id} className="font-heading text-[15px] font-semibold tracking-tight">
           {title}

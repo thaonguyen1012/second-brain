@@ -7,8 +7,9 @@ import { cn } from '@/lib/utils';
 
 /*
  * The frame around a guide in a page's empty state: a title, "Xem lại" (replay a guide that plays once) and
- * "Ẩn hướng dẫn" / "Xem hướng dẫn". Under an empty state the guide starts closed (`defaultHidden`), so the
- * empty state stays the one focal point (DESIGN.md D1, D26); /huong-dan/ starts open. Once the owner opens or
+ * "Ẩn hướng dẫn" / "Xem hướng dẫn". Under a plain empty state (Giờ, Tuần) the guide starts closed (`defaultHidden`),
+ * so the empty state stays the one focal point (DESIGN.md D1); in a first-run panel's slot (flush, below) and on
+ * /huong-dan/ it starts open (DESIGN.md §9a "The guide in the slot" for the D2/D12/D28 exceptions). Once the owner opens or
  * hides a guide, that choice wins everywhere. It is remembered per guide in localStorage; every access is in
  * try/catch (private windows, blocked storage), with an in-memory copy so the toggle still works for the
  * session when storage is unavailable. On /huong-dan/ the frame is not hideable (`hideable={false}`: always
@@ -161,7 +162,7 @@ export function GuideFrame({
           id={headingId}
           className={cn(
             // closed under an empty state, the toggle follows the title instead of floating 600px away
-            'min-w-0 scroll-mt-20',
+            'min-w-0',
             flush ? 'text-pretty' : 'truncate',
             variant === 'empty' && hidden ? 'flex-initial' : 'flex-1',
             variant === 'page'

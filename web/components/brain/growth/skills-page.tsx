@@ -12,7 +12,7 @@ import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
-import { EmptyPanel } from '../empty-panel';
+import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { PAGE_WIDTH } from '../layout';
 import { fieldErrors, freshness, freshnessOrder } from './labels';
 import { SkillDialog } from './skill-dialog';
@@ -102,6 +102,14 @@ export function SkillsPage() {
   );
 
   const empty = !!skills.data && all.length === 0;
+  // The first-run panel ignores filters (none can be set while it shows), so they do not count here either.
+  const toolbar = useToolbarState({
+    rows: all.length,
+    filtered: false,
+    loading: skills.loading,
+    failed: !!skills.error && !skills.data,
+    count: 'skills',
+  });
   const clearFilters = () => {
     setFilter('all');
     setQuery('');
@@ -135,8 +143,8 @@ export function SkillsPage() {
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
       {/* 390 px: filter + "Thêm kỹ năng" on row 1, search full width on row 2 (DESIGN.md §6 Toolbar). Hidden while
           the matrix is empty: the first-run panel carries the one add (D26). */}
-      {!empty && (
-        <div className="flex flex-wrap items-center gap-2">
+      {toolbar !== 'hide' && (
+        <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
           <ChoiceSelect label="Độ mới" value={filter} onChange={setFilter} choices={filterChoices} className="w-auto" />
           <div className="relative order-last w-full sm:order-none sm:w-64">
             <Search
@@ -180,19 +188,18 @@ export function SkillsPage() {
         </ul>
       ) : empty ? (
         <EmptyPanel
-          area="growth"
           glyph={ListChecks}
-          title="Ma trận còn trống"
+          title="Chưa có kỹ năng nào"
           text="Thêm kỹ năng nền và kỹ năng của vai trò nhắm tới, rồi gắn bằng chứng: thứ đã ship, case study, bài viết."
           action={
-            <Button onClick={create}>
+            <Button onClick={create} aria-keyshortcuts="n">
               <Plus aria-hidden />
               Thêm kỹ năng đầu tiên
+              <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
             </Button>
           }
           quick={
             <>
-              <p className="basis-full text-xs text-muted-foreground">Thêm nhanh từ Sổ tay</p>
               {suggestedSkills.map((name) => (
                 <Button
                   key={name}

@@ -12,13 +12,6 @@ export const trackFill: Record<TrackSlug, string> = {
   'ky-nang': 'bg-track-ky-nang',
 };
 
-/** Underline colour of a group jump link on Sổ tay (the link text stays neutral). */
-export const trackUnderline: Record<TrackSlug, string> = {
-  'kinh-doanh': 'decoration-track-kinh-doanh',
-  it: 'decoration-track-it',
-  'ky-nang': 'decoration-track-ky-nang',
-};
-
 /** A handbook's cover: the flat group tint (the area's -soft step) under its monogram (§9a). */
 export const trackSoft: Record<TrackSlug, string> = {
   'kinh-doanh': 'bg-track-kinh-doanh-soft',

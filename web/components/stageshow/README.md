@@ -20,7 +20,7 @@ design is 358 x 356 so its desktop browser stays landscape, with its own placeho
 
 | Guide | Story | Plays | Shown in |
 |---|---|---|---|
-| `inbox-triage` | capture a link, the card unfurls, j/k/l/a/o triage to inbox zero | loop, ~15 s | Inbox empty state (tab Inbox) |
+| `inbox-triage` | capture a link, the card unfurls, j/k/l/a/o triage to inbox zero | loop, ~15 s | `/huong-dan/` only (the Inbox empty state has no guide) |
 | `week-ritual` | carry 2 objectives over, add a third (3-5 hint), R: time chart + the six questions | once, ~12 s | Tuần: a week never opened, or a blank opened week |
 | `opportunity-evidence` | create a hypothesis, evidence for (conversation) and against (link), S: 4 scores | once, ~15 s | Cơ hội list empty, no filter |
 | `work-timer` | start the timer on a project, time-lapse, T stops, the week summary fills | once, ~10 s | Dự án (no status filter) and Giờ (no filter) empty |

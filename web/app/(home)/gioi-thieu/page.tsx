@@ -127,7 +127,7 @@ export default function IntroPage() {
 
       <section
         id="tinh-nang"
-        className="flex scroll-mt-20 flex-col gap-6 border-t px-4 py-10 sm:px-8 md:py-12"
+        className="flex flex-col gap-6 border-t px-4 py-10 sm:px-8 md:py-12"
         aria-labelledby="tinh-nang-title"
       >
         <div className="flex flex-col gap-2">
@@ -172,7 +172,7 @@ export default function IntroPage() {
 
       <section
         id="case-study"
-        className="intro-case flex scroll-mt-20 flex-col gap-8 border-t px-4 py-10 sm:px-8 md:py-12"
+        className="intro-case flex flex-col gap-8 border-t px-4 py-10 sm:px-8 md:py-12"
         aria-labelledby="case-study-title"
       >
         <div className="flex flex-col gap-2">

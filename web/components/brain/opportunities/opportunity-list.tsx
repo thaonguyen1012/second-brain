@@ -13,9 +13,8 @@ import { MenuItem } from '@/components/ui/menu';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
-import { EmptyPanel } from '../empty-panel';
+import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { PAGE_WIDTH } from '../layout';
-import { useNavCounts } from '../nav-counts';
 import { RowMenu } from '../row-menu';
 import { DecideByCell, RowsSkeleton, ScoresCell } from './bits';
 import { STALE_LABEL, decisionOf, decisions, formatDay, scoreDims } from './labels';
@@ -157,10 +156,15 @@ export function OpportunityList() {
     setStale('all');
   };
   // The toolbar waits for a first opportunity or a filter (DESIGN.md §9a): an empty list shows only the empty panel,
-  // whose "Cơ hội mới" is the one primary (D2); N still opens the form. While the list loads it stays unless the
-  // sidebar count already says 0, so the rows never jump down when they arrive (first load, reload on tab focus).
-  const counts = useNavCounts();
-  const showToolbar = list.length > 0 || filtered || (opps.loading && counts?.opportunities !== 0);
+  // whose "Cơ hội mới" is the one primary (D2); N still opens the form. The shared rule (empty-panel.tsx) reads the
+  // sidebar count meanwhile.
+  const toolbar = useToolbarState({
+    rows: list.length,
+    filtered,
+    loading: opps.loading,
+    failed: !!opps.error && !opps.data,
+    count: 'opportunities',
+  });
   const newButton = (className?: string) => (
     <Button className={className} onClick={openNew} aria-keyshortcuts="n">
       <Plus aria-hidden />
@@ -172,8 +176,8 @@ export function OpportunityList() {
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6')}>
       {/* 390 px: the two filters share row 1, "Cơ hội mới" takes row 2 at full width, as on Thư viện (D11) */}
-      {showToolbar && (
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+      {toolbar !== 'hide' && (
+        <div className={cn('grid grid-cols-2 gap-2 sm:flex sm:items-center', toolbar === 'wait' && 'invisible')}>
           <ChoiceSelect
             label="Quyết định"
             value={decision}
@@ -212,7 +216,6 @@ export function OpportunityList() {
         </p>
       ) : list.length === 0 ? (
         <EmptyPanel
-          area="opportunity"
           glyph={FlaskConical}
           title="Chưa có cơ hội nào"
           text="Ghi một giả thuyết: ai đang đau vì điều gì và sẽ trả tiền cho gì."

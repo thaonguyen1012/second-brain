@@ -17,6 +17,7 @@ import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
 import { ConfirmDelete, DeleteButton } from '../confirm-delete';
+import { useToolbarState } from '../empty-panel';
 import { PAGE_WIDTH } from '../layout';
 import { addDays, formatDay, formatMinutes, isTyping } from './format';
 import { ProjectDialog } from './project-dialog';
@@ -187,6 +188,16 @@ export function TimePage() {
   // No project yet: the timer still shows, waiting, with "Thêm dự án" in place of the picker; no entry list.
   const noProjects = !!choices.data && choices.projects.length === 0;
   const projectsLoading = !choices.data && !choices.error;
+  // While the projects load, the sidebar count tells whether "no project yet" is coming, so the entries' toolbar does
+  // not show and then give way to the guide (the list pages' rule, empty-panel.tsx).
+  const entriesShown =
+    useToolbarState({
+      rows: choices.projects.length,
+      filtered: false,
+      loading: projectsLoading,
+      failed: !!choices.error && !choices.data,
+      count: 'projects',
+    }) === 'show';
   // The timer offers open projects only; with none (first run, or all done) it offers "Thêm dự án" instead.
   const openProjects = choices.projects.filter((p) => p.status === 'active' || p.status === 'planned');
 
@@ -294,7 +305,7 @@ export function TimePage() {
       {noProjects ? (
         // Nothing can be entered yet; the how-to stays one click away
         <EmptyStateGuide guide="work" />
-      ) : emptyUnfiltered ? (
+      ) : !entriesShown ? null : emptyUnfiltered ? (
         <section aria-labelledby="time-entries-title" className="flex flex-col items-start gap-3">
           <h2 id="time-entries-title" className="font-heading text-lg font-semibold tracking-tight">
             Các mục giờ
@@ -306,7 +317,7 @@ export function TimePage() {
           <EmptyStateGuide guide="work" className="w-full" />
         </section>
       ) : (
-        <section id="time-entries" aria-labelledby="time-entries-title" className="flex scroll-mt-20 flex-col gap-4">
+        <section id="time-entries" aria-labelledby="time-entries-title" className="flex flex-col gap-4">
           <h2 id="time-entries-title" className="font-heading text-lg font-semibold tracking-tight">
             Các mục giờ
           </h2>

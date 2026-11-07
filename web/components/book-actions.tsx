@@ -1,13 +1,13 @@
 'use client';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import { useProgress, type LastVisited, type ProgressSnapshot } from '@/lib/progress';
+import { useProgress, type LastVisited } from '@/lib/progress';
 import { Button } from '@/components/ui/button';
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/components/brain/layout';
-import { doneIn, percent } from './progress';
+import { bookState, bookVerb, doneIn, percent, type BookState } from './progress';
 
 // The progress-aware parts of the Sổ tay page (DESIGN.md §9a). The server page passes plain props, class strings
 // already resolved, so the registry and the colour maps stay out of this chunk.
@@ -35,18 +35,6 @@ function continueHref(href: string, last: LastVisited | null): string {
   return last?.pageSlug ? `${href}${last.pageSlug}/` : href;
 }
 
-/**
- * new: no lesson done, BookProgress's "chưa bắt đầu" (a visit alone does not count); finished: every lesson done,
- * BookProgress's 100%; started: in between.
- */
-type BookState = 'new' | 'started' | 'finished';
-function stateOf(p: ProgressSnapshot, slug: string, total: number): BookState {
-  const done = doneIn(p.done, slug);
-  return done === 0 ? 'new' : done >= total ? 'finished' : 'started';
-}
-
-const actionLabel: Record<BookState, string> = { new: 'Học ngay', started: 'Học tiếp', finished: 'Ôn lại' };
-
 /** A shelf row's bar; it repeats the text beside it, so it stays out of the link's name. */
 function ShelfBar({ done, total, fill, className }: { done: number; total: number; fill: string; className: string }) {
   return (
@@ -60,18 +48,21 @@ function ShelfBar({ done, total, fill, className }: { done: number; total: numbe
 
 /**
  * The card's one filled button (owner, 03/11/2026: filled on all 15 cards): "Học ngay", "Học tiếp" once started
- * (to the last visited page when it is in this book), "Ôn lại" from the book root once every lesson is done.
+ * (to the last visited page when it is in this book), "Ôn lại" from the book root once every lesson is done
+ * (`bookState`, shared with the Hôm nay hero). Until the store answers, a placeholder of the button's size, so no
+ * wrong verb or link shows meanwhile.
  */
 export function BookAction({ slug, href, title, total }: { slug: string; href: string; title: string; total: number }) {
   const progress = useProgress();
-  const state = stateOf(progress, slug, total);
+  if (progress.loaded === false) return <Skeleton className="h-8 w-20 rounded-lg sm:h-7" />;
+  const state = bookState(progress.done, slug, total);
   return (
     <Button
       size="sm"
-      aria-label={`${actionLabel[state]}: ${title}`}
+      aria-label={`${bookVerb[state]}: ${title}`}
       render={<Link href={state === 'started' ? continueHref(href, lastIn(slug, progress.lastVisited)) : href} />}
     >
-      {actionLabel[state]}
+      {bookVerb[state]}
     </Button>
   );
 }
@@ -82,7 +73,7 @@ export function ProgressSummary({ books }: { books: readonly Pick<ShelfBook, 'sl
   if (progress.loaded === false) return <Skeleton className="my-0.5 h-4 w-72 max-w-full" />;
   const total = books.reduce((n, b) => n + b.lessonCount, 0);
   const done = books.reduce((n, b) => n + Math.min(doneIn(progress.done, b.slug), b.lessonCount), 0);
-  const count = (s: BookState) => books.filter((b) => stateOf(progress, b.slug, b.lessonCount) === s).length;
+  const count = (s: BookState) => books.filter((b) => bookState(progress.done, b.slug, b.lessonCount) === s).length;
   const parts = (
     [
       [count('started'), 'đang học'],
@@ -121,7 +112,7 @@ export function StartedShelf({ books }: { books: readonly ShelfBook[] }) {
     );
   }
   const started = books
-    .filter((b) => stateOf(progress, b.slug, b.lessonCount) === 'started')
+    .filter((b) => bookState(progress.done, b.slug, b.lessonCount) === 'started')
     .sort(
       (a, b) =>
         Number(lastIn(b.slug, last) !== null) - Number(lastIn(a.slug, last) !== null) ||

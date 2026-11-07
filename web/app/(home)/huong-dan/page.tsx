@@ -6,7 +6,7 @@ import { EmptyStateGuide, type EmptyGuideName } from '@/components/stageshow/laz
 
 export const metadata: Metadata = { title: 'Hướng dẫn' };
 
-// Every guide also shows in its page's empty state. Here each one is always open (`hideable={false}`: the hidden
+// Every guide but the Inbox one also shows in its page's empty state. Here each one is always open (`hideable={false}`: the hidden
 // choice made under an empty state does not apply) with the same anatomy: section title, guide, link to the page.
 // The Inbox guide's legend shows J/K, L, A and O only; ⌘↵ and Esc are written out under it (a still poster under
 // reduced motion shows no keys at all).
@@ -24,7 +24,8 @@ const guides: { guide: EmptyGuideName; href: string; label: string; text?: strin
     href: '/inbox/',
     label: 'Mở Inbox',
     text:
-      'Cài một lần: ở trang Inbox, tìm ô "Thu thập từ trình duyệt" cạnh danh sách, nhấn ⌘⇧B để hiện thanh dấu trang ' +
+      'Cài một lần: tìm ô "Thu thập từ trình duyệt" trên trang Inbox (bên phải danh sách trên màn hình rộng, bên dưới ' +
+      'trên điện thoại), nhấn ⌘⇧B để hiện thanh dấu trang ' +
       'rồi kéo nút Lưu vào Brain lên đó. Sau đó ở trang bất kỳ, bấm Lưu vào Brain trên thanh dấu trang (bôi đen một đoạn ' +
       'trước nếu muốn lưu kèm), rồi nhấn Enter trong cửa sổ nhỏ. Bookmarklet trỏ về đúng địa chỉ bạn kéo nó từ đó.',
   },

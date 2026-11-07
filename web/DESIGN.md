@@ -30,7 +30,7 @@ URLs, keys and aligned numbers. Weights 400, 500, 600 only (no 700). Sentence ca
 | Role | Classes | px / line | Where |
 |---|---|---|---|
 | Page title | `font-heading text-3xl font-semibold tracking-tight` | 30 / 36 | `PageHeader` h1, one per page |
-| Big number | `font-heading text-2xl font-semibold tabular-nums` | 24 / 32 | at most one per screen (timer, count, week rhythm); cover monograms are 24px marks. `StatRow` values use `text-lg` |
+| Big number | `font-heading text-2xl font-semibold tabular-nums` | 24 / 32 | at most one per screen (timer, count, week rhythm); cover monograms are 24px marks |
 | Section | `font-heading text-lg font-semibold tracking-tight` | 18 / 28 | h2 inside a page |
 | Card title | `font-heading text-[15px] font-semibold leading-5` | 15 / 20 | `BrainCard` title only |
 | Group / row title | `text-sm font-medium` (group heading: `font-semibold`) | 14 / 20 | list rows, card headers, dialog fields |
@@ -94,7 +94,7 @@ so the near pairs that remain are listed under the palette, not hidden.
   hues live on only as the handbook group hues below (and inside Stageshow pictures); `AreaKey` in `lib/app-nav.ts`
   still groups the rows. Pages outside the six areas (Inbox, capture, Giới thiệu, Hướng dẫn, personal page) get no title
   icon; the Inbox's colour stays the `warning` tone of its count.
-- **Group colours** (`--track-<slug>` and its `-soft` cover tint; `trackFill`/`trackSoft`/`trackInk`/`trackUnderline`
+- **Group colours** (`--track-<slug>` and its `-soft` cover tint; `trackFill`/`trackSoft`/`trackInk`
   in `lib/track-colors.ts`): a Sổ tay group wears
   the hue of the area its handbooks feed, so the hue keeps one meaning: Kinh doanh -> Cơ hội (orange: business
   ideas), IT -> Công việc (teal: paid technical work), Kỹ năng -> Tuần (pink: học cách học and project management
@@ -142,7 +142,10 @@ so the near pairs that remain are listed under the palette, not hidden.
 
   The header band is the well tone. On a band or a well the link blue stays >= 4.55:1 (light) / 7.1:1 (dark) and the
   focus ring >= 3.3:1 / 7.1:1. Near miss: the `bw-red` today ring on the week strip is 2.9:1 on the light well (3.1 on white);
-  today is also the last solid cell before the dashed ones, and named in the cell's title and the strip's label.
+  today is also the last solid cell before the dashed ones, and named in the cell's title ("Hôm nay, ...") and the
+  strip's label. The strip's other near misses (nonbillable 2.0, muted cell 1.1, dashed future 1.3) are named too:
+  `StripLegend` beside every strip, and the label lists the days of each level in words. Under forced colours the
+  cells switch to system colours (outlined, half-filled, filled; Highlight outline for today).
 
   Distance (OKLab ΔE ×100, normal / the lower of protan and deutan; dataviz validator), light | dark:
   - Sidebar neighbours >= 15.4 / 10.7 | 12.8 / 6.8 (Thư viện and Cơ hội: the brown stays darker than the orange).
@@ -280,7 +283,8 @@ so the near pairs that remain are listed under the palette, not hidden.
 
 - Short and caused by the user: hover/press/colour 150 ms (`transition-colors`), popovers and menus 150-200 ms,
   dialogs and sheets the Base UI defaults (<= 250 ms), ease-out in, ease-in out.
-- Nothing animates on page load (no staggered list entrances, no count-ups). Lists insert and remove without
+- Nothing animates on page load (no staggered list entrances, no count-ups; the one exception is the guide in a
+  first-run panel's slot, §9a). Lists insert and remove without
   shoving: either reserve the space or animate height with the row.
 - Infinite animations only for real live state (spinner while saving, running timer dot) and always with
   `motion-reduce:animate-none`; respect `prefers-reduced-motion` everywhere.
@@ -321,10 +325,20 @@ wins.
   the Hôm nay hero. It is a mark, not a surface: no shapes, images, gradients or shadows.
 - **Width.** App content is capped at `max-w-7xl`, left-aligned with the title; bands stay full-bleed. Hôm nay has
   a 320px rail from `xl`.
-- **First-run empty panel.** The missing object's glyph (32px, muted ink, no tile), title, one sentence, one primary; optionally up to
-  6 outline `sm` quick actions or one inline form built from the owner's own content; beside it, the area's guide
-  (open until hidden) or up to 3 static ghost rows / one ghost chart in the real geometry. The toolbar is hidden
-  until the list has a record or a filter is set. A cleared list is one line with no action.
+- **First-run empty panel.** The missing object's glyph (32px, muted ink, no tile), title ("Chưa có <object> nào"),
+  one sentence, one primary (with its `Kbd` where the page has a shortcut); optionally up to 6 outline `sm` quick
+  actions with a + icon, or one inline form under a one-line caption, built from the owner's own content; beside it
+  (vertically centred against it), the area's guide (open until hidden) or up to 3 static ghost rows / one ghost
+  chart in the real geometry. The toolbar is hidden until the list has a record or a filter is set; while the list
+  loads, the sidebar count decides, one rule for every page (`useToolbarState`, `empty-panel.tsx`). A cleared list
+  is one line with no action.
+- **The guide in the slot.** The panel's slot is the one place a guide starts open and plays (once, when it comes
+  into view; a still poster under reduced motion; "Ẩn hướng dẫn" stops it and is remembered). It is a picture of the
+  page in use, so its faux buttons, the blue one included, are not buttons of the view (D2), the slot is a divided
+  half of the panel rather than a box inside it (D12), and its one play is the exception to D28. Pages whose empty
+  state is not a list's first run keep the closed "Xem hướng dẫn" line under it: Giờ (the timer stays the focal
+  object, with or without projects) and Tuần (the plan form is the focal object). The Inbox shows no guide in its
+  empty state: its how-to is the bookmarklet box and `/huong-dan/`.
 - **Week strip.** 7 cells T2–CN: `chart-data` = a lesson done, `chart-nonbillable` = other activity only, `muted` =
   nothing, dashed = future, `bw-red` ring = today.
 - **Setup checklist.** Hôm nay may show one dismissible card under the hero: at most 5 steps, ticked only from real
@@ -333,7 +347,7 @@ wins.
   never red. No seeded sample rows.
 
 Shared pieces: `PageHeader` (the band, `components/brain/page-header.tsx`), `components/brain/layout.tsx`
-(`PAGE_WIDTH`, `wellClass`, `SectionHeader`, `StatRow`), `week-strip.tsx` (`WeekStrip`, `dayLevel`),
+(`PAGE_WIDTH`, `wellClass`, `SectionHeader`), `week-strip.tsx` (`WeekStrip`, `dayLevel`),
 `ghost-rows.tsx`, `empty-panel.tsx` (client; never imported on Hôm nay) and `EmptyStateGuide variant="flush"`.
 
 ## 10. Review checklist (cite by ID; each is checkable on a screenshot)
@@ -343,6 +357,7 @@ Take screenshots at 1440 px and 390 px, light and dark, with data and empty.
 Hierarchy
 - **D1** The eye lands first on the screen's focal object (§1.2), not on chrome, help text or a guide.
 - **D2** At most one filled blue button per view region (page toolbar, dialog footer, empty state); none duplicated.
+  A guide's faux UI is a picture, not a region (§9a).
   Exception: "Học ngay" on each Sổ tay book card (§6).
 - **D3** One page title (30px); sections 18px; nothing else above 18px except one 24px big number and the 24px cover
   monograms.
@@ -364,7 +379,8 @@ Spacing and layout
 
 Containers
 - **D12** No bordered or tinted box inside another box (inputs, code and the handbook cover
-  excepted); no card in a well, no well in a card.
+  excepted); no card in a well, no well in a card (the first-run panel's slot, a full-bleed half parted by the
+  panel's own divider, excepted, §9a).
 - **D13** A homogeneous list of more than ~5 records is rows in one container, not a stack of cards.
 - **D14** Radii from §3 (`xl` containers, `lg` controls, `md` fills, `sm` badges); nested radii concentric.
 - **D15** A container is a surface (border + `bg-card`) or, for secondary content only, a well (`bg-well`, no
@@ -403,6 +419,6 @@ States and motion
 - **D26** First-run empty = the §9a panel (one primary, ≤ 6 quick actions or one inline form, a guide or ≤ 3 ghost
   rows beside it, toolbar hidden); cleared = one line; filtered = "Xóa bộ lọc".
 - **D27** Loading skeleton matches the real geometry; errors use `ApiErrorState` / `ApiStaleAlert` with "Thử lại".
-- **D28** Nothing animates on load; transitions <= 200 ms (overlays <= 250 ms); every looping animation stops
-  under reduced motion.
+- **D28** Nothing animates on load (the first-run panel's guide excepted: it plays once in view, §9a); transitions
+  <= 200 ms (overlays <= 250 ms); every looping animation stops under reduced motion.
 - **D31** Week strip and checklist follow §9a; no streaks, XP, badges, rings or confetti; missed days are muted.
