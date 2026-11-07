@@ -168,8 +168,8 @@ export function ItemNotes({
   composeRequest: number;
   /** The composer's textarea (the Sheet opened from "Viết ghi chú" focuses it first). */
   composerRef?: Ref<HTMLTextAreaElement>;
-  /** The Item's note count changed by `delta` (a note written or deleted here). */
-  onCountChange: (delta: number) => void;
+  /** The note counts of `items` changed by `delta` (a note written here, or deleted with all its links). */
+  onCountChange: (items: readonly number[], delta: number) => void;
   /** Whether some note text here is not saved yet. */
   onDirtyChange: (dirty: boolean) => void;
 }) {
@@ -187,6 +187,8 @@ export function ItemNotes({
   // null until the user (or a request) opens or closes it; then an Item without notes opens it with the template
   const [composerOpen, setComposerOpen] = useState<boolean | null>(composeRequest > 0 ? true : null);
   const [draft, setDraft] = useState<Draft>(freshDraft);
+  // what the composer started from: an Item renamed meanwhile does not make an untouched composer "unsaved"
+  const [draftBase, setDraftBase] = useState<Draft>(draft);
   const [composeBusy, setComposeBusy] = useState(false);
   const [composeError, setComposeError] = useState<string | null>(null);
   const [edits, setEdits] = useState<ReadonlyMap<number, EditState>>(() => new Map());
@@ -220,7 +222,7 @@ export function ItemNotes({
   };
 
   const showComposer = composerOpen ?? (loaded && list.length === 0);
-  const composerDirty = showComposer && (draft.title !== freshDraft().title || changedFromTemplate(draft.markdown, template));
+  const composerDirty = showComposer && (draft.title !== draftBase.title || changedFromTemplate(draft.markdown, draftBase.markdown));
   const editDirty = (note: ApiNote, edit: EditState) => edit.title !== note.title || edit.markdown !== note.markdown;
   const dirty = composerDirty || list.some((n) => {
     const e = edits.get(n.id);
@@ -258,7 +260,9 @@ export function ItemNotes({
   const closeComposer = () => {
     focusAfter(composeButtonId);
     setComposerOpen(false);
-    setDraft(freshDraft());
+    const next = freshDraft();
+    setDraft(next);
+    setDraftBase(next);
     setComposeError(null);
   };
 
@@ -271,10 +275,12 @@ export function ItemNotes({
     try {
       const saved = await notesApi.create({ title: draft.title.trim(), markdown: draft.markdown, items: [item.id] });
       notes.mutate((d) => d && { ...d, results: [saved, ...d.results.filter((n) => n.id !== saved.id)] });
-      onCountChange(1);
+      onCountChange([item.id], 1);
       focusAfter(composeButtonId);
       setComposerOpen(false);
-      setDraft(freshDraft());
+      const next = freshDraft();
+      setDraft(next);
+      setDraftBase(next);
       say(`Đã lưu ghi chú "${noteTitle(saved)}"`);
     } catch (err) {
       setComposeError(saveError(err));
@@ -479,7 +485,7 @@ export function ItemNotes({
           const neighbour = list[at + 1] ?? list[at - 1];
           notes.mutate((d) => d && { ...d, results: d.results.filter((n) => n.id !== gone) });
           setEdit(gone, null);
-          onCountChange(-1);
+          onCountChange(deleting.items, -1);
           say(`Đã xóa ghi chú "${noteTitle(deleting)}"`);
           // the deleted note's menu is gone: the next note's (or the composer's) button takes the focus
           focusAfter(neighbour ? editButtonId(neighbour.id) : composeButtonId);

@@ -20,6 +20,7 @@ export function ItemSheet({
   onOpenChange,
   finalFocus,
   onItemChange,
+  onOtherCounts,
   onDeleted,
 }: {
   item: ApiItem | null;
@@ -30,6 +31,8 @@ export function ItemSheet({
   /** Where the focus goes when the Sheet closes (the row or card it was opened from). */
   finalFocus?: ComponentProps<typeof SheetPopup>['finalFocus'];
   onItemChange: (item: ApiItem) => void;
+  /** Other Items whose note count changed (a deleted note was linked to them too). */
+  onOtherCounts?: (items: readonly number[], delta: number) => void;
   onDeleted: (item: ApiItem) => void;
 }) {
   const dirty = useRef(false);
@@ -70,6 +73,7 @@ export function ItemSheet({
               composerRef={composer}
               titleRef={title}
               onItemChange={onItemChange}
+              onOtherCounts={onOtherCounts}
               onDeleted={onDeleted}
               onDirtyChange={(d) => {
                 dirty.current = d;

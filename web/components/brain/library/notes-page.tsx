@@ -305,7 +305,14 @@ export function NotesPage() {
   const selected = Math.min(cursor, Math.max(0, shown.length - 1));
   // the keyboard cursor belongs to the list (a note may show in two groups)
   const current = view === 'list' ? shown[selected] : undefined;
-  const groups = useMemo(() => (view === 'items' ? groupNotesByItem(shown) : []), [view, shown]);
+  // filtered by an Item, only that Item's group: its notes' other Items were filtered out
+  const groups = useMemo(
+    () =>
+      view === 'items'
+        ? groupNotesByItem(shown).filter((g) => itemFilter === null || g.item === itemFilter)
+        : [],
+    [view, shown, itemFilter],
+  );
   const groupPictures = groups.some((g) => {
     const it = g.item === null ? undefined : index.byId.get(g.item);
     return !!it && itemPicture(it) !== null;

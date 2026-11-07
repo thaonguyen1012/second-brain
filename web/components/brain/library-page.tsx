@@ -382,6 +382,17 @@ export function LibraryPage() {
         onOpenChange={setSheetOpen}
         finalFocus={finalFocus}
         onItemChange={sheetChanged}
+        onOtherCounts={(ids, delta) =>
+          items.mutate(
+            (d) =>
+              d && {
+                ...d,
+                results: d.results.map((i) =>
+                  ids.includes(i.id) ? { ...i, noteCount: Math.max(0, i.noteCount + delta) } : i,
+                ),
+              },
+          )
+        }
         onDeleted={(deleted) => {
           removeItem(deleted.id);
           setSheetOpen(false);

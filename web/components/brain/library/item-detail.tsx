@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import Link from 'next/link';
 import { Briefcase, ExternalLink, Maximize2, Pencil } from 'lucide-react';
 import { api, type ApiItem, type ApiItemStatus } from '@/lib/api/client';
@@ -73,6 +73,7 @@ export function ItemDetail({
   composerRef,
   titleRef,
   onItemChange,
+  onOtherCounts,
   onDeleted,
   onDirtyChange,
 }: {
@@ -87,6 +88,8 @@ export function ItemDetail({
   titleRef?: RefObject<HTMLHeadingElement | null>;
   /** The Item as saved after a change made here (properties, status, note count). */
   onItemChange: (item: ApiItem) => void;
+  /** Other Items whose note count changed here (a deleted note was linked to them too). */
+  onOtherCounts?: (items: readonly number[], delta: number) => void;
   onDeleted: (item: ApiItem) => void;
   /** Whether unsaved note text is on the page (the Sheet asks before it closes). */
   onDirtyChange?: (dirty: boolean) => void;
@@ -99,6 +102,11 @@ export function ItemDetail({
   const [dirty, setDirty] = useState(false);
   const [leave, setLeave] = useState<(() => void) | null>(null);
   useLeaveGuard(dirty, (go) => setLeave(() => go));
+  // The Item as last rendered: a note saved after a status change must not put the old status back
+  const latest = useRef(item);
+  useEffect(() => {
+    latest.current = item;
+  });
   const ownComposer = useRef<HTMLTextAreaElement | null>(null);
   const composer = composerRef ?? ownComposer;
   // "Viết ghi chú" in the Item dialog: once the dialog has closed, the focus goes to the composer it opened
@@ -220,7 +228,12 @@ export function ItemDetail({
         item={item}
         composeRequest={composeRequest}
         composerRef={composer}
-        onCountChange={(delta) => onItemChange({ ...item, noteCount: Math.max(0, item.noteCount + delta) })}
+        onCountChange={(items, delta) => {
+          const now = latest.current;
+          if (items.includes(now.id)) onItemChange({ ...now, noteCount: Math.max(0, now.noteCount + delta) });
+          const others = items.filter((id) => id !== now.id);
+          if (others.length) onOtherCounts?.(others, delta);
+        }}
         onDirtyChange={(d) => {
           setDirty(d);
           onDirtyChange?.(d);

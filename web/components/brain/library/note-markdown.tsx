@@ -4,14 +4,14 @@ import type { ComponentProps } from 'react';
 import { Square, SquareCheckBig } from 'lucide-react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { markdownHref } from '@/lib/item-notes';
-import { isLocalImage } from '@/lib/item-picture';
+import { markdownHref, noteImageSrc } from '@/lib/item-notes';
 import { cn } from '@/lib/utils';
 
 // A note's markdown as reading text (DECISIONS 9.8, until the block editor lands). Loaded only through note-body.tsx
 // (React.lazy), so react-markdown and remark-gfm ship in their own chunk, never on Hôm nay. Safe by construction: raw
 // HTML stays visible as text (react-markdown escapes it; no rehype-raw), links go through markdownHref (same-origin
-// paths stay in the app, http(s)/mailto open outside, everything else is text), and only local images (/...) load:
+// pages stay in the app, http(s)/mailto open outside, everything else is text), and only local pictures load
+// (noteImageSrc):
 // an image on another domain becomes a link, so reading a note never makes a request to another site (CLAUDE.md).
 // Notes are private: nothing here sends them anywhere.
 
@@ -81,6 +81,12 @@ const components: Components = {
           {children}
         </Link>
       );
+    if (target.kind === 'file')
+      return (
+        <a href={target.href} className={look}>
+          {children}
+        </a>
+      );
     if (target.kind === 'external')
       return (
         <a href={target.href} target="_blank" rel="noopener noreferrer" className={look}>
@@ -91,9 +97,10 @@ const components: Components = {
   },
   img: ({ src, alt }: Props<'img'>) => {
     const url = typeof src === 'string' ? src : '';
-    if (isLocalImage(url))
+    const local = noteImageSrc(url);
+    if (local)
       // eslint-disable-next-line @next/next/no-img-element -- a local file of the app; next/image adds nothing here
-      return <img src={url} alt={alt ?? ''} loading="lazy" decoding="async" className="my-2 max-h-96 max-w-full rounded-md" />;
+      return <img src={local} alt={alt ?? ''} loading="lazy" decoding="async" className="my-2 max-h-96 max-w-full rounded-md" />;
     const link = markdownHref(url);
     const label = `Ảnh${alt ? `: ${alt}` : ''}`;
     // never loaded from another domain: the reader opens it on purpose

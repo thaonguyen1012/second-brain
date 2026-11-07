@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { changedFromTemplate, groupNotesByItem, markdownHref, noteDateLabel, noteHeading } from './item-notes';
+import {
+  changedFromTemplate,
+  groupNotesByItem,
+  markdownHref,
+  noteDateLabel,
+  noteHeading,
+  noteImageSrc,
+} from './item-notes';
 import { formatDate } from './labels';
 
 const note = (id: number, items: number[], createdAt = '2026-11-07T10:00:00Z', updatedAt = createdAt) => ({
@@ -61,6 +68,12 @@ describe('markdownHref', () => {
     expect(markdownHref('mailto:alex@example.com').kind).toBe('external');
   });
 
+  it('keeps API and file addresses out of the Next router', () => {
+    expect(markdownHref('/api/export')).toEqual({ kind: 'file', href: '/api/export' });
+    expect(markdownHref('/files/so-tay/de-cuong.pdf').kind).toBe('file');
+    expect(markdownHref('/docs/it/handbook-08/').kind).toBe('internal');
+  });
+
   it('shows every other target as text', () => {
     for (const href of ['javascript:alert(1)', 'data:text/html,x', '//evil.example', '/\\evil.example', 'chuong-3', '', undefined])
       expect(markdownHref(href)).toEqual({ kind: 'text' });
@@ -74,5 +87,18 @@ describe('changedFromTemplate', () => {
     expect(changedFromTemplate(`${book}\n\n`, book)).toBe(false);
     expect(changedFromTemplate(book.replace('- ', '- Thói quen nhỏ'), book)).toBe(true);
     expect(changedFromTemplate('Nhận xét: hay', 'Nhận xét: ')).toBe(true);
+  });
+});
+
+describe('noteImageSrc', () => {
+  it('loads only same-origin pictures', () => {
+    expect(noteImageSrc('/api/items/12/image?v=3f2a9c1e')).toBe('/api/items/12/image?v=3f2a9c1e');
+    expect(noteImageSrc('/img/so-do.png')).toBe('/img/so-do.png');
+    expect(noteImageSrc('/files/handbook-08/chmod.JPG')).toBe('/files/handbook-08/chmod.JPG');
+  });
+
+  it('refuses other sites and API addresses that are not an Item image', () => {
+    for (const src of ['https://example.com/a.png', '//cdn.example/a.png', '/api/export', '/api/weeks/current', '/files/a.pdf', 'a.png', undefined])
+      expect(noteImageSrc(src)).toBeNull();
   });
 });

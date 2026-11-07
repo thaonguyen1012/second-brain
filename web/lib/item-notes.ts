@@ -59,19 +59,43 @@ export function noteHeading(title: string, itemTitle: string): string | null {
   return t.toLocaleLowerCase('vi') === itemTitle.trim().toLocaleLowerCase('vi') ? null : t;
 }
 
-/** What a link in a rendered note becomes: an in-app link, an external link (new tab), or plain text. */
-export type MarkdownHref = { kind: 'internal'; href: string } | { kind: 'external'; href: string } | { kind: 'text' };
+/**
+ * What a link in a rendered note becomes: a page of the app (client navigation), a same-origin file or API address
+ * (a plain link: Django answers it, not the Next router), an external link (new tab), or plain text.
+ */
+export type MarkdownHref =
+  | { kind: 'internal'; href: string }
+  | { kind: 'file'; href: string }
+  | { kind: 'external'; href: string }
+  | { kind: 'text' };
+
+const SAME_ORIGIN = /^\/(?![/\\])/;
+/** Same-origin addresses that are not pages of the app: Django's API and attachments, static files. */
+const NOT_A_PAGE = /^\/(api|files|admin|vendor|original|img|covers)\//;
 
 /**
- * Links in notes: a same-origin path (`/thu-vien/item/?id=12`, the future `[[ ]]` links) stays in the app; http(s)
- * and mailto open outside it; anything else (javascript:, data:, protocol-relative `//host`, relative paths) is shown
- * as text, never as a link.
+ * Links in notes: a same-origin page (`/thu-vien/item/?id=12`, the future `[[ ]]` links) stays in the app, a
+ * same-origin file or API address is a plain link; http(s) and mailto open outside the app; anything else
+ * (javascript:, data:, protocol-relative `//host`, relative paths) is shown as text, never as a link.
  */
 export function markdownHref(href: string | null | undefined): MarkdownHref {
   const h = (href ?? '').trim();
-  if (h.startsWith('/') && !h.startsWith('//') && !h.startsWith('/\\')) return { kind: 'internal', href: h };
+  if (SAME_ORIGIN.test(h)) return NOT_A_PAGE.test(h) ? { kind: 'file', href: h } : { kind: 'internal', href: h };
   if (/^(https?:\/\/|mailto:)\S+$/i.test(h)) return { kind: 'external', href: h };
   return { kind: 'text' };
+}
+
+/**
+ * Whether a note's image may load: same-origin pictures only (an Item image, the app's /img/ and /covers/ files, an
+ * attachment with an image extension), never another site and never other API addresses (an image of /api/export
+ * would build the whole export each time the note shows).
+ */
+export function noteImageSrc(src: string | null | undefined): string | null {
+  const s = (src ?? '').trim();
+  if (!SAME_ORIGIN.test(s)) return null;
+  if (/^\/api\/items\/\d+\/image(\?[\w=&-]*)?$/.test(s)) return s;
+  if (/^\/(img|covers|files)\/[^?#]+\.(png|jpe?g|gif|webp|avif|svg)$/i.test(s)) return s;
+  return null;
 }
 
 /** Whether a note's markdown differs from its starting template in more than whitespace (an untouched template). */
