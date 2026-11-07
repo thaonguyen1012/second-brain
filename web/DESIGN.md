@@ -109,6 +109,13 @@ so the near pairs that remain are listed under the palette, not hidden.
   hue, and no area hue sits in the blue, green, yellow or red that the data and the statuses use.
 - **Highlight:** `bw-red` only for the "now / continue" marker (Tiếp tục học dot, a running timer). Book progress
   takes the group colour.
+- **Brand mark** (`components/brand-mark.tsx`; owner, 07/11/2026: "không có border bao quanh", colourful, in the
+  manner of Anthropic's warm palette): an open handbook, orange `#d97757` and blue `#6a9bcc` pages, with a green
+  `#788c5d` sprout from its spine; spine and stem in `currentColor`. The one multi-colour drawing in the app: its
+  three hues are fixed hex values, not tokens, used nowhere else and naming nothing. Only in the sidebar header
+  (28px), the Fumadocs nav (24px), the /gioi-thieu/ hero and the icons in `public/icons/` (PNGs rendered by
+  `scripts/make-icons.mjs` from `icon.svg`). Never on a tile, border, ground or shadow in the app; only the opaque OS
+  icons (apple-touch, maskable) stand on a full-bleed ivory `#faf9f5` that the OS rounds or masks.
 - **Forbidden:** purple (`bw-purple`, `chart-4` dark) in app UI, gradients, glows, coloured shadows, translucent
   overlapping fills, gradient text, sparkle or other AI decoration, emoji as icons; an area or group hue that reads
   as the primary blue, `bw-red`, destructive red or a status colour.
@@ -185,9 +192,8 @@ so the near pairs that remain are listed under the palette, not hidden.
 
 ## 5. Icons
 
-- **lucide-react only**, default stroke (2) everywhere in a screen; the sidebar logo `Brain` (1.75, `size-5` in its
-  32px white header tile) is the one exception. Never mix stroke widths or filled and outline glyphs in one view.
-  No hand-drawn SVG glyphs.
+- **lucide-react only**, default stroke (2) everywhere in a screen. Never mix stroke widths or filled and outline
+  glyphs in one view. No hand-drawn SVG glyphs; the brand mark (§4) is the one drawing that is not lucide.
 - **One size per context:** 16px (`size-4`) in buttons, nav, toolbars, rows; 14px (`size-3.5`) in badges, meta
   lines and `xs` buttons; 18px only in `EmptyMedia`; 20px (`size-5`) only in the page title tile. Components
   already size their icons: do not override.
@@ -320,7 +326,7 @@ Containers
   second border; large shadows only on floating layers.
 
 Colour
-- **D16** Only token colours; status colours match `lib/labels.ts`, the same status the same colour everywhere; an
+- **D16** Only token colours (the brand mark's own three hues excepted, §4); status colours match `lib/labels.ts`, the same status the same colour everywhere; an
   area colour only on its title tile and Hôm nay tile icon (Hôm nay itself neutral), a group colour
   (its area's hue) only on Sổ tay card dots, progress indicators and jump-link underlines; no coloured body text;
   data colours (`--chart-*`, statuses, progress) never greyed out, every chart in the data blue, never in an area
@@ -335,8 +341,8 @@ Colour
   transparent on the page.
 
 Icons
-- **D20** lucide only, one stroke width, 16px in controls/rows/nav, 14px in badges/meta, 20px in the title tile and
-  the sidebar logo tile; no emoji as icons.
+- **D20** lucide only (the brand mark excepted: 28px in the sidebar header, no tile), one stroke width, 16px in
+  controls/rows/nav, 14px in badges/meta, 20px in the title tile; no emoji as icons.
 - **D21** No decorative icon beside headings or card titles (the area's nav icon on an area page's title tile and the
   icon of a Hôm nay tile heading excepted, §5); no nav icon as an empty state glyph; icon-only buttons have a
   tooltip.

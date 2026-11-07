@@ -109,26 +109,20 @@
   padding: var(--hs-pad) 8px 0;
 }
 
-/* The header: the Brain tile (a bordered card square), the name and the muted hide button */
+/* The header: the app's mark (no tile, like the sidebar since 07/11/2026), the name and the muted hide button */
 .ssg-intro .hs-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   height: var(--hs-brand);
   margin-bottom: var(--hs-brand-gap);
   padding: 0 8px;
 }
 
-.ssg-intro .hs-brand__tile {
-  display: flex;
+.ssg-intro .hs-brand__mark {
   flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  background: var(--ss-surface);
-  box-shadow: inset 0 0 0 1px var(--sidebar-border);
+  width: 22px;
+  height: 22px;
   color: var(--ss-text-strong);
 }
 

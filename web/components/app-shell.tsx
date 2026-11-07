@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
-import { Brain, Moon, PanelLeftClose, Search, Sun } from 'lucide-react';
+import { Moon, PanelLeftClose, Search, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useSearchContext } from 'fumadocs-ui/contexts/search';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ import type { ApiCounts } from '@/lib/api/client';
 import { InboxButton } from '@/components/brain/inbox-count';
 import { refreshNavCounts, useNavCounts } from '@/components/brain/nav-counts';
 import { LazyTooltip } from '@/components/lazy-tooltip';
+import { BrandMark } from '@/components/brand-mark';
 import { appName } from '@/lib/shared';
 import { cn } from '@/lib/utils';
 
@@ -143,14 +144,12 @@ function AppSidebar() {
     <Sidebar collapsible="offcanvas" inert={!isMobile && state === 'collapsed' ? true : undefined}>
       {/* h-16 + border: one line with the top bar's bottom border */}
       <SidebarHeader className="h-16 flex-row items-center gap-2 border-b border-sidebar-border px-4">
-        {/* -m-1 p-1: the focus ring clears the tile's border */}
+        {/* -m-1 p-1: room for the focus ring around the mark (no tile since 07/11/2026) */}
         <Link
           href="/"
-          className="-m-1 flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          className="-m-1 flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
-          <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-card">
-            <Brain className="size-5" strokeWidth={1.75} />
-          </span>
+          <BrandMark className="size-7 shrink-0" />
           <span className="truncate font-heading text-sm font-semibold tracking-tight">{appName}</span>
         </Link>
         <LazyTooltip label="Ẩn menu">

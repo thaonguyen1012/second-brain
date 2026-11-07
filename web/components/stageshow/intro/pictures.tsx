@@ -2,7 +2,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   BookOpen,
-  Brain,
   Briefcase,
   CalendarRange,
   Clock,
@@ -21,6 +20,7 @@ import {
   Trophy,
   type LucideIcon,
 } from 'lucide-react';
+import { BrandMark } from '@/components/brand-mark';
 import { Stage, type LookTokens } from '../kit/stage';
 import type { Act } from '../kit/act';
 import { Bar, Text, Window } from '../kit/window';
@@ -112,7 +112,7 @@ function Picture<S extends object>({
 /* ------------------------------------------------------------------ Hero: the shell with Hôm nay */
 
 /*
- * The app sidebar (lib/app-nav.ts, components/app-shell.tsx) at the picture's scale: the header (Brain tile, the
+ * The app sidebar (lib/app-nav.ts, components/app-shell.tsx) at the picture's scale: the header (the mark, the
  * name, the hide button), Hôm nay and Tuần without a label, a hairline, then the groups Phát triển, Thư viện, Cơ hội
  * and Công việc under their muted semibold labels ("Khác", at the bottom in the app, is left out). Every row icon takes the row's text colour, a row
  * with a count ends in it in muted digits, and Hôm nay, the page the main pane shows, is the darker grey current row.
@@ -219,9 +219,7 @@ function ShellSidebar({ room }: { room: number }) {
   return (
     <nav className="hs-side" style={vars}>
       <span className="hs-brand">
-        <span className="hs-brand__tile" aria-hidden>
-          <Brain size={16} strokeWidth={1.75} />
-        </span>
+        <BrandMark className="hs-brand__mark" />
         <span className="hs-brand__name">Alex&apos;s Brain</span>
         <PanelLeftClose size={14} strokeWidth={2} aria-hidden className="hs-brand__hide" />
       </span>
