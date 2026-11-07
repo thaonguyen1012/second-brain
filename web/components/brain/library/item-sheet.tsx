@@ -34,6 +34,7 @@ export function ItemSheet({
 }) {
   const dirty = useRef(false);
   const composer = useRef<HTMLTextAreaElement | null>(null);
+  const title = useRef<HTMLHeadingElement | null>(null);
   const [askClose, setAskClose] = useState(false);
 
   const change = (next: boolean, details: ChangeDetails) => {
@@ -57,7 +58,7 @@ export function ItemSheet({
         className="max-w-2xl"
         closeProps={{ 'aria-label': 'Đóng' }}
         finalFocus={finalFocus}
-        initialFocus={compose ? composer : undefined}
+        initialFocus={compose ? composer : title}
       >
         {item && (
           <SheetPanel>
@@ -67,6 +68,7 @@ export function ItemSheet({
               variant="sheet"
               composeOnOpen={compose}
               composerRef={composer}
+              titleRef={title}
               onItemChange={onItemChange}
               onDeleted={onDeleted}
               onDirtyChange={(d) => {

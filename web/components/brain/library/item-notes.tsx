@@ -195,6 +195,30 @@ export function ItemNotes({
   const [announcement, setAnnouncement] = useState('');
   const composerId = `${base}-new-body`;
 
+  // Opening or closing a form removes the focused control (the pencil, "Viết ghi chú", the form's field): the focus
+  // waits on the section's heading meanwhile, so the Sheet around the page does not take it back to its own start,
+  // then goes to `id` (the field that opened, the button that came back) once React has drawn it. A field gets the
+  // caret at the end of its text, ready to add to it.
+  const pendingFocus = useRef<string | null>(null);
+  const focusNow = (el: HTMLElement) => {
+    el.focus();
+    if (el instanceof HTMLTextAreaElement) el.setSelectionRange(el.value.length, el.value.length);
+  };
+  useEffect(() => {
+    const id = pendingFocus.current;
+    const el = id ? document.getElementById(id) : null;
+    if (!el) return;
+    pendingFocus.current = null;
+    focusNow(el);
+  });
+  const focusAfter = (id: string) => {
+    const ready = document.getElementById(id);
+    if (ready && ready.isConnected) return focusNow(ready);
+    if (document.activeElement && document.activeElement !== document.body)
+      document.getElementById(headingId)?.focus({ preventScroll: true });
+    pendingFocus.current = id;
+  };
+
   const showComposer = composerOpen ?? (loaded && list.length === 0);
   const composerDirty = showComposer && (draft.title !== freshDraft().title || changedFromTemplate(draft.markdown, template));
   const editDirty = (note: ApiNote, edit: EditState) => edit.title !== note.title || edit.markdown !== note.markdown;
@@ -217,28 +241,16 @@ export function ItemNotes({
     if (composeRequest === handledRequest.current) return;
     handledRequest.current = composeRequest;
     setComposerOpen(true);
-    // the composer may be open already (no re-render then): focus it on the next frame
-    window.requestAnimationFrame(() => document.getElementById(composerId)?.focus());
+    pendingFocus.current = composerId;
+    // already open (no new render follows): focus it now
+    const open = document.getElementById(composerId);
+    if (open) {
+      pendingFocus.current = null;
+      open.focus();
+    }
   }, [composeRequest, composerId]);
 
   const say = (text: string) => setAnnouncement((prev) => (prev === text ? `${text} ` : text));
-
-  // A form that closes takes the focused field with it: the focus waits on the section's heading (so the Sheet around
-  // the page does not take it back to its start), then goes to the button that comes back (`Viết ghi chú`, a note's
-  // pencil) once React has drawn it.
-  const pendingFocus = useRef<string | null>(null);
-  useEffect(() => {
-    const id = pendingFocus.current;
-    const el = id ? document.getElementById(id) : null;
-    if (!el) return;
-    pendingFocus.current = null;
-    el.focus();
-  });
-  const focusAfter = (id: string) => {
-    if (document.activeElement && document.activeElement !== document.body)
-      document.getElementById(headingId)?.focus({ preventScroll: true });
-    pendingFocus.current = id;
-  };
 
   /** Runs `action` at once, or after "Bỏ thay đổi" when it would drop typed text. */
   const unlessDirty = (isDirty: boolean, action: () => void) => (isDirty ? setDiscard(() => action) : action());
@@ -280,15 +292,8 @@ export function ItemNotes({
     });
 
   const startEdit = (note: ApiNote) => {
+    focusAfter(`${base}-edit-${note.id}-body`);
     setEdit(note.id, { title: note.title, markdown: note.markdown, busy: false, error: null });
-    // the cursor at the end of the text, ready to add to it
-    window.requestAnimationFrame(() => {
-      const el = document.getElementById(`${base}-edit-${note.id}-body`);
-      if (el instanceof HTMLTextAreaElement) {
-        el.focus();
-        el.setSelectionRange(el.value.length, el.value.length);
-      }
-    });
   };
 
   const stopEdit = (id: number) => {
@@ -323,7 +328,16 @@ export function ItemNotes({
         </h2>
         {loaded && <span className="text-xs text-muted-foreground tabular-nums">{list.length}</span>}
         {!showComposer && (
-          <Button id={composeButtonId} variant="outline" size="sm" className="ms-auto" onClick={() => setComposerOpen(true)}>
+          <Button
+            id={composeButtonId}
+            variant="outline"
+            size="sm"
+            className="ms-auto"
+            onClick={() => {
+              focusAfter(composerId);
+              setComposerOpen(true);
+            }}
+          >
             <Plus aria-hidden />
             Viết ghi chú
           </Button>

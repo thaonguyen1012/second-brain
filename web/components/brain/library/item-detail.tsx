@@ -1,5 +1,5 @@
 'use client';
-import { useState, type Ref } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import Link from 'next/link';
 import { Briefcase, ExternalLink, Maximize2, Pencil } from 'lucide-react';
 import { api, type ApiItem, type ApiItemStatus } from '@/lib/api/client';
@@ -71,6 +71,7 @@ export function ItemDetail({
   variant,
   composeOnOpen = false,
   composerRef,
+  titleRef,
   onItemChange,
   onDeleted,
   onDirtyChange,
@@ -80,8 +81,10 @@ export function ItemDetail({
   variant: 'sheet' | 'page';
   /** Opened from "Viết ghi chú": the composer starts open. */
   composeOnOpen?: boolean;
-  /** The composer's textarea, for the Sheet's first focus. */
-  composerRef?: Ref<HTMLTextAreaElement>;
+  /** The composer's textarea, for the Sheet's first focus (from "Viết ghi chú"). */
+  composerRef?: RefObject<HTMLTextAreaElement | null>;
+  /** The Sheet's title, its first focus otherwise: never an action, so an Enter right after opening changes nothing. */
+  titleRef?: RefObject<HTMLHeadingElement | null>;
   /** The Item as saved after a change made here (properties, status, note count). */
   onItemChange: (item: ApiItem) => void;
   onDeleted: (item: ApiItem) => void;
@@ -96,6 +99,10 @@ export function ItemDetail({
   const [dirty, setDirty] = useState(false);
   const [leave, setLeave] = useState<(() => void) | null>(null);
   useLeaveGuard(dirty, (go) => setLeave(() => go));
+  const ownComposer = useRef<HTMLTextAreaElement | null>(null);
+  const composer = composerRef ?? ownComposer;
+  // "Viết ghi chú" in the Item dialog: once the dialog has closed, the focus goes to the composer it opened
+  const writeAfterDialog = useRef(false);
 
   const s = itemStatusOf(item.status);
   const step = nextStep[item.status ?? 'planned'];
@@ -134,7 +141,9 @@ export function ItemDetail({
           {picture ? <DetailPicture picture={picture} /> : variant === 'page' && <AreaTile nav="/thu-vien/" />}
           {variant === 'sheet' ? (
             // leaves room for the Sheet's close button
-            <SheetTitle className={cn(titleClass, 'pe-8 text-xl leading-tight')}>{item.title}</SheetTitle>
+            <SheetTitle ref={titleRef} tabIndex={-1} className={cn(titleClass, 'pe-8 text-xl leading-tight outline-none')}>
+              {item.title}
+            </SheetTitle>
           ) : (
             <h1 className={cn(titleClass, 'text-3xl')}>{item.title}</h1>
           )}
@@ -210,7 +219,7 @@ export function ItemDetail({
       <ItemNotes
         item={item}
         composeRequest={composeRequest}
-        composerRef={composerRef}
+        composerRef={composer}
         onCountChange={(delta) => onItemChange({ ...item, noteCount: Math.max(0, item.noteCount + delta) })}
         onDirtyChange={(d) => {
           setDirty(d);
@@ -228,8 +237,10 @@ export function ItemDetail({
         focusRating={focusRating}
         onOpenChange={(o) => {
           setEditOpen(o);
-          if (!o) setFocusRating(false);
+          if (o) writeAfterDialog.current = false;
+          else setFocusRating(false);
         }}
+        finalFocus={() => (writeAfterDialog.current ? composer.current : null) ?? true}
         onSaved={(saved, _created, imageError) => {
           onItemChange(saved);
           setEditOpen(false);
@@ -240,6 +251,7 @@ export function ItemDetail({
           onDeleted(deleted);
         }}
         onWriteNote={() => {
+          writeAfterDialog.current = true;
           setEditOpen(false);
           setComposeRequest((n) => n + 1);
         }}
