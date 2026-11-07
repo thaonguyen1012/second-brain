@@ -184,8 +184,8 @@ function EntryCard({
     metaParts.push(
       <Link
         key="item"
-        href={`/thu-vien/ghi-chu/?item=${entry.item}`}
-        title="Ghi chú của item này"
+        href={`/thu-vien/item/?id=${entry.item}`}
+        title="Trang item: thuộc tính và mọi ghi chú"
         className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
         Item: {linkedItem?.title ?? `#${entry.item}`}

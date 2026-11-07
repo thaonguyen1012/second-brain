@@ -1,13 +1,17 @@
 'use client';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { NotebookPen, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
-import type { Page } from '@/lib/api/client';
+import { api, type ApiItem, type Page } from '@/lib/api/client';
 import { notesApi, type ApiNote } from '@/lib/api/library';
+import { loadAllPages } from '@/lib/api/pages';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
-import { formatDate } from '@/lib/labels';
+import { itemPicture } from '@/lib/handbook-picture';
+import { groupNotesByItem, noteDateLabel, noteHeading, type NoteGroup } from '@/lib/item-notes';
+import { itemTypeLabel } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
+import { useListView } from '@/lib/use-board-view';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,6 +26,7 @@ import {
   SheetPopup,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { ConfirmDelete, DeleteButton } from '../confirm-delete';
@@ -29,6 +34,9 @@ import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { KeyLegend } from '../key-legend';
 import { PAGE_WIDTH } from '../layout';
 import { RowMenu } from '../row-menu';
+import { noteTemplates } from './done-output';
+import { RowPicture } from './item-image';
+import { NoteBody } from './note-body';
 import { NoteDialog, type NoteDraft } from './note-dialog';
 import type { ItemLabel } from './item-picker';
 import { FilteredEmpty, RowsSkeleton, onRowClick } from './list-rows';
@@ -38,9 +46,11 @@ const PAGE = 50;
 
 /** Starting text of the empty page's two template buttons (the outputs DECISIONS 4.2 asks of a book and a film). */
 const templates = [
-  { label: 'Ghi chú sách', markdown: '## Highlights\n\n- \n\n## 3 ý chính\n\n1. \n2. \n3. \n' },
-  { label: 'Nhận xét phim', markdown: '## Một câu nhận xét\n\n' },
+  { label: 'Ghi chú sách', markdown: noteTemplates.book },
+  { label: 'Nhận xét phim', markdown: noteTemplates.film },
 ] as const;
+
+type NotesView = 'list' | 'items';
 
 function isTyping(el: EventTarget | null): boolean {
   const t = el as HTMLElement | null;
@@ -58,15 +68,35 @@ function useDebounced<T>(value: T, ms: number): T {
 
 type ItemTitle = (id: number) => { title: string; type?: string };
 
-/** Meta line of a note: linked Item titles as quiet links (each filters the list by that Item), then the date. */
-function NoteMeta({ note, itemTitle, onNavigate }: { note: ApiNote; itemTitle: ItemTitle; onNavigate?: () => void }) {
-  const edited = note.updatedAt.slice(0, 10) !== note.createdAt.slice(0, 10);
-  const date = edited ? `sửa ${formatDate(note.updatedAt)}` : formatDate(note.createdAt);
+/** A row's title: the note's own, except one that only repeats its group's Item (then its first line). */
+function rowTitle(note: ApiNote, groupTitle: string | null): string {
+  if (groupTitle === null || noteHeading(note.title, groupTitle) !== null) return noteTitle(note);
+  return noteTitle({ ...note, title: '' });
+}
+
+/**
+ * Meta line of a note: linked Item titles as quiet links (each filters the list by that Item), then the date. Under a
+ * group of "Theo item" (`group`: its Item, or null for "Ghi chú rời") the group's own Item is not repeated.
+ */
+function NoteMeta({
+  note,
+  itemTitle,
+  onNavigate,
+  group,
+}: {
+  note: ApiNote;
+  itemTitle: ItemTitle;
+  onNavigate?: () => void;
+  group?: number | null;
+}) {
+  const date = noteDateLabel(note);
+  const items = note.items.filter((id) => id !== group);
+  if (group !== undefined && items.length === 0) return <>{date}</>;
   return (
     <>
-      {note.items.length === 0
+      {items.length === 0
         ? 'Chưa liên kết item'
-        : note.items.map((itemId, i) => (
+        : items.map((itemId, i) => (
             <Fragment key={itemId}>
               {i > 0 && ', '}
               <Link
@@ -88,7 +118,8 @@ function NoteMeta({ note, itemTitle, onNavigate }: { note: ApiNote; itemTitle: I
 function NoteRow({
   note,
   itemTitle,
-  selected,
+  group,
+  selected = false,
   onSelect,
   onOpen,
   onEdit,
@@ -96,15 +127,18 @@ function NoteRow({
 }: {
   note: ApiNote;
   itemTitle: ItemTitle;
-  selected: boolean;
-  onSelect: () => void;
+  /** The "Theo item" group the row sits in (its Item, or null for "Ghi chú rời"). */
+  group?: number | null;
+  /** The keyboard cursor of the list view (the grouped view has none: a note may show in two groups). */
+  selected?: boolean;
+  onSelect?: () => void;
   onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const id = `note-${note.id}`;
+  const id = onSelect ? `note-${note.id}` : undefined;
   useEffect(() => {
-    if (selected) document.getElementById(id)?.scrollIntoView({ block: 'nearest' });
+    if (selected && id) document.getElementById(id)?.scrollIntoView({ block: 'nearest' });
   }, [selected, id]);
 
   return (
@@ -115,7 +149,7 @@ function NoteRow({
       data-selected={selected || undefined}
       className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 transition-colors hover:bg-accent has-focus-visible:bg-accent data-selected:bg-accent"
       onClick={(e) => {
-        onSelect();
+        onSelect?.();
         onRowClick(e, onOpen);
       }}
     >
@@ -125,10 +159,10 @@ function NoteRow({
           className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onOpen}
         >
-          {noteTitle(note)}
+          {rowTitle(note, group === undefined || group === null ? null : itemTitle(group).title)}
         </button>
         <p className="truncate text-xs text-muted-foreground">
-          <NoteMeta note={note} itemTitle={itemTitle} />
+          <NoteMeta note={note} itemTitle={itemTitle} group={group} />
         </p>
       </div>
       <RowMenu>
@@ -148,6 +182,73 @@ function NoteRow({
   );
 }
 
+/**
+ * One group of the "Theo item" view (DECISIONS 9.8 point 5): the Item's picture and title head the group (a link to
+ * the Item page), its notes follow as the usual rows; `item: null` is "Ghi chú rời". One container per group (D12),
+ * the picture flush at the start of the heading row like a Thư viện row.
+ */
+function NoteGroupSection({
+  group,
+  item,
+  label,
+  withPicture,
+  itemTitle,
+  onOpen,
+  onEdit,
+  onDelete,
+}: {
+  group: NoteGroup<ApiNote>;
+  /** The whole Item (its picture), once the Item list has loaded. */
+  item: ApiItem | undefined;
+  /** Its title and type from the notes' labels meanwhile. */
+  label: { title: string; type?: string };
+  withPicture: boolean;
+  itemTitle: ItemTitle;
+  onOpen: (note: ApiNote) => void;
+  onEdit: (note: ApiNote) => void;
+  onDelete: (note: ApiNote) => void;
+}) {
+  const headingId = useId();
+  const loose = group.item === null;
+  const type = item?.type ?? label.type;
+  const meta = [!loose && type && itemTypeLabel(type), `${group.notes.length} ghi chú`].filter(Boolean).join(' · ');
+  return (
+    <section aria-labelledby={headingId} className="overflow-hidden rounded-xl border bg-card">
+      <div className={cn('flex min-h-14 items-center gap-3 py-2', withPicture ? 'pe-3' : 'px-3')}>
+        {withPicture && <RowPicture picture={item ? itemPicture(item) : null} />}
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 id={headingId} className="truncate text-sm font-semibold">
+            {loose ? (
+              'Ghi chú rời'
+            ) : (
+              <Link
+                href={`/thu-vien/item/?id=${group.item}`}
+                className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {label.title}
+              </Link>
+            )}
+          </h2>
+          <p className="truncate text-xs text-muted-foreground">{meta}</p>
+        </div>
+      </div>
+      <ul aria-labelledby={headingId} className="divide-y border-t">
+        {group.notes.map((n) => (
+          <NoteRow
+            key={n.id}
+            note={n}
+            itemTitle={itemTitle}
+            group={group.item}
+            onOpen={() => onOpen(n)}
+            onEdit={() => onEdit(n)}
+            onDelete={() => onDelete(n)}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 const keyHelp: [string, string][] = [
   ['J / K', 'xuống / lên'],
   ['Enter', 'đọc ghi chú'],
@@ -158,12 +259,18 @@ const keyHelp: [string, string][] = [
   ['?', 'bảng phím tắt này'],
 ];
 
-/** Ghi chú: markdown notes linked to Items, search (?q) and filter by Item (?item), create and edit. */
+/**
+ * Ghi chú: markdown notes linked to Items, search (?q) and filter by Item (?item), create and edit. Two views: the
+ * list (newest first, "Tải thêm") and "Theo item" (`?view=items`, DECISIONS 9.8 point 5): every matching note grouped
+ * under its Items.
+ */
 export function NotesPage() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const itemFilter = Number(params.get('item')) || null;
+  // Before useOpenFromUrl: a remembered "Theo item" waits until ?id= is gone (useBoardView's rule).
+  const [view, setView] = useListView<'items'>('alex-brain:notes-view', 'items', 'id');
 
   const [query, setQuery] = useState('');
   const q = useDebounced(query.trim(), 250);
@@ -180,14 +287,29 @@ export function NotesPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // The full Item list is only for the picker in the dialog; the cards use the labels sent with each note.
-  const index = useItemIndex(dialogOpen);
-  const notes = useApi<Page<ApiNote>>(`notes:${q}:${itemFilter ?? ''}`, () =>
-    notesApi.list({ limit: PAGE, ...(q && { q }), ...(itemFilter && { item: itemFilter }) }),
+  // The full Item list is for the picker in the dialog and the pictures of "Theo item"; rows use the notes' labels.
+  const index = useItemIndex(dialogOpen || view === 'items');
+  const filters = { ...(q && { q }), ...(itemFilter && { item: itemFilter }) };
+  const listNotes = useApi<Page<ApiNote>>(view === 'list' ? `notes:${q}:${itemFilter ?? ''}` : null, () =>
+    notesApi.list({ limit: PAGE, ...filters }),
   );
-  const shown = notes.loading ? [] : (notes.data?.results ?? []);
+  // "Theo item" groups every matching note at once (all cursor pages, at most 20 of 100)
+  const allNotes = useApi<Page<ApiNote>>(view === 'items' ? `notes-all:${q}:${itemFilter ?? ''}` : null, () =>
+    loadAllPages<ApiNote>(
+      () => notesApi.list({ limit: 100, ...filters }),
+      (next) => api.page<ApiNote>(next),
+    ),
+  );
+  const notes = view === 'list' ? listNotes : allNotes;
+  const shown = useMemo(() => (notes.loading ? [] : (notes.data?.results ?? [])), [notes.loading, notes.data]);
   const selected = Math.min(cursor, Math.max(0, shown.length - 1));
-  const current = shown[selected];
+  // the keyboard cursor belongs to the list (a note may show in two groups)
+  const current = view === 'list' ? shown[selected] : undefined;
+  const groups = useMemo(() => (view === 'items' ? groupNotesByItem(shown) : []), [view, shown]);
+  const groupPictures = groups.some((g) => {
+    const it = g.item === null ? undefined : index.byId.get(g.item);
+    return !!it && itemPicture(it) !== null;
+  });
 
   const labels = useMemo(() => {
     const m = new Map<number, ItemLabel>();
@@ -247,10 +369,12 @@ export function NotesPage() {
       // The key legend dialog, the reading Sheet and a row's overflow menu handle their own keys
       if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return;
       const act: Record<string, () => void> = {
-        j: () => setCursor(Math.min(selected + 1, shown.length - 1)),
-        arrowdown: () => setCursor(Math.min(selected + 1, shown.length - 1)),
-        k: () => setCursor(Math.max(selected - 1, 0)),
-        arrowup: () => setCursor(Math.max(selected - 1, 0)),
+        ...(view === 'list' && {
+          j: () => setCursor(Math.min(selected + 1, shown.length - 1)),
+          arrowdown: () => setCursor(Math.min(selected + 1, shown.length - 1)),
+          k: () => setCursor(Math.max(selected - 1, 0)),
+          arrowup: () => setCursor(Math.max(selected - 1, 0)),
+        }),
         n: () => openEditor(null),
         '/': () => searchRef.current?.focus(),
         ...(current && {
@@ -270,7 +394,7 @@ export function NotesPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [dialogOpen, deleting, readOpen, selected, shown.length, current, openEditor, openReader]);
+  }, [dialogOpen, deleting, readOpen, selected, shown.length, current, openEditor, openReader, view]);
 
   const loadMore = async () => {
     const next = notes.data?.next;
@@ -297,19 +421,32 @@ export function NotesPage() {
   // The toolbar waits for a first note, a query or an Item filter (DESIGN.md §9a): with no notes the empty panel's
   // "Viết ghi chú" is the one primary (D2). The shared rule (empty-panel.tsx) reads the sidebar count meanwhile.
   const toolbar = useToolbarState({ rows: shown.length, filtered, loading: notes.loading, failed, count: 'notes' });
+  /** The address without `?item=` (and without ?id=), the view kept. */
+  const withoutItem = () => {
+    const path = pathname.endsWith('/') ? pathname : `${pathname}/`; // trailingSlash: true (next.config)
+    return view === 'items' ? `${path}?view=items` : path;
+  };
+  const clearItemFilter = () => router.replace(withoutItem(), { scroll: false });
   const clearFilters = () => {
     setQuery('');
     setCursor(0);
-    router.replace(pathname);
+    router.replace(withoutItem(), { scroll: false });
   };
   const newDraft: NoteDraft = { items: itemFilter ? [itemFilter] : [], ...(template && { markdown: template }) };
 
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
-      {/* One toolbar row: search left, "Ghi chú mới" keeps the end of row 1 at 390 px (icon only there) */}
+      {/* One toolbar row: the view switch first, search, "Ghi chú mới" at the end; at 390 px the switch and the
+          (icon-only) "Ghi chú mới" keep row 1 and the search takes row 2, so no button is orphaned (DESIGN.md §6) */}
       {toolbar !== 'hide' && (
         <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
-          <div className="relative min-w-0 flex-1 sm:w-80 sm:flex-none">
+          <Tabs value={view} onValueChange={(v) => setView(v as NotesView)}>
+            <TabsList aria-label="Kiểu xem">
+              <TabsTab value="list">Danh sách</TabsTab>
+              <TabsTab value="items">Theo item</TabsTab>
+            </TabsList>
+          </Tabs>
+          <div className="relative min-w-0 max-sm:order-last max-sm:basis-full sm:w-72">
             <Search
               className="pointer-events-none absolute start-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden
@@ -344,7 +481,7 @@ export function NotesPage() {
                       size="sm"
                       className="min-w-0"
                       aria-label={`Item: ${filterItem.title}, bỏ lọc`}
-                      onClick={() => router.replace(pathname)}
+                      onClick={clearItemFilter}
                     />
                   }
                 >
@@ -356,7 +493,7 @@ export function NotesPage() {
             </div>
           )}
           <div className="ms-auto flex items-center gap-2">
-            {shown.length > 0 && <KeyLegend keys={keyHelp} title="Phím tắt của Ghi chú" />}
+            {view === 'list' && shown.length > 0 && <KeyLegend keys={keyHelp} title="Phím tắt của Ghi chú" />}
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -407,6 +544,22 @@ export function NotesPage() {
           ))}
           guide={notes.error ? undefined : 'library'}
         />
+      ) : view === 'items' ? (
+        <div className="flex flex-col gap-6">
+          {groups.map((g) => (
+            <NoteGroupSection
+              key={g.item ?? 'loose'}
+              group={g}
+              item={g.item === null ? undefined : index.byId.get(g.item)}
+              label={g.item === null ? { title: 'Ghi chú rời' } : itemTitle(g.item)}
+              withPicture={groupPictures}
+              itemTitle={itemTitle}
+              onOpen={openReader}
+              onEdit={(n) => openEditor(n)}
+              onDelete={setDeleting}
+            />
+          ))}
+        </div>
       ) : (
         <ul aria-label="Ghi chú" className="divide-y overflow-hidden rounded-xl border bg-card">
           {shown.map((n, i) => (
@@ -423,7 +576,7 @@ export function NotesPage() {
           ))}
         </ul>
       )}
-      {notes.data?.next && !notes.loading && (
+      {view === 'list' && notes.data?.next && !notes.loading && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
           Tải thêm
         </Button>
@@ -440,8 +593,8 @@ export function NotesPage() {
                 </SheetDescription>
               </SheetHeader>
               <SheetPanel>
-                {/* Plain text on purpose: markdown is shown as typed, never parsed into HTML. */}
-                <p className="max-w-2xl whitespace-pre-wrap break-words text-sm leading-relaxed">{reading.markdown}</p>
+                {/* Rendered markdown, no raw HTML, local images only (note-markdown.tsx) */}
+                <NoteBody markdown={reading.markdown} className="max-w-2xl" />
               </SheetPanel>
               <SheetFooter>
                 <DeleteButton

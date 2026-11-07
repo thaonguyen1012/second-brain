@@ -9,11 +9,9 @@ import {
   type ApiItemType,
   type Page,
 } from '@/lib/api/client';
-import type { ApiNote } from '@/lib/api/library';
 import { loadAllPages } from '@/lib/api/pages';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { itemStatusOf, itemStatuses, itemTypes } from '@/lib/labels';
-import { noteTitle } from '@/lib/library-labels';
 import { itemPicture } from '@/lib/handbook-picture';
 import { useProgress } from '@/lib/progress';
 import { ITEM_BOARD, laneOf } from '@/lib/status-board';
@@ -27,13 +25,11 @@ import { ChoiceSelect } from './choice-select';
 import { EmptyPanel, useToolbarState } from './empty-panel';
 import { ItemDialog } from './item-dialog';
 import { PAGE_WIDTH } from './layout';
-import { noteDraftForItem } from './library/done-output';
 import { handbooks, importHandbooks } from './library/handbook-import';
 import { boardMedia } from './library/item-image';
 import { ItemCardBody, ItemMenuItems, ItemRow, itemListGrid } from './library/item-parts';
+import { ItemSheet } from './library/item-sheet';
 import { FilteredEmpty, RowsSkeleton } from './library/list-rows';
-import { NoteDialog } from './library/note-dialog';
-import { useItemIndex } from './library/use-item-index';
 import { BoardSkeleton, BoardStatus, StatusBoard, recordFocusTarget, useStatusMoves } from './status-board';
 import { ViewSwitch } from './view-switch';
 
@@ -53,7 +49,9 @@ const loadItems = (type: TypeFilter) => () =>
 /**
  * Thư viện: Items in two views like Dự án: Danh sách (rows, filterable by type and status) and Bảng (one lane per
  * status; dragging a card or its menu changes the status). Both views show one list of every Item of the chosen type,
- * so a change in one is in the other without a reload. Create and edit through ItemDialog (POST/PATCH /api/items).
+ * so a change in one is in the other without a reload. A row or a card's title opens the Item page in a Sheet beside
+ * the list (DECISIONS 9.8: properties, every note written and edited in place); create, and edit from the menu,
+ * through ItemDialog (POST/PATCH /api/items).
  */
 export function LibraryPage() {
   // Before useOpenFromUrl: a remembered board waits until ?item= is gone, so the two URL updates never collide.
@@ -64,17 +62,17 @@ export function LibraryPage() {
   const [draft, setDraft] = useState<Partial<ApiItemRequest> | undefined>(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [focusRating, setFocusRating] = useState(false);
-  const [noteFor, setNoteFor] = useState<ApiItem | null>(null);
+  // The Item shown in the Sheet (kept while it animates out); `compose`: opened from "Viết ghi chú"
+  const [sheet, setSheet] = useState<{ item: ApiItem; compose: boolean } | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  // The full Item list is only for the note dialog's item picker.
-  const index = useItemIndex(noteFor !== null);
   const [loadingMore, setLoadingMore] = useState(false);
   // Lesson progress picks each course's status; the button waits for it (`loaded`), or every book would be "Dự định"
   const { done, loaded } = useProgress();
   // "Thêm 15 khóa học từ Sổ tay": sent/total while it runs; the ref stops a second click before the re-render
   const [importing, setImporting] = useState<{ sent: number; total: number } | null>(null);
   const importLock = useRef(false);
-  // The Item whose dialog is open or was just saved: its card or row takes the focus back when the dialog closes, even
+  // The Item whose dialog or Sheet is open or was just saved: its card or row takes the focus back when it closes, even
   // when the control that opened it is gone ("Viết ghi chú" once the note exists, a card moved to another lane).
   const returnTo = useRef<number | null>(null);
   const finalFocus = () => recordFocusTarget(returnTo.current) ?? null;
@@ -99,10 +97,13 @@ export function LibraryPage() {
     setFocusRating(rating);
     setDialogOpen(true);
   };
-  const writeNote = (item: ApiItem) => {
+  /** The Item page beside the list; `compose` opens it on a new note (prefilled with the type's template). */
+  const openSheet = (item: ApiItem, compose = false) => {
     returnTo.current = item.id;
-    setNoteFor(item);
+    setSheet({ item, compose });
+    setSheetOpen(true);
   };
+  const writeNote = (item: ApiItem) => openSheet(item, true);
   /** A new Item, prefilled with the chosen type (and a lane's status). */
   const openNew = (initial?: Partial<ApiItemRequest>) => {
     returnTo.current = null;
@@ -112,10 +113,10 @@ export function LibraryPage() {
     setDialogOpen(true);
   };
 
-  // ?item=N (Cmd+K result): open that Item's dialog (one GET /api/items/{id}, not the whole library).
+  // ?item=N (Cmd+K result): open that Item's page in the Sheet (one GET /api/items/{id}, not the whole library).
   useOpenFromUrl('item', (id) => {
     api.getItem(id).then(
-      (item) => openEdit(item),
+      (item) => openSheet(item),
       (err: unknown) => setNotice(openError(err, `Không tìm thấy item #${id}, có thể đã bị xóa.`)),
     );
   });
@@ -137,11 +138,11 @@ export function LibraryPage() {
   const removeItem = (id: number) =>
     items.mutate((d) => d && { ...d, results: d.results.filter((i) => i.id !== id) });
 
-  /** A new note linked to Items: their noteCount goes up here too, so the "chưa có đầu ra" hint goes away. */
-  const noteCreated = (note: ApiNote) => {
-    const bump = (i: ApiItem) => (note.items.includes(i.id) ? { ...i, noteCount: i.noteCount + 1 } : i);
-    items.mutate((d) => d && { ...d, results: d.results.map(bump) });
-    setEditing((e) => e && bump(e));
+  /** A change made in the Sheet (status, properties, a note written or deleted): the list and the board follow. */
+  const sheetChanged = (saved: ApiItem) => {
+    if (sheet && sheet.item.status !== saved.status) moves.bump(saved.id);
+    setSheet((s) => s && { ...s, item: saved });
+    upsert(saved, false);
   };
 
   const step = async (item: ApiItem, to: ApiItemStatus) => {
@@ -295,7 +296,8 @@ export function LibraryPage() {
           kind={ITEM_BOARD}
           records={all}
           moves={moves}
-          onOpen={(item) => openEdit(item)}
+          onOpen={(item) => openSheet(item)}
+          openHint="xem item"
           onAdd={(lane) => openNew({ status: lane })}
           renderBody={(item) => (
             <ItemCardBody
@@ -326,6 +328,7 @@ export function LibraryPage() {
               key={item.id}
               item={item}
               withPicture={withPicture}
+              onOpen={() => openSheet(item)}
               onEdit={() => openEdit(item)}
               onRate={() => openEdit(item, true)}
               onStep={(to) => void step(item, to)}
@@ -372,21 +375,19 @@ export function LibraryPage() {
         finalFocus={finalFocus}
       />
 
-      <NoteDialog
-        open={noteFor !== null}
-        note={null}
-        draft={noteFor ? noteDraftForItem(noteFor) : undefined}
-        description={noteFor ? `Đầu ra cho: ${noteFor.title}` : undefined}
-        items={index.items}
-        byId={noteFor && !index.byId.has(noteFor.id) ? new Map([...index.byId, [noteFor.id, noteFor]]) : index.byId}
-        itemsStatus={index.loading && index.items.length === 0 ? 'Đang tải danh sách item…' : undefined}
-        onOpenChange={(o) => !o && setNoteFor(null)}
-        onSaved={(note) => {
-          setNoteFor(null);
-          noteCreated(note);
-          setNotice(`Đã tạo ghi chú "${noteTitle(note)}"`);
-        }}
+      <ItemSheet
+        item={sheet?.item ?? null}
+        open={sheetOpen}
+        compose={sheet?.compose ?? false}
+        onOpenChange={setSheetOpen}
         finalFocus={finalFocus}
+        onItemChange={sheetChanged}
+        onDeleted={(deleted) => {
+          removeItem(deleted.id);
+          setSheetOpen(false);
+          returnTo.current = null;
+          setNotice(`Đã xóa "${deleted.title}"`);
+        }}
       />
     </div>
   );

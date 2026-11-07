@@ -274,7 +274,10 @@ so the near pairs that remain are listed under the palette, not hidden.
   route halves (Thư viện Item / Ghi chú). Never filled primary buttons as tabs. A view switch sits first in the
   toolbar; the filters that belong to one view follow it only in that view. The view lives in the URL
   (`?view=board`, the default view has no parameter), the last choice in localStorage (the URL wins), switched with
-  `router.replace` without scrolling.
+  `router.replace` without scrolling. Ghi chú's switch is "Danh sách" / "Theo item" (`?view=items`, DECISIONS 9.8;
+  text only, since the rows stay rows): every matching note under each Item it is linked to, one container per group
+  whose first row is the heading (the Item's picture flush at its start, its title a link to the Item page, type and
+  note count as meta), "Ghi chú rời" (notes without an Item) last.
 - **Board** (Dự án, owner 07/11/2026: "như page All task trên ClickUp, có dạng list và board"; Thư viện the same
   day, DECISIONS 9.6; the shared `components/brain/status-board.tsx`, card parts in `work/project-card.tsx` and
   `library/item-parts.tsx`, pure logic in `lib/status-board.ts`, the view in `lib/use-board-view.ts`): one lane per
@@ -283,7 +286,7 @@ so the near pairs that remain are listed under the palette, not hidden.
   bg-well p-2 gap-2 min-h-40`) headed by its `StatusBadge` and count (`text-xs` muted `tabular-nums`), ending in a
   ghost `xs` "+ Thêm dự án" that opens the dialog with that status; empty, it says "Chưa có dự án" quietly. A card is
   a white surface (`rounded-lg border bg-card p-3 gap-2`): title (`text-sm font-medium`, 2 lines, a button that
-  opens the edit dialog) with the `RowMenu` at its end, the row's meta text (up to 2 lines, so a long client never
+  opens the record: Dự án's edit dialog, Thư viện's Item page in the Sheet) with the `RowMenu` at its end, the row's meta text (up to 2 lines, so a long client never
   cuts the price), then a footer only when there is something to say (Dự án: the `bw-red` now dot, hours with
   `MiniBillableBar`, "thực tế" rate; Thư viện: the rating, the note count, and on a done Item without its output
   (DECISIONS 4.2) the warning words with one outline `xs` "Viết ghi chú" or "Chấm điểm"; a drop into Xong is never
@@ -303,9 +306,34 @@ so the near pairs that remain are listed under the palette, not hidden.
 - **Toolbar:** one row, `h-8` controls: filters (`ChoiceSelect`/`Select`) left, the primary action right; wraps
   to two rows at 390 px with the primary action keeping the end of the first row or full width, never orphaned.
 - **Overlays:** `Dialog` for create/edit forms (fields via `Field`, errors via `fieldErrors()` under the field);
-  `Sheet` for reading or editing one record beside the list; `AlertDialog` (`confirm-delete.tsx`) for every
+  `Sheet` for reading or editing one record beside the list (the Item page beside Thư viện, below);
+  `AlertDialog` (`confirm-delete.tsx`) for every
   delete, never `window.confirm`; `Menu` for overflow; `Tooltip` for icon-only controls; a small `Dialog` for
   the keyboard legend (add `@spaceui/popover` if a non-modal panel is needed).
+- **Item page** (owner 07/11/2026: "ấn vào item thì hiện ra các ghi chú của item đó"; DECISIONS 9.8;
+  `library/item-detail.tsx`, one component for the right-side `Sheet` beside Thư viện, `max-w-2xl`, and the full page
+  `/thu-vien/item/?id=N`, `max-w-3xl` under a "Thư viện" back link like /co-hoi/?id=N). A List row, a row's title, a
+  Board card's title, `?item=N` and the Cmd+K item results open the Sheet; the List and the Board stay visible behind
+  it, Escape closes it and the focus goes back to the row or card (`recordFocusTarget`). From the top: the picture
+  (§9a) and the title (the Sheet's 20px title, the page's 30px h1; without a picture the page shows the Thư viện title
+  icon); the properties as AFFiNE shows them, a two-column `dl` (muted `text-xs` labels, values in `text-sm`: status
+  badge, type, rating, source, tags, dates; an empty one is left out); one row of `sm` buttons: the List row's next
+  step (outline "Bắt đầu"/"Xong"), outline "Sửa" (the existing `ItemDialog`, the one way to edit properties and the
+  picture), "Công việc" for a project and, in the Sheet only, a ghost "Mở trang đầy đủ" at the end; the
+  done-needs-an-output warning (DECISIONS 4.2); then "Ghi chú" (h2, its count, an outline "Viết ghi chú") and every
+  note of the Item, newest first, joined like one page: no card per note, `divide-y` with 20px above and below each,
+  a note's own title as a 15px heading (left out when it only repeats the Item's title), the date and the other
+  Items it is linked to as meta, a ghost pencil and a `RowMenu` (Mở ở trang Ghi chú, Xóa) at the end, then its
+  markdown as reading text (`note-markdown.tsx`, lazy: headings at most 15px, body 14/23 in the foreground colour,
+  code and tables scroll inside themselves, task boxes drawn with lucide squares and read out in words, links in the
+  link blue, raw HTML shown as text, only local images; a picture from another site is a link). Writing happens in
+  place: the composer (title, optional, prefilled with the Item's title; the type's template, `noteTemplates` in
+  `done-output.tsx`) opens by default on an Item without notes and from every "Viết ghi chú"; a note's pencil turns it
+  into the same form. The form is an `Input` and the autosized textarea of `note-text-editor.tsx` (the part the block
+  editor replaces), then the save keys hint, ghost "Hủy" and a filled `sm` "Lưu" (Cmd/Ctrl+Enter saves, Escape
+  cancels); an untouched template is not saved. Unsaved text is never dropped silently: Hủy, Escape, closing the
+  Sheet and leaving the page by a link ask "Bỏ các thay đổi chưa lưu?" (`discard-changes.tsx`, "Tiếp tục sửa" first),
+  a reload asks through the browser.
 - **Tables** for numeric or time data (Giờ, thị trường): header `text-xs font-medium text-muted-foreground`,
   rows `h-10` with `divide-y`, no vertical cell borders, numbers right-aligned `tabular-nums`. Add the Space UI
   table component from the registry when first needed rather than styling `<table>` by hand.
@@ -411,7 +439,10 @@ wins.
   the status leaves its badge for the meta line below `md` so the title keeps its room at 390 px; a Công việc row gets
   the track from `md` only (its status is already in the meta line on phones, so the track would only take the
   title's room); a board card shows a cover or a handbook band flush on top (16:7), a poster as a flush 4rem start
-  column (2:3 at the card's minimum height), a logo as a 40px square before the title. A logo is the one inset
+  column (2:3 at the card's minimum height), a logo as a 40px square before the title. On the Item page (the Sheet
+  and /thu-vien/item/, §6) no container holds the picture, so it stands beside the title as the record's own object
+  (`DetailPicture`): a 2:3 poster 4rem wide (5rem from sm), a 16:7 cover 7rem (9rem), the handbook's cover thumb in
+  a 4rem (5rem) square, a 48px (56px) logo on its ground, `rounded-md`, no frame or shadow. A logo is the one inset
   picture: `object-contain` on `--logo-ground`, white in both themes and kept under forced colours (a sticker; the logo
   keeps its transparency and most logos are drawn for a light page), `rounded-md` on cards. No picture: the row keeps
   an empty track and the card stays text-only; never a placeholder drawing. Skeletons take the picture geometry the

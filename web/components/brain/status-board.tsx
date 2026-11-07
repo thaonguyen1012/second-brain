@@ -204,6 +204,7 @@ function BoardCard({
   title,
   status,
   noun,
+  openHint,
   pending,
   dimmed,
   focus,
@@ -220,6 +221,8 @@ function BoardCard({
   title: string;
   status: ApiItemStatus;
   noun: string;
+  /** Read after the title: what its button does ("sửa dự án", "xem item"). */
+  openHint: string;
   pending: boolean;
   dimmed: boolean;
   focus: boolean;
@@ -264,7 +267,7 @@ function BoardCard({
           )}
         >
           <span className="line-clamp-2 break-words">{title}</span>
-          <span className="sr-only">, sửa {noun}</span>
+          <span className="sr-only">, {openHint}</span>
         </button>
         <span className="-me-1.5 -mt-0.5 shrink-0">
           <RowMenu label={`Thao tác cho "${title}"`}>
@@ -412,8 +415,10 @@ export interface StatusBoardProps<T extends BoardCardRecord> {
   kind: BoardKind;
   records: readonly T[];
   moves: Pick<StatusMoves<T>, 'ranks' | 'pending' | 'focusId' | 'clearFocus' | 'move'>;
-  /** The card's title button: the record's edit dialog (also the focus target after a move from the menu). */
+  /** The card's title button: the record's edit dialog or page (also the focus target after a move from the menu). */
   onOpen: (record: T) => void;
+  /** Read after a card's title: what its button does (default "sửa <noun>"). */
+  openHint?: string;
   /** A lane's "+ Thêm <noun>": a new record in that status. */
   onAdd: (status: ApiItemStatus) => void;
   /** Meta lines and footer under the title. */
@@ -434,6 +439,7 @@ export function StatusBoard<T extends BoardCardRecord>({
   records,
   moves,
   onOpen,
+  openHint,
   onAdd,
   renderBody,
   renderMenu,
@@ -497,6 +503,7 @@ export function StatusBoard<T extends BoardCardRecord>({
                   title={record.title}
                   status={lane.status}
                   noun={kind.noun}
+                  openHint={openHint ?? `sửa ${kind.noun}`}
                   pending={pending.has(record.id)}
                   dimmed={drag?.id === record.id}
                   focus={focusId === record.id}

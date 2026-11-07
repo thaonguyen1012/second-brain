@@ -29,7 +29,9 @@ Read DECISIONS.md (owner's decisions), PLAN.md (v2), ARCHITECTURE.md and API_CON
 ```
 web/
   app/(home)/page.tsx            "Hôm nay" (continue learning, week objectives, inbox count, today's brief)
-  app/(home)/<route>/            app pages in the shell: inbox/, thu-vien/ (Items) + thu-vien/ghi-chu/ (notes),
+  app/(home)/<route>/            app pages in the shell: inbox/, thu-vien/ (Items; ?item=N opens the Item page in a
+                                 Sheet) + thu-vien/item/ (?id=N, the full Item page) + thu-vien/ghi-chu/ (notes,
+                                 ?view=items "Theo item"),
                                  phat-trien/ (handbook grid) + {ky-nang,thi-truong,thanh-tuu}/, tuan/ (?w=&tab=),
                                  co-hoi/ (?id= detail), cong-viec/ (projects) + cong-viec/gio/ (time); static shells;
                                  inbox/them/ (?url=&title=&text= capture: bookmarklet + PWA share target);
@@ -58,6 +60,8 @@ web/
   lib/status-board.ts            pure logic of the List/Board pages (Dự án, Thư viện): lanes, optimistic moves, BoardKind
                                  (noun, drag type, view key), the view in the URL; lib/use-board-view.ts = the view hook;
                                  lib/api/pages.ts = loadAllPages (every cursor page, cap 20 x 100)
+  lib/item-notes.ts              notes by Item ("Theo item"), note date/heading words, which markdown links render;
+                                 lib/use-leave-guard.ts = ask before a link or reload drops unsaved note text
   lib/item-picture.ts            which picture an Item shows (its own image: poster/cover/logo by type; else the Sổ tay
                                  cover of a handbook course) + upload checks; drawn by components/brain/library/item-image.tsx
   lib/dates.ts                   Europe/Prague today, mondayOf, addDays, formatDay (date-only, UTC arithmetic)
@@ -75,7 +79,12 @@ web/
                                  same drawing as public/icons/icon.svg; DESIGN.md §4): sidebar header, docs nav, intro hero
   components/brain/              second-brain UI (client): BrainCard, api-state (empty/error states), today,
                                  inbox-page, library-page, dialogs; per area: tuan/, opportunities/, work/,
-                                 growth/, library/; status-board.tsx (the shared Bảng: lanes, native drag and drop,
+                                 growth/, library/; library/item-detail.tsx = the Item page (DECISIONS 9.8: picture,
+                                 properties, done hint, every note in place via item-notes.tsx), shown in
+                                 item-sheet.tsx (beside Thư viện) and item-page.tsx (/thu-vien/item/); notes render
+                                 through note-body.tsx (lazy react-markdown + remark-gfm in note-markdown.tsx, never
+                                 on home) and are typed in note-text-editor.tsx (the textarea the block editor will
+                                 replace); status-board.tsx (the shared Bảng: lanes, native drag and drop,
                                  useStatusMoves, BoardStatus; cards' parts in work/project-card.tsx and
                                  library/item-parts.tsx) + view-switch.tsx; library/item-image(-field).tsx (pictures in
                                  rows and cards, the dialogs' "Ảnh bìa"/"Logo" field). Data loads in the browser, never at build. Deletes only through

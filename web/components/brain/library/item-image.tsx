@@ -45,6 +45,34 @@ export function RowPicture({ picture, className }: { picture: ItemPicture | null
   );
 }
 
+/**
+ * The picture at the start of the Item page's header (the Sheet and /thu-vien/item/): the record's own object beside
+ * its title, at its shape (a 2:3 poster, a 16:7 cover, the handbook's cover thumb, a logo on its ground), rounded-md
+ * with no frame or shadow (DESIGN.md §9a "Item images"). Nothing without a picture.
+ */
+export function DetailPicture({ picture, className }: { picture: ItemPicture | null; className?: string }) {
+  if (!picture) return null;
+  const box = 'block shrink-0 overflow-hidden rounded-md';
+  if (picture.kind === 'handbook')
+    return (
+      <BookCover
+        slug={picture.book.slug}
+        title={picture.book.title}
+        variant="thumb"
+        className={cn(box, 'size-16 sm:size-20', className)}
+      />
+    );
+  return (
+    <span aria-hidden className={cn(box, picture.shape === 'poster' ? 'aspect-[2/3] w-16 sm:w-20' : picture.shape === 'logo' ? 'size-12 sm:size-14' : 'aspect-[16/7] w-28 sm:w-36', className)}>
+      {picture.shape === 'logo' ? (
+        <Logo url={picture.url} className="size-full p-1.5" />
+      ) : (
+        <Img url={picture.url} className="size-full object-cover" />
+      )}
+    </span>
+  );
+}
+
 /** Where a picture sits on a board card (components/brain/status-board.tsx). */
 export type MediaPlacement = 'top' | 'start' | 'inline';
 

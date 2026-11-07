@@ -1,0 +1,43 @@
+'use client';
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+
+/**
+ * "Bỏ các thay đổi chưa lưu?" before unsaved note text goes (closing the Item Sheet, leaving the page, Hủy on an edited
+ * note), the words NoteDialog uses. Render it inside the overlay it guards, so Base UI treats it as a child dialog and
+ * the focus returns there. "Tiếp tục sửa" has the first focus: Enter alone never drops text.
+ */
+export function DiscardChanges({
+  open,
+  onKeep,
+  onDiscard,
+}: {
+  open: boolean;
+  onKeep: () => void;
+  onDiscard: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={(o) => !o && onKeep()}>
+      <AlertDialogPopup>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Bỏ các thay đổi chưa lưu?</AlertDialogTitle>
+          <AlertDialogDescription>Nội dung vừa gõ trong ghi chú sẽ mất.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogClose render={<Button variant="ghost" type="button" />}>Tiếp tục sửa</AlertDialogClose>
+          <Button variant="destructive" type="button" onClick={onDiscard}>
+            Bỏ thay đổi
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogPopup>
+    </AlertDialog>
+  );
+}
