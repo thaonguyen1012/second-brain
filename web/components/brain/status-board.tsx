@@ -1,16 +1,15 @@
 'use client';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
-import Link from 'next/link';
-import { ArrowRight, CircleAlert, Clock, Pencil, Play, Plus } from 'lucide-react';
-import type { ApiError, ApiItemStatus, Page } from '@/lib/api/client';
+import { ArrowRight, CircleAlert, Plus } from 'lucide-react';
+import type { ApiItemStatus, Page } from '@/lib/api/client';
 import { toApiError, type ApiResult } from '@/lib/api/use-api';
-import { workApi, type ApiProject } from '@/lib/api/work';
-import { firstFieldError, itemStatusOf, itemStatuses } from '@/lib/labels';
+import { itemStatusOf, itemStatuses } from '@/lib/labels';
 import {
-  PROJECT_DRAG_TYPE,
   applyMove,
   groupByStatus,
-  isProjectDrag,
+  isBoardDrag,
+  laneOf,
+  moveFailureReason,
   moveMessage,
   parseDragId,
   planMove,
@@ -18,22 +17,24 @@ import {
   rollbackMove,
   settleMove,
   unrankMove,
+  type BoardCardRecord,
+  type BoardKind,
   type Ranks,
-} from '@/lib/project-board';
+} from '@/lib/status-board';
 import { cn } from '@/lib/utils';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { MenuItem, MenuLinkItem, MenuSeparator } from '@/components/ui/menu';
+import { MenuItem, MenuSeparator } from '@/components/ui/menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StatusBadge } from '../brain-card';
-import { RowMenu } from '../row-menu';
-import { MiniBillableBar } from './billable-bar';
-import { formatHours, formatMoney } from './format';
-import { canStartTimer, projectMeta } from './project-meta';
+import { StatusBadge } from './brain-card';
+import { RowMenu } from './row-menu';
 
-// Bảng: the projects of Dự án in one lane per status (DESIGN.md §6 "Board"). A card moves by native HTML5 drag and
-// drop or by its menu ("Chuyển sang ..."), both through useProjectMoves: optimistic, then the server's answer, or
-// back to where it was with one alert.
+// Bảng: the records of a page in one lane per status (DESIGN.md §6 "Board"), shared by Dự án and Thư viện; a page
+// passes its BoardKind (wording, drag type) and the card's body and menu. A card moves by native HTML5 drag and drop
+// or by its menu ("Chuyển sang ..."), both through useStatusMoves: optimistic, then the server's answer, or back to
+// where it was with one alert.
+
+export type MoveVia = 'drag' | 'menu';
 
 export interface MoveFailure {
   id: number;
@@ -42,74 +43,100 @@ export interface MoveFailure {
   reason: string;
 }
 
-/** Why a status change failed, as the end of "Không đổi được trạng thái: ...". */
-function failureReason(e: ApiError): string {
-  if (!e.reachable) return 'chưa kết nối được máy chủ';
-  if (e.status === 401 || e.status === 403) return 'chưa đăng nhập';
-  if (e.status === 404) return 'dự án này không còn nữa';
-  if (e.status === 400) return firstFieldError(e.body) ?? 'dữ liệu không hợp lệ';
-  return `máy chủ trả lỗi ${e.status}`;
+export interface StatusMoves<T extends BoardCardRecord> {
+  ranks: Ranks;
+  pending: ReadonlySet<number>;
+  failure: MoveFailure | null;
+  dismissFailure: () => void;
+  /** The text of the polite live region (BoardStatus). */
+  announcement: string;
+  /** The card that takes the focus after a move from its menu: it is a new element in another lane. */
+  focusId: number | null;
+  clearFocus: () => void;
+  /** Resolves false when the API refused the move (the card is back where it was). */
+  move: (record: T, to: ApiItemStatus, via: MoveVia) => Promise<boolean>;
+  /** A record saved from a dialog (new, or with another status) lands on top of its lane like a moved card. */
+  bump: (id: number) => void;
 }
 
 /**
- * Status moves of the projects list loaded with useApi (shared by List and Bảng): the card changes lane at once and
- * goes to the top of it, PATCH /api/projects/{id} { status } follows, and the server's record replaces it; on failure
- * the old status and place come back and `failure` says why. Each move is announced in `announcement` (polite live
- * region). A card is not moved again while its PATCH is pending. Resolves false when the API refused the move.
+ * Status moves of a list loaded with useApi (shared by a page's List and Bảng): the card changes lane at once and
+ * goes to the top of it, `save(id, status)` follows, and the server's record replaces it; on failure the old status
+ * and place come back and `failure` says why. Each move is announced in `announcement`. A card is not moved again
+ * while its save is pending.
  */
-export function useProjectMoves(projects: ApiResult<Page<ApiProject>>) {
-  const { mutate } = projects;
-  const list = projects.data?.results;
+export function useStatusMoves<T extends BoardCardRecord>(
+  result: ApiResult<Page<T>>,
+  kind: BoardKind,
+  save: (id: number, status: ApiItemStatus) => Promise<T>,
+): StatusMoves<T> {
+  const { mutate } = result;
+  const list = result.data?.results;
   const seq = useRef(0);
   const [ranks, setRanks] = useState<Ranks>(() => new Map());
   const [pending, setPending] = useState<ReadonlySet<number>>(() => new Set());
   const [failure, setFailure] = useState<MoveFailure | null>(null);
   const [announcement, setAnnouncement] = useState('');
+  const [focusId, setFocusId] = useState<number | null>(null);
 
   const update = useCallback(
-    (fn: (rows: ApiProject[]) => ApiProject[]) => mutate((d) => d && { ...d, results: fn(d.results) }),
+    (fn: (rows: T[]) => T[]) => mutate((d) => d && { ...d, results: fn(d.results) }),
     [mutate],
   );
 
-  const move = async (p: ApiProject, to: ApiItemStatus): Promise<boolean> => {
-    if (!list || pending.has(p.id)) return true;
-    const plan = planMove(list, ranks, p.id, to, seq.current + 1);
+  const move = async (record: T, to: ApiItemStatus, via: MoveVia): Promise<boolean> => {
+    if (via === 'menu') setFocusId(record.id);
+    if (!list || pending.has(record.id)) return true;
+    const plan = planMove(list, ranks, record.id, to, seq.current + 1);
     if (!plan) return true;
     seq.current = plan.rank;
     update((rows) => applyMove(rows, plan));
     setRanks((r) => rankMove(r, plan));
-    setPending((s) => new Set(s).add(p.id));
-    const message = moveMessage(p.title, itemStatusOf(to).label);
+    setPending((s) => new Set(s).add(record.id));
+    const message = moveMessage(record.title, itemStatusOf(to).label);
     // the same words twice in a row (moved back and forth) must still change the region to be read out again
-    setAnnouncement((prev) => (prev === message ? `${message} ` : message));
+    setAnnouncement((prev) => (prev === message ? `${message} ` : message));
     try {
-      const saved = await workApi.updateProject(p.id, { status: to });
+      const saved = await save(record.id, to);
       update((rows) => settleMove(rows, saved));
       // a retry that worked: the alert's "... vẫn ở <old lane>" about this card is no longer true
-      setFailure((f) => (f?.id === p.id ? null : f));
+      setFailure((f) => (f?.id === record.id ? null : f));
       return true;
     } catch (err) {
       update((rows) => rollbackMove(rows, plan));
       setRanks((r) => unrankMove(r, plan));
-      setFailure({ id: p.id, title: p.title, from: plan.from, reason: failureReason(toApiError(err)) });
+      setFailure({ id: record.id, title: record.title, from: plan.from, reason: moveFailureReason(toApiError(err), kind.noun) });
+      // back in its old lane the card is a new element again: the focus follows it there
+      if (via === 'menu') setFocusId(record.id);
       return false;
     } finally {
       setPending((s) => {
         const next = new Set(s);
-        next.delete(p.id);
+        next.delete(record.id);
         return next;
       });
     }
   };
 
-  /** A project saved from the dialog (new, or with another status) also lands on top of its lane. */
   const bump = useCallback((id: number) => {
     seq.current += 1;
     const rank = seq.current;
     setRanks((r) => new Map(r).set(id, rank));
   }, []);
+  // stable: the card's focus effect depends on it
+  const clearFocus = useCallback(() => setFocusId(null), []);
 
-  return { ranks, pending, failure, dismissFailure: () => setFailure(null), announcement, move, bump };
+  return {
+    ranks,
+    pending,
+    failure,
+    dismissFailure: () => setFailure(null),
+    announcement,
+    focusId,
+    clearFocus,
+    move,
+    bump,
+  };
 }
 
 /** The one alert of a refused move, with a close action; the card is already back in its lane. */
@@ -130,6 +157,22 @@ export function MoveFailedAlert({ failure, onClose }: { failure: MoveFailure; on
   );
 }
 
+/**
+ * The polite live region that reads every move out, and the alert of a refused one. Always mounted, outside the
+ * board, so the first move is read too. Moves are announced here, not in the page's visible notice: a line appearing
+ * above the board would push it down. A fragment: a wrapper would take a gap slot in the page's column.
+ */
+export function BoardStatus<T extends BoardCardRecord>({ moves }: { moves: StatusMoves<T> }) {
+  return (
+    <>
+      <p className="sr-only" role="status">
+        {moves.announcement}
+      </p>
+      {moves.failure && <MoveFailedAlert failure={moves.failure} onClose={moves.dismissFailure} />}
+    </>
+  );
+}
+
 interface Drag {
   id: number;
   from: ApiItemStatus;
@@ -146,29 +189,35 @@ const TRACK = 'flex w-max gap-3 px-4 sm:px-8 @4xl:grid @4xl:w-full @4xl:grid-col
 const LANE = 'flex min-h-40 w-72 shrink-0 snap-start flex-col gap-2 rounded-xl bg-well p-2 @4xl:w-auto';
 
 function BoardCard({
-  project: p,
-  running,
+  title,
+  status,
+  noun,
   pending,
   dimmed,
   focus,
   onFocused,
   onDragStart,
   onDragEnd,
-  onEdit,
-  onStart,
+  onOpen,
   onMove,
+  menu,
+  children,
 }: {
-  project: ApiProject;
-  running: boolean;
+  title: string;
+  status: ApiItemStatus;
+  noun: string;
   pending: boolean;
   dimmed: boolean;
   focus: boolean;
   onFocused: () => void;
   onDragStart: (e: DragEvent<HTMLLIElement>) => void;
   onDragEnd: () => void;
-  onEdit: () => void;
-  onStart: () => void;
+  onOpen: () => void;
   onMove: (to: ApiItemStatus) => void;
+  /** The record's own menu entries, before "Chuyển sang ...". */
+  menu: ReactNode;
+  /** Meta lines and footer under the title. */
+  children: ReactNode;
 }) {
   const titleRef = useRef<HTMLButtonElement>(null);
   // After a move from the menu the card is a new element in another lane: give it the focus the menu had.
@@ -182,7 +231,6 @@ function BoardCard({
     return () => window.cancelAnimationFrame(frame);
   }, [focus, onFocused]);
 
-  const hours = p.minutesTotal > 0;
   return (
     <li
       draggable={!pending}
@@ -199,34 +247,21 @@ function BoardCard({
         <button
           ref={titleRef}
           type="button"
-          onClick={onEdit}
+          onClick={onOpen}
           className={cn(
             'min-w-0 flex-1 cursor-pointer rounded-sm py-0.5 text-start text-sm font-medium underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring',
             !dimmed && 'hover:underline',
           )}
         >
-          <span className="line-clamp-2 break-words">{p.title}</span>
-          <span className="sr-only">, sửa dự án</span>
+          <span className="line-clamp-2 break-words">{title}</span>
+          <span className="sr-only">, sửa {noun}</span>
         </button>
         <span className="-me-1.5 -mt-0.5 shrink-0">
-          <RowMenu label={`Thao tác cho "${p.title}"`}>
-            <MenuItem onClick={onEdit}>
-              <Pencil aria-hidden />
-              Sửa
-            </MenuItem>
-            {canStartTimer(p, running) && (
-              <MenuItem onClick={onStart}>
-                <Play aria-hidden />
-                Bấm giờ
-              </MenuItem>
-            )}
-            <MenuLinkItem render={<Link href={`/cong-viec/gio/?project=${p.id}`} />}>
-              <Clock aria-hidden />
-              Xem giờ
-            </MenuLinkItem>
+          <RowMenu label={`Thao tác cho "${title}"`}>
+            {menu}
             <MenuSeparator />
             {itemStatuses
-              .filter((s) => s.value !== p.status)
+              .filter((s) => s.value !== status)
               .map((s) => (
                 <MenuItem key={s.value} disabled={pending} onClick={() => onMove(s.value)}>
                   <ArrowRight aria-hidden />
@@ -236,36 +271,13 @@ function BoardCard({
           </RowMenu>
         </span>
       </div>
-      {/* two lines, not one: a long client name would otherwise cut off the agreed price on a 14-18rem card */}
-      <p className="line-clamp-2 text-xs break-words text-muted-foreground">{projectMeta(p)}</p>
-      {(hours || running || p.effectiveRate) && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground tabular-nums">
-          {(hours || running) && (
-            <span className="inline-flex items-center gap-2">
-              {running && (
-                <>
-                  <span className="size-2 shrink-0 rounded-full bg-bw-red" aria-hidden />
-                  <span className="sr-only">Đang bấm giờ.</span>
-                </>
-              )}
-              {hours && (
-                <>
-                  <span className="font-medium text-foreground">{formatHours(p.minutesTotal)}</span>
-                  <span className="w-10">
-                    <MiniBillableBar billable={p.minutesBillable} nonBillable={p.minutesNonBillable} />
-                  </span>
-                </>
-              )}
-            </span>
-          )}
-          {p.effectiveRate && <span>thực tế {formatMoney(p.effectiveRate, p.currency)}/giờ</span>}
-        </div>
-      )}
+      {children}
     </li>
   );
 }
 
 function BoardLane({
+  kind,
   status,
   count,
   drag,
@@ -274,6 +286,7 @@ function BoardLane({
   onAdd,
   children,
 }: {
+  kind: BoardKind;
   status: ApiItemStatus;
   count: number;
   /** The card being dragged, one frame after dragstart (the empty lane's drop area, the target ring). */
@@ -293,7 +306,7 @@ function BoardLane({
   /** The drag of this board that `e` belongs to, or null (files, text, links from other pages). */
   const ours = (e: DragEvent) => {
     const d = current();
-    return d && isProjectDrag(e.dataTransfer.types) ? d : null;
+    return d && isBoardDrag(e.dataTransfer.types, kind.dragType) ? d : null;
   };
 
   const target = drag !== null && overDrag === drag && drag.from !== status;
@@ -324,7 +337,7 @@ function BoardLane({
         e.preventDefault();
         depth.current = { drag: null, n: 0 };
         setOverDrag(null);
-        const id = parseDragId(e.dataTransfer.getData(PROJECT_DRAG_TYPE));
+        const id = parseDragId(e.dataTransfer.getData(kind.dragType));
         if (id !== null) onDropCard(id, status);
       }}
       className={cn(LANE, target && 'ring-2 ring-ring ring-inset')}
@@ -334,7 +347,7 @@ function BoardLane({
         <span className="text-xs font-normal text-muted-foreground tabular-nums">
           <span className="sr-only">, </span>
           {count}
-          <span className="sr-only"> dự án</span>
+          <span className="sr-only"> {kind.noun}</span>
         </span>
       </h2>
       {count > 0 ? (
@@ -347,7 +360,7 @@ function BoardLane({
             drag ? 'border-foreground/25' : 'border-transparent',
           )}
         >
-          {drag ? 'Thả dự án vào đây' : 'Chưa có dự án'}
+          {drag ? `Thả ${kind.noun} vào đây` : `Chưa có ${kind.noun}`}
         </p>
       )}
       <Button
@@ -355,45 +368,45 @@ function BoardLane({
         size="xs"
         className="self-start text-muted-foreground"
         onClick={onAdd}
-        aria-label={`Thêm dự án vào cột ${s.label}`}
+        aria-label={`Thêm ${kind.noun} vào cột ${s.label}`}
       >
         <Plus aria-hidden />
-        Thêm dự án
+        Thêm {kind.noun}
       </Button>
     </section>
   );
 }
 
+export interface StatusBoardProps<T extends BoardCardRecord> {
+  kind: BoardKind;
+  records: readonly T[];
+  moves: Pick<StatusMoves<T>, 'ranks' | 'pending' | 'focusId' | 'clearFocus' | 'move'>;
+  /** The card's title button: the record's edit dialog (also the focus target after a move from the menu). */
+  onOpen: (record: T) => void;
+  /** A lane's "+ Thêm <noun>": a new record in that status. */
+  onAdd: (status: ApiItemStatus) => void;
+  /** Meta lines and footer under the title. */
+  renderBody: (record: T) => ReactNode;
+  /** The record's own menu entries; the board adds a separator and "Chuyển sang ..." (disabled while pending). */
+  renderMenu: (record: T) => ReactNode;
+}
+
 /**
  * The board: one lane per status (itemStatuses order), cards in list order with the cards moved in this visit on
- * top (`ranks`). Native HTML5 drag and drop only (no library): a lane accepts a drag that started on one of these
- * cards and carries PROJECT_DRAG_TYPE, never files or text from elsewhere. `focusId` is the card that should take
- * focus (after a move from its menu).
+ * top (`moves.ranks`). Native HTML5 drag and drop only (no library): a lane accepts a drag that started on one of
+ * these cards and carries `kind.dragType`, never files, text or the cards of another board.
  */
-export function ProjectBoard({
-  projects,
-  ranks,
-  pending,
-  runningId,
-  focusId,
-  onFocused,
-  onEdit,
-  onStart,
-  onMove,
+export function StatusBoard<T extends BoardCardRecord>({
+  kind,
+  records,
+  moves,
+  onOpen,
   onAdd,
-}: {
-  projects: ApiProject[];
-  ranks: Ranks;
-  pending: ReadonlySet<number>;
-  runningId: number | null;
-  focusId: number | null;
-  onFocused: () => void;
-  onEdit: (p: ApiProject) => void;
-  onStart: (p: ApiProject) => void;
-  onMove: (p: ApiProject, to: ApiItemStatus, via: 'drag' | 'menu') => void;
-  onAdd: (status: ApiItemStatus) => void;
-}) {
-  const lanes = useMemo(() => groupByStatus(projects, ranks), [projects, ranks]);
+  renderBody,
+  renderMenu,
+}: StatusBoardProps<T>) {
+  const { ranks, pending, focusId, clearFocus, move } = moves;
+  const lanes = useMemo(() => groupByStatus(records, ranks), [records, ranks]);
   // The ref answers the lanes' drag events from the first one on; the state (one frame later, so the browser has
   // taken the drag image of the card at full opacity) dims the card and shows the empty lanes' drop areas.
   const dragRef = useRef<Drag | null>(null);
@@ -405,16 +418,16 @@ export function ProjectBoard({
     setDrag(null);
   }, []);
 
-  const startDrag = (e: DragEvent<HTMLLIElement>, p: ApiProject) => {
+  const startDrag = (e: DragEvent<HTMLLIElement>, record: T) => {
     // only the card itself: a drag from its menu (portalled, but its React events bubble here) is not a card drag
     if (e.target !== e.currentTarget) return;
-    if (pending.has(p.id)) {
+    if (pending.has(record.id)) {
       e.preventDefault();
       return;
     }
-    e.dataTransfer.setData(PROJECT_DRAG_TYPE, String(p.id));
+    e.dataTransfer.setData(kind.dragType, String(record.id));
     e.dataTransfer.effectAllowed = 'move';
-    const d = { id: p.id, from: p.status };
+    const d = { id: record.id, from: laneOf(record) };
     dragRef.current = d;
     window.requestAnimationFrame(() => {
       if (dragRef.current === d) setDrag(d);
@@ -424,8 +437,8 @@ export function ProjectBoard({
   const dropCard = (id: number, to: ApiItemStatus) => {
     // The dropped card re-renders in its new lane, so its old element never reports dragend to React: end here.
     endDrag();
-    const p = projects.find((x) => x.id === id);
-    if (p) onMove(p, to, 'drag');
+    const record = records.find((r) => r.id === id);
+    if (record) void move(record, to, 'drag');
   };
 
   return (
@@ -435,6 +448,7 @@ export function ProjectBoard({
           {lanes.map((lane) => (
             <BoardLane
               key={lane.status}
+              kind={kind}
               status={lane.status}
               count={lane.records.length}
               drag={drag}
@@ -442,21 +456,24 @@ export function ProjectBoard({
               onDropCard={dropCard}
               onAdd={() => onAdd(lane.status)}
             >
-              {lane.records.map((p) => (
+              {lane.records.map((record) => (
                 <BoardCard
-                  key={p.id}
-                  project={p}
-                  running={runningId === p.id}
-                  pending={pending.has(p.id)}
-                  dimmed={drag?.id === p.id}
-                  focus={focusId === p.id}
-                  onFocused={onFocused}
-                  onDragStart={(e) => startDrag(e, p)}
+                  key={record.id}
+                  title={record.title}
+                  status={lane.status}
+                  noun={kind.noun}
+                  pending={pending.has(record.id)}
+                  dimmed={drag?.id === record.id}
+                  focus={focusId === record.id}
+                  onFocused={clearFocus}
+                  onDragStart={(e) => startDrag(e, record)}
                   onDragEnd={endDrag}
-                  onEdit={() => onEdit(p)}
-                  onStart={() => onStart(p)}
-                  onMove={(to) => onMove(p, to, 'menu')}
-                />
+                  onOpen={() => onOpen(record)}
+                  onMove={(to) => void move(record, to, 'menu')}
+                  menu={renderMenu(record)}
+                >
+                  {renderBody(record)}
+                </BoardCard>
               ))}
             </BoardLane>
           ))}

@@ -1,16 +1,17 @@
 'use client';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Clock, FolderPlus, List, Pencil, Play, Plus, SquareKanban } from 'lucide-react';
+import { Clock, FolderPlus, Pencil, Play, Plus } from 'lucide-react';
 import { api, type ApiItemStatus, type Page } from '@/lib/api/client';
+import { loadAllPages } from '@/lib/api/pages';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiProject } from '@/lib/api/work';
 import { itemStatusOf, itemStatuses } from '@/lib/labels';
-import { loadAllPages } from '@/lib/project-board';
+import { PROJECT_BOARD } from '@/lib/status-board';
+import { useBoardView } from '@/lib/use-board-view';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
-import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
@@ -18,14 +19,15 @@ import { ChoiceSelect } from '../choice-select';
 import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { PAGE_WIDTH } from '../layout';
 import { RowMenu } from '../row-menu';
+import { BoardSkeleton, BoardStatus, StatusBoard, useStatusMoves } from '../status-board';
+import { ViewSwitch } from '../view-switch';
 import { BillableLegend, MiniBillableBar } from './billable-bar';
 import { formatHours, formatMoney } from './format';
-import { BoardSkeleton, MoveFailedAlert, ProjectBoard, useProjectMoves } from './project-board';
+import { ProjectCardBody, ProjectCardMenu } from './project-card';
 import { ProjectDialog } from './project-dialog';
 import { canStartTimer, projectMeta } from './project-meta';
 import { RowsSkeleton } from './rows-skeleton';
 import { TimerPanel } from './timer-panel';
-import { useProjectsView, type ProjectsView } from './use-projects-view';
 import { sortProjectChoices, useTimer, useWeekObjectives } from './use-work';
 
 type StatusFilter = ApiItemStatus | 'all';
@@ -173,17 +175,16 @@ function ProjectList({
  * other without a reload.
  */
 export function ProjectsPage() {
-  const [view, setView] = useProjectsView();
+  const [view, setView] = useBoardView(PROJECT_BOARD.viewKey);
   const [status, setStatus] = useState<StatusFilter>('all');
   const [editing, setEditing] = useState<ApiProject | null>(null);
   const [newStatus, setNewStatus] = useState<ApiItemStatus | undefined>(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [focusId, setFocusId] = useState<number | null>(null);
 
   const projects = useApi<Page<ApiProject>>('work:projects:all', loadProjects);
-  const moves = useProjectMoves(projects);
+  const moves = useStatusMoves(projects, PROJECT_BOARD, (id, to) => workApi.updateProject(id, { status: to }));
   const { objectives } = useWeekObjectives();
   const timer = useTimer();
   const runningId = timer.running?.project ?? null;
@@ -240,13 +241,6 @@ export function ProjectsPage() {
     setEditing(p);
     setDialogOpen(true);
   };
-  const moveCard = async (p: ApiProject, to: ApiItemStatus, via: 'drag' | 'menu') => {
-    if (via === 'menu') setFocusId(p.id);
-    const ok = await moves.move(p, to);
-    // back in its old lane the card is a new element again: the focus follows it there
-    if (!ok && via === 'menu') setFocusId(p.id);
-  };
-  const clearFocus = useCallback(() => setFocusId(null), []);
 
   const filtered = view === 'list' && status !== 'all';
   // Unfiltered and empty: the first-run panel carries the one "Thêm dự án"; no toolbar until a project exists (D26).
@@ -275,18 +269,7 @@ export function ProjectsPage() {
       {toolbar !== 'hide' && (
         // At 390 px the view switch and "Thêm dự án" keep the first row; the list's filter takes the second
         <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
-          <Tabs value={view} onValueChange={(v) => setView(v as ProjectsView)}>
-            <TabsList aria-label="Kiểu xem">
-              <TabsTab value="list">
-                <List aria-hidden />
-                Danh sách
-              </TabsTab>
-              <TabsTab value="board">
-                <SquareKanban aria-hidden />
-                Bảng
-              </TabsTab>
-            </TabsList>
-          </Tabs>
+          <ViewSwitch view={view} onChange={setView} />
           {view === 'list' && (
             <ChoiceSelect
               label="Trạng thái"
@@ -308,11 +291,7 @@ export function ProjectsPage() {
           {notice}
         </p>
       )}
-      {/* Moves are announced here, not in the visible notice: a line appearing above the board would push it down */}
-      <p className="sr-only" role="status">
-        {moves.announcement}
-      </p>
-      {moves.failure && <MoveFailedAlert failure={moves.failure} onClose={moves.dismissFailure} />}
+      <BoardStatus moves={moves} />
 
       <ApiStaleAlert result={projects} />
       {projects.error && !projects.data ? (
@@ -347,17 +326,21 @@ export function ProjectsPage() {
         <div className="flex flex-col gap-2">
           {anyMinutes && <BillableLegend className="justify-end" />}
           {view === 'board' ? (
-            <ProjectBoard
-              projects={all}
-              ranks={moves.ranks}
-              pending={moves.pending}
-              runningId={runningId}
-              focusId={focusId}
-              onFocused={clearFocus}
-              onEdit={openEdit}
-              onStart={(p) => void startFor(p)}
-              onMove={(p, to, via) => void moveCard(p, to, via)}
+            <StatusBoard
+              kind={PROJECT_BOARD}
+              records={all}
+              moves={moves}
+              onOpen={openEdit}
               onAdd={openNew}
+              renderBody={(p) => <ProjectCardBody project={p} running={runningId === p.id} />}
+              renderMenu={(p) => (
+                <ProjectCardMenu
+                  project={p}
+                  running={runningId === p.id}
+                  onEdit={() => openEdit(p)}
+                  onStart={() => void startFor(p)}
+                />
+              )}
             />
           ) : (
             <ProjectList projects={list} runningId={runningId} onEdit={openEdit} onStart={(p) => void startFor(p)} />

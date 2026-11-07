@@ -1,21 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import type { ApiItemStatus, Page } from '@/lib/api/client';
+import type { ApiItemStatus } from '@/lib/api/client';
 import {
-  MAX_PAGES,
-  PROJECT_DRAG_TYPE,
+  ITEM_BOARD,
+  PROJECT_BOARD,
   applyMove,
   groupByStatus,
-  isProjectDrag,
-  loadAllPages,
+  isBoardDrag,
+  laneOf,
+  moveFailureReason,
   moveMessage,
   parseDragId,
+  parseView,
   planMove,
   rankMove,
+  resolveView,
   rollbackMove,
   settleMove,
   unrankMove,
+  viewSearch,
   type Ranks,
-} from './project-board';
+} from './status-board';
 
 interface P {
   id: number;
@@ -63,9 +67,12 @@ describe('groupByStatus', () => {
     ]);
   });
 
-  it('puts an unknown status into the first lane', () => {
+  it('puts an unknown or missing status into the first lane', () => {
     const odd = { id: 9, status: 'archived' as ApiItemStatus, title: 'x' };
-    expect(groupByStatus([odd])[0].records).toEqual([odd]);
+    const bare = { id: 10, title: 'no status' };
+    expect(groupByStatus([odd, bare])[0].records).toEqual([odd, bare]);
+    expect(laneOf(bare)).toBe('planned');
+    expect(laneOf({ id: 1, status: 'done' })).toBe('done');
   });
 
   it('does not change the list', () => {
@@ -90,6 +97,12 @@ describe('planMove', () => {
   it('is null for the same status or an unknown id', () => {
     expect(planMove(list, new Map(), 8, 'active', 1)).toBeNull();
     expect(planMove(list, new Map(), 99, 'done', 1)).toBeNull();
+  });
+
+  it('treats a missing status as the first lane', () => {
+    const bare = [{ id: 1 }];
+    expect(planMove(bare, new Map(), 1, 'planned', 1)).toBeNull();
+    expect(planMove(bare, new Map(), 1, 'done', 1)?.from).toBe('planned');
   });
 });
 
@@ -142,12 +155,17 @@ describe('a move', () => {
 });
 
 describe('drag payload', () => {
-  it('accepts only drags that carry a card', () => {
-    expect(isProjectDrag([PROJECT_DRAG_TYPE])).toBe(true);
-    expect(isProjectDrag(['text/plain', PROJECT_DRAG_TYPE])).toBe(true);
-    expect(isProjectDrag(['Files'])).toBe(false);
-    expect(isProjectDrag(['text/plain', 'text/uri-list'])).toBe(false);
-    expect(isProjectDrag(null)).toBe(false);
+  const type = PROJECT_BOARD.dragType;
+
+  it('accepts only drags that carry a card of this board', () => {
+    expect(isBoardDrag([type], type)).toBe(true);
+    expect(isBoardDrag(['text/plain', type], type)).toBe(true);
+    expect(isBoardDrag(['Files'], type)).toBe(false);
+    expect(isBoardDrag(['text/plain', 'text/uri-list'], type)).toBe(false);
+    expect(isBoardDrag(null, type)).toBe(false);
+    // a Dự án card is never dropped on the Thư viện board, and the other way round
+    expect(isBoardDrag([PROJECT_BOARD.dragType], ITEM_BOARD.dragType)).toBe(false);
+    expect(isBoardDrag([ITEM_BOARD.dragType], PROJECT_BOARD.dragType)).toBe(false);
   });
 
   it('parses only a positive integer id', () => {
@@ -158,50 +176,57 @@ describe('drag payload', () => {
 });
 
 describe('moveMessage', () => {
-  it('names the project and the new status', () => {
+  it('names the record and the new status', () => {
     expect(moveMessage('Acme', 'Đang làm')).toBe('Đã chuyển “Acme” sang Đang làm');
   });
 });
 
-describe('loadAllPages', () => {
-  const pages: Record<string, Page<{ id: number }>> = {
-    '/p2': { results: [{ id: 3 }, { id: 2 }], next: '/p3' },
-    '/p3': { results: [{ id: 2 }, { id: 1 }], next: null },
-  };
+describe('moveFailureReason', () => {
+  const e = (status: number, reachable = true, body: unknown = null) => ({ status, reachable, body });
 
-  it('follows next until the end and skips rows already seen', async () => {
-    const asked: string[] = [];
-    const all = await loadAllPages(
-      async () => ({ results: [{ id: 5 }, { id: 4 }], next: '/p2' }),
-      async (next) => {
-        asked.push(next);
-        return pages[next];
-      },
-    );
-    expect(all).toEqual({ results: [{ id: 5 }, { id: 4 }, { id: 3 }, { id: 2 }, { id: 1 }], next: null });
-    expect(asked).toEqual(['/p2', '/p3']);
+  it('says why in the words of the board', () => {
+    expect(moveFailureReason(e(0, false), 'dự án')).toBe('chưa kết nối được máy chủ');
+    expect(moveFailureReason(e(401), 'dự án')).toBe('chưa đăng nhập');
+    expect(moveFailureReason(e(403), 'item')).toBe('chưa đăng nhập');
+    expect(moveFailureReason(e(404), 'dự án')).toBe('dự án này không còn nữa');
+    expect(moveFailureReason(e(404), 'item')).toBe('item này không còn nữa');
+    expect(moveFailureReason(e(400, true, { status: ['Không hợp lệ.'] }), 'item')).toBe('Không hợp lệ.');
+    expect(moveFailureReason(e(400), 'item')).toBe('dữ liệu không hợp lệ');
+    expect(moveFailureReason(e(500), 'item')).toBe('máy chủ trả lỗi 500');
+  });
+});
+
+describe('board kinds', () => {
+  it('keeps the Dự án literals, so the remembered view and the drag type still work', () => {
+    expect(PROJECT_BOARD).toEqual({
+      noun: 'dự án',
+      dragType: 'application/x-alex-brain-project',
+      viewKey: 'alex-brain:projects-view',
+    });
   });
 
-  it('stops at the cap and keeps next for "Tải thêm"', async () => {
-    let n = 0;
-    const all = await loadAllPages(
-      async () => ({ results: [{ id: ++n }], next: '/more' }),
-      async () => ({ results: [{ id: ++n }], next: '/more' }),
-    );
-    expect(all.results).toHaveLength(MAX_PAGES);
-    expect(all.next).toBe('/more');
+  it('gives each board its own lower-case drag type and view key', () => {
+    for (const kind of [PROJECT_BOARD, ITEM_BOARD]) expect(kind.dragType).toBe(kind.dragType.toLowerCase());
+    expect(ITEM_BOARD.dragType).not.toBe(PROJECT_BOARD.dragType);
+    expect(ITEM_BOARD.viewKey).not.toBe(PROJECT_BOARD.viewKey);
+  });
+});
+
+describe('view', () => {
+  it('lets the URL win over the remembered choice, else the list', () => {
+    expect(resolveView('board', 'list')).toBe('board');
+    expect(resolveView('list', 'board')).toBe('list');
+    expect(resolveView(null, 'board')).toBe('board');
+    expect(resolveView(null, null)).toBe('list');
+    expect(resolveView('kanban', 'nonsense')).toBe('list');
+    expect(parseView('board')).toBe('board');
+    expect(parseView(undefined)).toBeNull();
   });
 
-  it('asks once for a single page', async () => {
-    let calls = 0;
-    const all = await loadAllPages(
-      async () => ({ results: [{ id: 1 }], next: null }),
-      async () => {
-        calls++;
-        return { results: [], next: null };
-      },
-    );
-    expect(all).toEqual({ results: [{ id: 1 }], next: null });
-    expect(calls).toBe(0);
+  it('writes view=board for the board, drops it for the list, keeps other parameters', () => {
+    expect(viewSearch('', 'board')).toBe('view=board');
+    expect(viewSearch('view=board', 'list')).toBe('');
+    expect(viewSearch('item=12', 'board')).toBe('item=12&view=board');
+    expect(viewSearch('item=12&view=board', 'list')).toBe('item=12');
   });
 });

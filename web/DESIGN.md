@@ -249,8 +249,9 @@ so the near pairs that remain are listed under the palette, not hidden.
   toolbar; the filters that belong to one view follow it only in that view. The view lives in the URL
   (`?view=board`, the default view has no parameter), the last choice in localStorage (the URL wins), switched with
   `router.replace` without scrolling.
-- **Board** (Dự án, owner 07/11/2026: "như page All task trên ClickUp, có dạng list và board"; `work/project-board.tsx`,
-  pure logic in `lib/project-board.ts`): one lane per status in `lib/labels.ts` order. A lane is a well (`rounded-xl
+- **Board** (Dự án, owner 07/11/2026: "như page All task trên ClickUp, có dạng list và board"; the shared
+  `components/brain/status-board.tsx` with the card parts in `work/project-card.tsx`, pure logic in
+  `lib/status-board.ts`, the view in `lib/use-board-view.ts`): one lane per status in `lib/labels.ts` order. A lane is a well (`rounded-xl
   bg-well p-2 gap-2 min-h-40`) headed by its `StatusBadge` and count (`text-xs` muted `tabular-nums`), ending in a
   ghost `xs` "+ Thêm dự án" that opens the dialog with that status; empty, it says "Chưa có dự án" quietly. A card is
   a white surface (`rounded-lg border bg-card p-3 gap-2`): title (`text-sm font-medium`, 2 lines, a button that
