@@ -418,14 +418,15 @@ export function TimePage() {
         open={projectDialog}
         project={null}
         onOpenChange={setProjectDialog}
-        onSaved={(saved) => {
+        onSaved={(saved, _created, imageError) => {
           choices.mutate((d) => d && { ...d, results: [saved, ...d.results.filter((p) => p.id !== saved.id)] });
           setCreatedProject(saved.id);
           setProjectDialog(false);
+          const logo = imageError ? ` Chưa lưu được logo: ${imageError}.` : '';
           setNotice(
             saved.status === 'active' || saved.status === 'planned'
-              ? `Đã thêm "${saved.title}". Bấm Bắt đầu để bấm giờ.`
-              : `Đã thêm "${saved.title}"`,
+              ? `Đã thêm "${saved.title}".${logo} Bấm Bắt đầu để bấm giờ.`
+              : `Đã thêm "${saved.title}".${logo}`,
           );
         }}
       />

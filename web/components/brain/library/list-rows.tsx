@@ -4,15 +4,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * Loading state of a Thư viện list (DESIGN.md §6 States, D27): skeleton rows at the real two-line row geometry
- * (`min-h-14 px-3`, title over meta) in the same bordered container, instead of card-shaped blocks.
+ * (`min-h-14 px-3`, title over meta) in the same bordered container, instead of card-shaped blocks. `picture`: the
+ * rows' flush 56px picture track (the list had pictures last time), so the text does not jump when the rows arrive.
  */
-export function RowsSkeleton({ count = 4 }: { count?: number }) {
+export function RowsSkeleton({ count = 4, picture = false }: { count?: number; picture?: boolean }) {
   return (
-    <ul className="divide-y rounded-xl border bg-card" aria-busy="true" aria-label="Đang tải">
+    <ul className="divide-y overflow-hidden rounded-xl border bg-card" aria-busy="true" aria-label="Đang tải">
       {Array.from({ length: count }, (_, i) => (
-        <li key={i} className="flex h-14 flex-col justify-center gap-2 px-3">
-          <Skeleton className="h-4 w-2/3 motion-reduce:animate-none" />
-          <Skeleton className="h-3 w-1/3 motion-reduce:animate-none" />
+        <li key={i} className={picture ? 'flex h-14 gap-3 pe-3' : 'flex h-14 flex-col justify-center gap-2 px-3'}>
+          {picture && <Skeleton className="w-14 shrink-0 rounded-none motion-reduce:animate-none" />}
+          <span className={picture ? 'flex min-w-0 flex-1 flex-col justify-center gap-2' : 'contents'}>
+            <Skeleton className="h-4 w-2/3 motion-reduce:animate-none" />
+            <Skeleton className="h-3 w-1/3 motion-reduce:animate-none" />
+          </span>
         </li>
       ))}
     </ul>

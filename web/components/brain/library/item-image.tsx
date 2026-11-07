@@ -14,10 +14,13 @@ function Img({ url, className }: { url: string; className?: string }) {
   return <img src={url} alt="" loading="lazy" decoding="async" draggable={false} className={className} />;
 }
 
-/** A logo inside its ground, scaled to fit. */
+/**
+ * A logo inside its ground, scaled to fit. The white ground is kept under forced colours too: there the system would
+ * paint it Canvas (black in the dark contrast themes) and a dark transparent logo would vanish.
+ */
 function Logo({ url, className }: { url: string; className?: string }) {
   return (
-    <span className={cn('flex items-center justify-center bg-logo-ground', className)}>
+    <span className={cn('flex items-center justify-center bg-logo-ground forced-color-adjust-none', className)}>
       <Img url={url} className="max-h-full max-w-full object-contain" />
     </span>
   );

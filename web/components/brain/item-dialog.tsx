@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { describeApiError } from './api-state';
 import { ChoiceSelect } from './choice-select';
 import { ConfirmDelete } from './confirm-delete';
-import { handbookForSource } from '@/lib/item-picture';
+import { effectiveImageChange, handbookPath, isLocalImage, willFetchOnSave } from '@/lib/item-picture';
 import { DoneOutputHint, missingOutput } from './library/done-output';
 import { ItemImageField, KEEP_IMAGE, applyImageChange, imageErrorText, type ImageChange } from './library/item-image-field';
 
@@ -64,9 +64,20 @@ function ItemForm({
   const [image, setImage] = useState<ImageChange>(KEEP_IMAGE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // A handbook course shows its Sổ tay cover (lib/item-picture.ts): no picture of its own to choose.
-  const handbook = form.type === 'course' && handbookForSource(form.source) !== undefined;
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
+  // A handbook course shows its Sổ tay cover (lib/handbook-picture.ts): the field shows only while it still has a
+  // picture of its own, to remove it. effectiveImageChange drops a change the field no longer shows.
+  const handbook = form.type === 'course' && handbookPath(form.source) !== null;
+  const hasOwnImage = isLocalImage(item?.imageUrl);
+  const imageCtx = { type: form.type, source: form.source, handbook, hasOwnImage };
+  const change = effectiveImageChange(image, imageCtx) as ImageChange;
+  const fetchOnSave = willFetchOnSave({
+    creating: !item,
+    type: form.type,
+    source: form.source,
+    savedSource: item?.source ?? '',
+    hasOwnImage,
+  });
   // "Done needs an output" follows the form as typed (status, type, rating) and the saved note count.
   const gap = item
     ? missingOutput({
@@ -77,8 +88,11 @@ function ItemForm({
       })
     : null;
 
-  /** Saves the form; the saved Item, or null when validation or the request failed (error shown). */
-  const submit = async (): Promise<ApiItem | null> => {
+  /**
+   * Saves the form, then the picture change; the saved Item and, when only the picture failed, why; or null when
+   * validation or the record's request failed (error shown, the dialog stays).
+   */
+  const submit = async (): Promise<{ saved: ApiItem; imageError?: string } | null> => {
     if (!form.title.trim()) {
       setError('Cần có tiêu đề.');
       return null;
@@ -108,13 +122,13 @@ function ItemForm({
       let final = saved;
       let imageError: string | undefined;
       try {
-        const picture = await applyImageChange(saved.id, image);
+        const picture = await applyImageChange(saved.id, change);
         if (picture) final = { ...saved, ...picture };
       } catch (err) {
         imageError = imageErrorText(toApiError(err));
       }
       onSaved(final, !item, imageError);
-      return final;
+      return { saved: final, imageError };
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
@@ -123,12 +137,15 @@ function ItemForm({
     }
   };
 
-  /** "Viết ghi chú": unsaved edits (e.g. status just set to done) are saved first, then the note opens. */
+  /**
+   * "Viết ghi chú": unsaved edits (e.g. status just set to done, a picked picture) are saved first, then the note
+   * opens. When the picture failed, the note does not open, so the page's notice about it stays readable.
+   */
   const writeNote = async () => {
     if (!item || !onWriteNote || busy) return;
-    const dirty = JSON.stringify(form) !== JSON.stringify(fromItem(item));
-    const saved = dirty ? await submit() : item;
-    if (saved) onWriteNote(saved);
+    const dirty = change.kind !== 'keep' || JSON.stringify(form) !== JSON.stringify(fromItem(item));
+    const result = dirty ? await submit() : { saved: item };
+    if (result && !('imageError' in result && result.imageError)) onWriteNote(result.saved);
   };
 
   return (
@@ -174,13 +191,14 @@ function ItemForm({
           <Label htmlFor="item-source">Nguồn (tác giả, nền tảng, link)</Label>
           <Input id="item-source" value={form.source} onChange={(e) => set('source', e.target.value)} />
         </div>
-        {!handbook && (
+        {(!handbook || hasOwnImage) && (
           <ItemImageField
             type={form.type}
             source={form.source}
             imageUrl={item?.imageUrl}
             pending={item?.imagePending}
-            change={image}
+            fetchOnSave={fetchOnSave}
+            change={change}
             onChange={setImage}
             disabled={busy}
           />

@@ -8,7 +8,7 @@ import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiProject } from '@/lib/api/work';
 import { itemStatusOf, itemStatuses } from '@/lib/labels';
 import { PROJECT_BOARD } from '@/lib/status-board';
-import { itemPicture } from '@/lib/item-picture';
+import { ownPicture } from '@/lib/item-picture';
 import { useBoardView } from '@/lib/use-board-view';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,15 +37,16 @@ const statusChoices = [{ value: 'all' as const, label: 'Mọi trạng thái' }, 
 
 /**
  * One grid for the header and every row, so the number columns line up (DESIGN.md §3 "Columns"). With logos (some
- * project has one): a flush 56px logo track first, like Thư viện's picture track.
+ * project has one): from md a flush 56px logo track first, like Thư viện's picture track. Below md the status already
+ * sits in the meta line, so a logo track would only take the title's room: phones show logos on the board's cards.
  */
 const rowGrid = (withLogo: boolean) =>
   withLogo
-    ? 'grid grid-cols-[3.5rem_minmax(0,1fr)_auto_auto] items-center gap-3 ps-0 pe-3 md:grid-cols-[3.5rem_5rem_minmax(0,1fr)_6rem_8rem_8rem_auto]'
+    ? 'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 md:ps-0 md:grid-cols-[3.5rem_5rem_minmax(0,1fr)_6rem_8rem_8rem_auto]'
     : 'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 md:grid-cols-[5rem_minmax(0,1fr)_6rem_8rem_8rem_auto]';
 
 /** A project's logo as an Item picture (lib/item-picture.ts). */
-const logoOf = (p: ApiProject) => itemPicture({ type: 'project', imageUrl: p.imageUrl });
+const logoOf = (p: ApiProject) => ownPicture({ type: 'project', imageUrl: p.imageUrl });
 
 /** Every project (all cursor pages, at most 20 of 100), newest first: one list for both views. */
 const loadProjects = () =>
@@ -70,7 +71,7 @@ function ProjectRow({
   const s = itemStatusOf(p.status);
   return (
     <li className={cn(rowGrid(withLogo), 'min-h-14 py-2')}>
-      {withLogo && <RowPicture picture={logoOf(p)} />}
+      {withLogo && <RowPicture picture={logoOf(p)} className="max-md:hidden" />}
       <span className="flex max-md:hidden">
         <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
       </span>

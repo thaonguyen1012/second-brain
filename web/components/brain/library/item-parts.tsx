@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { Briefcase, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
 import type { ApiItem, ApiItemStatus } from '@/lib/api/client';
-import { itemPicture } from '@/lib/item-picture';
+import { itemPicture } from '@/lib/handbook-picture';
 import { formatDate, itemStatusOf, itemTypeLabel } from '@/lib/labels';
 import { itemDateLabel, itemSourceLabel } from '@/lib/library-labels';
 import { cn } from '@/lib/utils';

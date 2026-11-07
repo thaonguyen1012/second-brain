@@ -129,6 +129,24 @@ def test_linking_gives_the_item_its_own_copy_of_the_thumbnail(
     assert Item.objects.get(pk=bare.pk).image_path == ""
 
 
+def test_linking_a_project_never_makes_the_thumbnail_its_logo(
+    client: Client, settings: Any, tmp_path: Path
+) -> None:
+    # A page's OG image is a banner, not a logo: a project gets a logo only from an upload.
+    settings.THUMBS_DIR = tmp_path
+    client.get("/api/me")
+    user = User.objects.get(username="dev@localhost")
+    thumbnail = thumbnails.store(thumbnails.to_webp(image_bytes((1600, 900))))
+    entry = InboxEntry.objects.create(user=user, url="https://client.test/", og_image_path=thumbnail)
+    project = Item.objects.create(user=user, type="project", title="Client site")
+    headers = csrf(client)
+
+    response = send(client, "patch", f"/api/inbox/{entry.pk}", {"item": project.pk}, headers)
+    assert response.status_code == 200 and response.json()["item"] == project.pk
+    assert Item.objects.get(pk=project.pk).image_path == ""
+    assert {p.name for p in tmp_path.iterdir()} == {thumbnail}  # no copy was made
+
+
 def test_linking_with_a_missing_or_unreadable_thumbnail_gives_no_image(
     client: Client, settings: Any, tmp_path: Path
 ) -> None:

@@ -243,7 +243,9 @@ records the weekly triage and accepts only `{ "status": "inbox|later|archived", 
 `archivedAt` is set when the status becomes archived, kept while it stays
 archived and cleared (`null`) when it leaves the archive. Linking an Item that has no image gives it its own copy of
 the entry's thumbnail (re-encoded for Items, no network request; the Item's `imageUrl`) and ends a fetch of the
-Item's image that waits or runs; an Item that has an image keeps it. An entry linked before its unfurl finished passes the thumbnail on when the unfurl stores it. Unlinking or
+Item's image that waits or runs; an Item that has an image keeps it, and a project never gets one this way (a page's
+OG image is a banner, not a logo). An entry linked before its unfurl finished passes the thumbnail on when the unfurl
+stores it. Unlinking or
 deleting the entry later leaves the Item's image alone.
 `suggestedDestination` is one of read_later, book, opportunity, note (or empty until processed).
 `itemTitle` and `itemType` (read only) label the linked Item, `null` when `item` is `null`.

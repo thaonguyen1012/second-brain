@@ -375,22 +375,28 @@ wins.
   drawing yet shows the ground with its name. No gradients, glows, shadows, purple, sparkles, emoji or text in a
   drawing.
 - **Item images** (owner 07/11/2026: "Item có thể thêm ảnh bìa để dễ hình dung", "Dự án có thể thêm logo"; DECISIONS
-  9.6). One picture per Item, chosen by `itemPicture()` (`lib/item-picture.ts`): its own image (uploaded, or the OG
-  image of its link; a small local webp from `/api/items/{id}/image`), else the Sổ tay cover of a handbook course
-  (`BookCover`), else nothing. The shape follows the type: a 2:3 **poster** for books and films, a **logo** for
-  projects, a landscape **cover** for the rest. Pictures follow the split-card rule above: flush, clipped by the
-  container's radius, no frame, no text or scrim, never dimmed by status (`opacity-50` means "being dragged"). Where
-  (`library/item-image.tsx`): a list row (Thư viện, Công việc) gets one flush 56px square track at its start
-  (`RowPicture`), shown only when a listed row has a picture, and then the status leaves its badge for the meta line
-  below `md` so the title keeps its room at 390 px; a board card shows a cover or a handbook band flush on top (16:7),
-  a poster as a flush 4rem start column (2:3 at the card's minimum height), a logo as a 40px square before the title.
-  A logo is the one inset picture: `object-contain` on `--logo-ground`, white in both themes (a sticker; the logo keeps
-  its transparency and most logos are drawn for a light page), `rounded-md` on cards. No picture: the row keeps an
-  empty track and the card stays text-only; never a placeholder drawing. Pictures are decorative (`alt=""`,
-  `aria-hidden`): the row or card names the record. The dialogs' "Ảnh bìa" / "Logo" field (`library/item-image-field.tsx`)
-  previews at the card's shape and offers "Tải ảnh lên" / "Đổi ảnh", "Lấy ảnh từ link" (an http(s) source, never for
-  projects, whose OG image is a banner) and ghost "Bỏ ảnh"; every change waits for "Lưu" and "Hủy" drops it, so no
-  confirm dialog; a wrong file is refused before any upload, under the field. A handbook course has no field.
+  9.6). One picture per Item: its own image (uploaded, or the OG image of its link; a small local webp from
+  `/api/items/{id}/image`; `ownPicture()`, `lib/item-picture.ts`), else on Thư viện the Sổ tay cover of a handbook
+  course (`BookCover`; `itemPicture()`, `lib/handbook-picture.ts`, the only one that ships the registry), else nothing.
+  The shape follows the type: a 2:3 **poster** for books and films, a **logo** for projects, a landscape **cover** for
+  the rest. Pictures follow the split-card rule above: flush, clipped by the container's radius, no frame, no text or
+  scrim, never dimmed by status (`opacity-50` means "being dragged"). Where (`library/item-image.tsx`): a Thư viện row
+  gets one flush 56px square track at its start (`RowPicture`), shown only when a listed row has a picture, and then
+  the status leaves its badge for the meta line below `md` so the title keeps its room at 390 px; a Công việc row gets
+  the track from `md` only (its status is already in the meta line on phones, so the track would only take the
+  title's room); a board card shows a cover or a handbook band flush on top (16:7), a poster as a flush 4rem start
+  column (2:3 at the card's minimum height), a logo as a 40px square before the title. A logo is the one inset
+  picture: `object-contain` on `--logo-ground`, white in both themes and kept under forced colours (a sticker; the logo
+  keeps its transparency and most logos are drawn for a light page), `rounded-md` on cards. No picture: the row keeps
+  an empty track and the card stays text-only; never a placeholder drawing. Skeletons take the picture geometry the
+  page had last time (D27). Pictures are decorative (`alt=""`, `aria-hidden`): the row or card names the record. The
+  dialogs' "Ảnh bìa" / "Logo" field (`library/item-image-field.tsx`) is a labelled group: a preview at the card's
+  shape, "Tải ảnh lên" / "Đổi ảnh", a "Lấy ảnh từ link" toggle (`aria-pressed`; an http(s) source, never for projects,
+  whose OG image is a banner; not offered when saving will fetch it anyway: a new Item or a new link without a
+  picture, which the status line says) and ghost "Bỏ ảnh"; the buttons stay put when used and "Bỏ ảnh" hands the focus
+  to "Đổi ảnh"; the status line is a polite live region. Every change waits for "Lưu" and "Hủy" drops it, so no
+  confirm dialog; a wrong file is refused before any upload, under the field; a big photo is shrunk in the browser
+  (1600 px) before the upload. A handbook course has no field, unless it still has a picture of its own to remove.
 - **Width.** App content is capped at `max-w-7xl`, left-aligned with the title; bands stay full-bleed. Hôm nay has
   a 320px rail from `xl`.
 - **First-run empty panel.** The missing object's glyph (32px, muted ink, no tile), title ("Chưa có <object> nào"),
@@ -448,8 +454,9 @@ Spacing and layout
 - **D30** Content is capped at `max-w-7xl` and left-aligned; no single column stretched across ultra-wide screens.
 
 Containers
-- **D12** No bordered or tinted box inside another box (inputs and code excepted; a handbook cover is not a box in
-  the card but a flush part of it, D32); no card in a well, no well in a card (the first-run panel's slot, a full-bleed half parted by the
+- **D12** No bordered or tinted box inside another box (inputs and code excepted; a handbook cover or an Item image is
+  not a box in the card but a flush part of it, D32; a project logo on its white ground is the one inset picture,
+  §9a "Item images"); no card in a well, no well in a card (the first-run panel's slot, a full-bleed half parted by the
   panel's own divider, and the cards in a board's lanes excepted, §6 "Board", §9a).
 - **D13** A homogeneous list of more than ~5 records is rows in one container, not a stack of cards (a board view's
   lanes excepted; its list view keeps the rows).

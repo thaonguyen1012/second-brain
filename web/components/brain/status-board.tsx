@@ -523,7 +523,7 @@ export function StatusBoard<T extends BoardCardRecord>({
  * Loading lanes at the board's geometry (DESIGN.md D27): four wells with card placeholders. A named status region,
  * so a screen reader finds "Đang tải" like the list's skeleton (a name on a plain div is not read).
  */
-export function BoardSkeleton() {
+export function BoardSkeleton({ media = false }: { media?: boolean }) {
   return (
     <div className="@container" role="status" aria-busy="true" aria-label="Đang tải">
       <div className="-mx-4 overflow-hidden sm:-mx-8 @4xl:mx-0">
@@ -534,12 +534,23 @@ export function BoardSkeleton() {
                 <Skeleton className="h-5 w-16" />
                 <Skeleton className="h-3 w-3" />
               </div>
-              {Array.from({ length: i < 2 ? 2 : 1 }, (_, j) => (
-                <div key={j} className="flex flex-col gap-2 rounded-lg border bg-card p-3">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-              ))}
+              {Array.from({ length: i < 2 ? 2 : 1 }, (_, j) =>
+                // `media`: the cards had pictures last time; the first card of a lane shows a flush 16:7 band
+                media && j === 0 ? (
+                  <div key={j} className="flex flex-col overflow-hidden rounded-lg border bg-card">
+                    <Skeleton className="aspect-[16/7] w-full rounded-none" />
+                    <div className="flex flex-col gap-2 p-3">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                ) : (
+                  <div key={j} className="flex flex-col gap-2 rounded-lg border bg-card p-3">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                ),
+              )}
             </div>
           ))}
         </div>

@@ -55,6 +55,11 @@ web/
                                  + schema.ts/openapi.yaml (make api-types); use-api.ts = client-side loading hook;
                                  search.ts = Cmd+K second-brain group (?q= on items, notes, inbox, opportunities, skills)
   lib/use-open-from-url.ts       deep links (?item=, ?id=) open a row once, then drop the parameter (needs Suspense)
+  lib/status-board.ts            pure logic of the List/Board pages (Dự án, Thư viện): lanes, optimistic moves, BoardKind
+                                 (noun, drag type, view key), the view in the URL; lib/use-board-view.ts = the view hook;
+                                 lib/api/pages.ts = loadAllPages (every cursor page, cap 20 x 100)
+  lib/item-picture.ts            which picture an Item shows (its own image: poster/cover/logo by type; else the Sổ tay
+                                 cover of a handbook course) + upload checks; drawn by components/brain/library/item-image.tsx
   lib/dates.ts                   Europe/Prague today, mondayOf, addDays, formatDay (date-only, UTC arithmetic)
   lib/labels.ts                  shared labels and status colours (item, inbox, objective, opportunity decision)
                                  for every card, plus fieldErrors() for DRF 400 bodies
@@ -70,7 +75,10 @@ web/
                                  same drawing as public/icons/icon.svg; DESIGN.md §4): sidebar header, docs nav, intro hero
   components/brain/              second-brain UI (client): BrainCard, api-state (empty/error states), today,
                                  inbox-page, library-page, dialogs; per area: tuan/, opportunities/, work/,
-                                 growth/, library/. Data loads in the browser, never at build. Deletes only through
+                                 growth/, library/; status-board.tsx (the shared Bảng: lanes, native drag and drop,
+                                 useStatusMoves, BoardStatus; cards' parts in work/project-card.tsx and
+                                 library/item-parts.tsx) + view-switch.tsx; library/item-image(-field).tsx (pictures in
+                                 rows and cards, the dialogs' "Ảnh bìa"/"Logo" field). Data loads in the browser, never at build. Deletes only through
                                  confirm-delete.tsx (alert dialog, never window.confirm); today-extras/brief-actions
                                  load with next/dynamic (home First Load JS budget 220 kB)
   components/capture/            capture-form (/inbox/them/) + bookmarklet-help (on the Inbox page; javascript: href set

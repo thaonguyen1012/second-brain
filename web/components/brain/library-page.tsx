@@ -14,10 +14,11 @@ import { loadAllPages } from '@/lib/api/pages';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { itemStatusOf, itemStatuses, itemTypes } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
-import { itemPicture } from '@/lib/item-picture';
+import { itemPicture } from '@/lib/handbook-picture';
 import { useProgress } from '@/lib/progress';
 import { ITEM_BOARD, laneOf } from '@/lib/status-board';
 import { useBoardView } from '@/lib/use-board-view';
+import { useRememberedFlag } from '@/lib/use-remembered-flag';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -88,6 +89,9 @@ export function LibraryPage() {
   const list = useMemo(() => (status === 'all' ? all : all.filter((i) => laneOf(i) === status)), [all, status]);
   // the List's picture track only when a shown row has a picture, like Dự án's hours legend (anyMinutes)
   const withPicture = useMemo(() => list.some((i) => itemPicture(i) !== null), [list]);
+  // the loading skeleton takes the picture geometry the library had last time (D27), so nothing jumps on arrival
+  const anyPicture = useMemo(() => (ready ? all.some((i) => itemPicture(i) !== null) : null), [ready, all]);
+  const skeletonPictures = useRememberedFlag('alex-brain:library-pictures', anyPicture);
 
   const openEdit = (item: ApiItem, rating = false) => {
     returnTo.current = item.id;
@@ -247,9 +251,9 @@ export function LibraryPage() {
         <ApiErrorState error={items.error} onRetry={items.reload} />
       ) : !ready ? (
         view === 'board' ? (
-          <BoardSkeleton />
+          <BoardSkeleton media={skeletonPictures} />
         ) : (
-          <RowsSkeleton />
+          <RowsSkeleton picture={skeletonPictures} />
         )
       ) : shown.length === 0 && filtered ? (
         <FilteredEmpty

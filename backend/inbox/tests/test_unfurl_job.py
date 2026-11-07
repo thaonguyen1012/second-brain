@@ -167,6 +167,21 @@ def test_unfurl_fills_an_item_linked_before_it_finished(client: Client, net: Fak
     assert {p.name for p in tmp_path.glob("*.webp")} == {thumbnail, copy}
 
 
+def test_unfurl_never_gives_a_linked_project_the_thumbnail(
+    client: Client, net: FakeNet, tmp_path: Path
+) -> None:
+    # a page's OG image is a banner, not a logo
+    headers = csrf(client)
+    entry_id = send(client, "post", "/api/inbox", {"url": "https://blog.test/p"}, headers).json()["id"]
+    owner = client.session["_auth_user_id"]
+    project = Item.objects.create(user_id=owner, type="project", title="Client site")
+    InboxEntry.objects.filter(pk=entry_id).update(item=project)
+    call_command("run_jobs", stdout=io.StringIO())
+    thumbnail = InboxEntry.objects.get(pk=entry_id).og_image_path
+    assert thumbnail and Item.objects.get(pk=project.pk).image_path == ""
+    assert {p.name for p in tmp_path.glob("*.webp")} == {thumbnail}
+
+
 def test_unfurl_keeps_the_image_of_a_linked_item(client: Client, net: FakeNet) -> None:
     headers = csrf(client)
     entry_id = send(client, "post", "/api/inbox", {"url": "https://blog.test/p"}, headers).json()["id"]

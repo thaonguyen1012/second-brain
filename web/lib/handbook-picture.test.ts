@@ -1,0 +1,38 @@
+import { describe, expect, it } from 'vitest';
+import { books, bookUrl } from './books';
+import { handbookForSource, itemPicture } from './handbook-picture';
+
+const book = books[0];
+
+describe('handbookForSource', () => {
+  it('finds the handbook of its page, with or without the trailing slash', () => {
+    expect(handbookForSource(bookUrl(book))?.slug).toBe(book.slug);
+    expect(handbookForSource(bookUrl(book).replace(/\/$/, ''))?.slug).toBe(book.slug);
+    expect(handbookForSource(` ${bookUrl(book)} `)?.slug).toBe(book.slug);
+  });
+
+  it('knows nothing else', () => {
+    expect(handbookForSource('/docs/kinh-doanh/khong-co/')).toBeUndefined();
+    expect(handbookForSource('https://example.com/docs/x/')).toBeUndefined();
+    expect(handbookForSource('')).toBeUndefined();
+    expect(handbookForSource(null)).toBeUndefined();
+  });
+});
+
+describe('itemPicture', () => {
+  it('shows the Sổ tay cover of a handbook course without an image', () => {
+    expect(itemPicture({ type: 'course', source: bookUrl(book), imageUrl: null })).toEqual({ kind: 'handbook', book });
+  });
+
+  it("puts the Item's own image first", () => {
+    expect(itemPicture({ type: 'course', source: bookUrl(book), imageUrl: '/api/items/4/image?v=4' })).toMatchObject({
+      kind: 'image',
+      shape: 'cover',
+    });
+  });
+
+  it('shows nothing otherwise', () => {
+    expect(itemPicture({ type: 'book', source: 'James Clear', imageUrl: null })).toBeNull();
+    expect(itemPicture({ type: 'article', source: bookUrl(book) })).toBeNull(); // only a course is a handbook
+  });
+});

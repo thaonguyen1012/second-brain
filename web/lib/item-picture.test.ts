@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { books, bookUrl } from './books';
 import {
   MAX_IMAGE_BYTES,
-  handbookForSource,
+  SHRINK_TO,
+  effectiveImageChange,
+  handbookPath,
   imageFileProblem,
   imageShapeOf,
   isLocalImage,
   isWebLink,
-  itemPicture,
+  ownPicture,
+  shrinkTarget,
+  willFetchOnSave,
 } from './item-picture';
 
 describe('imageFileProblem', () => {
@@ -25,6 +28,23 @@ describe('imageFileProblem', () => {
   });
 });
 
+describe('shrinkTarget', () => {
+  it('leaves a small picture as it is', () => {
+    expect(shrinkTarget(1200, 630, 300_000)).toBeNull();
+    expect(shrinkTarget(2400, 1600, 2_000_000)).toBeNull();
+  });
+
+  it('shrinks a phone photo above the server pixel limit to 1600 px, keeping the proportion', () => {
+    expect(shrinkTarget(5712, 4284, 3_500_000)).toEqual({ width: SHRINK_TO, height: 1200 });
+    expect(shrinkTarget(3000, 4000, 1_000_000)).toEqual({ width: 1200, height: SHRINK_TO });
+  });
+
+  it('re-encodes a heavy file at its size and never enlarges', () => {
+    expect(shrinkTarget(1500, 1000, 6 * 1024 * 1024)).toEqual({ width: 1500, height: 1000 });
+    expect(shrinkTarget(0, 100, 10)).toBeNull();
+  });
+});
+
 describe('isWebLink', () => {
   it('is true only for an http(s) address', () => {
     expect(isWebLink('https://www.imdb.com/title/tt1/')).toBe(true);
@@ -37,20 +57,20 @@ describe('isWebLink', () => {
   });
 });
 
-const book = books[0];
-
-describe('handbookForSource', () => {
-  it('finds the handbook of its page, with or without the trailing slash', () => {
-    expect(handbookForSource(bookUrl(book))?.slug).toBe(book.slug);
-    expect(handbookForSource(bookUrl(book).replace(/\/$/, ''))?.slug).toBe(book.slug);
-    expect(handbookForSource(` ${bookUrl(book)} `)?.slug).toBe(book.slug);
+describe('handbookPath', () => {
+  it('reads a handbook page, with or without the trailing slash', () => {
+    expect(handbookPath('/docs/it/handbook-06/')).toEqual({ track: 'it', slug: 'handbook-06' });
+    expect(handbookPath(' /docs/kinh-doanh/handbook-01 ')).toEqual({
+      track: 'kinh-doanh',
+      slug: 'handbook-01',
+    });
   });
 
-  it('knows nothing else', () => {
-    expect(handbookForSource('/docs/kinh-doanh/khong-co/')).toBeUndefined();
-    expect(handbookForSource('https://example.com/docs/x/')).toBeUndefined();
-    expect(handbookForSource('')).toBeUndefined();
-    expect(handbookForSource(null)).toBeUndefined();
+  it('is null for anything else', () => {
+    expect(handbookPath('/docs/it/handbook-06/m01/')).toBeNull();
+    expect(handbookPath('https://example.com/docs/it/x/')).toBeNull();
+    expect(handbookPath('Udemy')).toBeNull();
+    expect(handbookPath(null)).toBeNull();
   });
 });
 
@@ -76,28 +96,55 @@ describe('isLocalImage', () => {
   });
 });
 
-describe('itemPicture', () => {
-  it("shows the Item's own image in the shape of its type", () => {
-    expect(itemPicture({ type: 'film', imageUrl: '/api/items/1/image?v=1' })).toEqual({
+describe('ownPicture', () => {
+  it("is the Item's own image in the shape of its type, or nothing", () => {
+    expect(ownPicture({ type: 'film', imageUrl: '/api/items/1/image?v=1' })).toEqual({
       kind: 'image',
       url: '/api/items/1/image?v=1',
       shape: 'poster',
     });
-    expect(itemPicture({ type: 'project', imageUrl: '/api/items/2/image?v=2' })).toMatchObject({ shape: 'logo' });
+    expect(ownPicture({ type: 'project', imageUrl: '/api/items/2/image?v=2' })).toMatchObject({ shape: 'logo' });
+    expect(ownPicture({ type: 'book', imageUrl: null })).toBeNull();
+    expect(ownPicture({ type: 'book', imageUrl: 'https://example.com/cover.jpg' })).toBeNull();
+  });
+});
+
+describe('effectiveImageChange', () => {
+  const upload = { kind: 'upload' as const };
+  const fetch = { kind: 'fetch' as const };
+  const ctx = { type: 'article', source: 'https://example.com/a', handbook: false, hasOwnImage: false };
+
+  it('sends the chosen change when the field shows it', () => {
+    expect(effectiveImageChange(upload, ctx)).toBe(upload);
+    expect(effectiveImageChange(fetch, ctx)).toBe(fetch);
   });
 
-  it('shows the Sổ tay cover of a handbook course without an image', () => {
-    expect(itemPicture({ type: 'course', source: bookUrl(book), imageUrl: null })).toEqual({ kind: 'handbook', book });
-    // an image of its own wins over the cover
-    expect(itemPicture({ type: 'course', source: bookUrl(book), imageUrl: '/api/items/4/image?v=4' })).toMatchObject({
-      kind: 'image',
-      shape: 'cover',
+  it('drops a fetch for a project or a source that is no web link', () => {
+    expect(effectiveImageChange(fetch, { ...ctx, type: 'project' })).toEqual({ kind: 'keep' });
+    expect(effectiveImageChange(fetch, { ...ctx, source: 'Wim Wenders' })).toEqual({ kind: 'keep' });
+    expect(effectiveImageChange(upload, { ...ctx, type: 'project' })).toBe(upload);
+  });
+
+  it('drops any change for a handbook course without a picture of its own (the field is hidden)', () => {
+    expect(effectiveImageChange(upload, { ...ctx, handbook: true })).toEqual({ kind: 'keep' });
+    expect(effectiveImageChange({ kind: 'remove' }, { ...ctx, handbook: true, hasOwnImage: true })).toEqual({
+      kind: 'remove',
     });
   });
+});
 
-  it('shows nothing otherwise', () => {
-    expect(itemPicture({ type: 'book', source: 'James Clear', imageUrl: null })).toBeNull();
-    expect(itemPicture({ type: 'article', source: bookUrl(book) })).toBeNull(); // only a course is a handbook
-    expect(itemPicture({ type: 'book', imageUrl: 'https://example.com/cover.jpg' })).toBeNull();
+describe('willFetchOnSave', () => {
+  const base = { creating: true, type: 'book', source: 'https://www.goodreads.com/x', savedSource: '', hasOwnImage: false };
+
+  it('is true for a new Item or a new link, with no picture and not a project', () => {
+    expect(willFetchOnSave(base)).toBe(true);
+    expect(willFetchOnSave({ ...base, creating: false, savedSource: 'James Clear' })).toBe(true);
+  });
+
+  it('is false otherwise', () => {
+    expect(willFetchOnSave({ ...base, creating: false, savedSource: 'https://www.goodreads.com/x' })).toBe(false);
+    expect(willFetchOnSave({ ...base, type: 'project' })).toBe(false);
+    expect(willFetchOnSave({ ...base, hasOwnImage: true })).toBe(false);
+    expect(willFetchOnSave({ ...base, source: 'James Clear' })).toBe(false);
   });
 });

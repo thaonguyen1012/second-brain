@@ -413,17 +413,23 @@ export function InboxPage() {
     [mutate],
   );
 
-  /** "Thành item": the Item was created in the dialog; link the entry to it, status unchanged. */
+  /**
+   * "Thành item": the Item was created in the dialog; link the entry to it, status unchanged. `imageError` says why the
+   * picture chosen in the dialog was not saved (the Item was), so the notice never reads as a full success.
+   */
   const linkItem = useCallback(
-    async (entry: ApiInboxEntry, item: ApiItem) => {
+    async (entry: ApiInboxEntry, item: ApiItem, imageError?: string) => {
       setItemFor(null);
       putItem(item);
       replace({ ...entry, item: item.id, itemTitle: item.title, itemType: item.type });
+      const picture = imageError ? ` Chưa lưu được ảnh: ${imageError}.` : '';
       try {
         replace(await linkInboxItem(entry.id, item.id));
-        setNotice(`Đã thêm "${item.title}" vào thư viện và liên kết mục inbox. Nhấn A để lưu trữ mục.`);
+        setNotice(`Đã thêm "${item.title}" vào thư viện và liên kết mục inbox.${picture} Nhấn A để lưu trữ mục.`);
       } catch (err) {
-        setNotice(`Đã thêm "${item.title}" nhưng chưa liên kết được: ${describeApiError(toApiError(err)).title}`);
+        setNotice(
+          `Đã thêm "${item.title}" nhưng chưa liên kết được: ${describeApiError(toApiError(err)).title}.${picture}`,
+        );
         reload();
       }
     },
@@ -636,7 +642,7 @@ export function InboxPage() {
         item={null}
         draft={itemFor ? itemDraftFromEntry(itemFor, titleOf(itemFor)) : undefined}
         onOpenChange={(o) => !o && setItemFor(null)}
-        onSaved={(item) => itemFor && void linkItem(itemFor, item)}
+        onSaved={(item, _created, imageError) => itemFor && void linkItem(itemFor, item, imageError)}
       />
 
       <NoteDialog
