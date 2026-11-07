@@ -174,21 +174,8 @@ export function navMatch<T extends NavLink>(links: readonly T[], path: string): 
   return best;
 }
 
-/** The row of an area page, by its href (PageHeader's title tile, a Hôm nay tile's heading icon). */
+/** The row of an area page, by its href (PageHeader's title icon, a Hôm nay tile's heading icon). */
 export function navRow(href: string): NavRow | undefined {
   return navMatch(navRows, href);
 }
 
-/**
- * Area colour on an icon: the page title tile and a Hôm nay tile linking to the area (the sidebar's row icons
- * take the row's text colour, owner 06/11/2026). In forced colours the icon follows its row again (an svg keeps an
- * explicit colour there). Class names are written out in full: Tailwind only generates classes it finds in the source.
- */
-export const areaIcon: Record<AreaKey, string> = {
-  today: 'text-area-today forced-colors:text-inherit',
-  week: 'text-area-week forced-colors:text-inherit',
-  growth: 'text-area-growth forced-colors:text-inherit',
-  library: 'text-area-library forced-colors:text-inherit',
-  opportunity: 'text-area-opportunity forced-colors:text-inherit',
-  work: 'text-area-work forced-colors:text-inherit',
-};

@@ -112,9 +112,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  background: var(--ss-area-opportunity-soft);
-  color: var(--ss-area-opportunity);
+  color: var(--ss-text-strong);
 }
 
 .ssg-opp .ss-stage[data-layout='compact'] .op-tile {

@@ -331,7 +331,7 @@ export function HeroShell() {
                 <span className="hs-panel">
                   <PanelHead
                     icon={
-                      <CalendarRange size={14} strokeWidth={2} aria-hidden style={{ color: 'var(--ss-area-week)' }} />
+                      <CalendarRange size={14} strokeWidth={2} aria-hidden style={{ color: 'var(--ss-text)' }} />
                     }
                     title={<span className="hs-panel__title">3 ưu tiên tuần</span>}
                     link={wide}

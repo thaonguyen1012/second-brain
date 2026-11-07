@@ -10,24 +10,14 @@ import { GhostRows } from './ghost-rows';
 // own file on purpose: api-state.tsx is in the Hôm nay bundle, and this one pulls in the Stageshow wrappers, so
 // nothing on Hôm nay may import it. Filtered-empty keeps EmptyState with "Xóa bộ lọc"; a cleared list is one line.
 
-/** The tile's area: one of the five hued areas, or `neutral` (Inbox: the muted fill and ink). */
+/** The page's area. Owner 07/11/2026: no colour per area, so every area renders the same; kept for the callers. */
 export type EmptyPanelArea = Exclude<AreaKey, 'today'> | 'neutral';
-
-/** Tile tint and glyph ink, written out for Tailwind; the glyph keeps >= 3.4:1 on its tint (§4 palette). */
-const tile: Record<EmptyPanelArea, string> = {
-  week: 'bg-area-week-soft text-area-week',
-  growth: 'bg-area-growth-soft text-area-growth',
-  library: 'bg-area-library-soft text-area-library',
-  opportunity: 'bg-area-opportunity-soft text-area-opportunity',
-  work: 'bg-area-work-soft text-area-work',
-  neutral: 'bg-muted text-muted-foreground',
-};
 
 /** The @3xl container width (48rem) from which the slot sits beside the message. */
 const BESIDE_PX = 768;
 
 /**
- * One surface: on the left the area tile (48px, the missing object's glyph at 24px), the title, one sentence, the one
+ * One surface: on the left the missing object's glyph (32px, muted ink, no tile), the title, one sentence, the one
  * primary `action` and optional `quick` actions (at most 6 outline `sm` Buttons, or one inline form); on the right,
  * from a 48rem container, a well with the page's `guide` (open unless the owner hid it) or `ghost`. While the guide is
  * hidden the slot shows `ghost`, by default three ghost rows. Without `guide` and `ghost` there is no slot.
@@ -76,8 +66,8 @@ export function EmptyPanel({
     <div ref={shell} className={cn('@container overflow-hidden rounded-xl border bg-card', className)}>
       <div className={cn('grid', hasSlot && '@3xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]')}>
         <div className="flex min-w-0 flex-col items-start gap-3 p-6">
-          <span aria-hidden className={cn('flex size-12 items-center justify-center rounded-xl', tile[area])}>
-            <Glyph className="size-6 forced-colors:text-inherit" />
+          <span aria-hidden className="flex h-9 items-center text-muted-foreground">
+            <Glyph className="size-8 forced-colors:text-inherit" strokeWidth={1.5} absoluteStrokeWidth />
           </span>
           <h2 className="font-heading text-lg font-semibold tracking-tight text-balance">{title}</h2>
           <p className="max-w-prose text-sm leading-relaxed text-pretty text-muted-foreground">{text}</p>

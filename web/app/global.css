@@ -18,7 +18,7 @@
    (--muted/--accent/--secondary) are darker than the page and the sidebar so tabs and hovers still show. The focus
    ring is opaque: light #3582ff is 3.6:1 on white and 3.3:1 on the sidebar (60% was 2.1:1); dark #6aa5ff is 7.0:1 or
    more. Owner 07/11/2026 (DESIGN.md §9a, "hơi trống và trắng"): a borderless grey well (--well) for secondary
-   regions and a 6% area wash band (--area-<key>-wash) behind an area page's header; the page and cards stay white.
+   regions, also the neutral band behind an area page's header (no colour per area); the page and cards stay white.
    Fumadocs reads --color-fd-*; those are mapped onto the same tokens below so lesson pages match. */
 
 :root {
@@ -74,13 +74,6 @@
   --area-library-soft: color-mix(in oklab, var(--area-library) 14%, var(--card));
   --area-opportunity-soft: color-mix(in oklab, var(--area-opportunity) 14%, var(--card));
   --area-work-soft: color-mix(in oklab, var(--area-work) 14%, var(--card));
-  /* Area wash (owner, 07/11/2026; DESIGN.md §9a): 6% of the hue over the page, only as the full-bleed band behind
-     an area page's PageHeader. muted-foreground keeps >= 7.0:1 on it, the hue itself >= 3.75:1. */
-  --area-week-wash: color-mix(in oklab, var(--area-week) 6%, var(--background));
-  --area-growth-wash: color-mix(in oklab, var(--area-growth) 6%, var(--background));
-  --area-library-wash: color-mix(in oklab, var(--area-library) 6%, var(--background));
-  --area-opportunity-wash: color-mix(in oklab, var(--area-opportunity) 6%, var(--background));
-  --area-work-wash: color-mix(in oklab, var(--area-work) 6%, var(--background));
   /* The well (§9a): the borderless grey of secondary regions (Hôm nay rail, an empty panel's right slot), between
      the white page and the neutral-100 sidebar; muted-foreground 7.2:1 on it. */
   --well: oklch(0.977 0 0);
@@ -151,12 +144,6 @@
   --area-library-soft: color-mix(in oklab, var(--area-library) 22%, var(--card));
   --area-opportunity-soft: color-mix(in oklab, var(--area-opportunity) 22%, var(--card));
   --area-work-soft: color-mix(in oklab, var(--area-work) 22%, var(--card));
-  /* Wash bands stepped for dark: 10% over the zinc-950 page; muted-foreground >= 6.7:1, the hue >= 5.9:1. */
-  --area-week-wash: color-mix(in oklab, var(--area-week) 10%, var(--background));
-  --area-growth-wash: color-mix(in oklab, var(--area-growth) 10%, var(--background));
-  --area-library-wash: color-mix(in oklab, var(--area-library) 10%, var(--background));
-  --area-opportunity-wash: color-mix(in oklab, var(--area-opportunity) 10%, var(--background));
-  --area-work-wash: color-mix(in oklab, var(--area-work) 10%, var(--background));
   /* The well between the page (zinc-950) and the card (8%); muted-foreground 7.3:1 on it. */
   --well: hsl(0deg 0% 6%);
   /* The sidebar is the page's layer. Its hover is the faint popover step and the current row the zinc-800 fill, so
@@ -267,11 +254,6 @@
   --color-area-library-soft: var(--area-library-soft);
   --color-area-opportunity-soft: var(--area-opportunity-soft);
   --color-area-work-soft: var(--area-work-soft);
-  --color-area-week-wash: var(--area-week-wash);
-  --color-area-growth-wash: var(--area-growth-wash);
-  --color-area-library-wash: var(--area-library-wash);
-  --color-area-opportunity-wash: var(--area-opportunity-wash);
-  --color-area-work-wash: var(--area-work-wash);
   --color-well: var(--well);
   --color-track-kinh-doanh: var(--track-kinh-doanh);
   --color-track-it: var(--track-it);

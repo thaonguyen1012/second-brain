@@ -275,7 +275,7 @@ export function OpportunityDetail({ id }: { id: number }) {
             {undecided && <DecideByBadge day={o.decideBy} />}
           </div>
         )}
-        {/* The Cơ hội title tile, as on the list page (PageHeader nav); min-w-0 lets a long title wrap */}
+        {/* The Cơ hội title icon, as on the list page (PageHeader nav); min-w-0 lets a long title wrap */}
         <div className="flex items-start gap-3">
           <AreaTile nav="/co-hoi/" />
           <h1 className="min-w-0 font-heading text-3xl font-semibold tracking-tight break-words">{o.title}</h1>

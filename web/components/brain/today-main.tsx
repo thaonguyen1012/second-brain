@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowRight, Inbox, type LucideIcon } from 'lucide-react';
 import { api, type ApiError, type ApiInboxEntry, type ApiNewsFeedback } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
-import { areaIcon, navRow } from '@/lib/app-nav';
+import { navRow } from '@/lib/app-nav';
 import { addDays, formatDay, mondayOf, todayPrague } from '@/lib/dates';
 import { formatDate, hostOf, objectiveStatuses } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
@@ -59,7 +59,7 @@ export function Panel({
     <section className={cn(wellClass, 'flex min-w-0 flex-col gap-3', className)}>
       <div className="flex min-w-0 items-center gap-2 border-b pb-2">
         {Icon && (
-          <Icon aria-hidden className={cn('size-4 shrink-0', row ? areaIcon[row.area] : 'text-muted-foreground')} />
+          <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         )}
         <h2 className="truncate font-heading text-[15px] font-semibold tracking-tight">{title}</h2>
         {meta && <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{meta}</span>}
