@@ -24,28 +24,32 @@ function isSectionLink(action: unknown): action is SectionLink {
 
 /**
  * An 18px section title (h2) with its meta on the same baseline and an optional action at the end: a `SectionLink`
- * renders as a link Button with an arrow, any other node is placed as it is. `dot` is a fill class (trackFill) for
- * a handbook group's dot before the title; `id` lets a section use the h2 as its label or a jump target.
+ * renders as a link Button with an arrow, any other node is placed as it is. `mark` is a drawing before the title
+ * (a Sổ tay group's `GroupMark`, 20px), centred on the title's line while the h2 keeps the text baseline for the
+ * meta; `id` lets a section use the h2 as its label or a jump target.
  */
 export function SectionHeader({
   title,
   meta,
   action,
   id,
-  dot,
+  mark,
   className,
 }: {
   title: ReactNode;
   meta?: ReactNode;
   action?: SectionLink | ReactNode;
   id?: string;
-  dot?: string;
+  mark?: ReactNode;
   className?: string;
 }) {
   return (
     <div className={cn('flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1', className)}>
-      <h2 id={id} className="font-heading text-lg font-semibold tracking-tight">
-        {dot && <span aria-hidden className={cn('me-2 inline-block size-2 rounded-full align-middle', dot)} />}
+      <h2
+        id={id}
+        className={cn('font-heading text-lg font-semibold tracking-tight', mark != null && 'flex items-baseline gap-1.5')}
+      >
+        {mark != null && <span className="flex shrink-0 self-center">{mark}</span>}
         {title}
       </h2>
       {/* Below sm the meta drops under the title, so a long meta never pushes the link onto a line of its own */}

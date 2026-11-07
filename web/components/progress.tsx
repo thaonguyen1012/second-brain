@@ -6,8 +6,10 @@ import { getProgressStore, pageIdentity, useProgress, type ProgressSnapshot } fr
 import { Button } from '@/components/ui/button';
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { TrackSlug } from '@/lib/books';
 import { cn } from '@/lib/utils';
 import { BookCover } from './book-cover';
+import { GroupMark } from './group-mark';
 
 /** "Đã học xong" checkbox at the bottom of every lesson page. */
 export function DoneCheckbox({ url }: { url: string }) {
@@ -102,7 +104,8 @@ export function BookProgress({
 export interface HeroBook {
   slug: string;
   title: string;
-  track: string;
+  /** The book's Sổ tay group: its `GroupMark` and its URL segment. */
+  track: TrackSlug;
   lessonCount: number;
   /** Progress fill of the book's Sổ tay group (`trackFill`). */
   fill: string;
@@ -217,7 +220,7 @@ export function ContinueReading({
             return (
               <li key={b.slug}>
                 <Link href={bookHref(b)} className={cn('flex h-10 items-center gap-3 px-4 text-sm sm:px-5', row)}>
-                  <span aria-hidden className={cn('size-2 shrink-0 rounded-full', b.fill)} />
+                  <GroupMark track={b.track} className="size-4" />
                   <span className="min-w-0 flex-1 truncate">{b.title}</span>
                   <span className="text-xs text-muted-foreground tabular-nums">{pct}</span>
                   <span

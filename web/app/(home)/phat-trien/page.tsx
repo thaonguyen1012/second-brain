@@ -6,6 +6,7 @@ import { trackFill } from '@/lib/track-colors';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BookCard } from '@/components/book-card';
+import { GroupMark } from '@/components/group-mark';
 import { ProgressSummary, StartedShelf, type ShelfBook } from '@/components/book-actions';
 import { PageHeader } from '@/components/brain/page-header';
 import { PAGE_WIDTH, SectionHeader } from '@/components/brain/layout';
@@ -47,7 +48,10 @@ export default function HandbooksPage() {
       </PageHeader>
 
       {/* Jump links to the three groups, kept under the top bar while scrolling (full-bleed, flush with the band:
-          -mt-6 takes back the header's margin). The dot is the group colour; the text stays neutral. */}
+          -mt-6 takes back the header's margin). The group's mark carries its colour; the text stays neutral.
+          opacity-100: the Button dims its icons to 80%, the mark keeps its full colour. -ms-2 on the first link: the
+          Button's padding less the -mx-0.5 it gives every icon, so the first mark starts on the column edge, in line
+          with the group marks of the section titles below. */}
       <nav
         aria-label="Nhóm sổ tay"
         data-sticky-groups
@@ -59,10 +63,10 @@ export default function HandbooksPage() {
               key={t.slug}
               variant="ghost"
               size="sm"
-              className={cn(i === 0 && '-ms-2.5')}
+              className={cn(i === 0 && '-ms-2')}
               render={<a href={`#track-${t.slug}`} />}
             >
-              <span aria-hidden className={cn('size-2 rounded-full', trackFill[t.slug])} />
+              <GroupMark track={t.slug} className="size-4.5 opacity-100" />
               {t.title}
               <span className="font-normal text-muted-foreground tabular-nums">
                 {booksByTrack(t.slug).length}
@@ -90,7 +94,7 @@ export default function HandbooksPage() {
                 <SectionHeader
                   id={`track-${track.slug}-title`}
                   title={track.title}
-                  dot={trackFill[track.slug]}
+                  mark={<GroupMark track={track.slug} className="size-5" />}
                   meta={`${group.length} sổ tay · ${groupLessons.toLocaleString('vi-VN')} bài`}
                 />
                 <p className="text-sm text-muted-foreground max-sm:hidden">{track.description}</p>

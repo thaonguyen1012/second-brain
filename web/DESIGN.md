@@ -82,8 +82,8 @@ data, the primary action or the "now" marker. Without purple there are more mean
 so the near pairs that remain are listed under the palette, not hidden.
 
 - **Neutrals carry the page.** Text, surfaces, borders and fills stay neutral; body text is never coloured.
-  Colour sits on marks (icons, tiles, dots, bars, chips, chart marks), the handbook covers' illustrations (§9a),
-  the area header band and the blue primary.
+  Colour sits on marks (icons, the group marks, tiles, dots, bars, chips, chart marks), the handbook covers'
+  illustrations (§9a), the area header band and the blue primary.
 - **Blue `primary` is for the one primary action** of a view (filled `Button` default; hover and press darken it to
   `--primary-hover`, 10% toward black, so its label keeps >= 6:1) and for links/focus. It is not a selected-tab
   colour, not a heading colour, not a decoration, never an area or group colour. Sidebar row icons are not blue
@@ -99,9 +99,11 @@ so the near pairs that remain are listed under the palette, not hidden.
 - **Group colours** (`--track-<slug>`; `trackFill` in `lib/track-colors.ts`): a Sổ tay group wears
   the hue of the area its handbooks feed, so the hue keeps one meaning: Kinh doanh -> Cơ hội (orange: business
   ideas), IT -> Công việc (teal: paid technical work), Kỹ năng -> Tuần (pink: học cách học and project management
-  are practised in the weekly plan and review). Blue is the "Học ngay" button, so no group is blue. Wherever one
-  handbook is shown (Sổ tay cards, rows and jump dots; the Hôm nay hero, its in-progress rows, the Sổ tay tile and
-  the roadmap rows): its dot and its progress indicator. Never on text, and never on the cover: since 07/11/2026 a
+  are practised in the weekly plan and review). Blue is the "Học ngay" button, so no group is blue. The hue appears
+  in two forms only: as the main fill of the group's mark (below; since 07/11/2026 in place of every group dot: the
+  Sổ tay jump row, the group section titles, the Hôm nay hero's "Sổ tay khác đang học" rows) and as the solid
+  progress indicator wherever one handbook or group is shown (Sổ tay cards and "Đang học" rows, the Hôm nay hero,
+  the Sổ tay tile, the roadmap rows). Never on text, never as a dot, and never on the cover: since 07/11/2026 a
   cover is an illustration in the fixed cover palette, the same for every group (owner: "illustration kiểu retro ...
   thay vì để màu", §9a).
 - **Status colours come from `lib/labels.ts` tones only** (`Tone` -> `Badge` variant): `info` = active/keep,
@@ -116,12 +118,34 @@ so the near pairs that remain are listed under the palette, not hidden.
   takes the group colour.
 - **Brand mark** (`components/brand-mark.tsx`; owner, 07/11/2026: "không có border bao quanh", colourful, in the
   manner of Anthropic's warm palette): an open handbook, orange `#d97757` and blue `#6a9bcc` pages, with a green
-  `#788c5d` sprout from its spine; spine and stem in `currentColor`. With the handbook covers (§9a) one of the two
-  multi-colour drawings in the app: its three hues belong to the cover palette and, like it, are fixed hex values
-  inside the drawing, not tokens, naming nothing. Only in the sidebar header
+  `#788c5d` sprout from its spine; spine and stem in `currentColor`. With the handbook covers (§9a) and the group
+  marks (below) one of the three kinds of drawing in the app: its three hues belong to the cover palette and, like
+  it, are fixed hex values inside the drawing, not tokens, naming nothing. Only in the sidebar header
   (28px), the Fumadocs nav (24px), the /gioi-thieu/ hero and the icons in `public/icons/` (PNGs rendered by
   `scripts/make-icons.mjs` from `icon.svg`). Never on a tile, border, ground or shadow in the app; only the opaque OS
   icons (apple-touch, maskable) stand on a full-bleed ivory `#faf9f5` that the OS rounds or masks.
+- **Group marks** (`components/group-mark.tsx`, `GroupMark`; owner, 07/11/2026, about the dots of the jump row:
+  "thay mấy chấm bằng illustrations tự vẽ theo style của illustration trong app đi, như logo ấy"): a Sổ tay group
+  is drawn, not dotted. One original drawing per group, each a different silhouette: Kinh doanh a little shop under
+  a striped awning, IT a terminal window with a prompt, Kỹ năng a graduation cap with its tassel. Never a sprout or
+  an open book (the brand mark's) and never the glyph of a sidebar row (a light bulb is Cơ hội, a briefcase Dự án,
+  a clock Giờ, a trophy Nhật ký thành tựu: `lib/app-nav.ts`), so a drawing never names another place. Built like a
+  cover in miniature, on a 24 grid: the ink outline in `currentColor`, 1.75 with round caps and joins, so it follows
+  the text in both themes and in forced colours as the brand mark's spine does; the main flat fill is the group's
+  `--track-<slug>` token, the hue its progress bars wear, so the mark keeps the meaning the dot had; at most one
+  light tone, the covers' ivory `#faf9f5` (an awning stripe, a title bar, the prompt's strokes), a fixed hex inside
+  the drawing like the brand mark's hues (manilla `#ebdbbc` is the one other allowed); the fills printed off register
+  by `translate(1.5 1.2)`, the covers' 2.5/2 offset scaled to the thinner line. In dark the ink turns white, so no
+  inner detail is ink over a fill (it would vanish on the light dark-theme hues): details are holes (the door), fill
+  edges or ivory strokes; the only ink over colour is an outline between two parts of one silhouette (the cap's board
+  over its crown). No tile, border, ground, text, gradient, glow, shadow, purple, sparkle or emoji. Sizes: 18px on
+  the Sổ tay jump row (`opacity-100`: the Button dims its icons to 80%; the first link's `-ms-2` puts its mark on the
+  column edge, in line with the section titles' marks), 20px before a group's section title (`SectionHeader mark`,
+  centred on the title's line, the h2 keeps the text baseline for the meta), 16px on the Hôm nay hero's other-book
+  rows; each drawing reads at 16, 18 and 20px. Server-rendered, except in the hero, where it ships in the Hôm nay
+  bundle (home First Load JS budget, DECISIONS 10.2: keep the component small). Decorative (`aria-hidden`): the
+  group's name always sits next to it. Progress bars keep their solid group fill; the skill freshness dots on Kỹ năng
+  are statuses, not groups, and stay dots. A new group gets a new drawing under the same rules, never a dot.
 - **Forbidden:** purple (`bw-purple`, `chart-4` dark) in app UI, gradients, glows, coloured shadows, translucent
   overlapping fills, gradient text, sparkle or other AI decoration, emoji as icons; an area or group hue that reads
   as the primary blue, `bw-red`, destructive red or a status colour.
@@ -211,7 +235,8 @@ so the near pairs that remain are listed under the palette, not hidden.
 ## 5. Icons
 
 - **lucide-react only**, default stroke (2) everywhere in a screen. Never mix stroke widths or filled and outline
-  glyphs in one view. No hand-drawn SVG glyphs; the brand mark (§4) is the one drawing that is not lucide. The
+  glyphs in one view. No hand-drawn SVG glyphs; the brand mark and the three Sổ tay group marks (§4) are the only
+  drawings that are not lucide (their 1.75 ink on a 24 grid is their own line, not a lucide stroke to match). The
   handbook covers (§9a) are illustrations loaded as images, not icons.
 - **One size per context:** 16px (`size-4`) in buttons, nav, toolbars, rows; 14px (`size-3.5`) in badges, meta
   lines and `xs` buttons; 28px (`size-7`, `strokeWidth={1.5} absoluteStrokeWidth`, so its line matches the 16px
@@ -225,7 +250,8 @@ so the near pairs that remain are listed under the palette, not hidden.
   except: the title icon of an area page (`PageHeader nav`: the icon of the page's own sidebar row, ink colour, no
   tile, centred on the title's first line, `aria-hidden`; server-rendered, except on /co-hoi/ where the client list
   and detail views render the header) and the heading of a Hôm nay tile, which starts with the icon of where its link
-  leads (that row's icon from `lib/app-nav.ts`, or the Inbox glyph), 16px in `muted-foreground`. An empty state's
+  leads (that row's icon from `lib/app-nav.ts`, or the Inbox glyph), 16px in `muted-foreground`, and the section
+  title of a Sổ tay group on the Sổ tay page, which starts with that group's mark (20px, §4). An empty state's
   glyph names the missing object (BookPlus, FlaskConical, FolderPlus...), never a nav icon, so it does not repeat the
   title icon. Nothing else.
 - **No emoji as icons** (emoji are user content only). Icon-only buttons have `aria-label` and a `Tooltip`.
@@ -423,8 +449,9 @@ wins.
 Shared pieces: `PageHeader` (the band, `components/brain/page-header.tsx`), `components/brain/layout.tsx`
 (`PAGE_WIDTH`, `wellClass`, `SectionHeader`), `week-strip.tsx` (`WeekStrip`, `dayLevel`),
 `ghost-rows.tsx`, `empty-panel.tsx` (client; never imported on Hôm nay), `EmptyStateGuide variant="flush"`,
-`components/book-cover.tsx` (`BookCover`, server and client alike; the drawings in `public/covers/`) and
-`components/brain/library/item-image.tsx` (`RowPicture`, `boardMedia`; the dialogs' field in `item-image-field.tsx`).
+`components/book-cover.tsx` (`BookCover`, server and client alike; the drawings in `public/covers/`),
+`components/brain/library/item-image.tsx` (`RowPicture`, `boardMedia`; the dialogs' field in `item-image-field.tsx`) and
+`components/group-mark.tsx` (`GroupMark`, server and client alike, §4).
 
 ## 10. Review checklist (cite by ID; each is checkable on a screenshot)
 
@@ -465,9 +492,10 @@ Containers
   border); inside it, a fill or a divider. A board lane is a well holding card surfaces (§6 "Board").
 
 Colour
-- **D16** Only token colours (the hex palette inside the brand mark and the cover SVGs excepted, §4, §9a); status colours match `lib/labels.ts`, the same status the same colour everywhere; an
+- **D16** Only token colours (the hex palette inside the brand mark and the cover SVGs, and the ivory/manilla light
+  tone inside the group marks, excepted, §4, §9a); status colours match `lib/labels.ts`, the same status the same colour everywhere;
   no colour per area (title icons, bands, Hôm nay tile icons and empty glyphs are neutral); a group colour only
-  where one handbook is shown (dot, progress indicator; never the cover); no coloured body text;
+  as the fill of its group mark or a progress indicator (never a dot, never the cover); no coloured body text;
   data colours (`--chart-*`, statuses, progress) never greyed out, every chart in the data blue, never in an area
   or group hue.
 - **D17** No purple, gradient, glow, coloured shadow or gradient text; `bw-red` only on the continue/now marker; no
@@ -483,11 +511,13 @@ Colour
   focus ring >= 3:1 on page, sidebar, surfaces, wells and bands; no container left transparent on the page.
 
 Icons
-- **D20** lucide only (the brand mark excepted: 28px in the sidebar header, no tile; covers are images, not icons), one stroke width, 16px in
+- **D20** lucide only (the brand mark excepted: 28px in the sidebar header, no tile; the group marks excepted: 18px
+  on the Sổ tay jump row, 20px before a group's section title, 16px in the Hôm nay hero's rows, no tile, ink in
+  `currentColor`, §4; covers are images, not icons), one stroke width, 16px in
   controls/rows/nav, 14px in badges/meta, 28px for the title icon and 32px for the empty-panel glyph (both with a 1.5px absolute
   line); no emoji as icons.
-- **D21** No decorative icon beside headings or card titles (an area page's title icon and the icon of a Hôm nay
-  tile heading excepted, §5); no nav icon as an empty state glyph; icon-only buttons have a
+- **D21** No decorative icon beside headings or card titles (an area page's title icon, the icon of a Hôm nay
+  tile heading and the group mark before a Sổ tay group's section title excepted, §5); no nav icon as an empty state glyph; icon-only buttons have a
   tooltip; icons in tabs only on a view switch that changes the layout (List / Board, §5).
 
 Components
