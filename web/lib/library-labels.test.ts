@@ -1,6 +1,46 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiInboxEntry } from '@/lib/api/client';
-import { itemDraftFromEntry, itemTypeForEntry, noteTitle } from './library-labels';
+import { formatDate } from './labels';
+import { itemDateLabel, itemDraftFromEntry, itemSourceLabel, itemTypeForEntry, noteTitle } from './library-labels';
+
+describe('itemSourceLabel', () => {
+  it('names a handbook "Sổ tay", a link by its host, and keeps free text', () => {
+    expect(itemSourceLabel('/docs/kinh-doanh/handbook-01/')).toBe('Sổ tay');
+    expect(itemSourceLabel('https://www.goodreads.com/book/show/1')).toBe('goodreads.com');
+    expect(itemSourceLabel('HTTP://Example.com/x')).toBe('example.com');
+    expect(itemSourceLabel('James Clear')).toBe('James Clear');
+    expect(itemSourceLabel('  Udemy ')).toBe('Udemy');
+  });
+
+  it('is empty without a source and keeps a broken link as text', () => {
+    expect(itemSourceLabel('')).toBe('');
+    expect(itemSourceLabel(undefined)).toBe('');
+    expect(itemSourceLabel(null)).toBe('');
+    expect(itemSourceLabel('https://')).toBe('https://');
+  });
+});
+
+describe('itemDateLabel', () => {
+  const at = (iso: string) => formatDate(iso);
+  const base = { createdAt: '2026-11-01T08:00:00Z', startedAt: null, finishedAt: null };
+
+  it('names the finish in Xong, the start in Đang làm', () => {
+    expect(itemDateLabel({ ...base, status: 'done', finishedAt: '2026-11-07T08:00:00Z' })).toBe(
+      `xong ${at('2026-11-07T08:00:00Z')}`,
+    );
+    expect(itemDateLabel({ ...base, status: 'active', startedAt: '2026-11-03T08:00:00Z' })).toBe(
+      `bắt đầu ${at('2026-11-03T08:00:00Z')}`,
+    );
+  });
+
+  it('falls back to the day it was added', () => {
+    expect(itemDateLabel({ ...base, status: 'done' })).toBe(`thêm ${at(base.createdAt)}`);
+    expect(itemDateLabel({ ...base, status: 'planned', startedAt: '2026-11-03T08:00:00Z' })).toBe(
+      `thêm ${at(base.createdAt)}`,
+    );
+    expect(itemDateLabel({ ...base, status: undefined })).toBe(`thêm ${at(base.createdAt)}`);
+  });
+});
 
 describe('noteTitle', () => {
   const note = (title: string, markdown: string) => ({ id: 7, title, markdown });

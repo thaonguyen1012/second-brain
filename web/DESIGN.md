@@ -219,9 +219,9 @@ so the near pairs that remain are listed under the palette, not hidden.
   states. Components
   already size their icons: do not override.
 - **Icons earn their place:** nav items, a verb with a standard glyph (Plus, Trash2, ExternalLink, Pencil), a
-  state colour alone cannot carry (spinner, error), and the tabs of a view switch that changes the layout (Dự án:
-  `List` "Danh sách", `SquareKanban` "Bảng"; the Tabs' own icon size, 16px from `sm`). Tabs that filter one layout
-  (Inbox, Tuần, Thư viện) stay text only. **No icon beside headings, card titles or section titles**,
+  state colour alone cannot carry (spinner, error), and the tabs of a view switch that changes the layout (Dự án and
+  Thư viện: `List` "Danh sách", `SquareKanban` "Bảng"; the Tabs' own icon size, 16px from `sm`). Tabs that filter
+  one layout (Inbox, Tuần, the Item / Ghi chú route halves) stay text only. **No icon beside headings, card titles or section titles**,
   except: the title icon of an area page (`PageHeader nav`: the icon of the page's own sidebar row, ink colour, no
   tile, centred on the title's first line, `aria-hidden`; server-rendered, except on /co-hoi/ where the client list
   and detail views render the header) and the heading of a Hôm nay tile, which starts with the icon of where its link
@@ -249,19 +249,25 @@ so the near pairs that remain are listed under the palette, not hidden.
   toolbar; the filters that belong to one view follow it only in that view. The view lives in the URL
   (`?view=board`, the default view has no parameter), the last choice in localStorage (the URL wins), switched with
   `router.replace` without scrolling.
-- **Board** (Dự án, owner 07/11/2026: "như page All task trên ClickUp, có dạng list và board"; the shared
-  `components/brain/status-board.tsx` with the card parts in `work/project-card.tsx`, pure logic in
-  `lib/status-board.ts`, the view in `lib/use-board-view.ts`): one lane per status in `lib/labels.ts` order. A lane is a well (`rounded-xl
+- **Board** (Dự án, owner 07/11/2026: "như page All task trên ClickUp, có dạng list và board"; Thư viện the same
+  day, DECISIONS 9.6; the shared `components/brain/status-board.tsx`, card parts in `work/project-card.tsx` and
+  `library/item-parts.tsx`, pure logic in `lib/status-board.ts`, the view in `lib/use-board-view.ts`): one lane per
+  status in `lib/labels.ts` order. Each board names its records with its own noun (`BoardKind`: "dự án", "item") in
+  every lane and card text below. A lane is a well (`rounded-xl
   bg-well p-2 gap-2 min-h-40`) headed by its `StatusBadge` and count (`text-xs` muted `tabular-nums`), ending in a
   ghost `xs` "+ Thêm dự án" that opens the dialog with that status; empty, it says "Chưa có dự án" quietly. A card is
   a white surface (`rounded-lg border bg-card p-3 gap-2`): title (`text-sm font-medium`, 2 lines, a button that
   opens the edit dialog) with the `RowMenu` at its end, the row's meta text (up to 2 lines, so a long client never
-  cuts the price), then a footer only when there is something to say (the `bw-red` now dot, hours with
-  `MiniBillableBar`, "thực tế" rate). Lanes are the one place a card sits in a well (§9a). Moving: native HTML5 drag
-  and drop (no library); the dragged card dims to `opacity-50`,
+  cuts the price), then a footer only when there is something to say (Dự án: the `bw-red` now dot, hours with
+  `MiniBillableBar`, "thực tế" rate; Thư viện: the rating, the note count, and on a done Item without its output
+  (DECISIONS 4.2) the warning words with one outline `xs` "Viết ghi chú" or "Chấm điểm"; a drop into Xong is never
+  blocked). A Thư viện card's meta is the type (only without a type filter), the source ("Sổ tay" for a handbook,
+  the host of a link) and the lane's date (xong / bắt đầu / thêm); no tags on cards. The type filter applies to both
+  views, the status filter only to the List. Lanes are the one place a card sits in a well (§9a). Moving: native
+  HTML5 drag and drop (no library); the dragged card dims to `opacity-50`,
   the lane under the pointer takes `ring-2 ring-inset ring-ring` (counted dragenter/dragleave, no flicker), an empty
   lane shows a dashed "Thả dự án vào đây" box of the same size while a drag runs; drops of files or text from
-  elsewhere are ignored. The card menu's "Chuyển sang ..." (one item per other status) is the keyboard and touch
+  elsewhere, and cards of the other board, are ignored. The card menu's "Chuyển sang ..." (one item per other status) is the keyboard and touch
   way, the same code path. A move is optimistic (the card lands on top of its new lane at once), then the server's
   record replaces it; a refused move puts it back where it was and shows one error `Alert` "Không đổi được trạng
   thái: ..." with "Đóng". Every move is read out in a polite live region, never as a visible line that would push

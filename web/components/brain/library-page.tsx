@@ -1,29 +1,38 @@
 'use client';
-import { useRef, useState } from 'react';
-import Link from 'next/link';
-import { BookPlus, Loader2, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
-import { api, type ApiItem, type ApiItemStatus, type ApiItemType, type Page } from '@/lib/api/client';
+import { useMemo, useRef, useState } from 'react';
+import { BookPlus, Loader2, Plus } from 'lucide-react';
+import {
+  api,
+  type ApiItem,
+  type ApiItemRequest,
+  type ApiItemStatus,
+  type ApiItemType,
+  type Page,
+} from '@/lib/api/client';
 import type { ApiNote } from '@/lib/api/library';
+import { loadAllPages } from '@/lib/api/pages';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
-import { formatDate, itemStatusOf, itemStatuses, itemTypeLabel, itemTypes } from '@/lib/labels';
+import { itemStatusOf, itemStatuses, itemTypes } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { useProgress } from '@/lib/progress';
+import { ITEM_BOARD, laneOf } from '@/lib/status-board';
+import { useBoardView } from '@/lib/use-board-view';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
 import { ApiErrorState, ApiStaleAlert, describeApiError, openError } from './api-state';
-import { StatusBadge } from './brain-card';
 import { ChoiceSelect } from './choice-select';
 import { EmptyPanel, useToolbarState } from './empty-panel';
 import { ItemDialog } from './item-dialog';
 import { PAGE_WIDTH } from './layout';
-import { gapLabel, missingOutput, noteDraftForItem } from './library/done-output';
+import { noteDraftForItem } from './library/done-output';
 import { handbooks, importHandbooks } from './library/handbook-import';
-import { FilteredEmpty, RowsSkeleton, onRowClick } from './library/list-rows';
+import { ItemCardBody, ItemMenuItems, ItemRow } from './library/item-parts';
+import { FilteredEmpty, RowsSkeleton } from './library/list-rows';
 import { NoteDialog } from './library/note-dialog';
 import { useItemIndex } from './library/use-item-index';
-import { RowMenu } from './row-menu';
+import { BoardSkeleton, BoardStatus, StatusBoard, useStatusMoves } from './status-board';
+import { ViewSwitch } from './view-switch';
 
 type TypeFilter = ApiItemType | 'all';
 type StatusFilter = ApiItemStatus | 'all';
@@ -31,103 +40,25 @@ type StatusFilter = ApiItemStatus | 'all';
 const typeChoices = [{ value: 'all' as const, label: 'Mọi loại' }, ...itemTypes];
 const statusChoices = [{ value: 'all' as const, label: 'Mọi trạng thái' }, ...itemStatuses];
 
-/** The one-click next step of the lifecycle (DECISIONS 4.2); "done" still needs a note to count. */
-const nextStep: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: string }>> = {
-  planned: { to: 'active', label: 'Bắt đầu' },
-  active: { to: 'done', label: 'Xong' },
-};
-
-function ItemRow({
-  item,
-  onEdit,
-  onStep,
-  onWriteNote,
-  onRate,
-}: {
-  item: ApiItem;
-  onEdit: () => void;
-  onStep: (to: ApiItemStatus) => void;
-  onWriteNote: () => void;
-  onRate: () => void;
-}) {
-  const s = itemStatusOf(item.status);
-  const gap = missingOutput(item);
-  const step = nextStep[item.status ?? 'planned'];
-  const dates = [
-    item.startedAt && `bắt đầu ${formatDate(item.startedAt)}`,
-    item.finishedAt && `xong ${formatDate(item.finishedAt)}`,
-  ].filter(Boolean);
-  const meta = [itemTypeLabel(item.type), item.source, ...(dates.length ? dates : [`thêm ${formatDate(item.createdAt)}`])]
-    .filter(Boolean)
-    .join(' · ');
-  const tags = (item.tags ?? []).map((t) => `#${t}`).join(' ');
-  return (
-    // One row of the shared subgrid (status | title over meta | rating | actions), DESIGN.md §3 "list row beats card"
-    <li
-      className="col-span-full grid min-h-14 grid-cols-subgrid items-center px-3 py-2 transition-colors hover:bg-accent has-focus-visible:bg-accent"
-      onClick={(e) => onRowClick(e, onEdit)}
-    >
-      <span className="flex">
-        <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
-      </span>
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <button
-          type="button"
-          className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={onEdit}
-        >
-          {item.title}
-        </button>
-        <p className="truncate text-xs text-muted-foreground">
-          {meta}
-          {gap && (
-            <>
-              {' · '}
-              <span className="text-warning-foreground">{gapLabel(gap)}</span>
-            </>
-          )}
-          {tags && ` · ${tags}`}
-        </p>
-      </div>
-      <span className="text-end text-xs tabular-nums text-muted-foreground max-sm:hidden">
-        {item.rating ? `${item.rating}/10` : ''}
-      </span>
-      <div className="flex items-center justify-end gap-1">
-        {step && (
-          <Button size="xs" variant="outline" onClick={() => onStep(step.to)}>
-            {step.label}
-          </Button>
-        )}
-        <RowMenu>
-          <MenuItem onClick={onEdit}>
-            <Pencil aria-hidden />
-            Sửa
-          </MenuItem>
-          <MenuLinkItem render={<Link href={`/thu-vien/ghi-chu/?item=${item.id}`} />}>
-            <NotebookPen aria-hidden />
-            Ghi chú
-          </MenuLinkItem>
-          <MenuItem onClick={onWriteNote}>
-            <Plus aria-hidden />
-            Viết ghi chú
-          </MenuItem>
-          {gap?.rating && (
-            <MenuItem onClick={onRate}>
-              <Star aria-hidden />
-              Chấm điểm
-            </MenuItem>
-          )}
-        </RowMenu>
-      </div>
-    </li>
+/** Every Item of one type (all cursor pages, at most 20 of 100), newest first: one list for both views. */
+const loadItems = (type: TypeFilter) => () =>
+  loadAllPages<ApiItem>(
+    () => api.listItems({ limit: 100, ...(type !== 'all' && { type }) }),
+    (next) => api.page<ApiItem>(next),
   );
-}
 
-/** Thư viện: Items with type and status filters, create and edit (POST/PATCH /api/items). */
+/**
+ * Thư viện: Items in two views like Dự án: Danh sách (rows, filterable by type and status) and Bảng (one lane per
+ * status; dragging a card or its menu changes the status). Both views show one list of every Item of the chosen type,
+ * so a change in one is in the other without a reload. Create and edit through ItemDialog (POST/PATCH /api/items).
+ */
 export function LibraryPage() {
+  // Before useOpenFromUrl: a remembered board waits until ?item= is gone, so the two URL updates never collide.
+  const [view, setView] = useBoardView(ITEM_BOARD.viewKey, 'item');
   const [type, setType] = useState<TypeFilter>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [editing, setEditing] = useState<ApiItem | null>(null);
+  const [draft, setDraft] = useState<Partial<ApiItemRequest> | undefined>(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [focusRating, setFocusRating] = useState(false);
   const [noteFor, setNoteFor] = useState<ApiItem | null>(null);
@@ -141,33 +72,44 @@ export function LibraryPage() {
   const [importing, setImporting] = useState<{ sent: number; total: number } | null>(null);
   const importLock = useRef(false);
 
-  const items = useApi<Page<ApiItem>>(`items:${type}:${status}`, () =>
-    api.listItems({
-      limit: 100,
-      ...(type !== 'all' && { type }),
-      ...(status !== 'all' && { status }),
-    }),
-  );
-  const list = items.loading ? [] : (items.data?.results ?? []);
+  const key = `items:all:${type}`;
+  const items = useApi<Page<ApiItem>>(key, loadItems(type));
+  const moves = useStatusMoves(items, ITEM_BOARD, (id, to) => api.updateItem(id, { status: to }));
+  // The rows of another type never show under this one; a reload of the same type (a return to the tab) keeps the
+  // rows and the board on screen instead of blanking them.
+  const ready = items.dataKey === key && items.data !== undefined;
+  const all = useMemo(() => (items.dataKey === key ? (items.data?.results ?? []) : []), [items.dataKey, items.data, key]);
+  const list = useMemo(() => (status === 'all' ? all : all.filter((i) => laneOf(i) === status)), [all, status]);
+
+  const openEdit = (item: ApiItem, rating = false) => {
+    setEditing(item);
+    setFocusRating(rating);
+    setDialogOpen(true);
+  };
+  /** A new Item, prefilled with the chosen type (and a lane's status). */
+  const openNew = (initial?: Partial<ApiItemRequest>) => {
+    setEditing(null);
+    setDraft({ ...(type !== 'all' && { type }), ...initial });
+    setFocusRating(false);
+    setDialogOpen(true);
+  };
 
   // ?item=N (Cmd+K result): open that Item's dialog (one GET /api/items/{id}, not the whole library).
   useOpenFromUrl('item', (id) => {
     api.getItem(id).then(
-      (item) => {
-        setEditing(item);
-        setFocusRating(false);
-        setDialogOpen(true);
-      },
+      (item) => openEdit(item),
       (err: unknown) => setNotice(openError(err, `Không tìm thấy item #${id}, có thể đã bị xóa.`)),
     );
   });
-  const matches = (i: ApiItem) => (type === 'all' || i.type === type) && (status === 'all' || i.status === status);
+
+  /** The shared list holds one type (or all); the status filter of the List view applies when it renders. */
+  const ofType = (i: ApiItem) => type === 'all' || i.type === type;
 
   const upsert = (saved: ApiItem, created: boolean) =>
     items.mutate((d) => {
       if (!d) return d;
       const rest = d.results.filter((i) => i.id !== saved.id);
-      if (!matches(saved)) return { ...d, results: rest };
+      if (!ofType(saved)) return { ...d, results: rest };
       return {
         ...d,
         results: created ? [saved, ...rest] : d.results.map((i) => (i.id === saved.id ? saved : i)),
@@ -194,8 +136,7 @@ export function LibraryPage() {
   };
 
   const loadMore = async () => {
-    const next = items.data?.next;
-    if (!next) return;
+    if (!items.data?.next) return;
     setLoadingMore(true);
     try {
       await appendNextPage(items);
@@ -204,12 +145,6 @@ export function LibraryPage() {
     } finally {
       setLoadingMore(false);
     }
-  };
-
-  const openNew = () => {
-    setEditing(null);
-    setFocusRating(false);
-    setDialogOpen(true);
   };
 
   const addHandbooks = async () => {
@@ -221,7 +156,7 @@ export function LibraryPage() {
       // Handbooks already in the library mean the shown list was out of date: read it again
       if (res.skipped > 0) items.reload();
       else if (res.created.length > 0)
-        items.mutate((d) => d && { ...d, results: [...res.created.filter(matches), ...d.results] });
+        items.mutate((d) => d && { ...d, results: [...res.created.filter(ofType), ...d.results] });
       const active = res.created.filter((i) => i.status === 'active').length;
       const parts = [
         res.created.length > 0 &&
@@ -239,44 +174,44 @@ export function LibraryPage() {
     }
   };
 
-  const unfiltered = type === 'all' && status === 'all';
-  const failed = !!items.error && !items.data;
-  const firstLoad = items.loading && list.length === 0;
+  // The status filter belongs to the List only (the board's lanes are the statuses); the type filter to both.
+  const filtered = type !== 'all' || (view === 'list' && status !== 'all');
+  const shown = view === 'list' ? list : all;
+  const failed = !!items.error && !ready;
   // The toolbar waits for a first record or a filter (DESIGN.md §9a): an empty library shows only the empty panel,
   // whose "Thêm item" is the one primary (D2). The shared rule (empty-panel.tsx) reads the sidebar count meanwhile.
   const toolbar = useToolbarState({
-    rows: list.length,
-    filtered: !unfiltered,
-    loading: items.loading,
+    rows: all.length,
+    filtered,
+    loading: !ready,
     failed,
     count: 'items',
   });
 
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
-      {/* 390 px: the two filters share row 1, "Thêm item" takes row 2 at full width (DESIGN.md §6 Toolbar, D11) */}
+      {/* 390 px: the view switch and "Thêm item" keep the first row, the filters share the second (DESIGN.md §6) */}
       {toolbar !== 'hide' && (
-        <div
-          className={cn(
-            'grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center',
-            toolbar === 'wait' && 'invisible',
-          )}
-        >
-          <ChoiceSelect
-            label="Loại"
-            value={type}
-            onChange={setType}
-            choices={typeChoices}
-            className="min-w-0 sm:w-auto"
-          />
-          <ChoiceSelect
-            label="Trạng thái"
-            value={status}
-            onChange={setStatus}
-            choices={statusChoices}
-            className="min-w-0 sm:w-auto"
-          />
-          <Button className="col-span-2 max-sm:w-full sm:ms-auto" onClick={openNew}>
+        <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
+          <ViewSwitch view={view} onChange={setView} />
+          <div
+            className={cn(
+              'order-last grid w-full gap-2 sm:order-none sm:flex sm:w-auto sm:items-center',
+              view === 'list' && 'grid-cols-2',
+            )}
+          >
+            <ChoiceSelect label="Loại" value={type} onChange={setType} choices={typeChoices} className="min-w-0 sm:w-auto" />
+            {view === 'list' && (
+              <ChoiceSelect
+                label="Trạng thái"
+                value={status}
+                onChange={setStatus}
+                choices={statusChoices}
+                className="min-w-0 sm:w-auto"
+              />
+            )}
+          </div>
+          <Button className="ms-auto shrink-0" onClick={() => openNew()}>
             <Plus aria-hidden />
             Thêm item
           </Button>
@@ -288,13 +223,18 @@ export function LibraryPage() {
           {notice}
         </p>
       )}
+      <BoardStatus moves={moves} />
 
       <ApiStaleAlert result={items} />
       {failed && items.error ? (
         <ApiErrorState error={items.error} onRetry={items.reload} />
-      ) : firstLoad ? (
-        <RowsSkeleton />
-      ) : list.length === 0 && !unfiltered ? (
+      ) : !ready ? (
+        view === 'board' ? (
+          <BoardSkeleton />
+        ) : (
+          <RowsSkeleton />
+        )
+      ) : shown.length === 0 && filtered ? (
         <FilteredEmpty
           onClear={() => {
             setType('all');
@@ -303,13 +243,13 @@ export function LibraryPage() {
         >
           Không có mục nào khớp bộ lọc.
         </FilteredEmpty>
-      ) : list.length === 0 ? (
+      ) : all.length === 0 ? (
         <EmptyPanel
           glyph={BookPlus}
           title="Chưa có item nào"
           text="Thêm sách, phim, khóa học, bài viết hoặc dự án; mục từ inbox cũng có thể thành item."
           action={
-            <Button onClick={openNew}>
+            <Button onClick={() => openNew()}>
               <Plus aria-hidden />
               Thêm item
             </Button>
@@ -329,6 +269,30 @@ export function LibraryPage() {
           }
           guide={items.error ? undefined : 'library'}
         />
+      ) : view === 'board' ? (
+        <StatusBoard
+          kind={ITEM_BOARD}
+          records={all}
+          moves={moves}
+          onOpen={(item) => openEdit(item)}
+          onAdd={(lane) => openNew({ status: lane })}
+          renderBody={(item) => (
+            <ItemCardBody
+              item={item}
+              showType={type === 'all'}
+              onWriteNote={() => setNoteFor(item)}
+              onRate={() => openEdit(item, true)}
+            />
+          )}
+          renderMenu={(item) => (
+            <ItemMenuItems
+              item={item}
+              onEdit={() => openEdit(item)}
+              onWriteNote={() => setNoteFor(item)}
+              onRate={() => openEdit(item, true)}
+            />
+          )}
+        />
       ) : (
         // One container, rows on a shared subgrid so status, rating and actions line up (DESIGN.md §3 Columns)
         <ul
@@ -339,23 +303,16 @@ export function LibraryPage() {
             <ItemRow
               key={item.id}
               item={item}
-              onEdit={() => {
-                setEditing(item);
-                setFocusRating(false);
-                setDialogOpen(true);
-              }}
-              onRate={() => {
-                setEditing(item);
-                setFocusRating(true);
-                setDialogOpen(true);
-              }}
+              onEdit={() => openEdit(item)}
+              onRate={() => openEdit(item, true)}
               onStep={(to) => void step(item, to)}
               onWriteNote={() => setNoteFor(item)}
             />
           ))}
         </ul>
       )}
-      {items.data?.next && !items.loading && (
+      {/* Only past the 20-page cap of loadItems */}
+      {ready && items.data?.next && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
           Tải thêm
         </Button>
@@ -364,6 +321,7 @@ export function LibraryPage() {
       <ItemDialog
         open={dialogOpen}
         item={editing}
+        draft={draft}
         focusRating={focusRating}
         onOpenChange={(o) => {
           setDialogOpen(o);
@@ -371,6 +329,8 @@ export function LibraryPage() {
         }}
         onSaved={(saved, created) => {
           upsert(saved, created);
+          // a new Item, or one whose status changed, lands on top of its lane like a moved card
+          if (created || editing?.status !== saved.status) moves.bump(saved.id);
           setDialogOpen(false);
           setNotice(created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`);
         }}

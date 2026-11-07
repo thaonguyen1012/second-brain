@@ -1,7 +1,23 @@
-// Thư viện area: note titles and the Item draft made from an inbox entry. Shared labels stay in lib/labels.ts.
-import type { ApiInboxEntry, ApiItemRequest, ApiItemType } from '@/lib/api/client';
+// Thư viện area: note titles, the words of an Item's source and date, and the Item draft made from an inbox entry.
+// Shared labels stay in lib/labels.ts.
+import type { ApiInboxEntry, ApiItem, ApiItemRequest, ApiItemType } from '@/lib/api/client';
 import type { ApiNote } from '@/lib/api/library';
-import { hostOf } from '@/lib/labels';
+import { formatDate, hostOf } from '@/lib/labels';
+
+/** An Item's source as a row or card shows it: "Sổ tay" for a handbook, the host for a link, else the text itself. */
+export function itemSourceLabel(source: string | null | undefined): string {
+  const s = (source ?? '').trim();
+  if (!s) return '';
+  if (s.startsWith('/docs/')) return 'Sổ tay';
+  return /^https?:\/\//i.test(s) ? hostOf(s) || s : s;
+}
+
+/** The one date a board card names: finished in Xong, started in Đang làm, else when it was added. */
+export function itemDateLabel(item: Pick<ApiItem, 'status' | 'createdAt' | 'startedAt' | 'finishedAt'>): string {
+  if (item.status === 'done' && item.finishedAt) return `xong ${formatDate(item.finishedAt)}`;
+  if (item.status === 'active' && item.startedAt) return `bắt đầu ${formatDate(item.startedAt)}`;
+  return `thêm ${formatDate(item.createdAt)}`;
+}
 
 /** Title shown for a note: its title, else the first non-empty markdown line without heading/quote marks. */
 export function noteTitle(note: Pick<ApiNote, 'id' | 'title' | 'markdown'>): string {
