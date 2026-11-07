@@ -43,14 +43,23 @@ export function useApi<T>(key: string | null, load: () => Promise<T>): ApiResult
   useEffect(() => {
     loadRef.current = load;
   });
+  // Local changes (mutate, mutateFor) are counted: an answer read before one of them would put the old record back
+  // over it (a reload on tab focus that walks many pages, and a board move or a dialog save during it), so such an
+  // answer is dropped and the key is loaded again, while the locally changed data stays on screen.
+  const edits = useRef(0);
 
   const full = key === null ? null : `${key}#${tick}`;
   useEffect(() => {
     if (full === null) return;
     let alive = true;
     const base = full.slice(0, full.lastIndexOf('#'));
+    const editsAtStart = edits.current;
     loadRef.current().then(
-      (data) => alive && setState({ key: full, base, data }),
+      (data) => {
+        if (!alive) return;
+        if (edits.current !== editsAtStart) setTick((t) => t + 1);
+        else setState({ key: full, base, data });
+      },
       (err: unknown) =>
         alive &&
         setState((s) => ({
@@ -74,9 +83,11 @@ export function useApi<T>(key: string | null, load: () => Promise<T>): ApiResult
   }, [reload]);
 
   const mutate = useCallback((fn: (data: T | undefined) => T | undefined) => {
+    edits.current += 1;
     setState((s) => ({ ...s, data: fn(s.data) }));
   }, []);
   const mutateFor = useCallback((dataKey: string | null, fn: (data: T | undefined) => T | undefined) => {
+    edits.current += 1;
     setState((s) => (s.base === dataKey ? { ...s, data: fn(s.data) } : s));
   }, []);
 

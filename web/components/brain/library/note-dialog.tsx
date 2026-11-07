@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentProps } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { ApiItem } from '@/lib/api/client';
 import { notesApi, type ApiNote } from '@/lib/api/library';
@@ -194,6 +194,7 @@ export function NoteDialog({
   description,
   onOpenChange,
   onSaved,
+  finalFocus,
 }: {
   open: boolean;
   note: ApiNote | null;
@@ -204,6 +205,8 @@ export function NoteDialog({
   description?: string;
   onOpenChange: (open: boolean) => void;
   onSaved: (note: ApiNote, created: boolean) => void;
+  /** Where the focus goes when the dialog closes (default: the control that opened it, if it still exists). */
+  finalFocus?: ComponentProps<typeof DialogPopup>['finalFocus'];
 }) {
   const dirty = useRef(false);
   const [askDiscard, setAskDiscard] = useState(false);
@@ -222,7 +225,7 @@ export function NoteDialog({
   };
   return (
     <Dialog open={open} onOpenChange={change}>
-      <DialogPopup className="sm:max-w-2xl" closeProps={{ 'aria-label': 'Đóng' }}>
+      <DialogPopup className="sm:max-w-2xl" closeProps={{ 'aria-label': 'Đóng' }} finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle>{note ? 'Sửa ghi chú' : 'Ghi chú mới'}</DialogTitle>
           {description && <DialogDescription className="line-clamp-2">{description}</DialogDescription>}

@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Clock, FolderPlus, Pencil, Play, Plus } from 'lucide-react';
 import { api, type ApiItemStatus, type Page } from '@/lib/api/client';
@@ -19,7 +19,7 @@ import { ChoiceSelect } from '../choice-select';
 import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { PAGE_WIDTH } from '../layout';
 import { RowMenu } from '../row-menu';
-import { BoardSkeleton, BoardStatus, StatusBoard, useStatusMoves } from '../status-board';
+import { BoardSkeleton, BoardStatus, StatusBoard, recordFocusTarget, useStatusMoves } from '../status-board';
 import { ViewSwitch } from '../view-switch';
 import { BillableLegend, MiniBillableBar } from './billable-bar';
 import { formatHours, formatMoney } from './format';
@@ -182,6 +182,9 @@ export function ProjectsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  // The project whose dialog is open or was just saved: its board card takes the focus back when the dialog closes
+  // (a status change moves the card to another lane, a new element).
+  const returnTo = useRef<number | null>(null);
 
   const projects = useApi<Page<ApiProject>>('work:projects:all', loadProjects);
   const moves = useStatusMoves(projects, PROJECT_BOARD, (id, to) => workApi.updateProject(id, { status: to }));
@@ -233,11 +236,13 @@ export function ProjectsPage() {
   };
 
   const openNew = (initial?: ApiItemStatus) => {
+    returnTo.current = null;
     setEditing(null);
     setNewStatus(initial);
     setDialogOpen(true);
   };
   const openEdit = (p: ApiProject) => {
+    returnTo.current = p.id;
     setEditing(p);
     setDialogOpen(true);
   };
@@ -359,7 +364,9 @@ export function ProjectsPage() {
         project={editing}
         initialStatus={newStatus}
         onOpenChange={setDialogOpen}
+        finalFocus={() => recordFocusTarget(returnTo.current) ?? null}
         onSaved={(saved, created) => {
+          returnTo.current = saved.id;
           upsert(saved, created);
           // a new project, or one whose status changed, lands on top of its lane like a moved card
           if (created || editing?.status !== saved.status) moves.bump(saved.id);

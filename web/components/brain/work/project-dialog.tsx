@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { ApiItemStatus } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
@@ -214,16 +214,19 @@ export function ProjectDialog({
   initialStatus,
   onOpenChange,
   onSaved,
+  finalFocus,
 }: {
   open: boolean;
   project: ApiProject | null;
   initialStatus?: ApiItemStatus;
   onOpenChange: (open: boolean) => void;
   onSaved: (p: ApiProject, created: boolean) => void;
+  /** Where the focus goes when the dialog closes (default: the control that opened it, if it still exists). */
+  finalFocus?: ComponentProps<typeof DialogPopup>['finalFocus'];
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }}>
+      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }} finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle>{project ? 'Sửa dự án' : 'Thêm dự án'}</DialogTitle>
           <DialogDescription>Khách, cách tính tiền và giá. Không làm hóa đơn.</DialogDescription>

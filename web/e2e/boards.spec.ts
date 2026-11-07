@@ -4,7 +4,8 @@ import { expect, test } from './fixtures';
 // The two status boards (Dự án, Thư viện; components/brain/status-board.tsx): four lanes, a move from a card's menu
 // (lane, live region, focus) and a pointer drag back. Read-only like every flow: the status PATCH is answered here,
 // in the browser (a page route runs before the fixture's context route), with the record as the API has it plus the
-// new status, so nothing reaches Django. Skipped when the board has no card.
+// new status, so nothing reaches Django. A card is followed by its record id (data-card-id), never its title, so
+// duplicate or odd titles in the owner's data do not matter. Skipped when the page has no record yet.
 
 const BOARDS = [
   { name: 'Dự án', path: '/cong-viec/', record: /^\/api\/projects\/\d+\/?$/ },
@@ -35,12 +36,6 @@ const lane = (page: Page, label: string) =>
     .locator('section')
     .filter({ has: page.getByRole('heading', { level: 2, name: new RegExp(`^${escape(label)}\\s*,`) }) });
 
-/** A card by its exact title, on the page or inside one lane (the inner locator is relative to the card). */
-const card = (page: Page, title: string, within?: Locator) =>
-  (within ?? page)
-    .locator('li[draggable]')
-    .filter({ has: page.locator('.line-clamp-2', { hasText: new RegExp(`^${escape(title)}$`) }) });
-
 /**
  * A pointer drag in small steps, the way a hand moves (one long jump does not start an HTML5 drag every time), onto
  * the top of the lane: lanes are as tall as the longest one, so a lane's centre can be below the viewport.
@@ -62,29 +57,35 @@ for (const board of BOARDS) {
     const answered = await answerPatches(page, board.record);
 
     await page.goto(`${board.path}?view=board`);
-    await expect(page.locator('section h2')).toHaveCount(4);
+    // a page without records shows its first-run panel instead of the board
+    const firstRun = page.getByText(/^Chưa có (dự án|item) nào$/);
+    await expect(page.locator('li[data-card-id]').first().or(firstRun)).toBeVisible();
+    test.skip(await firstRun.isVisible(), 'no record on this page yet');
+    await expect(page.getByRole('heading', { level: 2, name: /\s*,\s*\d+/ })).toHaveCount(4);
     await page.waitForLoadState('networkidle');
-    const first = page.locator('li[draggable]').first();
-    test.skip((await first.count()) === 0, 'no card on this board');
 
-    const title = (await first.locator('.line-clamp-2').first().innerText()).trim();
-    const from = (await page.locator('section').filter({ has: card(page, title) }).locator('h2 > *').first().innerText()).trim();
+    const id = await page.locator('li[data-card-id]').first().getAttribute('data-card-id');
+    const card = page.locator(`li[data-card-id="${id}"]`);
+    const title = (await card.locator('.line-clamp-2').first().innerText()).trim();
+    const from = (await page.locator('section').filter({ has: card }).locator('h2 > *').first().innerText()).trim();
 
     // Move from the menu: the first other lane it offers
-    await card(page, title).getByRole('button', { name: /^Thao tác cho/ }).click();
+    await card.getByRole('button', { name: /^Thao tác cho/ }).click();
     const entry = page.getByRole('menuitem', { name: /^Chuyển sang / }).first();
     const to = (await entry.innerText()).replace(/^Chuyển sang\s+/, '').trim();
     await entry.click();
-    await expect(card(page, title, lane(page, to))).toHaveCount(1);
-    await expect(page.locator('p.sr-only[role="status"]').first()).toHaveText(`Đã chuyển “${title}” sang ${to}`);
-    await expect(page.locator(':focus')).toContainText(title);
+    await expect(lane(page, to).locator(`li[data-card-id="${id}"]`)).toHaveCount(1);
+    const live = page.locator('p.sr-only[role="status"]').first();
+    await expect(live).toContainText(title);
+    await expect(live).toContainText(`sang ${to}`);
+    await expect(page.locator(`li[data-card-id="${id}"] button:focus`)).toHaveCount(1);
     // a card whose save is pending is not draggable (aria-busy): wait for the answer
-    await expect(card(page, title)).not.toHaveAttribute('aria-busy', 'true');
+    await expect(card).not.toHaveAttribute('aria-busy', 'true');
 
     // Drag it back to where it was
-    await drag(page, card(page, title), lane(page, from));
-    await expect(card(page, title, lane(page, from))).toHaveCount(1);
-    await expect(page.locator('p.sr-only[role="status"]').first()).toContainText(`sang ${from}`);
+    await drag(page, card, lane(page, from));
+    await expect(lane(page, from).locator(`li[data-card-id="${id}"]`)).toHaveCount(1);
+    await expect(live).toContainText(`sang ${from}`);
     expect(answered, 'status changes answered in the browser').toHaveLength(2);
     expect(errors, 'uncaught errors in the page').toEqual([]);
   });

@@ -31,7 +31,7 @@ import { ItemCardBody, ItemMenuItems, ItemRow } from './library/item-parts';
 import { FilteredEmpty, RowsSkeleton } from './library/list-rows';
 import { NoteDialog } from './library/note-dialog';
 import { useItemIndex } from './library/use-item-index';
-import { BoardSkeleton, BoardStatus, StatusBoard, useStatusMoves } from './status-board';
+import { BoardSkeleton, BoardStatus, StatusBoard, recordFocusTarget, useStatusMoves } from './status-board';
 import { ViewSwitch } from './view-switch';
 
 type TypeFilter = ApiItemType | 'all';
@@ -71,6 +71,10 @@ export function LibraryPage() {
   // "Thêm 15 khóa học từ Sổ tay": sent/total while it runs; the ref stops a second click before the re-render
   const [importing, setImporting] = useState<{ sent: number; total: number } | null>(null);
   const importLock = useRef(false);
+  // The Item whose dialog is open or was just saved: its card or row takes the focus back when the dialog closes, even
+  // when the control that opened it is gone ("Viết ghi chú" once the note exists, a card moved to another lane).
+  const returnTo = useRef<number | null>(null);
+  const finalFocus = () => recordFocusTarget(returnTo.current) ?? null;
 
   const key = `items:all:${type}`;
   const items = useApi<Page<ApiItem>>(key, loadItems(type));
@@ -82,12 +86,18 @@ export function LibraryPage() {
   const list = useMemo(() => (status === 'all' ? all : all.filter((i) => laneOf(i) === status)), [all, status]);
 
   const openEdit = (item: ApiItem, rating = false) => {
+    returnTo.current = item.id;
     setEditing(item);
     setFocusRating(rating);
     setDialogOpen(true);
   };
+  const writeNote = (item: ApiItem) => {
+    returnTo.current = item.id;
+    setNoteFor(item);
+  };
   /** A new Item, prefilled with the chosen type (and a lane's status). */
   const openNew = (initial?: Partial<ApiItemRequest>) => {
+    returnTo.current = null;
     setEditing(null);
     setDraft({ ...(type !== 'all' && { type }), ...initial });
     setFocusRating(false);
@@ -190,31 +200,34 @@ export function LibraryPage() {
 
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
-      {/* 390 px: the view switch and "Thêm item" keep the first row, the filters share the second (DESIGN.md §6) */}
+      {/* Narrower than one row (36rem of toolbar: at 390 px, and beside the sidebar at 768-840 px): the view switch
+          and "Thêm item" keep the first row, the filters share the second, never an orphaned button (DESIGN.md §6). */}
       {toolbar !== 'hide' && (
-        <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
-          <ViewSwitch view={view} onChange={setView} />
-          <div
-            className={cn(
-              'order-last grid w-full gap-2 sm:order-none sm:flex sm:w-auto sm:items-center',
-              view === 'list' && 'grid-cols-2',
-            )}
-          >
-            <ChoiceSelect label="Loại" value={type} onChange={setType} choices={typeChoices} className="min-w-0 sm:w-auto" />
-            {view === 'list' && (
-              <ChoiceSelect
-                label="Trạng thái"
-                value={status}
-                onChange={setStatus}
-                choices={statusChoices}
-                className="min-w-0 sm:w-auto"
-              />
-            )}
+        <div className={cn('@container', toolbar === 'wait' && 'invisible')}>
+          <div className="flex flex-wrap items-center gap-2">
+            <ViewSwitch view={view} onChange={setView} />
+            <div
+              className={cn(
+                'order-last grid w-full gap-2 @xl:order-none @xl:flex @xl:w-auto @xl:items-center',
+                view === 'list' && 'grid-cols-2',
+              )}
+            >
+              <ChoiceSelect label="Loại" value={type} onChange={setType} choices={typeChoices} className="min-w-0 @xl:w-auto" />
+              {view === 'list' && (
+                <ChoiceSelect
+                  label="Trạng thái"
+                  value={status}
+                  onChange={setStatus}
+                  choices={statusChoices}
+                  className="min-w-0 @xl:w-auto"
+                />
+              )}
+            </div>
+            <Button className="ms-auto shrink-0" onClick={() => openNew()}>
+              <Plus aria-hidden />
+              Thêm item
+            </Button>
           </div>
-          <Button className="ms-auto shrink-0" onClick={() => openNew()}>
-            <Plus aria-hidden />
-            Thêm item
-          </Button>
         </div>
       )}
 
@@ -280,7 +293,7 @@ export function LibraryPage() {
             <ItemCardBody
               item={item}
               showType={type === 'all'}
-              onWriteNote={() => setNoteFor(item)}
+              onWriteNote={() => writeNote(item)}
               onRate={() => openEdit(item, true)}
             />
           )}
@@ -288,7 +301,7 @@ export function LibraryPage() {
             <ItemMenuItems
               item={item}
               onEdit={() => openEdit(item)}
-              onWriteNote={() => setNoteFor(item)}
+              onWriteNote={() => writeNote(item)}
               onRate={() => openEdit(item, true)}
             />
           )}
@@ -306,7 +319,7 @@ export function LibraryPage() {
               onEdit={() => openEdit(item)}
               onRate={() => openEdit(item, true)}
               onStep={(to) => void step(item, to)}
-              onWriteNote={() => setNoteFor(item)}
+              onWriteNote={() => writeNote(item)}
             />
           ))}
         </ul>
@@ -328,6 +341,7 @@ export function LibraryPage() {
           if (!o) setFocusRating(false);
         }}
         onSaved={(saved, created) => {
+          returnTo.current = saved.id;
           upsert(saved, created);
           // a new Item, or one whose status changed, lands on top of its lane like a moved card
           if (created || editing?.status !== saved.status) moves.bump(saved.id);
@@ -342,8 +356,9 @@ export function LibraryPage() {
         }}
         onWriteNote={(item) => {
           setDialogOpen(false);
-          setNoteFor(item);
+          writeNote(item);
         }}
+        finalFocus={finalFocus}
       />
 
       <NoteDialog
@@ -360,6 +375,7 @@ export function LibraryPage() {
           noteCreated(note);
           setNotice(`Đã tạo ghi chú "${noteTitle(note)}"`);
         }}
+        finalFocus={finalFocus}
       />
     </div>
   );

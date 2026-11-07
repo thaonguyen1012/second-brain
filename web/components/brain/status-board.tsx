@@ -188,7 +188,18 @@ const SCROLLER = 'relative -mx-4 snap-x scroll-px-4 overflow-x-auto sm:-mx-8 sm:
 const TRACK = 'flex w-max gap-3 px-4 sm:px-8 @4xl:grid @4xl:w-full @4xl:grid-cols-4 @4xl:px-0';
 const LANE = 'flex min-h-40 w-72 shrink-0 snap-start flex-col gap-2 rounded-xl bg-well p-2 @4xl:w-auto';
 
+/**
+ * The title button of record `id`'s board card or list row (`data-card-id`), or null. A dialog opened from a card
+ * gives the focus back here when it closes (finalFocus): the control that opened it may be gone by then (a "Viết ghi
+ * chú" that disappears once the note exists, a card that moved to another lane after a status change).
+ */
+export function recordFocusTarget(id: number | null | undefined): HTMLElement | null {
+  if (id === null || id === undefined) return null;
+  return document.querySelector<HTMLElement>(`[data-card-id="${id}"] button`);
+}
+
 function BoardCard({
+  id,
   title,
   status,
   noun,
@@ -203,6 +214,7 @@ function BoardCard({
   menu,
   children,
 }: {
+  id: number;
   title: string;
   status: ApiItemStatus;
   noun: string;
@@ -233,6 +245,7 @@ function BoardCard({
 
   return (
     <li
+      data-card-id={id}
       draggable={!pending}
       aria-busy={pending || undefined}
       onDragStart={onDragStart}
@@ -459,6 +472,7 @@ export function StatusBoard<T extends BoardCardRecord>({
               {lane.records.map((record) => (
                 <BoardCard
                   key={record.id}
+                  id={record.id}
                   title={record.title}
                   status={lane.status}
                   noun={kind.noun}
@@ -483,10 +497,13 @@ export function StatusBoard<T extends BoardCardRecord>({
   );
 }
 
-/** Loading lanes at the board's geometry (DESIGN.md D27): four wells with card placeholders. */
+/**
+ * Loading lanes at the board's geometry (DESIGN.md D27): four wells with card placeholders. A named status region,
+ * so a screen reader finds "Đang tải" like the list's skeleton (a name on a plain div is not read).
+ */
 export function BoardSkeleton() {
   return (
-    <div className="@container" aria-busy="true" aria-label="Đang tải">
+    <div className="@container" role="status" aria-busy="true" aria-label="Đang tải">
       <div className="-mx-4 overflow-hidden sm:-mx-8 @4xl:mx-0">
         <div className={TRACK}>
           {itemStatuses.map((s, i) => (

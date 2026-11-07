@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import { api, type ApiItem, type ApiItemRequest, type ApiItemStatus, type ApiItemType } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
@@ -228,12 +228,15 @@ export function ItemDialog({
   onDeleted,
   onWriteNote,
   focusRating,
+  finalFocus,
 }: {
   open: boolean;
   item: ApiItem | null;
   draft?: Partial<ApiItemRequest>;
   onOpenChange: (open: boolean) => void;
   onSaved: (item: ApiItem, created: boolean) => void;
+  /** Where the focus goes when the dialog closes (default: the control that opened it, if it still exists). */
+  finalFocus?: ComponentProps<typeof DialogPopup>['finalFocus'];
   /** Shows "Xóa" (with confirmation) when editing; called after DELETE /api/items/{id}. */
   onDeleted?: (item: ApiItem) => void;
   /**
@@ -246,7 +249,7 @@ export function ItemDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }}>
+      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }} finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle>{item ? 'Sửa item' : 'Thêm item'}</DialogTitle>
         </DialogHeader>

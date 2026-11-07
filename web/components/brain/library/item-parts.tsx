@@ -95,6 +95,7 @@ export function ItemRow({
   return (
     // One row of the shared subgrid (status | title over meta | rating | actions), DESIGN.md §3 "list row beats card"
     <li
+      data-card-id={item.id}
       className="col-span-full grid min-h-14 grid-cols-subgrid items-center px-3 py-2 transition-colors hover:bg-accent has-focus-visible:bg-accent"
       onClick={(e) => onRowClick(e, onEdit)}
     >
@@ -180,7 +181,14 @@ export function ItemCardBody({
         </div>
       )}
       {gap && (
-        <Button size="xs" variant="outline" className="self-start" onClick={gap.note ? onWriteNote : onRate}>
+        <Button
+          size="xs"
+          variant="outline"
+          className="self-start"
+          onClick={gap.note ? onWriteNote : onRate}
+          // several cards show this button: the name says whose (it starts with the visible words)
+          aria-label={`${gap.note ? 'Viết ghi chú' : 'Chấm điểm'} cho “${item.title}”`}
+        >
           {gap.note ? <Plus aria-hidden /> : <Star aria-hidden />}
           {gap.note ? 'Viết ghi chú' : 'Chấm điểm'}
         </Button>
