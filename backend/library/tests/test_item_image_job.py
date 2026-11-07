@@ -2,6 +2,7 @@
 `item_image` job; run_jobs makes the requests through the SSRF guard (FakeNet: no test reaches the
 network)."""
 
+import datetime as dt
 import io
 from pathlib import Path
 from typing import Any
@@ -12,12 +13,14 @@ from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import Client
+from django.utils import timezone
 from PIL import Image
 
 from core.models import Job
 from core.services import thumbnails
 from core.testing import csrf, image_bytes, send
 from core.tests.fakenet import FakeNet, Route, html
+from inbox.models import InboxEntry
 from library.models import Item
 
 pytestmark = pytest.mark.django_db
@@ -155,10 +158,15 @@ def test_a_page_without_an_image_ends_without_one(client: Client, net: FakeNet) 
     assert Item.objects.get(pk=item.pk).image_path == ""
 
 
-def upload(client: Client, item: Item, color: str) -> None:
+def upload(client: Client, item: Item, color: str) -> Any:
     file = SimpleUploadedFile("cover.png", image_bytes(color=color), content_type="image/png")
     response = client.post(f"/api/items/{item.pk}/image", {"file": file}, headers=csrf(client))
     assert response.status_code == 200, response.json()
+    return response.json()
+
+
+def remove(client: Client, item_id: int) -> None:
+    assert client.delete(f"/api/items/{item_id}/image", headers=csrf(client)).status_code == 204
 
 
 def test_an_upload_made_while_the_job_waits_wins(
@@ -166,12 +174,12 @@ def test_an_upload_made_while_the_job_waits_wins(
 ) -> None:
     item = book(client)
     fetch(client, item)
-    upload(client, item, "blue")
+    assert upload(client, item, "blue")["imagePending"] is False  # the upload ended the waiting fetch
     uploaded = Item.objects.get(pk=item.pk).image_path
     with django_capture_on_commit_callbacks(execute=True):
         run_jobs()
     assert Item.objects.get(pk=item.pk).image_path == uploaded
-    assert net.requests == []  # the image changed since the request: nothing to fetch
+    assert net.requests == []  # the fetch was ended: nothing to fetch
     assert Job.objects.get().status == "done" and {p.name for p in tmp_path.iterdir()} == {uploaded}
 
 
@@ -180,17 +188,102 @@ def test_an_upload_made_during_the_fetch_wins(
 ) -> None:
     item = book(client)
     fetch(client, item)
+    uploaded: list[str] = []
 
     def upload_then_answer(request: httpx.Request) -> httpx.Response:
         upload(client, item, "blue")
+        uploaded.append(Item.objects.get(pk=item.pk).image_path)  # before the job tries to set its image
         return png_route("red")(request)
 
     net.site("cdn.test", PUBLIC, upload_then_answer)
     with django_capture_on_commit_callbacks(execute=True):
         run_jobs()
-    uploaded = Item.objects.get(pk=item.pk).image_path
     assert hosts(net) == ["blog.test", "cdn.test"] and Job.objects.get().status == "done"
-    assert {p.name for p in tmp_path.iterdir()} == {uploaded}  # the fetched file was discarded
+    assert len(uploaded) == 1 and Item.objects.get(pk=item.pk).image_path == uploaded[0]
+    assert {p.name for p in tmp_path.iterdir()} == {uploaded[0]}  # the fetched file was discarded
+
+
+def test_a_removal_after_an_inbox_link_ends_the_automatic_fetch(
+    client: Client, net: FakeNet, tmp_path: Path, django_capture_on_commit_callbacks: Any
+) -> None:
+    """'Thành item': the Item is made with the entry's link (automatic fetch, expect ""), the link copies the
+    entry's thumbnail, and the owner removes that image. The Item is "" again, as the fetch expects, but the
+    fetch must not put an image back."""
+    headers = csrf(client)
+    thumbnail = thumbnails.store(thumbnails.to_webp(image_bytes((1600, 900), "green")))
+    link = "https://blog.test/dune"
+    entry = InboxEntry.objects.create(user=owner(client), url=link, og_image_path=thumbnail)
+    body = {"type": "book", "title": "Dune", "source": link}
+    item = send(client, "post", "/api/items", body, headers).json()
+    assert item["imagePending"] is True
+    with django_capture_on_commit_callbacks(execute=True):
+        send(client, "patch", f"/api/inbox/{entry.pk}", {"item": item["id"]}, headers)
+    data = client.get(f"/api/items/{item['id']}").json()
+    assert data["imageUrl"] and data["imagePending"] is False  # the copy ended the fetch
+    with django_capture_on_commit_callbacks(execute=True):
+        remove(client, item["id"])
+    data = client.get(f"/api/items/{item['id']}").json()
+    assert (data["imageUrl"], data["imagePending"]) == (None, False)
+    with django_capture_on_commit_callbacks(execute=True):
+        run_jobs()
+    assert net.requests == [] and Item.objects.get(pk=item["id"]).image_path == ""
+    assert Job.objects.get().status == "done"
+    assert {p.name for p in tmp_path.iterdir()} == {thumbnail}  # the entry keeps its card; the copy went
+
+
+def test_an_image_removed_during_the_fetch_stays_removed(
+    client: Client, net: FakeNet, tmp_path: Path, django_capture_on_commit_callbacks: Any
+) -> None:
+    """The upload and the removal come after the job checked its expect (""): the image it then fetches must
+    not undo the removal, although the Item is back to ""."""
+    item = book(client)
+    fetch(client, item)
+
+    def upload_remove_then_answer(request: httpx.Request) -> httpx.Response:
+        upload(client, item, "blue")
+        remove(client, item.pk)
+        return png_route("red")(request)
+
+    net.site("cdn.test", PUBLIC, upload_remove_then_answer)
+    with django_capture_on_commit_callbacks(execute=True):
+        run_jobs()
+    assert hosts(net) == ["blog.test", "cdn.test"] and Job.objects.get().status == "done"
+    assert Item.objects.get(pk=item.pk).image_path == "" and list(tmp_path.iterdir()) == []
+
+
+def test_a_fetch_ended_while_it_ran_sets_no_image_on_its_retry(client: Client, net: FakeNet) -> None:
+    item = book(client)
+    fetch(client, item)
+
+    def remove_then_fail(request: httpx.Request) -> httpx.Response:
+        remove(client, item.pk)  # no image yet: the owner wants none
+        return httpx.Response(503)
+
+    net.site("blog.test", PUBLIC, remove_then_fail)
+    run_jobs()
+    job = Job.objects.get()
+    assert (job.status, job.attempts) == ("pending", 1)  # the network error is retried as usual...
+    net.site("blog.test", PUBLIC, html(PAGE))
+    Job.objects.update(run_after=timezone.now())
+    run_jobs()
+    assert hosts(net) == ["blog.test"]  # ...but the retry makes no request: the fetch was ended
+    assert Job.objects.get().status == "done" and Item.objects.get(pk=item.pk).image_path == ""
+
+
+def test_asking_again_with_another_link_starts_over(client: Client, net: FakeNet) -> None:
+    item = book(client, source="https://down.test/post")
+    fetch(client, item)
+    # The old link failed twice: the job waits 10 minutes for its last attempt.
+    later = timezone.now() + dt.timedelta(minutes=10)
+    Job.objects.update(attempts=2, run_after=later, last_error="FetchError: HTTP 503")
+    fetch(client, item)  # the same request again (a double click) leaves the job as it is
+    assert (Job.objects.get().attempts, Job.objects.get().run_after) == (2, later)
+    fetch(client, item, url="https://blog.test/dune")
+    job = Job.objects.get()
+    assert (job.status, job.attempts, job.last_error) == ("pending", 0, "")
+    assert job.run_after <= timezone.now() and job.payload["url"] == "https://blog.test/dune"
+    run_jobs()  # due at once, with every attempt
+    assert hosts(net) == ["blog.test", "cdn.test"] and Item.objects.get(pk=item.pk).image_path
 
 
 def test_an_item_deleted_during_the_fetch_leaves_no_file(
@@ -280,15 +373,36 @@ def test_no_automatic_fetch_for_projects_or_sources_without_a_link(client: Clien
 
 
 def test_a_new_link_queues_the_image_of_an_item_without_one(client: Client, net: FakeNet) -> None:
+    net.site("plain.test", PUBLIC, html("<title>No picture</title>"))
     headers = csrf(client)
     item = book(client, source="Frank Herbert")
     url = f"/api/items/{item.pk}"
     assert send(client, "patch", url, {"title": "Dune (1965)"}, headers).json()["imagePending"] is False
-    data = send(client, "patch", url, {"source": "https://blog.test/dune"}, headers).json()
-    assert data["imagePending"] is True and Job.objects.get().payload["url"] == "https://blog.test/dune"
-    # The same source again changes nothing.
-    send(client, "patch", url, {"source": "https://blog.test/dune", "status": "active"}, headers)
-    assert Job.objects.count() == 1 and Job.objects.get().payload["url"] == "https://blog.test/dune"
+    data = send(client, "patch", url, {"source": "https://plain.test/dune"}, headers).json()
+    assert data["imagePending"] is True and Job.objects.get().payload["url"] == "https://plain.test/dune"
+    run_jobs()  # a page without an image: the job ends and the Item stays without one
+    assert Job.objects.get().status == "done" and Item.objects.get(pk=item.pk).image_path == ""
+    # Writes that keep the source (the same source sent again, a board drag, a rating) fetch nothing again.
+    same_source = {"source": "https://plain.test/dune", "status": "active"}
+    for body in (same_source, {"status": "done"}, {"rating": 8}):
+        assert send(client, "patch", url, body, headers).json()["imagePending"] is False
+    assert Job.objects.get().status == "done" and hosts(net) == ["plain.test"]
+
+
+def test_a_project_fetches_its_logo_on_request(client: Client, net: FakeNet) -> None:
+    # Never by itself (a page's banner is a poor logo), but the endpoint works for every type.
+    headers = csrf(client)
+    body = {"title": "Shop", "source": "https://blog.test/dune"}
+    project_id = send(client, "post", "/api/projects", body, headers).json()["id"]
+    assert not Job.objects.exists()
+    response = fetch(client, Item.objects.get(pk=project_id))
+    assert response.status_code == 202 and response.json()["imagePending"] is True
+    assert Job.objects.get().payload == {"item_id": project_id, "url": "https://blog.test/dune", "expect": ""}
+    run_jobs()
+    logo = Item.objects.get(pk=project_id).image_path
+    assert logo and hosts(net) == ["blog.test", "cdn.test"]
+    data = client.get(f"/api/projects/{project_id}").json()
+    assert data["imageUrl"] == f"/api/items/{project_id}/image?v={logo[:8]}"
 
 
 def test_a_new_link_keeps_an_existing_image(client: Client, net: FakeNet) -> None:

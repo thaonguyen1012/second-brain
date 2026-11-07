@@ -17,13 +17,13 @@ def fetch_item_image(payload: dict[str, Any]) -> None:
 
     Refused URLs, unreadable images and pages without an image are final (logged, no image). A network
     error raises, so the queue retries. The image is set only while the Item still has the image it had when
-    the fetch was requested (`expect`): an upload or an inbox link made meanwhile wins and the fetched file is
-    discarded.
+    the fetch was requested (`expect`) and no other change has ended the fetch since (services.set_image): an
+    upload, a removal or an inbox link made meanwhile wins and the fetched file is discarded.
     """
     item_id, url, expect = payload["item_id"], payload["url"], payload["expect"]
     current = Item.objects.filter(pk=item_id).values_list("image_path", flat=True).first()
     if current is None or current != expect:
-        return  # deleted, or its image changed since the request: nothing to fetch
+        return  # deleted, or its image changed (or the fetch was ended) since the request: nothing to fetch
     try:
         page = safe_fetch.fetch(url, safe_fetch.HTML_TYPES + safe_fetch.IMAGE_TYPES)
         if page.content_type in safe_fetch.IMAGE_TYPES:
@@ -37,4 +37,4 @@ def fetch_item_image(payload: dict[str, Any]) -> None:
     except (safe_fetch.FetchBlocked, thumbnails.ThumbnailError) as exc:
         logger.warning("item image refused", extra={"item": item_id, "reason": str(exc)})
         return
-    services.set_image(item_id, name, expect=expect)
+    services.set_image(item_id, name, expect=expect, fetched=True)

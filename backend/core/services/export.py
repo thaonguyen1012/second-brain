@@ -1,8 +1,9 @@
 """`manage.py export` and GET /api/export (DECISIONS 4.7: the data is Alex's): notes as markdown files with
 front matter, every other model of the owner as JSON (Django's serializer: pk, model, fields; links are ids),
-and the owner's Item images as images/<name>.webp (the name is the Item's image_path in data/items.json).
-The command writes a folder, the endpoint streams the same files as a zip. Both read every table in batches
-(TABLE_BATCH rows) and every image in FILE_CHUNK pieces, never a whole table or file at once.
+and the owner's Item images as images/<image_path> (the file name is exactly the Item's image_path in
+data/items.json, which already ends in .webp). The command writes a folder, the endpoint streams the same
+files as a zip. Both read every table in batches (TABLE_BATCH rows) and every image in FILE_CHUNK pieces,
+never a whole table or file at once.
 
 Never exported: the User row (password hash), sessions, Job and LlmCache rows, LlmCall (not owned data), and
 nothing from settings or the environment. A test checks that every model with owner data is listed here.

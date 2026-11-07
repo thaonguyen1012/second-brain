@@ -94,6 +94,21 @@ def test_dates_sent_in_the_same_request_win(client: Client, base: str) -> None:
 
 
 @pytest.mark.parametrize("base", BASES)
+def test_a_write_without_a_status_change_leaves_hand_set_dates_alone(client: Client, base: str) -> None:
+    url = f"{base}/{create(client, base)['id']}"
+    earlier = moment(EARLIER)
+    # a start date set by hand on a planned Item survives a title edit (the planned rule would clear it)
+    patch(client, url, startedAt=EARLIER)
+    started, finished = patch(client, url, title="Deep Work, 2nd ed.")
+    assert moment(started) == earlier and finished is None
+    # a finish date sent with active survives later edits (the active rule would clear it)
+    patch(client, url, status="active", finishedAt=EARLIER)
+    for _ in range(2):
+        started, finished = patch(client, url, title="Deep Work")
+        assert moment(started) == earlier and moment(finished) == earlier
+
+
+@pytest.mark.parametrize("base", BASES)
 def test_a_date_that_is_already_set_is_kept(client: Client, base: str) -> None:
     url = f"{base}/{create(client, base)['id']}"
     earlier = moment(EARLIER)

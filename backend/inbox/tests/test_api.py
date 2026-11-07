@@ -127,3 +127,21 @@ def test_linking_gives_the_item_its_own_copy_of_the_thumbnail(
     text = InboxEntry.objects.create(user=user, text="an idea")
     send(client, "patch", f"/api/inbox/{text.pk}", {"item": bare.pk, "status": "archived"}, headers)
     assert Item.objects.get(pk=bare.pk).image_path == ""
+
+
+def test_linking_with_a_missing_or_unreadable_thumbnail_gives_no_image(
+    client: Client, settings: Any, tmp_path: Path
+) -> None:
+    settings.THUMBS_DIR = tmp_path
+    client.get("/api/me")
+    user = User.objects.get(username="dev@localhost")
+    broken = "f" * 32 + ".webp"
+    (tmp_path / broken).write_bytes(b"webp")  # a file Pillow cannot read
+    headers = csrf(client)
+    for thumbnail in ("e" * 32 + ".webp", broken):  # not on disk; unreadable
+        entry = InboxEntry.objects.create(user=user, url="https://blog.test/p", og_image_path=thumbnail)
+        item = Item.objects.create(user=user, type="article", title=thumbnail)
+        response = send(client, "patch", f"/api/inbox/{entry.pk}", {"item": item.pk}, headers)
+        assert response.status_code == 200 and response.json()["item"] == item.pk
+        assert Item.objects.get(pk=item.pk).image_path == ""
+    assert {p.name for p in tmp_path.iterdir()} == {broken}

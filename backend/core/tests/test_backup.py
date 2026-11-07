@@ -126,6 +126,29 @@ def test_restore_check_without_dumps_fails(tmp_path: Path) -> None:
         call_command("restore_check", dir=tmp_path)
 
 
+def test_restore_check_lists_ten_missing_images_at_most(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    touch(tmp_path, "2026-11-07.dump")
+    dump = tmp_path / "2026-11-07.dump"
+    names = {f"{n:032x}.webp" for n in range(12)}  # none of them in the (missing) mirror
+    report = backup.RestoreReport(
+        dump=dump, database="throwaway", counts={"library_item": 12}, live={"library_item": 12}, images=names
+    )
+
+    def restored(db: dict[str, Any], path: Path) -> backup.RestoreReport:
+        return report
+
+    monkeypatch.setattr(backup, "restore_check", restored)
+    out = StringIO()
+    call_command("restore_check", dump=dump, stdout=out)
+    lines = out.getvalue().splitlines()
+    assert any(line.startswith("images: 12 referenced, 12 missing from the backup") for line in lines)
+    shown = [line for line in lines if line.startswith("  missing: ")]
+    assert shown == [f"  missing: {name}" for name in sorted(names)[:10]]
+    assert lines[-1] == "  ... and 2 more"
+
+
 @pytest.mark.skipif(not shutil.which("pg_dump"), reason="PostgreSQL client tools are not installed")
 @pytest.mark.django_db(transaction=True)
 def test_backup_then_restore_check_round_trip(tmp_path: Path, client: Any, settings: Any) -> None:

@@ -176,8 +176,9 @@ counts by kind, never keys or error texts. `GET /api/counts` (`core/services/cou
 numbers, one COUNT/EXISTS per list on the list endpoints' own querysets with the pages' default filters (this
 week, this month: Europe/Prague), read-only (no Week row created). `manage.py export --out <dir>` (`core/services/export.py`, DECISIONS
 4.7): `notes/<id>-<slug>.md` with YAML front matter (id, title, items, created, updated) and `data/<table>.json`
-(Django serializer) for every other owned model, then `images/<name>.webp` (each file the owner's Items name, once,
-read in 64 kB chunks; stale images of an earlier folder export are removed like stale notes; inbox thumbnails stay
+(Django serializer) for every other owned model, then `images/<image_path>` (each file the owner's Items name, once,
+under exactly that name, `<32 hex>.webp`; read in 64 kB chunks; stale images of an earlier folder export are removed
+like stale notes; inbox thumbnails stay
 out, they can be fetched again), plus `manifest.json` (`counts.images`); never the User row, sessions, `Job`,
 `LlmCall` or `LlmCache`; a test fails when a new model is neither exported nor excluded. `GET /api/export`
 streams the same files (`export_files()`) as `alex-brain-<date>.zip` (`stream_zip()`: ZipFile on an unseekable sink,
@@ -187,13 +188,20 @@ plain download.
 Item images (DECISIONS 9.6): `Item.image_path` (migration library 0003, `db_default=""` so an older process can still
 insert) names one webp in `THUMBS_DIR`, the same content-addressed store as the inbox thumbnails
 (`core/services/thumbnails.py`: `to_webp(data, sizes)`, `ITEM_SIZES` = 600/400 px for Items, `store()` writes 0644 for
-nginx). Every change goes through `library/services.set_image(item_id, name, expect)`: a row lock, then the replaced
-file is discarded after the commit unless another row uses it; with `expect`, nothing changes when the image moved
-on meanwhile (a newer upload wins over a fetch). Sources: `POST /api/items/{id}/image` (multipart, the app's only
-non-JSON body; `MultiPartParser` on that view only, 10 MB `ITEM_IMAGE_MAX_BYTES`, Pillow sniffs the bytes), `POST
-/api/items/{id}/image/fetch` (202) or the automatic fetch on create and on a new http(s) `source` (not projects), both
-queue one `item_image` job per Item (`library/jobs.py`, registered in `LibraryConfig.ready()`; the job key is
-re-armed when it already ran) that run_jobs runs through safe_fetch (the URL as an image, else its og:image), and
+nginx). Every change goes through `library/services.set_image(item_id, name, expect, fetched=)`: a row lock, then the
+replaced file is discarded after the commit unless another row uses it; with `expect`, nothing changes when the image
+moved on meanwhile. A fetch is an earlier request, so every change but the job's own ends the Item's fetch in the
+same transaction (`_end_fetch`, the job row locked too): a waiting job is marked done (`imagePending` false at once)
+and a running one gets the `expect` `ENDED_FETCH`, which no image has, so neither it nor a retry sets an image; the
+job's own call (`fetched=True`) applies only while its job still runs with its `expect`. A newer upload, removal or
+inbox link therefore always wins, also when the image is back to the name the fetch expects (comparing names alone
+would miss "" -> copy -> ""). Sources: `POST /api/items/{id}/image` (multipart, the app's only non-JSON body;
+`MultiPartParser` on that view only, 10 MB `ITEM_IMAGE_MAX_BYTES`, Pillow sniffs the bytes; nginx allows 11m on that
+path because its limit counts the whole multipart body), `POST /api/items/{id}/image/fetch` (202) or the automatic
+fetch on create and on a new http(s) `source` (not projects), both queue one `item_image` job per Item
+(`library/jobs.py`, registered in `LibraryConfig.ready()`; the job key is re-armed when it already ran, and a waiting
+job asked with another link starts over with attempts and delay reset) that run_jobs runs through safe_fetch (the URL
+as an image, else its og:image), and
 linking an inbox entry (`triage_entry`, or the unfurl job for an entry linked before it finished), which re-encodes
 the entry's thumbnail into the Item's own file without network. `GET /api/items/{id}/image` answers through
 `core/views.thumbnail_response` (X-Accel-Redirect, DEBUG streams). Item JSON carries `imageUrl` (`?v=` = start of the

@@ -17,6 +17,7 @@ from core.models import Job
 from core.services import thumbnails
 from core.testing import csrf, image_bytes, send
 from inbox.models import InboxEntry
+from library import services
 from library.models import Item
 from library.serializers import IMAGE_UNREADABLE, image_too_large
 
@@ -70,6 +71,48 @@ def test_upload_stores_a_light_webp_and_answers_the_item(client: Client, thumbs:
     assert image_response["Content-Type"] == "image/webp"
     assert image_response["Cache-Control"] == "private, max-age=86400"
     assert client.get(f"/api/items/{item.pk}").json()["imageUrl"] == data["imageUrl"]
+
+
+def test_django_sends_the_image_itself_in_debug(client: Client, settings: Any, thumbs: Path) -> None:
+    # The laptop has no nginx (make dev): in DEBUG the shared thumbnail_response streams the file.
+    settings.DEBUG = True
+    name = thumbnails.store(thumbnails.to_webp(image_bytes(), thumbnails.ITEM_SIZES))
+    item = Item.objects.create(user=owner(client), type="book", title="Dune", image_path=name)
+    response = client.get(f"/api/items/{item.pk}/image")
+    assert response.status_code == 200 and not response.has_header("X-Accel-Redirect")
+    assert response["Content-Type"] == "image/webp"
+    assert response["Cache-Control"] == "private, max-age=86400"
+    # Reading the stream to its end closes the file (the test client wraps it like a WSGI server would).
+    assert b"".join(response.streaming_content) == (thumbs / name).read_bytes()  # type: ignore[attr-defined]
+    (thumbs / name).unlink()  # the row names a file that is gone
+    assert client.get(f"/api/items/{item.pk}/image").status_code == 404
+
+
+def test_set_image_with_expect_never_replaces_another_image(
+    client: Client, thumbs: Path, django_capture_on_commit_callbacks: Any
+) -> None:
+    """An inbox link (expect "") only fills an Item without an image. A refused change discards the file it
+    brought unless another row uses it, and leaves the Item's fetch alone."""
+    red, blue, green = (
+        thumbnails.store(thumbnails.to_webp(image_bytes(color=c), thumbnails.ITEM_SIZES))
+        for c in ("red", "blue", "green")
+    )
+    item = Item.objects.create(
+        user=owner(client), type="book", title="Dune", source="https://a.test/", image_path=red
+    )
+    services.request_fetch(item, item.source)  # asked to replace red (expect red)
+    with django_capture_on_commit_callbacks(execute=True):
+        assert services.set_image(item.pk, blue, expect="") is False
+    assert Item.objects.get(pk=item.pk).image_path == red and files(thumbs) == {red, green}
+    # A file another row names stays.
+    InboxEntry.objects.create(user=stranger(), url="https://b.test/", og_image_path=green)
+    with django_capture_on_commit_callbacks(execute=True):
+        assert services.set_image(item.pk, green, expect="") is False
+        # The inbox copy is refused the same way: its re-encoded file goes, the entry's thumbnail stays.
+        assert services.image_from_thumbnail(item.pk, green) is False
+    assert Item.objects.get(pk=item.pk).image_path == red and files(thumbs) == {red, green}
+    job = Job.objects.get()
+    assert (job.status, job.payload["expect"]) == ("pending", red)  # still asked, still runs
 
 
 def test_replacing_changes_the_url_and_discards_only_unused_files(

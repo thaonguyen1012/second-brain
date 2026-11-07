@@ -121,7 +121,8 @@ class ItemImageView(APIView):
     )
     def post(self, request: Request, pk: int) -> Response:
         """Set (or replace) the image from a file: JPEG, PNG, GIF or WebP up to 10 MB, stored re-encoded as a
-        webp of at most 600 px. Answers the Item; the replaced file goes unless another row uses it."""
+        webp of at most 600 px. Answers the Item; the replaced file goes unless another row uses it, and a
+        fetch from a link that waits or runs is ended (the upload wins)."""
         user = request_user(request)
         item = get_object_or_404(Item, pk=pk, user=user)
         body = ItemImageUploadSerializer(data=request.data)
@@ -136,7 +137,8 @@ class ItemImageView(APIView):
 
     @extend_schema(responses={204: None}, operation_id="deleteItemImage")
     def delete(self, request: Request, pk: int) -> Response:
-        """Remove the image (also when there is none); the file goes unless another row uses it."""
+        """Remove the image (also when there is none) and end a fetch from a link that waits or runs, so it
+        never puts an image back; the file goes unless another row uses it."""
         item = get_object_or_404(Item, pk=pk, user=request_user(request))
         services.set_image(item.pk, "")
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -150,7 +152,7 @@ class ItemImageFetchView(APIView):
         """Take the image from a link, in the background: the og:image of the page, or the URL itself when it
         is an image (`url`, default the Item's source). Answers 202 with the Item (imagePending true) at once;
         run_jobs makes the request, so the image appears within about 5 minutes. It replaces only the image
-        the Item had when asked (an upload made meanwhile wins)."""
+        the Item had when asked: an upload, a removal or an inbox link made meanwhile ends the fetch."""
         user = request_user(request)
         item = get_object_or_404(Item, pk=pk, user=user)
         body = ItemImageFetchSerializer(data=request.data)

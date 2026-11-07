@@ -2,7 +2,7 @@
 
 Item images (DECISIONS 9.6): one webp per Item in THUMBS_DIR (core/services/thumbnails.py), from an upload,
 from the link (the `item_image` job in library/jobs.py, run by run_jobs) or copied from a linked inbox
-entry's thumbnail. Every change goes through set_image.
+entry's thumbnail. Every change goes through set_image; any change but the job's own ends the Item's fetch.
 """
 
 import datetime as dt
@@ -27,6 +27,9 @@ from library.models import Item, Note
 
 MAX_TAGS = 30
 IMAGE_JOB = "item_image"  # one job per Item, key item_image:<pk>
+# The `expect` of a running fetch that a later image change ended (_end_fetch): no stored image has this
+# name, so neither the job nor a retry of it can set its image.
+ENDED_FETCH = "ended"
 _HTTP_URL = URLValidator(schemes=["http", "https"])
 # Item fields an API write may set (POST/PATCH /api/items; /api/projects sends a subset).
 ITEM_FIELDS = ("type", "status", "title", "tags", "source", "rating", "started_at", "finished_at")
@@ -159,27 +162,62 @@ def image_url(item: Item) -> str | None:
     return f"/api/items/{item.pk}/image?v={item.image_path[:8]}" if item.image_path else None
 
 
-def set_image(item_id: int, name: str, expect: str | None = None) -> bool:
+def set_image(item_id: int, name: str, expect: str | None = None, *, fetched: bool = False) -> bool:
     """Point the Item at the stored file `name` ("" removes the image); the file it replaces is discarded
-    after the commit unless another row uses it.
+    after the commit unless another row uses it. Callers: upload, remove (name ""), inbox links (expect ""),
+    and the item_image job run by run_jobs (fetched=True).
 
-    With `expect`, the change happens only while the Item's image is still `expect` (a fetch requested for
-    an Item without an image passes ""), so a background fetch or an inbox link never replaces an image set
-    in the meantime: a newer upload wins. Returns False when the Item is gone or its image changed; `name` is
-    then discarded unless another row uses it. Callers: upload, remove (name ""), the item_image job, inbox
-    links.
+    With `expect`, the change happens only while the Item's image is still `expect`: an inbox link passes "",
+    so only an Item without an image takes the thumbnail. Returns False when the Item is gone or its image is
+    not `expect`; `name` is then discarded unless another row uses it.
+
+    A fetch is a request made earlier, so every other change (upload, removal, inbox link) ends the Item's
+    fetch in the same transaction (_end_fetch): the newer change always wins, also when the image is back to
+    what the fetch expects (an inbox copy removed again is "" once more, which comparing names alone would
+    miss). The job's own call applies only while its fetch has not been ended since the job started.
     """
     with transaction.atomic():
         locked = Item.objects.select_for_update().filter(pk=item_id)
         current = locked.values_list("image_path", flat=True).first()
-        if current is None or (expect is not None and current != expect):
+        moved = expect is not None and current != expect
+        if current is None or moved or (fetched and _fetch_ended(item_id, expect)):
             transaction.on_commit(lambda: thumbnails.discard_if_unused(name))
             return False
+        if not fetched:
+            _end_fetch(item_id)
         if current != name:
             replaced: str = current
             locked.update(image_path=name, updated_at=timezone.now())
             transaction.on_commit(lambda: thumbnails.discard_if_unused(replaced))
     return True
+
+
+def _image_job(item_id: int) -> QuerySet[Job]:
+    return Job.objects.filter(key=f"{IMAGE_JOB}:{item_id}")
+
+
+def _end_fetch(item_id: int) -> None:
+    """End the Item's fetch (inside set_image, under the Item's row lock): a waiting job is marked done, so
+    imagePending turns false at once and it never runs; a running one cannot be stopped, so its expect becomes
+    ENDED_FETCH, which no image has: neither it nor a retry after a network error sets an image. A later fetch
+    request arms the job again with a fresh expect (request_fetch). The job row is locked too, so run_jobs
+    cannot claim it halfway."""
+    live = (Job.Status.PENDING, Job.Status.RUNNING)
+    job = _image_job(item_id).select_for_update().filter(status__in=live).first()
+    if job is None:
+        return
+    rows, now = Job.objects.filter(pk=job.pk), timezone.now()
+    if job.status == Job.Status.PENDING:
+        rows.update(status=Job.Status.DONE, last_error="", updated_at=now)
+    elif job.payload.get("expect") != ENDED_FETCH:
+        rows.update(payload={**job.payload, "expect": ENDED_FETCH}, updated_at=now)
+
+
+def _fetch_ended(item_id: int, expect: str | None) -> bool:
+    """Whether the running fetch that expects `expect` was ended since it started (its job no longer runs
+    with that expect)."""
+    running = _image_job(item_id).filter(status=Job.Status.RUNNING, payload__expect=expect)
+    return not running.exists()
 
 
 def upload_image(item: Item, upload: UploadedFile[bytes]) -> None:
@@ -221,19 +259,20 @@ def is_http_url(value: str) -> bool:
 def request_fetch(item: Item, url: str) -> None:
     """Queue the `item_image` job for `url`; run_jobs makes the request (never the API request itself).
 
-    One job per Item (key item_image:<pk>), so a double click keeps one job. Job keys are unique forever: a
-    done or failed job is armed again with the new payload, a pending one takes the new payload, a running
-    one is left alone. `expect` is the image at request time; the job only replaces that one.
+    One job per Item (key item_image:<pk>), so a double click (the same payload) keeps one job as it is. Job
+    keys are unique forever: a done or failed job is armed again, and a waiting one asked with another link or
+    expect starts over like a new request (attempts, retry delay and error reset, so a new link never inherits
+    the failures of the old one); a running one is left alone. `expect` is the image at request time; the job
+    only replaces that one.
     """
     payload = {"item_id": item.pk, "url": url, "expect": item.image_path}
     job = jobs.enqueue(IMAGE_JOB, f"{IMAGE_JOB}:{item.pk}", payload)
-    rows, now = Job.objects.filter(pk=job.pk), timezone.now()
-    if job.status in (Job.Status.DONE, Job.Status.FAILED):
-        rows.filter(status=job.status).update(
-            status=Job.Status.PENDING, attempts=0, run_after=now, payload=payload, updated_at=now
-        )
-    elif job.status == Job.Status.PENDING and job.payload != payload:
-        rows.filter(status=Job.Status.PENDING).update(payload=payload, updated_at=now)
+    if job.status == Job.Status.RUNNING or (job.status == Job.Status.PENDING and job.payload == payload):
+        return
+    now = timezone.now()
+    Job.objects.filter(pk=job.pk, status=job.status).update(
+        status=Job.Status.PENDING, attempts=0, run_after=now, last_error="", payload=payload, updated_at=now
+    )
 
 
 def fetch_automatically(item: Item) -> None:

@@ -119,8 +119,9 @@ yet has `objectivesOpen: 0`). One COUNT or EXISTS query per number. `401` when n
 A copy of all the owner's data (DECISIONS 4.7), the same files as `manage.py export`, streamed as
 `200 application/zip` with `Content-Disposition: attachment; filename="alex-brain-<date>.zip"` and
 `Cache-Control: no-store`. Inside the folder `alex-brain-<date>/`: `notes/<id>-<slug>.md` (YAML front matter + the
-markdown), `data/<table>.json` for every other owned model, `images/<name>.webp` (each image file the owner's Items
-use, once; `<name>` is the Item's `image_path` in `data/items.json`; stored in the zip without compression),
+markdown), `data/<table>.json` for every other owned model, `images/<image_path>` (each image file the owner's Items
+use, once; the file name is exactly the Item's `image_path` in `data/items.json`, which already ends in `.webp`, for
+example `images/3f2a9c1e...c1e.webp`; stored in the zip without compression),
 `manifest.json` (`exportedAt`, `owner`, `counts`; `counts.images` is the number of image files). Inbox thumbnails
 are left out: they come from the link and can be fetched again. Never the User row, sessions, jobs, LLM calls or
 the LLM cache. `401` when not logged in.
@@ -168,18 +169,26 @@ without EXIF; never the uploaded bytes. Every endpoint answers `404` for an unkn
   when the Item has no image. Load it through `imageUrl`. Not in the OpenAPI schema (not JSON).
 * `POST /api/items/{id}/image`: `multipart/form-data` with the file in the field `file` (the only multipart body of
   the API; a JSON body answers `415`). JPEG, PNG, GIF or WebP, at most 10 MB (`ITEM_IMAGE_MAX_BYTES`). The server
-  reads the bytes, not the type the browser sends. Sets or replaces the image and answers `200` with the Item.
-  `400 { "file": ["..."] }` when the file is missing (`Chọn một ảnh để tải lên.`), too big (`Ảnh lớn hơn 10 MB.`) or
-  not a readable image, such as SVG, HEIC, PDF or a decompression bomb (`Không đọc được ảnh. Chỉ nhận JPEG, PNG, GIF
-  hoặc WebP.`). In production nginx accepts up to 10 MB on this path only (2 MB everywhere else).
-* `DELETE /api/items/{id}/image`: removes the image, `204` (also when there is none).
+  reads the bytes, not the type the browser sends. Sets or replaces the image and answers `200` with the Item (a
+  fetch that waits or runs is ended, see below). `400 { "file": ["..."] }` when the file is missing (`Chọn một ảnh để
+  tải lên.`), too big (`Ảnh lớn hơn 10 MB.`) or not a readable image, such as SVG, HEIC, PDF or a decompression bomb
+  (`Không đọc được ảnh. Chỉ nhận JPEG, PNG, GIF hoặc WebP.`). In production nginx lets a body of up to 11 MB through
+  on this path only (2 MB everywhere else; the limit counts the whole multipart body, so every file up to 10 MB
+  reaches Django and a file just over it still gets the JSON `400`). A larger body answers `413` with nginx's HTML
+  page, not JSON, so the web checks `file.size` against 10 MB before it uploads.
+* `DELETE /api/items/{id}/image`: removes the image, `204` (also when there is none), and ends a fetch that waits or
+  runs, so the fetch never puts an image back.
 * `POST /api/items/{id}/image/fetch`: `{ "url": "https://..." }` (optional, default the Item's `source`) takes the
   image from a link: the URL itself when it answers with an image, else the page's `og:image`. It answers `202` with
   the Item (`imagePending: true`) at once; the request is made later by the background job (`run_jobs`, every 5
   minutes), through the same SSRF guard as the inbox. The image then appears in the Item's `imageUrl` (reload the
-  Item). It replaces only the image the Item had when the fetch was asked: an upload made meanwhile wins. A page
-  without an image, a refused address or an unreadable image ends without an image; a network error is retried.
-  Asking again while a fetch waits keeps one job (the newer link wins); after a fetch has ended it runs again.
+  Item). It replaces only the image the Item had when the fetch was asked, and any later change of the image (an
+  upload, a removal, linking an inbox entry) ends the fetch: `imagePending` turns `false` (at once when the job has
+  not started; a running job finishes without setting its image) and the fetched image is never applied, also when
+  the image is back to what it was when asked (removed again). A page without an image, a refused address or an
+  unreadable image ends without an image; a network error is retried (3 attempts, 10 minutes apart). Asking again
+  while a fetch waits keeps one job: the same request changes nothing, another link starts it over with every
+  attempt and no delay; after a fetch has ended (or was ended) it runs again.
   `400 { "url": ["Item chưa có link http(s)."] }` when there is no `url` and the source is not an http(s) URL (an
   invalid `url` answers `400` with the URL message). Allowed for every type (the UI hides it for projects).
 
@@ -233,8 +242,8 @@ when no other entry and no Item (of any owner) uses that file; evidence made fro
 records the weekly triage and accepts only `{ "status": "inbox|later|archived", "item": <item id>|null }`.
 `archivedAt` is set when the status becomes archived, kept while it stays
 archived and cleared (`null`) when it leaves the archive. Linking an Item that has no image gives it its own copy of
-the entry's thumbnail (re-encoded for Items, no network request; the Item's `imageUrl`); an Item that has an image
-keeps it. An entry linked before its unfurl finished passes the thumbnail on when the unfurl stores it. Unlinking or
+the entry's thumbnail (re-encoded for Items, no network request; the Item's `imageUrl`) and ends a fetch of the
+Item's image that waits or runs; an Item that has an image keeps it. An entry linked before its unfurl finished passes the thumbnail on when the unfurl stores it. Unlinking or
 deleting the entry later leaves the Item's image alone.
 `suggestedDestination` is one of read_later, book, opportunity, note (or empty until processed).
 `itemTitle` and `itemType` (read only) label the linked Item, `null` when `item` is `null`.

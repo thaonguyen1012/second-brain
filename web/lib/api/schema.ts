@@ -214,10 +214,14 @@ export interface paths {
         put?: never;
         /**
          * @description Set (or replace) the image from a file: JPEG, PNG, GIF or WebP up to 10 MB, stored re-encoded as a
-         *     webp of at most 600 px. Answers the Item; the replaced file goes unless another row uses it.
+         *     webp of at most 600 px. Answers the Item; the replaced file goes unless another row uses it, and a
+         *     fetch from a link that waits or runs is ended (the upload wins).
          */
         post: operations["uploadItemImage"];
-        /** @description Remove the image (also when there is none); the file goes unless another row uses it. */
+        /**
+         * @description Remove the image (also when there is none) and end a fetch from a link that waits or runs, so it
+         *     never puts an image back; the file goes unless another row uses it.
+         */
         delete: operations["deleteItemImage"];
         options?: never;
         head?: never;
@@ -237,7 +241,7 @@ export interface paths {
          * @description Take the image from a link, in the background: the og:image of the page, or the URL itself when it
          *     is an image (`url`, default the Item's source). Answers 202 with the Item (imagePending true) at once;
          *     run_jobs makes the request, so the image appears within about 5 minutes. It replaces only the image
-         *     the Item had when asked (an upload made meanwhile wins).
+         *     the Item had when asked: an upload, a removal or an inbox link made meanwhile ends the fetch.
          */
         post: operations["fetchItemImage"];
         delete?: never;

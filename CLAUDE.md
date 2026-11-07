@@ -97,7 +97,8 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  /files/ (X-Accel-Redirect),
                                  single-owner auth middleware (AUTH_MODE dev|cf_access; cf_access verifies
                                  Cf-Access-Jwt-Assertion); `manage.py export --out <dir>` (services/export.py: notes
-                                 as .md with front matter + every owned model as JSON; never User, Job, LlmCall,
+                                 as .md with front matter + every owned model as JSON + images/<image_path> (the
+                                 owner's Item image files, no inbox thumbnails); never User, Job, LlmCall,
                                  LlmCache; a test catches unlisted models; GET /api/export streams the same files
                                  as a zip, the "Tải bản sao dữ liệu" button on Phát triển); services/search.py
                                  (`?q=` normaliser)
@@ -108,7 +109,8 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  /api/items* (?q= title/source/exact tag; DELETE: links set null, 409 for a project with
                                  time entries), /api/notes* (?q= title/markdown, ?item=). Every owned row has a DELETE
                                  (204; 404 for another owner). Item image (cover; project logo): image_path (webp in
-                                 THUMBS_DIR), only through services.set_image (row lock, `expect`); /api/items/{id}/image
+                                 THUMBS_DIR), only through services.set_image (row lock, `expect`; any other change
+                                 ends the Item's waiting or running fetch, so it never undoes it); /api/items/{id}/image
                                  GET|POST multipart|DELETE, /image/fetch (202) and the automatic fetch (create or new
                                  http(s) source, not projects) queue the `item_image` job (jobs.py, one key per Item,
                                  re-armed); linking an inbox entry copies its thumbnail

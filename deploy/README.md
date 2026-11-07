@@ -119,11 +119,19 @@ make restore-check   # restores the newest dump into a throwaway database, print
   `thumbs/` next to the dump, up to 10 listed); that line is information and does not fail the check.
 * The tools match the server version (Homebrew `postgresql@16` when the server is 16, since a pg_dump 17 file can
   carry settings a 16 server rejects); `PG_BIN_DIR=/path/to/bin` overrides.
-* Restoring for real (only after a loss; this replaces the data): stop Django and the jobs, then
-  `dropdb alex_brain && createdb alex_brain && pg_restore --no-owner --no-acl -d alex_brain backend/backups/<date>.dump`,
-  and copy the images back: `cp backend/backups/thumbs/*.webp "$THUMBS_DIR"/ && chmod 644 "$THUMBS_DIR"/*.webp`
-  (the `THUMBS_DIR` of `backend/.env`, default `backend/media/thumbs/`; 0644 because nginx, another user, sends them
-  on the VPS). A real restore is always both: the dump and the images.
+* Restoring for real (only after a loss; this replaces the data): stop Django and the jobs, then restore the dump and
+  copy the images back, from the repository root:
+
+  ```
+  dropdb alex_brain && createdb alex_brain && pg_restore --no-owner --no-acl -d alex_brain backend/backups/<date>.dump
+  mkdir -p backend/media/thumbs && cp backend/backups/thumbs/*.webp backend/media/thumbs/
+  chmod 644 backend/media/thumbs/*.webp
+  ```
+
+  These are the default folders; when `backend/.env` sets `BACKUP_DIR` or `THUMBS_DIR`, put those paths in instead
+  (they are read by Django, not set in the shell). `mkdir -p` because a fresh checkout has no image folder yet (the app
+  creates it on its first image); 0644 because nginx, another user, sends the images on the VPS. A real restore is
+  always both: the dump and the images.
 * The dumps sit on the same disk as the database: copy `backend/backups/` to another disk or cloud folder now and then.
   They are not encrypted (the encrypted upload to object storage belongs to the VPS, see "Still to do"). Each dump is
   the whole database (password hash, sessions, every note): `manage.py backup` writes them 0600 in a 0700 folder, and

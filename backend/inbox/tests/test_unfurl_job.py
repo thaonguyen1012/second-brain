@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 import pytest
+from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.test import Client
 from PIL import Image
@@ -127,6 +128,29 @@ def test_entry_deleted_during_unfurl_leaves_no_thumbnail(
     assert not InboxEntry.objects.filter(pk=entry_id).exists()
     assert list(tmp_path.glob("*.webp")) == []
     assert not Job.objects.filter(kind="tag").exists()
+
+
+def test_entry_deleted_during_unfurl_keeps_a_thumbnail_an_item_uses(
+    client: Client, net: FakeNet, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from inbox import jobs as inbox_jobs
+
+    entry_id = send(client, "post", "/api/inbox", {"url": "https://blog.test/p"}, csrf(client)).json()["id"]
+    real = inbox_jobs._thumbnail
+    other = User.objects.get_or_create(username="other@x", email="other@x")[0]
+
+    def thumbnail_then_delete(entry: InboxEntry, image_url: str) -> str:
+        name = real(entry, image_url)
+        # Content addressed: a small og:image encodes alike for an Item, so another owner's Item names it.
+        Item.objects.create(user=other, type="article", title="theirs", image_path=name)
+        assert send(client, "delete", f"/api/inbox/{entry_id}", None, csrf(client)).status_code == 204
+        return name
+
+    monkeypatch.setattr(inbox_jobs, "_thumbnail", thumbnail_then_delete)
+    call_command("run_jobs", stdout=io.StringIO())
+    assert not InboxEntry.objects.filter(pk=entry_id).exists()
+    kept = Item.objects.get(user=other).image_path
+    assert kept and {p.name for p in tmp_path.glob("*.webp")} == {kept}
 
 
 def test_unfurl_fills_an_item_linked_before_it_finished(client: Client, net: FakeNet, tmp_path: Path) -> None:
