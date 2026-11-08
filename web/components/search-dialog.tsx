@@ -41,7 +41,8 @@ import { searchBrain, type BrainSearchResults } from '@/lib/api/search';
 import { toApiError } from '@/lib/api/use-api';
 import { decisionOf, hostOf, inboxStatusOf, itemStatusOf, itemTypeLabel, opportunityHref } from '@/lib/labels';
 import { formatDay, freshness, monthLabel, outcomeOf } from '@/components/brain/growth/labels';
-import { useT } from '@/lib/i18n/client';
+import { useLocale, useT } from '@/lib/i18n/client';
+import { contentText } from '@/lib/i18n/content-lang';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 
 /** Shorter queries match too much of everything; the handbook search still runs for them. */
@@ -388,6 +389,7 @@ function ResultRow({
   title,
   meta,
   excerpt,
+  handbook = false,
 }: {
   item: SearchItemType;
   onClick: () => void;
@@ -395,18 +397,22 @@ function ResultRow({
   title: string;
   meta?: string;
   excerpt?: string;
+  /** Handbook text (page title, heading, excerpt): its Vietnamese parts get lang="vi" on English pages. */
+  handbook?: boolean;
 }) {
   const { query } = useSearch();
   const highlight = useHighlightQuery(query);
+  const locale = useLocale();
+  const text = (s: string) => (handbook ? contentText(s, locale) : s);
   return (
     <SearchDialogListItem item={item} onClick={onClick}>
       <div ref={highlight} className="flex items-start gap-2.5">
         <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="truncate text-sm font-medium">{title}</div>
-          {meta && <div className="truncate text-xs text-muted-foreground">{meta}</div>}
+          <div className="truncate text-sm font-medium">{text(title)}</div>
+          {meta && <div className="truncate text-xs text-muted-foreground">{text(meta)}</div>}
           {excerpt && (
-            <div className="line-clamp-1 text-[13px] text-muted-foreground">{clipToMatch(excerpt, query)}</div>
+            <div className="line-clamp-1 text-[13px] text-muted-foreground">{text(clipToMatch(excerpt, query))}</div>
           )}
         </div>
       </div>
@@ -534,6 +540,7 @@ export default function AppSearchDialog({
                     title={page.title}
                     meta={page.meta}
                     excerpt={page.excerpt}
+                    handbook
                   />
                 ) : (
                   <SearchDialogListItem item={item} table={table} onClick={onClick} />

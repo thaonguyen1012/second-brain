@@ -1,7 +1,10 @@
 'use client';
-import { useEffect, useState, type ComponentProps } from 'react';
+import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import type * as PageTree from 'fumadocs-core/page-tree';
+import { useLocale } from '@/lib/i18n/client';
+import type { Locale } from '@/lib/i18n/config';
+import { contentText } from '@/lib/i18n/content-lang';
 
 type Props = ComponentProps<typeof DocsLayout> & { book: string | null };
 
@@ -27,8 +30,23 @@ function replaceBook(nodes: PageTree.Node[], full: PageTree.Folder): PageTree.No
   });
 }
 
+/**
+ * The tree with every title through contentText (lang="vi" on its Vietnamese parts), folder index pages included:
+ * an index page's own title is the page name of the table-of-contents bar on that page.
+ */
+function markTitles(nodes: PageTree.Node[], locale: Locale): PageTree.Node[] {
+  const mark = <N extends PageTree.Node>(n: N): N =>
+    typeof n.name === 'string' ? { ...n, name: contentText(n.name, locale) } : n;
+  return nodes.map((n) =>
+    n.type === 'folder'
+      ? { ...mark(n), ...(n.index && { index: mark(n.index) }), children: markTitles(n.children, locale) }
+      : mark(n),
+  );
+}
+
 /** DocsLayout whose sidebar starts with the server's shell tree and loads the full book tree. */
 export function LazyDocsLayout({ book, tree, ...props }: Props) {
+  const locale = useLocale();
   const [full, setFull] = useState<PageTree.Folder | null>(null);
   useEffect(() => {
     if (!book) return;
@@ -38,9 +56,13 @@ export function LazyDocsLayout({ book, tree, ...props }: Props) {
       alive = false;
     };
   }, [book]);
-  // TreeContextProvider memoizes on the root $id, so the loaded tree needs its own id
-  const current = full
-    ? { ...tree, $id: `${tree.$id ?? 'root'}:${book}`, children: replaceBook(tree.children, full) }
-    : tree;
+  // TreeContextProvider memoizes on the root $id, so the loaded tree needs its own id. The titles are marked
+  // after replaceBook, which compares book names as strings; Vietnamese pages show the tree as it is.
+  const current = useMemo(() => {
+    const shown = full
+      ? { ...tree, $id: `${tree.$id ?? 'root'}:${book}`, children: replaceBook(tree.children, full) }
+      : tree;
+    return locale === 'vi' ? shown : { ...shown, children: markTitles(shown.children, locale) };
+  }, [tree, full, book, locale]);
   return <DocsLayout tree={current} {...props} />;
 }

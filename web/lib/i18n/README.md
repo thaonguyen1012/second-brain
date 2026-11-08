@@ -39,6 +39,7 @@ and LLM output are not translated.
 | Markup inside a sentence | `t.rich('Bấm <k>⌘K</k> để tìm', { k: (c) => <Kbd>{c}</Kbd> })`; `{name}` takes a node too |
 | Same Vietnamese, two meanings | `t('Mở', null, 'status')` / `msg('Dự án', 'nav')`, English key `'status::Mở'` / `'nav::Dự án'` (rare; the sidebar uses `nav`: "Projects" beside the type "Project") |
 | Text that must stay Vietnamese | end the line with `// i18n-ignore: <why>`; a whole file: `i18n-ignore-file` |
+| Handbook text outside its lesson (a page or folder title, a description, a heading) | `{contentText(title, t.locale)}` (`@/lib/i18n/content-lang`), never `t()`: on English pages its Vietnamese parts get `lang="vi"`, see below |
 
 Then add the English to the area file (`common.ts` for words that several areas share, `shell.ts`, `today.ts`,
 `inbox.ts`, `library.ts`, `week.ts`, `work.ts`, `opportunities.ts`, `growth.ts`, `about.ts` for the text of
@@ -48,6 +49,21 @@ exactly as in the code, including its punctuation. One key lives in one file.
 `lib/i18n/coverage.test.ts` (part of `make check`) fails on Vietnamese shown without `t()`, a key without English, an
 unused or duplicated entry, and a `{placeholder}` or `<tag>` the English lost. It cannot see Vietnamese written
 without diacritics ("Phim"): those need `t()`/`msg()` by hand.
+
+## Handbook text in the UI
+
+The lessons are not translated, and the lesson page marks its title, headings and body `lang="vi"` as one block. A
+handbook title or description quoted anywhere else (the Hôm nay hero, "Gần nhất: …" on Sổ tay, the lesson sidebar and
+the page name in its table-of-contents bar, breadcrumbs, previous/next links, Cmd+K) is printed with
+`contentText(text, t.locale)` (`content-lang.ts`). On English pages the text is cut where titles join their parts
+(" · ", " — ", " – ", ". ") and each run of parts with a Vietnamese letter (ă â đ ê ô ơ ư or a tone mark) goes in
+`<span lang="vi">`; the rest keeps the page's language. Of the 5,917 page, folder and separator titles in 11/2026,
+4,200 have no Vietnamese letter ("31.2. MCP Server", Coursera names), 842 are Vietnamese and 875 are an English title
+with a Vietnamese label ("Module 8.4 · Week 8: Deferred Taxes — Phần 4", "Khóa 1. …"), so a whole title marked
+`lang="vi"` would have a screen reader read English with a Vietnamese voice (WCAG 2.2 SC 3.1.2, Language of Parts).
+Vietnamese pages print the text as it is. Pass the text you print, never a stored title that UI text replaces (the
+hero's `t('Mở đầu sổ tay')`). Vietnamese written without diacritics ("2.20 Comment trong HTML?") stays unmarked, and
+the Vietnamese UI marks nothing `lang="en"`.
 
 ## English style
 
@@ -106,3 +122,4 @@ without diacritics ("Phim"): those need `t()`/`msg()` by hand.
 | Phím tắt | Keyboard shortcuts | |
 | Danh sách, Bảng | List, Board | view switch |
 | Bài học, đã học xong | Lesson, done | handbook progress |
+| Học ngay, Học tiếp, Ôn lại | Start, Continue, Revisit | the handbook button by progress (`bookVerb`); never "Review", which is the week's (Nhìn lại) |
