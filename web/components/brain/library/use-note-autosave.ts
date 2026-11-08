@@ -98,6 +98,7 @@ export function useNoteAutosave({
   const failed = useRef(false);
   const onSavedRef = useRef(onSaved);
   const pullRef = useRef(pull);
+  const itemsRef = useRef(items);
   const [current, setCurrent] = useState<ApiNote | null>(initial);
   const [state, setState] = useState<SaveState>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +111,7 @@ export function useNoteAutosave({
   useEffect(() => {
     onSavedRef.current = onSaved;
     pullRef.current = pull;
+    itemsRef.current = items;
   });
   // A copy that only repeats the server's text (a save that left with the page did arrive) is dropped
   useEffect(() => {
@@ -171,7 +173,7 @@ export function useNoteAutosave({
           try {
             answer = note.current
               ? await notesApi.update(note.current.id, bodyOf(text), { keepalive })
-              : await notesApi.create({ ...bodyOf(text), items: items?.() ?? [] }, { keepalive });
+              : await notesApi.create({ ...bodyOf(text), items: itemsRef.current?.() ?? [] }, { keepalive });
           } catch (err) {
             const e = toApiError(err);
             show('error', (e.status === 400 && fieldErrors(e.body, t, FIELD_NAMES)) || describeApiError(e, t).title);
@@ -194,8 +196,6 @@ export function useNoteAutosave({
       inFlight.current = done;
       return done;
     },
-    // `items` is read when the note is created (the picker's latest choice), never a reason to rebuild
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [draftKey, keyNow, problem, show, t],
   );
 

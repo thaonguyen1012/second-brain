@@ -93,6 +93,8 @@ function NoteEditing({
     draftKey: `new${newItem ? `-item-${newItem}` : ''}`,
     onSaved: (saved, created) => {
       setCurrent(saved);
+      // a `[[ ]]` link to an Item links the note to it (the server says so in `items`)
+      setItems(saved.items);
       if (created) onCreated(saved);
     },
     pull: () => editor.current?.markdown() ?? null,
@@ -120,7 +122,9 @@ function NoteEditing({
     const saved = autosave.note;
     if (!saved) return;
     try {
-      setCurrent(await notesApi.update(saved.id, { items: next }));
+      const answer = await notesApi.update(saved.id, { items: next });
+      setCurrent(answer);
+      setItems(answer.items);
     } catch (err) {
       setItems(before);
       setLinkError(describeApiError(toApiError(err), t).title);

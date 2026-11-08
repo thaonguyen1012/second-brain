@@ -20,8 +20,8 @@ import { linkHref, type LinkKind, type LinkTarget } from '@/lib/note-links';
  * cannot do it (it only looks at the last character, and is debounced). The list lives in an element next to the
  * editor, placed under the caret with floating-ui (absolute: right inside a Sheet's transformed panel, and a press in
  * it is no "outside press" for the Sheet). Escape closes it and keeps the text; "]]", a space right after "[[",
- * moving the caret away or leaving the editor close it too. A pick replaces "[[query" with the record's title
- * carrying a link mark (saved as `[title](href)`), one undo step.
+ * moving the caret away or leaving the editor close it too, and it never opens inside a link's text. A pick replaces
+ * "[[query" with the record's title (on one line) carrying a link mark (saved as `[title](href)`), one undo step.
  * ---------------------------------------------------------------------------------------------------------------- */
 export interface LinkQuery {
   from: number;
@@ -31,8 +31,8 @@ export interface LinkQuery {
 
 interface PickerState {
   match: LinkQuery | null;
-  /** Where a "[[" closed with Escape starts; it stays closed while those two brackets exist. */
-  dismissedAt: number | null;
+  /** Where each "[[" closed with Escape starts; each stays closed while its two brackets exist. */
+  dismissed: readonly number[];
 }
 
 const MAX_QUERY = 80;
@@ -52,11 +52,13 @@ function findLinkQuery(state: EditorState): LinkQuery | null {
   const query = before.slice(at + 2);
   if (query.includes(']]') || query.includes('￼') || /^\s/.test(query)) return null;
   const from = $caret.start() + start + at;
-  let inCode = false;
+  // not in code, and not inside a link's own text (a picked title such as "Wiki [[draft", a saved link)
+  const link = state.schema.marks.link;
+  let blocked = false;
   state.doc.nodesBetween(from, $caret.pos, (node) => {
-    if (node.marks.some((mark) => mark.type.spec.code)) inCode = true;
+    if (node.marks.some((mark) => mark.type.spec.code || mark.type === link)) blocked = true;
   });
-  return inCode ? null : { from, to: $caret.pos, query };
+  return blocked ? null : { from, to: $caret.pos, query };
 }
 
 function hasBrackets(state: EditorState, pos: number): boolean {
@@ -66,15 +68,16 @@ function hasBrackets(state: EditorState, pos: number): boolean {
 function nextPickerState(tr: Transaction, prev: PickerState, state: EditorState): PickerState {
   const dismiss = tr.getMeta(linkPickerKey) === 'dismiss';
   if (!tr.docChanged && !tr.selectionSet && !dismiss) return prev;
-  let dismissedAt = prev.dismissedAt;
-  if (dismissedAt !== null && tr.docChanged) {
-    const mapped = tr.mapping.mapResult(dismissedAt);
-    dismissedAt = mapped.deleted ? null : mapped.pos;
+  let dismissed = prev.dismissed;
+  if (tr.docChanged && dismissed.length) {
+    dismissed = dismissed.flatMap((pos) => {
+      const mapped = tr.mapping.mapResult(pos);
+      return mapped.deleted || !hasBrackets(state, mapped.pos) ? [] : [mapped.pos];
+    });
   }
   const found = findLinkQuery(state);
-  if (dismiss && found) dismissedAt = found.from;
-  if (dismissedAt !== null && !hasBrackets(state, dismissedAt)) dismissedAt = null;
-  return { match: found && found.from !== dismissedAt ? found : null, dismissedAt };
+  if (dismiss && found && !dismissed.includes(found.from)) dismissed = [...dismissed, found.from];
+  return { match: found && !dismissed.includes(found.from) ? found : null, dismissed };
 }
 
 const sameQuery = (a: LinkQuery | null, b: LinkQuery | null) =>
@@ -89,6 +92,7 @@ export class LinkPicker {
   private view: EditorView | null = null;
   private open: LinkQuery | null = null;
   private keyHandler: KeyHandler | null = null;
+  private stopFollowing: (() => void) | null = null;
   private readonly listeners = new Set<() => void>();
 
   constructor(base: string) {
@@ -144,7 +148,7 @@ export class LinkPicker {
     const marks = state.doc.nodeAt(match.from)?.marks ?? [];
     const tr = state.tr.replaceWith(match.from, match.to, state.schema.text(label, link.create({ href }).addToSet(marks)));
     tr.setSelection(TextSelection.create(tr.doc, match.from + label.length));
-    // the link mark is inclusive: without this, the next typed character would join the link
+    // typing on keeps the marks around (bold) without the link (the link mark is not inclusive, note-editor.tsx)
     tr.setStoredMarks(link.removeFromSet(marks));
     view.dispatch(closeHistory(tr).scrollIntoView()); // its own undo step, even right after typing the query
     view.dispatch(closeHistory(view.state.tr)); // typing right after the link starts the next undo step
@@ -191,7 +195,7 @@ export class LinkPicker {
     return new Plugin<PickerState>({
       key: linkPickerKey,
       state: {
-        init: (_config, state) => ({ match: findLinkQuery(state), dismissedAt: null }),
+        init: (_config, state) => ({ match: findLinkQuery(state), dismissed: [] }),
         apply: (tr, prev, _old, state) => nextPickerState(tr, prev, state),
       },
       view: (view) => {
@@ -253,8 +257,23 @@ export class LinkPicker {
       this.view?.dom.removeAttribute('aria-activedescendant');
     }
     if (sameQuery(this.open, next)) return;
+    if (!this.open !== !next) this.follow(!!next);
     this.open = next;
     this.listeners.forEach((listener) => listener());
+  }
+
+  /** While open, a scroll anywhere (the page, a Sheet, a scroll box) or a resize moves the list with the caret. */
+  private follow(on: boolean): void {
+    this.stopFollowing?.();
+    this.stopFollowing = null;
+    if (!on) return;
+    const update = () => this.updatePosition();
+    document.addEventListener('scroll', update, { capture: true, passive: true });
+    window.addEventListener('resize', update, { passive: true });
+    this.stopFollowing = () => {
+      document.removeEventListener('scroll', update, { capture: true });
+      window.removeEventListener('resize', update);
+    };
   }
 }
 
@@ -301,7 +320,8 @@ export function LinkPickerList({ picker, selfNoteId }: { picker: LinkPicker; sel
   const key = open ? `${open.from}:${query}` : '';
   const active = highlight.key === key ? Math.min(highlight.index, ordered.length - 1) : 0;
   const optionId = (target: LinkTarget) => `${picker.listId}-${target.kind}-${target.id}`;
-  const titleOf = (target: LinkTarget) => target.title.trim() || t('Không có tiêu đề');
+  // one line: a line break inside a link's text does not survive the markdown round trip
+  const titleOf = (target: LinkTarget) => target.title.replace(/\s+/g, ' ').trim() || t('Không có tiêu đề');
 
   const onKey = useEffectEvent((event: KeyboardEvent): boolean => {
     const target = ordered[active];

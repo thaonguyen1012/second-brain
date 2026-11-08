@@ -42,6 +42,14 @@ def test_parse_links_reads_the_deep_links_outside_code() -> None:
     assert parse_links("") == {}
 
 
+def test_an_escaped_bracket_in_a_links_text_is_no_link() -> None:
+    """A title such as `x](/thu-vien/item/?id=99) y` is written with its brackets escaped: one link."""
+    escaped = r"[x\](/thu-vien/item/?id=99) y](/thu-vien/item/?id=115)"
+    assert parse_links(escaped) == {"item": {115}}
+    # an escaped backslash right before the bracket does end the text
+    assert parse_links(r"[C:\\](/thu-vien/item/?id=7)") == {"item": {7}}
+
+
 def test_saving_a_note_reads_its_links_and_links_the_items(client: Client) -> None:
     headers = csrf(client)
     user = owner(client)

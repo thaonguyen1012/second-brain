@@ -30,19 +30,21 @@ export function NotesRoute() {
   const router = useRouter();
   const pathname = useRoutePathname();
   const id = noteParam(params.get('id'));
-  // the id a new note got from its first save, so the page that made it stays mounted
-  const [adopted, setAdopted] = useState<number | null>(null);
+  const newItem = Number(params.get('item')) || null;
+  const templateType = params.get('template');
+  // A new note's first save gives it an id: the page that made it stays mounted, with what it was opened with
+  const [adopted, setAdopted] = useState<{ id: number; item: number | null; template: string | null } | null>(null);
 
   if (id === null) return <NotesPage />;
-  const newItem = Number(params.get('item')) || null;
+  const mine = adopted !== null && id === adopted.id;
   return (
     <NotePageView
-      key={id === 'new' || id === adopted ? 'new' : id}
-      id={id === adopted ? 'new' : id}
-      newItem={newItem}
-      templateType={params.get('template')}
+      key={id === 'new' || mine ? 'new' : id}
+      id={mine ? 'new' : id}
+      newItem={mine ? adopted.item : newItem}
+      templateType={mine ? adopted.template : templateType}
       onCreated={(note: ApiNote) => {
-        setAdopted(note.id);
+        setAdopted({ id: note.id, item: newItem, template: templateType });
         const path = pathname.endsWith('/') ? pathname : `${pathname}/`; // trailingSlash: true (next.config)
         router.replace(`${path}?id=${note.id}`, { scroll: false });
       }}

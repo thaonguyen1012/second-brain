@@ -31,8 +31,9 @@ _FENCE = re.compile(
     r"^[ \t]{0,3}(`{3,}|~{3,})[^\n]*\n.*?(?:^[ \t]{0,3}\1[ \t]*$|\Z)", re.MULTILINE | re.DOTALL
 )
 _CODE_SPAN = re.compile(r"(`+)(?!`).+?(?<!`)\1(?!`)", re.DOTALL)
-# The destination of an inline link: ](url) or ](<url>), with an optional "title".
-_DESTINATION = re.compile(r"\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
+# The destination of an inline link: ](url) or ](<url>), with an optional "title". A `]` escaped in the link's
+# text (`\]`, as the editor writes a title holding one) is no end of a link.
+_DESTINATION = re.compile(r"(?<!\\)(?:\\\\)*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
 
 
 def parse_links(markdown: str) -> dict[str, set[int]]:

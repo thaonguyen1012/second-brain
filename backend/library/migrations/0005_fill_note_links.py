@@ -17,7 +17,7 @@ PATHS = {
 _LANG = re.compile(r"^/(?:vi|en)(?=/)")
 _FENCE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})[^\n]*\n.*?(?:^[ \t]{0,3}\1[ \t]*$|\Z)", re.MULTILINE | re.DOTALL)
 _CODE_SPAN = re.compile(r"(`+)(?!`).+?(?<!`)\1(?!`)", re.DOTALL)
-_DESTINATION = re.compile(r"\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
+_DESTINATION = re.compile(r"(?<!\\)(?:\\\\)*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
 
 
 def parse(markdown):  # type: ignore[no-untyped-def]

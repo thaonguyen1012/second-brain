@@ -23,6 +23,7 @@ import {
   createCodeBlockCommand,
   hrSchema,
   insertHrCommand,
+  linkSchema,
   listItemSchema,
   splitListItemCommand,
   turnIntoTextCommand,
@@ -752,6 +753,9 @@ export default function NoteEditor({
             spellcheck: 'true',
           },
         }));
+        // Text typed at either end of a link stays outside it (the preset's link mark is inclusive, so the next
+        // character, an IME composition, or text after undo joined the link)
+        ctx.update(linkSchema.key, (prev) => (c) => ({ ...prev(c), inclusive: false }));
         // `-` bullets and `---` rules, as people type them (remark's defaults are `*` and `***`)
         ctx.update(remarkStringifyOptionsCtx, (prev) => ({ ...prev, bullet: '-' as const, rule: '-' as const }));
         ctx.get(listenerCtx).markdownUpdated((_ctx, next) => report(next));
