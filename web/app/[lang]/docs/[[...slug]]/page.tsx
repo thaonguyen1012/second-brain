@@ -12,13 +12,15 @@ import { loadPage } from '@/lib/content/compile';
 import type { DocPageData } from '@/lib/content/scan';
 import { LazyDocsLayout } from '@/components/lazy-docs-layout';
 import { DoneCheckbox, VisitTracker } from '@/components/progress';
+import { getT } from '@/lib/i18n/server';
+import type { T } from '@/lib/i18n/translate';
 
 // Pages are rendered on first request and cached (ISR); nothing is prerendered at build time.
 export const dynamicParams = true;
 export const revalidate = false;
 
-function Breadcrumb({ url }: { url: string }) {
-  const crumbs = [{ name: 'Trang chủ', url: '/' }, ...getCrumbs(url)];
+function Breadcrumb({ url, t }: { url: string; t: T }) {
+  const crumbs = [{ name: t('Trang chủ'), url: '/' }, ...getCrumbs(url)];
   return (
     <nav aria-label="Breadcrumb" className="mb-2 flex flex-wrap items-center gap-1.5 text-sm text-fd-muted-foreground">
       {crumbs.map((c, i) => (
@@ -37,7 +39,7 @@ function Breadcrumb({ url }: { url: string }) {
   );
 }
 
-export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
+export default async function Page(props: PageProps<'/[lang]/docs/[[...slug]]'>) {
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();
@@ -45,14 +47,15 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const data = page.data as unknown as DocPageData;
   const { body: MDX, toc, codeCss, readingMinutes } = await loadPage(data.absolutePath);
   const { tree, book } = getShellTree(page.url);
+  const t = await getT();
 
   return (
-    <LazyDocsLayout tree={tree} book={book} {...baseOptions()}>
+    <LazyDocsLayout tree={tree} book={book} {...baseOptions(t)}>
       {codeCss && <style>{codeCss}</style>}
       <DocsPage toc={toc} breadcrumb={{ enabled: false }} footer={{ items: getNeighbours(page.url) }}>
-        <Breadcrumb url={page.url} />
+        <Breadcrumb url={page.url} t={t} />
         <DocsTitle>{data.title}</DocsTitle>
-        <p className="text-sm text-fd-muted-foreground">≈ {readingMinutes} phút đọc</p>
+        <p className="text-sm text-fd-muted-foreground">{t('≈ {n} phút đọc', { n: readingMinutes })}</p>
         <DocsBody>
           <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
         </DocsBody>
@@ -68,7 +71,7 @@ export async function generateStaticParams() {
   return process.env.STATIC_EXPORT === '1' ? source.generateParams() : [];
 }
 
-export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): Promise<Metadata> {
+export async function generateMetadata(props: PageProps<'/[lang]/docs/[[...slug]]'>): Promise<Metadata> {
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();

@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Request a random sample of pages from a running server and check status 200 + expected title.
 // Usage: node scripts/smoke-test.mjs [--base http://localhost:3000|auto] [--sample 100] [--book slug ...] [--optional]
+//        [--lang vi|en]
 // --base auto uses the first server that answers: the owner's next dev (:3000), then make dev (:8080).
 // --optional (the pre-commit hook) prints a warning and exits 0 when no server answers instead of failing.
+// --lang sends the language cookie (lib/i18n/README.md) and checks the page's <html lang>; Vietnamese by default.
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -14,8 +16,13 @@ const { values } = parseArgs({
     sample: { type: 'string', default: '100' },
     book: { type: 'string', multiple: true, default: [] },
     optional: { type: 'boolean', default: false },
+    lang: { type: 'string', default: 'vi' },
   },
 });
+if (!['vi', 'en'].includes(values.lang)) {
+  console.error(`smoke: --lang must be vi or en, not ${values.lang}`);
+  process.exit(2);
+}
 
 const AUTO_BASES = ['http://localhost:3000', 'http://127.0.0.1:8080'];
 async function answers(base) {
@@ -79,12 +86,13 @@ const times = [];
 for (const p of picked) {
   const t = performance.now();
   try {
-    const res = await fetch(values.base + encodeURI(p.url));
+    const res = await fetch(values.base + encodeURI(p.url), { headers: { cookie: `lang=${values.lang}` } });
     const html = await res.text();
     times.push(performance.now() - t);
     const title = decode(html.match(/<title>([^<]*)<\/title>/)?.[1] ?? '');
-    if (res.status === 200 && title.startsWith(p.title)) ok++;
-    else failures.push(`${res.status} ${p.url} title="${title}" expected="${p.title}"`);
+    const lang = html.match(/<html[^>]*\blang="([^"]*)"/)?.[1];
+    if (res.status === 200 && title.startsWith(p.title) && lang === values.lang) ok++;
+    else failures.push(`${res.status} ${p.url} title="${title}" expected="${p.title}" lang=${lang}`);
   } catch (e) {
     failures.push(`ERR ${p.url} ${e.message}`);
   }
@@ -92,7 +100,7 @@ for (const p of picked) {
 times.sort((a, b) => a - b);
 const ms = (x) => `${Math.round(x ?? 0)} ms`;
 console.log(
-  `pages on disk: ${pages.length}; sampled ${n}: ${ok} ok, ${failures.length} failed; ` +
+  `pages on disk: ${pages.length}; sampled ${n} (${values.lang}): ${ok} ok, ${failures.length} failed; ` +
     `time median ${ms(times[Math.floor(times.length / 2)])}, max ${ms(times.at(-1))}`,
 );
 for (const f of failures) console.log(`  FAIL ${f}`);

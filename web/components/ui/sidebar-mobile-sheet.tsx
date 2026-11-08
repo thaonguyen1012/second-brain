@@ -2,6 +2,7 @@
 
 import type * as React from 'react'
 import { Sheet, SheetDescription, SheetHeader, SheetPopup, SheetTitle } from '@/components/ui/sheet'
+import { useT } from '@/lib/i18n/client'
 
 const SIDEBAR_WIDTH_MOBILE: string = '18rem'
 
@@ -20,6 +21,7 @@ export default function SidebarMobileSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
 }): React.ReactElement {
+  const t = useT()
   return (
     <Sheet onOpenChange={onOpenChange} open={open} {...props}>
       <SheetPopup
@@ -36,7 +38,7 @@ export default function SidebarMobileSheet({
       >
         <SheetHeader className="sr-only">
           <SheetTitle>Menu</SheetTitle>
-          <SheetDescription>Điều hướng chính của trang.</SheetDescription>
+          <SheetDescription>{t('Điều hướng chính của trang.')}</SheetDescription>
         </SheetHeader>
         <div className="flex h-full w-full flex-col">{children}</div>
       </SheetPopup>

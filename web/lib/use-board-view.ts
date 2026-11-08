@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAppPathname } from '@/lib/use-app-pathname';
 import { parseView, resolveView, viewSearch, type BoardView } from './status-board';
 
 interface ViewStore {
@@ -65,7 +66,7 @@ export function useBoardView(viewKey: string, holdWhile?: string): [BoardView, (
   const store = storeFor(viewKey);
   const params = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = useAppPathname();
   const stored = useSyncExternalStore(store.subscribe, store.read, serverSnapshot);
   const fromUrl = params.get('view');
   const view = resolveView(fromUrl, stored);

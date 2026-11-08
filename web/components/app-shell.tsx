@@ -1,6 +1,5 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { Moon, PanelLeftClose, Search, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -30,6 +29,10 @@ import { LazyTooltip } from '@/components/lazy-tooltip';
 import { BrandMark } from '@/components/brand-mark';
 import { appName } from '@/lib/shared';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
+import type { T } from '@/lib/i18n/translate';
+import { useAppPathname } from '@/lib/use-app-pathname';
+import { LanguageSwitch } from '@/components/language-switch';
 
 const [daily, ...areas] = appNav;
 
@@ -55,7 +58,7 @@ interface RowEnd {
  * how a screen reader says it. The marks are aria-hidden and the link takes the whole name as its aria-label
  * ("Tuần, còn 2 mục tiêu"), so the name does not depend on how a browser joins the spans.
  */
-function rowEnd(row: NavRow, counts: ApiCounts | null): RowEnd | null {
+function rowEnd(row: NavRow, counts: ApiCounts | null, t: T): RowEnd | null {
   if (!counts) return null;
   if (row.timerDot) {
     if (!counts.timerRunning) return null;
@@ -67,7 +70,7 @@ function rowEnd(row: NavRow, counts: ApiCounts | null): RowEnd | null {
           className="ms-auto size-2 shrink-0 rounded-full bg-bw-red forced-colors:bg-[CanvasText] forced-colors:forced-color-adjust-none"
         />
       ),
-      spoken: 'đồng hồ đang chạy',
+      spoken: t('đồng hồ đang chạy'),
     };
   }
   const n = row.count ? counts[row.count.key] : 0;
@@ -78,7 +81,7 @@ function rowEnd(row: NavRow, counts: ApiCounts | null): RowEnd | null {
         {n > 99 ? '99+' : n}
       </span>
     ),
-    spoken: row.count.label(n),
+    spoken: t(row.count.label, { n }),
   };
 }
 
@@ -87,7 +90,9 @@ function rowEnd(row: NavRow, counts: ApiCounts | null): RowEnd | null {
  * hovered or current.
  */
 function Row({ link, active, end, quiet }: { link: NavLink; active: boolean; end?: RowEnd | null; quiet?: boolean }) {
+  const t = useT();
   const Icon = link.icon;
+  const title = t(link.title);
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -97,12 +102,12 @@ function Row({ link, active, end, quiet }: { link: NavLink; active: boolean; end
           <Link
             href={link.href}
             aria-current={active ? 'page' : undefined}
-            aria-label={end ? `${link.title}, ${end.spoken}` : undefined}
+            aria-label={end ? `${title}, ${end.spoken}` : undefined}
           />
         }
       >
         <Icon aria-hidden />
-        <span className="truncate">{link.title}</span>
+        <span className="truncate">{title}</span>
         {end?.mark}
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -120,7 +125,8 @@ function focusLater(selector: string) {
  * Hidden on desktop, it is inert, so its links leave the tab order.
  */
 function AppSidebar() {
-  const raw = usePathname();
+  const t = useT();
+  const raw = useAppPathname();
   const pathname = raw.endsWith('/') ? raw : `${raw}/`;
   const { setOpenMobile, toggleSidebar, isMobile, state } = useSidebar();
   const counts = useNavCounts();
@@ -152,12 +158,12 @@ function AppSidebar() {
           <BrandMark className="size-7 shrink-0" />
           <span className="truncate font-heading text-sm font-semibold tracking-tight">{appName}</span>
         </Link>
-        <LazyTooltip label="Ẩn menu">
+        <LazyTooltip label={t('Ẩn menu')}>
           {/* The glyph's right edge lines up with the row counts: the button is 32px with an 18px glyph below sm */}
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Ẩn menu"
+            aria-label={t('Ẩn menu')}
             data-sidebar-hide=""
             className="-me-2 sm:-me-1.5"
             onClick={hide}
@@ -175,25 +181,25 @@ function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {daily.rows.map((row: NavRow) => (
-                  <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts)} />
+                  <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts, t)} />
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
           <TierLine className="my-1.5" />
           {areas.map((group, i) => (
-            <SidebarGroup key={group.label} className="pt-2.5 pb-0">
+            <SidebarGroup key={group.label.msgid} className="pt-2.5 pb-0">
               <SidebarGroupLabel
                 id={`nav-group-${i}`}
                 className="h-7 font-semibold uppercase tracking-wide text-muted-foreground"
               >
-                {group.label}
+                {t(group.label)}
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 {/* The label names its list, so "Item" is heard as part of Thư viện */}
                 <SidebarMenu aria-labelledby={`nav-group-${i}`}>
                   {group.rows.map((row: NavRow) => (
-                    <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts)} />
+                    <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts, t)} />
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>
@@ -203,7 +209,7 @@ function AppSidebar() {
             <TierLine />
             <SidebarGroup className="py-1.5">
               <SidebarGroupContent>
-                <SidebarMenu aria-label={otherNav.label}>
+                <SidebarMenu aria-label={t(otherNav.label)}>
                   {otherNav.links.map((link) => (
                     <Row key={link.href} link={link} active={current === link.href} quiet />
                   ))}
@@ -223,10 +229,11 @@ function AppSidebar() {
  * -ms-1.5 / sm:-ms-2: the glyph, not its hover box, lines up with the page title's left edge.
  */
 function MenuTrigger() {
+  const t = useT();
   const { isMobile, state } = useSidebar();
   return (
     <SidebarTrigger
-      aria-label="Mở hoặc đóng menu"
+      aria-label={t('Mở hoặc đóng menu')}
       className="-ms-1.5 sm:-ms-2 md:group-has-[[data-slot=sidebar][data-state=expanded]]/sidebar-wrapper:hidden"
       onClick={() => {
         if (!isMobile && state === 'collapsed') focusLater('[data-sidebar-hide]');
@@ -241,17 +248,18 @@ function MenuTrigger() {
  * hidden on touch and small screens (DESIGN.md D24).
  */
 function SearchButton() {
+  const t = useT();
   const { setOpenSearch } = useSearchContext();
   return (
     <Button
       variant="outline"
-      aria-label="Tìm mọi thứ"
+      aria-label={t('Tìm mọi thứ')}
       onClick={() => setOpenSearch(true)}
       className="w-full min-w-0 max-w-[280px] shrink justify-start font-normal text-muted-foreground"
     >
       <Search aria-hidden />
-      <span className="sm:hidden">Tìm…</span>
-      <span className="max-sm:hidden">Tìm mọi thứ...</span>
+      <span className="sm:hidden">{t('Tìm…')}</span>
+      <span className="max-sm:hidden">{t('Tìm mọi thứ...')}</span>
       <Kbd className="ms-auto max-sm:hidden pointer-coarse:hidden">⌘ K</Kbd>
     </Button>
   );
@@ -263,14 +271,15 @@ function SearchButton() {
  * `button[data-theme-toggle]`.
  */
 function ThemeToggle() {
+  const t = useT();
   const { resolvedTheme, setTheme } = useTheme();
   return (
-    <LazyTooltip label="Đổi giao diện">
+    <LazyTooltip label={t('Đổi giao diện')}>
       <Button
         variant="ghost"
         size="icon"
         data-theme-toggle=""
-        aria-label="Đổi giao diện sáng/tối"
+        aria-label={t('Đổi giao diện sáng/tối')}
         onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
       >
         <Sun aria-hidden className="dark:hidden" />
@@ -291,6 +300,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SearchButton />
           <div className="ms-auto flex items-center gap-2">
             <InboxButton />
+            <LanguageSwitch />
             <ThemeToggle />
           </div>
         </header>

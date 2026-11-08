@@ -1,6 +1,7 @@
 'use client';
 import { type ReactNode, useEffect, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAppPathname } from '@/lib/use-app-pathname';
 import { CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ApiWeek } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
@@ -141,7 +142,7 @@ function isTyping(target: EventTarget | null): boolean {
 export function WeekPage({ books }: { books: BookIndex }) {
   const params = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = useAppPathname();
   const [current] = useState(() => mondayOf(todayPrague()));
   const latest = addDays(current, 7); // planning reaches next week, not further
   const w = params.get('w');

@@ -1,7 +1,8 @@
 'use client';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAppPathname } from '@/lib/use-app-pathname';
 import { NotebookPen, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import type { Page } from '@/lib/api/client';
 import { notesApi, type ApiNote } from '@/lib/api/library';
@@ -162,7 +163,7 @@ const keyHelp: [string, string][] = [
 export function NotesPage() {
   const params = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = useAppPathname();
   const itemFilter = Number(params.get('item')) || null;
 
   const [query, setQuery] = useState('');
