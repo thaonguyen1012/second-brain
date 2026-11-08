@@ -20,28 +20,48 @@ export function itemDateLabel(item: Pick<ApiItem, 'status' | 'createdAt' | 'star
   return t('thêm {date}', { date: formatDate(item.createdAt, t) });
 }
 
+// Note titles read the same as the backend's note_label (backend/library/services.py): the same patterns,
+// whitespace set, line ends and cut in code points, so a note has one title everywhere.
+const SPACE = '\\t\\n\\v\\f\\r \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff';
+const SPACES = new RegExp(`[${SPACE}]+`, 'g');
+const TRIM = new RegExp(`^[${SPACE}]+|[${SPACE}]+$`, 'g');
+const LINE = /[^\r\n]+/g;
+// A line's heading, quote, list and task marks (`## `, `> `, `- `, `1. `, `- [ ] `), nested ones too
+const LINE_PREFIX = /^[ \t]*(?:(?:>|(?:[-*+]|[0-9]{1,9}[.)]|#{1,6})(?=[ \t]))[ \t]*)*(?:\[[ xX]\][ \t]+)?/;
+// The editor's empty-line placeholder is no text
+const EMPTY_LINE = new RegExp(`<br[${SPACE}]*/?>`, 'gi');
+// Read left to right, so an escaped character is never the start of anything else (`\!` before a link stays a
+// `!`, `\[` opens no link) and every match attempt stops at the next bracket or line end (linear): an escape shows
+// its character, a backslash that ends a line (a hard break) nothing, a link or image its text, a numeric
+// character reference its character (the editor writes `&#x20;` for a leading space); inline marks are left out
+// (`_` inside a word, as in file_name, is no mark).
+const INLINE =
+  /\\([!-/:-@[-`{-~])|\\(?=[\r\n]|$)|!?\[((?:\\[^\r\n]|[^\\[\]\r\n])*)\]\([^()\r\n]*\)|&#[xX]([0-9a-fA-F]{1,6});|&#([0-9]{1,7});|[*`~]+|(?<!_)(?<![\p{L}\p{N}])_+|(?<=[\p{L}\p{N}])_+(?!_)(?![\p{L}\p{N}])/gu;
+
+function shown(_match: string, char?: string, text?: string, hex?: string, decimal?: string): string {
+  if (char !== undefined) return char;
+  if (text !== undefined) return text.replace(INLINE, shown);
+  const code = hex ?? decimal;
+  if (code) {
+    const point = parseInt(code, hex ? 16 : 10);
+    return point > 0 && point <= 0x10ffff && (point < 0xd800 || point > 0xdfff) ? String.fromCodePoint(point) : '\uFFFD';
+  }
+  return ' ';
+}
+
 /**
- * Title shown for a note: its title, else the first non-empty markdown line without its heading, quote, list or task
- * marks (nested ones too), links shown by their text and escapes by their character (as the backend's note_label).
+ * Title shown for a note: its title, else the first markdown line with text, without its heading, quote, list or
+ * task marks (nested ones too), links shown by their text, escapes and character references by their character and
+ * inline marks left out, cut at 120 characters (never inside one).
  */
 export function noteTitle(note: Pick<ApiNote, 'id' | 'title' | 'markdown'>, t: T): string {
-  if (note.title.trim()) return note.title.trim();
-  const line = note.markdown
-    .split('\n')
-    .map((l) =>
-      l
-        // the editor's empty-line placeholder (`<br />`) is no text
-        .replace(/<br\s*\/?>/gi, ' ')
-        .replace(/^[ \t]*(?:(?:>|(?:[-*+]|\d{1,9}[.)]|#{1,6})(?=[ \t]))[ \t]*)*(?:\[[ xX]\][ \t]+)?/, '')
-        // `[Atomic Habits](/thu-vien/item/?id=12)` (a `[[ ]]` link) reads as its text, escaped brackets and all
-        .replace(/!?\[((?:\\.|[^\\[\]\n])*)\]\([^()\n]*\)/g, '$1')
-        // the editor writes `\[`, `\*`, `\_` for the characters themselves
-        .replace(/\\([!-\x2f:-@[-\x60{-~])/g, '$1')
-        .replace(/\s+/g, ' ')
-        .trim(),
-    )
-    .find(Boolean);
-  return line ? line.slice(0, 120) : t('Ghi chú #{id}', { id: note.id });
+  const title = note.title.replace(TRIM, '');
+  if (title) return title;
+  for (const [line] of note.markdown.matchAll(LINE)) {
+    const text = line.replace(EMPTY_LINE, ' ').replace(LINE_PREFIX, '').replace(INLINE, shown).replace(SPACES, ' ').trim();
+    if (text) return Array.from(text).slice(0, 120).join('');
+  }
+  return t('Ghi chú #{id}', { id: note.id });
 }
 
 /** Hosts whose links are clearly one Item type; everything else falls back to the suggested destination. */

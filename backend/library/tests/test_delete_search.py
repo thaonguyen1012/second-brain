@@ -220,3 +220,22 @@ def test_note_titles_show_escaped_characters_as_themselves(client: Client) -> No
         "Xem [RC] Book C nhé": "Xem [RC] Book C nhé",
         "[RD] mở ngoặc, file_name và 2*3 = 6": "[RD] mở ngoặc, file_name và 2*3 = 6",
     }
+
+
+def test_note_search_finds_text_the_editor_escapes(client: Client) -> None:
+    """The editor writes `AT\\&T`, `a\\@b.co` and `https\\://` with backslash escapes: the notes list and
+    Cmd+K find them as they read, in one query; the stored form is found too."""
+    user = owner(client)
+    note = Note.objects.create(
+        user=user, markdown="Hợp đồng AT\\&T, mail a\\@b.co, xem https\\://ex.com/a\\_b **gấp**"
+    )
+    Note.objects.create(user=user, markdown="khác")
+    Note.objects.create(user=stranger(), markdown="AT\\&T a\\@b.co https\\://ex.com/a\\_b")
+    for query in ("AT&T", "a@B.co", "https://ex.com/a_b", "AT\\&T"):
+        assert [n["id"] for n in client.get("/api/notes", {"q": query}).json()["results"]] == [note.pk]
+        with CaptureQueriesContext(connection) as queries:
+            hits = client.get("/api/notes/search", {"q": query}).json()["results"]
+        assert [h["id"] for h in hits] == [note.pk]
+        assert sum("library_note" in q["sql"] for q in queries.captured_queries) == 1
+    [hit] = client.get("/api/notes/search", {"q": "a@b.co"}).json()["results"]
+    assert hit["excerpt"] == "Hợp đồng AT&T, mail a@b.co, xem https://ex.com/a_b gấp"

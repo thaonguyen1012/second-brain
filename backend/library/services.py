@@ -16,7 +16,19 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.core.validators import URLValidator
 from django.db import transaction
-from django.db.models import CharField, Count, Exists, OuterRef, ProtectedError, Q, QuerySet, Value
+from django.db.models import (
+    CharField,
+    Count,
+    Exists,
+    F,
+    Func,
+    OuterRef,
+    ProtectedError,
+    Q,
+    QuerySet,
+    TextField,
+    Value,
+)
 from django.db.models.functions import Concat
 from django.utils import timezone
 
@@ -37,21 +49,49 @@ ITEM_FIELDS = ("type", "status", "title", "tags", "source", "rating", "started_a
 NOTE_FIELDS = ("title", "markdown")
 EXCERPT_CHARS = 120
 EXCERPT_BEFORE = 40
+# Note labels (title, excerpt) read the same as the web's noteTitle (web/lib/library-labels.ts): the same
+# patterns, whitespace set (JavaScript's and U+0085), line ends and cut in code points, so a note has one
+# title everywhere.
+_SPACE = "\t\n\v\f\r \x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a"
+_SPACE += "\u2028\u2029\u202f\u205f\u3000\ufeff"
+_SPACES = re.compile(f"[{_SPACE}]+")
+_LINE = re.compile(r"[^\r\n]+")
 # A line's heading, quote, list and task marks (`## `, `> `, `- `, `1. `, `- [ ] `), nested ones too
 _LINE_PREFIX = re.compile(
-    r"^[ \t]*(?:(?:>|(?:[-*+]|\d{1,9}[.)]|#{1,6})(?=[ \t]))[ \t]*)*(?:\[[ xX]\][ \t]+)?", re.MULTILINE
+    r"^[ \t]*(?:(?:>|(?:[-*+]|[0-9]{1,9}[.)]|#{1,6})(?=[ \t]))[ \t]*)*(?:\[[ xX]\][ \t]+)?", re.MULTILINE
 )
-# A link or image shows its text (the editor's `[[ ]]` links): `[Atomic Habits](/thu-vien/item/?id=12)` ->
-# `Atomic Habits`. The text may hold escaped brackets (`[\[RC\] Book](...)`, as the editor writes them); no
-# bracket, parenthesis or line break otherwise, so every match attempt stops at the next one (linear).
-_LINK = re.compile(r"!?\[((?:\\.|[^\\\[\]\n])*)\]\([^()\n]*\)")
-# A backslash escape shows its character (CommonMark escapes ASCII punctuation: `\[`, `\*`, `\_`)
-_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
-# Inline marks an excerpt leaves out, escapes shown by their character; `_` inside a word (file_name) is
-# no mark
-_MARKS = re.compile(r"\\([!-/:-@\[-`{-~])|[*`~]+|(?<!_)(?<![^\W_])_+|(?<=[^\W_])_+(?!_)(?![^\W_])")
 # The editor's (Milkdown's) placeholder for an empty paragraph or list item: no text
-_EMPTY_LINE = re.compile(r"<br\s*/?>", re.IGNORECASE)
+_EMPTY_LINE = re.compile(f"<br[{_SPACE}]*/?>", re.IGNORECASE)
+# Read left to right, so an escaped character is never the start of anything else (`\!` before a link stays
+# a `!`, `\[` opens no link) and every match attempt stops at the next bracket or line end (linear):
+# 1. a backslash escape shows its character (the editor writes `\[`, `\*`, `\_`, `\&`);
+# a backslash that ends a line (a hard break) shows nothing;
+# 2. a link or image shows its text (`[Atomic Habits](/thu-vien/item/?id=12)`, `[\[RC\] Book](...)`);
+# 3, 4. a numeric character reference shows its character (the editor writes `&#x20;` for a leading space);
+# inline marks are left out (`_` inside a word, as in file_name, is no mark).
+_INLINE = re.compile(
+    r"\\([!-/:-@\[-`{-~])|\\(?=[\r\n]|\Z)"
+    r"|!?\[((?:\\[^\r\n]|[^\\\[\]\r\n])*+)\]\([^()\r\n]*+\)"
+    r"|&#[xX]([0-9a-fA-F]{1,6});|&#([0-9]{1,7});"
+    r"|[*`~]+|(?<!_)(?<![^\W_])_+|(?<=[^\W_])_+(?!_)(?![^\W_])"
+)
+
+
+def _shown(match: re.Match[str]) -> str:
+    """What one _INLINE match shows."""
+    if match.group(1) is not None:
+        return match.group(1)
+    if match.group(2) is not None:
+        return _INLINE.sub(_shown, match.group(2))
+    if code := match.group(3) or match.group(4):
+        point = int(code, 16 if match.group(3) else 10)
+        return chr(point) if 0 < point <= 0x10FFFF and not 0xD800 <= point <= 0xDFFF else "\ufffd"
+    return " "
+
+
+def _plain(text: str) -> str:
+    """`text` as one line of shown characters: markdown marks out, whitespace runs as single spaces."""
+    return _SPACES.sub(" ", _INLINE.sub(_shown, text)).strip(" ")
 
 
 def normalize_tags(tags: Iterable[str]) -> list[str]:
@@ -298,32 +338,43 @@ def fetch_automatically(item: Item) -> None:
 
 
 def notes(user: User, query: str = "", item: int | None = None) -> QuerySet[Note]:
-    """The owner's notes; `query` matches title or markdown (case-insensitive), `item` a linked Item id."""
+    """The owner's notes; `query` matches title or markdown (case-insensitive), the markdown also as it reads
+    with its backslash escapes shown as their characters: the editor writes `AT\\&T`, `a\\@b.co`; `item` a
+    linked Item id. One query."""
     rows = Note.objects.filter(user=user)
     if query := query.strip():
-        rows = rows.filter(Q(title__icontains=query) | Q(markdown__icontains=query))
+        shown = Func(
+            F("markdown"),
+            Value(r"\\([!-/:-@\[-`{-~])"),  # a backslash before ASCII punctuation (CommonMark's escapes)
+            Value(r"\1"),
+            Value("g"),
+            function="REGEXP_REPLACE",
+            output_field=TextField(),
+        )
+        rows = rows.alias(shown=shown).filter(
+            Q(title__icontains=query) | Q(markdown__icontains=query) | Q(shown__icontains=query)
+        )
     if item is not None:
         rows = rows.filter(items__id=item)
     return rows
 
 
 def note_label(note: Note) -> str:
-    """The title, else the first non-empty markdown line without its heading/quote/list mark, links shown by
-    their text and escapes by their character (as the web's noteTitle), else ""."""
-    if title := note.title.strip():
+    """The title, else the first markdown line with text, without its heading/quote/list mark, links shown by
+    their text, escapes and character references by their character and inline marks left out (as the web's
+    noteTitle), cut at EXCERPT_CHARS characters; else ""."""
+    if title := note.title.strip(_SPACE):
         return title
-    for line in note.markdown.split("\n"):
-        text = _LINK.sub(r"\1", _LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", line)))
-        if clean := " ".join(_ESCAPE.sub(r"\1", text).split()):
-            return clean[:EXCERPT_CHARS]
+    for line in _LINE.finditer(note.markdown):
+        if text := _plain(_LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", line.group()), count=1)):
+            return text[:EXCERPT_CHARS]
     return ""
 
 
 def note_excerpt(markdown: str, query: str) -> str:
-    """About EXCERPT_CHARS characters around the first match of `query` (markdown marks dropped), else the
-    start of the note."""
-    text = _LINK.sub(r"\1", _LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", markdown)))
-    flat = " ".join(_MARKS.sub(lambda mark: mark.group(1) or " ", text).split())
+    """About EXCERPT_CHARS characters around the first match of `query` (markdown marks dropped, as in
+    note_label), else the start of the note."""
+    flat = _plain(_LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", markdown)))
     at = flat.lower().find(query.lower()) if query else -1
     if at < 0:
         return flat[:EXCERPT_CHARS]
