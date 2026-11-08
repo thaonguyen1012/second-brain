@@ -103,6 +103,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.LanguageMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.http.ConditionalGetMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -135,7 +136,10 @@ DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES["default"]["CONN_MAX_AGE"] = 60
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LANGUAGE_CODE = "vi"  # DRF and Django validation messages reach the UI (UI text in Vietnamese)
+# DRF, Django and the app's validation messages reach the UI: Vietnamese by default, English when the web page
+# asks for it (its X-UI-Lang header, else the `lang` cookie; core.middleware.LanguageMiddleware, core.i18n).
+LANGUAGE_CODE = "vi"
+LANGUAGES = [("vi", "Tiếng Việt"), ("en", "English")]
 TIME_ZONE = "Europe/Prague"
 USE_I18N = True
 USE_TZ = True

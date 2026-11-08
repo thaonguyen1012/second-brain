@@ -5,6 +5,7 @@ from django.core.validators import URLValidator
 from rest_framework import serializers
 
 from brief.models import NewsItem
+from core.i18n import tr
 from growth.models import Skill
 from growth.serializers import FitSkillSerializer
 from inbox.models import InboxEntry
@@ -152,7 +153,7 @@ class OpportunityWriteSerializer(serializers.Serializer[object]):
         user: User = self.context["user"]
         skills = list(Skill.objects.filter(user=user, pk__in=value))
         if len(skills) != len(set(value)):
-            raise serializers.ValidationError("Không phải kỹ năng của bạn.")
+            raise serializers.ValidationError(tr("Không phải kỹ năng của bạn."))
         return skills
 
 
@@ -181,7 +182,7 @@ class _Owned(serializers.Serializer[object]):
         user: User = self.context["user"]
         row = model.objects.filter(pk=pk, user=user).first()
         if row is None:
-            raise serializers.ValidationError("Không có trong dữ liệu của bạn.")
+            raise serializers.ValidationError(tr("Không có trong dữ liệu của bạn."))
         return row
 
 
@@ -213,13 +214,15 @@ class EvidenceCreateSerializer(_Owned):
         needed = LINKS.get(kind)
         for field in LINKS.values():
             if field != needed and attrs.get(field) is not None:
-                raise serializers.ValidationError(f"Bằng chứng loại {kind} không gắn {field}.")
+                raise serializers.ValidationError(
+                    tr("Bằng chứng loại {kind} không gắn {field}.", kind=kind, field=field)
+                )
         if needed and attrs.get(needed) is None:
-            raise serializers.ValidationError(f"Bằng chứng loại {kind} cần chọn mục được gắn.")
+            raise serializers.ValidationError(tr("Bằng chứng loại {kind} cần chọn mục được gắn.", kind=kind))
         if needed is None and not attrs.get("title"):
-            raise serializers.ValidationError({"title": f"Bằng chứng loại {kind} cần tiêu đề."})
+            raise serializers.ValidationError({"title": tr("Bằng chứng loại {kind} cần tiêu đề.", kind=kind)})
         if kind == Evidence.Kind.LINK and not attrs.get("url"):
-            raise serializers.ValidationError({"url": "Bằng chứng dạng link cần URL."})
+            raise serializers.ValidationError({"url": tr("Bằng chứng dạng link cần URL.")})
         return attrs
 
 

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, SearchX } from 'lucide-react';
 import { api, type ApiItem } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
+import { useT } from '@/lib/i18n/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiErrorState, EmptyState } from '../api-state';
 import { ItemDetail } from './item-detail';
@@ -11,30 +12,35 @@ import { ItemDetail } from './item-detail';
 // /thu-vien/item/?id=N: the Item page in full (DECISIONS 9.8 point 1). A query parameter instead of a dynamic segment
 // keeps the route a static shell (like /co-hoi/?id=N); the Item and its notes load in the browser.
 
-const back = (
-  <Link
-    href="/thu-vien/"
-    className="inline-flex items-center gap-1 self-start text-sm text-muted-foreground hover:text-foreground"
-  >
-    <ArrowLeft className="size-4" aria-hidden />
-    Thư viện
-  </Link>
-);
+function Back() {
+  const t = useT();
+  return (
+    <Link
+      href="/thu-vien/"
+      className="inline-flex items-center gap-1 self-start text-sm text-muted-foreground hover:text-foreground"
+    >
+      <ArrowLeft className="size-4" aria-hidden />
+      {t('Thư viện')}
+    </Link>
+  );
+}
 
 function NotFound() {
+  const t = useT();
   return (
     <EmptyState
       icon={<SearchX aria-hidden />}
-      title="Không tìm thấy item này"
-      description="Có thể item đã bị xóa hoặc link đã cũ. Quay lại Thư viện để chọn item khác."
+      title={t('Không tìm thấy item này')}
+      description={t('Có thể item đã bị xóa hoặc link đã cũ. Quay lại Thư viện để chọn item khác.')}
     />
   );
 }
 
 /** Loading at the page's geometry (D27): picture, title, the property rows, the notes heading. */
 function ItemSkeleton() {
+  const t = useT();
   return (
-    <div className="flex flex-col gap-8" role="status" aria-busy="true" aria-label="Đang tải">
+    <div className="flex flex-col gap-8" role="status" aria-busy="true" aria-label={t('Đang tải')}>
       <div className="flex flex-col gap-4" aria-hidden>
         <div className="flex items-start gap-4">
           <Skeleton className="aspect-[2/3] w-16 rounded-md sm:w-20" />
@@ -80,7 +86,7 @@ export function ItemPageView() {
     // (DESIGN.md §3: notes get air)
     <div className="flex w-full flex-col px-4 pt-10 pb-12 sm:px-8 md:pt-12">
       <div className="flex w-full max-w-3xl flex-col gap-4">
-        {back}
+        <Back />
         {id === null ? <NotFound /> : <ItemPageBody key={id} id={id} />}
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { tVi } from './i18n/translate';
 import {
   MAX_IMAGE_BYTES,
   SHRINK_TO,
@@ -16,15 +17,15 @@ import {
 describe('imageFileProblem', () => {
   it('accepts the four formats the server decodes, up to 10 MB', () => {
     for (const type of ['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
-      expect(imageFileProblem({ type, size: 1000 })).toBeNull();
-    expect(imageFileProblem({ type: 'image/png', size: MAX_IMAGE_BYTES })).toBeNull();
+      expect(imageFileProblem({ type, size: 1000 }, tVi)).toBeNull();
+    expect(imageFileProblem({ type: 'image/png', size: MAX_IMAGE_BYTES }, tVi)).toBeNull();
   });
 
   it('says why before any upload', () => {
-    expect(imageFileProblem({ type: 'image/svg+xml', size: 10 })).toBe('Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.');
-    expect(imageFileProblem({ type: 'image/heic', size: 10 })).toBe('Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.');
-    expect(imageFileProblem({ type: '', size: 10 })).toBe('Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.');
-    expect(imageFileProblem({ type: 'image/jpeg', size: MAX_IMAGE_BYTES + 1 })).toBe('Ảnh lớn hơn 10 MB.');
+    expect(imageFileProblem({ type: 'image/svg+xml', size: 10 }, tVi)).toBe('Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.');
+    expect(imageFileProblem({ type: 'image/heic', size: 10 }, tVi)).toBe('Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.');
+    expect(imageFileProblem({ type: '', size: 10 }, tVi)).toBe('Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.');
+    expect(imageFileProblem({ type: 'image/jpeg', size: MAX_IMAGE_BYTES + 1 }, tVi)).toBe('Ảnh lớn hơn 10 MB.');
   });
 });
 

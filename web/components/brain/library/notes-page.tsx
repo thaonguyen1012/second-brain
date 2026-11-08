@@ -1,7 +1,8 @@
 'use client';
 import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useRoutePathname } from '@/lib/use-app-pathname';
 import { NotebookPen, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { api, type ApiItem, type Page } from '@/lib/api/client';
 import { notesApi, type ApiNote } from '@/lib/api/library';
@@ -14,6 +15,8 @@ import { noteTitle } from '@/lib/library-labels';
 import { useListView } from '@/lib/use-board-view';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
@@ -46,8 +49,8 @@ const PAGE = 50;
 
 /** Starting text of the empty page's two template buttons (the outputs DECISIONS 4.2 asks of a book and a film). */
 const templates = [
-  { label: 'Ghi chú sách', markdown: noteTemplates.book },
-  { label: 'Nhận xét phim', markdown: noteTemplates.film },
+  { label: msg('Ghi chú sách'), markdown: noteTemplates.book },
+  { label: msg('Nhận xét phim'), markdown: noteTemplates.film },
 ] as const;
 
 type NotesView = 'list' | 'items';
@@ -69,9 +72,9 @@ function useDebounced<T>(value: T, ms: number): T {
 type ItemTitle = (id: number) => { title: string; type?: string };
 
 /** A row's title: the note's own, except one that only repeats its group's Item (then its first line). */
-function rowTitle(note: ApiNote, groupTitle: string | null): string {
-  if (groupTitle === null || noteHeading(note.title, groupTitle) !== null) return noteTitle(note);
-  return noteTitle({ ...note, title: '' });
+function rowTitle(note: ApiNote, groupTitle: string | null, t: T): string {
+  if (groupTitle === null || noteHeading(note.title, groupTitle) !== null) return noteTitle(note, t);
+  return noteTitle({ ...note, title: '' }, t);
 }
 
 /**
@@ -89,19 +92,20 @@ function NoteMeta({
   onNavigate?: () => void;
   group?: number | null;
 }) {
-  const date = noteDateLabel(note);
+  const t = useT();
+  const date = noteDateLabel(note, t);
   const items = note.items.filter((id) => id !== group);
   if (group !== undefined && items.length === 0) return <>{date}</>;
   return (
     <>
       {items.length === 0
-        ? 'Chưa liên kết item'
+        ? t('Chưa liên kết item')
         : items.map((itemId, i) => (
             <Fragment key={itemId}>
               {i > 0 && ', '}
               <Link
                 href={`/thu-vien/ghi-chu/?item=${itemId}`}
-                title="Lọc ghi chú theo item này"
+                title={t('Lọc ghi chú theo item này')}
                 className="underline-offset-4 hover:text-foreground hover:underline"
                 onClick={onNavigate}
               >
@@ -136,6 +140,7 @@ function NoteRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   const id = onSelect ? `note-${note.id}` : undefined;
   useEffect(() => {
     if (selected && id) document.getElementById(id)?.scrollIntoView({ block: 'nearest' });
@@ -159,7 +164,7 @@ function NoteRow({
           className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onOpen}
         >
-          {rowTitle(note, group === undefined || group === null ? null : itemTitle(group).title)}
+          {rowTitle(note, group === undefined || group === null ? null : itemTitle(group).title, t)}
         </button>
         <p className="truncate text-xs text-muted-foreground">
           <NoteMeta note={note} itemTitle={itemTitle} group={group} />
@@ -168,13 +173,13 @@ function NoteRow({
       <RowMenu>
         <MenuItem onClick={onEdit}>
           <Pencil aria-hidden />
-          Sửa
+          {t('Sửa')}
           <MenuShortcut>E</MenuShortcut>
         </MenuItem>
         <MenuSeparator />
         <MenuItem variant="destructive" onClick={onDelete}>
           <Trash2 aria-hidden />
-          Xóa
+          {t('Xóa')}
           <MenuShortcut>Del</MenuShortcut>
         </MenuItem>
       </RowMenu>
@@ -208,10 +213,13 @@ function NoteGroupSection({
   onEdit: (note: ApiNote) => void;
   onDelete: (note: ApiNote) => void;
 }) {
+  const t = useT();
   const headingId = useId();
   const loose = group.item === null;
   const type = item?.type ?? label.type;
-  const meta = [!loose && type && itemTypeLabel(type), `${group.notes.length} ghi chú`].filter(Boolean).join(' · ');
+  const meta = [!loose && type && t(itemTypeLabel(type)), t('{n} ghi chú', { n: group.notes.length })]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <section aria-labelledby={headingId} className="overflow-hidden rounded-xl border bg-card">
       <div className={cn('flex min-h-14 items-center gap-3 py-2', withPicture ? 'pe-3' : 'px-3')}>
@@ -219,7 +227,7 @@ function NoteGroupSection({
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 id={headingId} className="truncate text-sm font-semibold">
             {loose ? (
-              'Ghi chú rời'
+              t('Ghi chú rời')
             ) : (
               <Link
                 href={`/thu-vien/item/?id=${group.item}`}
@@ -249,14 +257,14 @@ function NoteGroupSection({
   );
 }
 
-const keyHelp: [string, string][] = [
-  ['J / K', 'xuống / lên'],
-  ['Enter', 'đọc ghi chú'],
-  ['E', 'sửa'],
-  ['Del', 'xóa'],
-  ['N', 'ghi chú mới'],
-  ['/', 'tìm'],
-  ['?', 'bảng phím tắt này'],
+const keyHelp: [string, Msg][] = [
+  ['J / K', msg('xuống / lên')],
+  ['Enter', msg('đọc ghi chú')],
+  ['E', msg('sửa')],
+  ['Del', msg('xóa')],
+  ['N', msg('ghi chú mới')],
+  ['/', msg('tìm')],
+  ['?', msg('bảng phím tắt này')],
 ];
 
 /**
@@ -265,9 +273,10 @@ const keyHelp: [string, string][] = [
  * under its Items.
  */
 export function NotesPage() {
+  const t = useT();
   const params = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = useRoutePathname();
   const itemFilter = Number(params.get('item')) || null;
   // Before useOpenFromUrl: a remembered "Theo item" waits until ?id= is gone (useBoardView's rule).
   const [view, setView] = useListView<'items'>('alex-brain:notes-view', 'items', 'id');
@@ -349,8 +358,8 @@ export function NotesPage() {
       const e = toApiError(err);
       setNotice(
         e.status === 404 && e.reachable
-          ? `Không tìm thấy ghi chú #${id}, có thể đã bị xóa.`
-          : describeApiError(e).title,
+          ? t('Không tìm thấy ghi chú #{id}, có thể đã bị xóa.', { id })
+          : describeApiError(e, t).title,
       );
     }),
   );
@@ -410,16 +419,16 @@ export function NotesPage() {
     try {
       await appendNextPage(notes);
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     } finally {
       setLoadingMore(false);
     }
   };
 
   const itemsStatus = index.error
-    ? `Không tải được danh sách item: ${describeApiError(index.error).title}`
+    ? t('Không tải được danh sách item: {error}', { error: describeApiError(index.error, t).title })
     : index.loading && index.items.length === 0
-      ? 'Đang tải danh sách item…'
+      ? t('Đang tải danh sách item…')
       : undefined;
   // The raw query counts too, so the search field never vanishes while its debounce runs
   const filtered = !!q || !!query.trim() || !!itemFilter;
@@ -448,9 +457,9 @@ export function NotesPage() {
       {toolbar !== 'hide' && (
         <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
           <Tabs value={view} onValueChange={(v) => setView(v as NotesView)}>
-            <TabsList aria-label="Kiểu xem">
-              <TabsTab value="list">Danh sách</TabsTab>
-              <TabsTab value="items">Theo item</TabsTab>
+            <TabsList aria-label={t('Kiểu xem')}>
+              <TabsTab value="list">{t('Danh sách')}</TabsTab>
+              <TabsTab value="items">{t('Theo item')}</TabsTab>
             </TabsList>
           </Tabs>
           <div className="relative min-w-0 max-sm:order-last max-sm:basis-full sm:w-72">
@@ -462,8 +471,8 @@ export function NotesPage() {
               ref={searchRef}
               data-local-search
               type="search"
-              aria-label="Tìm trong ghi chú"
-              placeholder="Tìm trong tiêu đề và nội dung…"
+              aria-label={t('Tìm trong ghi chú')}
+              placeholder={t('Tìm trong tiêu đề và nội dung…')}
               className="[&_input]:ps-8"
               value={query}
               onChange={(e) => {
@@ -487,7 +496,7 @@ export function NotesPage() {
                       variant="outline"
                       size="sm"
                       className="min-w-0"
-                      aria-label={`Item: ${filterItem.title}, bỏ lọc`}
+                      aria-label={t('Item: {title}, bỏ lọc', { title: filterItem.title })}
                       onClick={clearItemFilter}
                     />
                   }
@@ -495,25 +504,35 @@ export function NotesPage() {
                   Item: <span className="max-w-60 truncate">{filterItem.title}</span>
                   <X aria-hidden />
                 </TooltipTrigger>
-                <TooltipPopup>Bỏ lọc theo item</TooltipPopup>
+                <TooltipPopup>{t('Bỏ lọc theo item')}</TooltipPopup>
               </Tooltip>
             </div>
           )}
           <div className="ms-auto flex items-center gap-2">
-            {view === 'list' && shown.length > 0 && <KeyLegend keys={keyHelp} title="Phím tắt của Ghi chú" />}
+            {view === 'list' && shown.length > 0 && (
+              <KeyLegend
+                keys={keyHelp.map(([k, label]): [string, string] => [k, t(label)])}
+                title={t('Phím tắt của Ghi chú')}
+              />
+            )}
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Button size="icon" className="sm:hidden" aria-label="Ghi chú mới" onClick={() => openEditor(null)} />
+                  <Button
+                    size="icon"
+                    className="sm:hidden"
+                    aria-label={t('Ghi chú mới')}
+                    onClick={() => openEditor(null)}
+                  />
                 }
               >
                 <Plus aria-hidden />
               </TooltipTrigger>
-              <TooltipPopup>Ghi chú mới</TooltipPopup>
+              <TooltipPopup>{t('Ghi chú mới')}</TooltipPopup>
             </Tooltip>
             <Button className="max-sm:hidden" onClick={() => openEditor(null)}>
               <Plus aria-hidden />
-              Ghi chú mới
+              {t('Ghi chú mới')}
             </Button>
           </div>
         </div>
@@ -531,22 +550,27 @@ export function NotesPage() {
       ) : firstLoad ? (
         <RowsSkeleton />
       ) : shown.length === 0 && filtered ? (
-        <FilteredEmpty onClear={clearFilters}>Không có ghi chú nào khớp bộ lọc.</FilteredEmpty>
+        <FilteredEmpty onClear={clearFilters}>{t('Không có ghi chú nào khớp bộ lọc.')}</FilteredEmpty>
       ) : shown.length === 0 ? (
         <EmptyPanel
           glyph={NotebookPen}
-          title="Chưa có ghi chú nào"
-          text="Ghi lại điều đáng nhớ và gắn vào item."
+          title={t('Chưa có ghi chú nào')}
+          text={t('Ghi lại điều đáng nhớ và gắn vào item.')}
           action={
             <Button onClick={() => openEditor(null)}>
               <Plus aria-hidden />
-              Viết ghi chú
+              {t('Viết ghi chú')}
             </Button>
           }
-          quick={templates.map((t) => (
-            <Button key={t.label} variant="outline" size="sm" onClick={() => openEditor(null, t.markdown)}>
+          quick={templates.map((tpl) => (
+            <Button
+              key={tpl.label.msgid}
+              variant="outline"
+              size="sm"
+              onClick={() => openEditor(null, t(tpl.markdown))}
+            >
               <Plus aria-hidden />
-              {t.label}
+              {t(tpl.label)}
             </Button>
           ))}
           guide={notes.error ? undefined : 'library'}
@@ -558,7 +582,7 @@ export function NotesPage() {
               key={g.item ?? 'loose'}
               group={g}
               item={g.item === null ? undefined : index.byId.get(g.item)}
-              label={g.item === null ? { title: 'Ghi chú rời' } : itemTitle(g.item)}
+              label={g.item === null ? { title: t('Ghi chú rời') } : itemTitle(g.item)}
               withPicture={groupPictures}
               itemTitle={itemTitle}
               onOpen={openReader}
@@ -568,7 +592,7 @@ export function NotesPage() {
           ))}
         </div>
       ) : (
-        <ul aria-label="Ghi chú" className="divide-y overflow-hidden rounded-xl border bg-card">
+        <ul aria-label={t('Ghi chú', null, 'nav')} className="divide-y overflow-hidden rounded-xl border bg-card">
           {shown.map((n, i) => (
             <NoteRow
               key={n.id}
@@ -585,16 +609,16 @@ export function NotesPage() {
       )}
       {view === 'list' && notes.data?.next && !notes.loading && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-          Tải thêm
+          {t('Tải thêm')}
         </Button>
       )}
 
       <Sheet open={readOpen} onOpenChange={setReadOpen}>
-        <SheetPopup className="max-w-2xl" closeProps={{ 'aria-label': 'Đóng' }}>
+        <SheetPopup className="max-w-2xl" closeProps={{ 'aria-label': t('Đóng') }}>
           {reading && (
             <>
               <SheetHeader>
-                <SheetTitle className="pe-8 leading-tight">{noteTitle(reading)}</SheetTitle>
+                <SheetTitle className="pe-8 leading-tight">{noteTitle(reading, t)}</SheetTitle>
                 <SheetDescription render={<div />} className="text-xs">
                   <NoteMeta note={reading} itemTitle={itemTitle} onNavigate={() => setReadOpen(false)} />
                 </SheetDescription>
@@ -621,7 +645,7 @@ export function NotesPage() {
                   }}
                 >
                   <Pencil aria-hidden />
-                  Sửa
+                  {t('Sửa')}
                 </Button>
               </SheetFooter>
             </>
@@ -632,10 +656,12 @@ export function NotesPage() {
       <ConfirmDelete
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Xóa ghi chú?"
+        title={t('Xóa ghi chú?')}
         description={
           deleting
-            ? `"${noteTitle(deleting)}" bị xóa hẳn. Item liên kết vẫn giữ nguyên. Không hoàn tác được.`
+            ? t('"{title}" bị xóa hẳn. Item liên kết vẫn giữ nguyên. Không hoàn tác được.', {
+                title: noteTitle(deleting, t),
+              })
             : undefined
         }
         action={() => (deleting ? notesApi.delete(deleting.id) : Promise.resolve())}
@@ -643,7 +669,7 @@ export function NotesPage() {
           if (!deleting) return;
           const gone = deleting.id;
           notes.mutate((d) => d && { ...d, results: d.results.filter((n) => n.id !== gone) });
-          setNotice(`Đã xóa "${noteTitle(deleting)}"`);
+          setNotice(t('Đã xóa "{title}"', { title: noteTitle(deleting, t) }));
         }}
       />
 
@@ -659,7 +685,11 @@ export function NotesPage() {
           upsert(saved, created);
           setReading((r) => (r && r.id === saved.id ? saved : r));
           setDialogOpen(false);
-          setNotice(`${created ? 'Đã tạo' : 'Đã lưu'} "${noteTitle(saved)}"`);
+          setNotice(
+            created
+              ? t('Đã tạo "{title}"', { title: noteTitle(saved, t) })
+              : t('Đã lưu "{title}"', { title: noteTitle(saved, t) }),
+          );
           if (created) setCursor(0);
         }}
       />

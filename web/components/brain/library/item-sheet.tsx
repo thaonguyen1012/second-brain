@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useState, type ComponentProps } from 'react';
 import type { ApiItem } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/client';
 import { Sheet, SheetPanel, SheetPopup } from '@/components/ui/sheet';
 import { DiscardChanges } from './discard-changes';
 import { ItemDetail } from './item-detail';
@@ -35,6 +36,7 @@ export function ItemSheet({
   onOtherCounts?: (items: readonly number[], delta: number) => void;
   onDeleted: (item: ApiItem) => void;
 }) {
+  const t = useT();
   const dirty = useRef(false);
   const composer = useRef<HTMLTextAreaElement | null>(null);
   const title = useRef<HTMLHeadingElement | null>(null);
@@ -59,7 +61,7 @@ export function ItemSheet({
     <Sheet open={open} onOpenChange={change}>
       <SheetPopup
         className="max-w-2xl"
-        closeProps={{ 'aria-label': 'Đóng' }}
+        closeProps={{ 'aria-label': t('Đóng') }}
         finalFocus={finalFocus}
         initialFocus={compose ? composer : title}
       >

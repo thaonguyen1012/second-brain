@@ -1,6 +1,10 @@
-// Vietnamese UI strings for Fumadocs (single locale, no locale routing).
+// Fumadocs' own UI strings in Vietnamese (its default is English). The root layout passes them on Vietnamese pages
+// only (app/[lang]/layout.tsx); the app's own strings go through lib/i18n/ (README.md there).
+// i18n-ignore-file: this file is a translation itself
 export const viTranslations: Record<string, string> = {
   'Back to Home(404 not found page)': 'Về trang chủ',
+  'Choose a language(language switcher)': 'Chọn ngôn ngữ',
+  'Choose a language(language switcher)(aria-label)': 'Chọn ngôn ngữ',
   'Close Search(search dialog)(aria-label)': 'Đóng tìm kiếm',
   'Close Sidebar(aria-label)': 'Đóng thanh bên',
   'Close Sidebar(sidebar)(aria-label)': 'Đóng thanh bên',

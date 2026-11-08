@@ -1,9 +1,11 @@
 'use client';
 import Link from 'next/link';
-import type { ComponentProps } from 'react';
+import { useMemo, type ComponentProps } from 'react';
 import { Square, SquareCheckBig } from 'lucide-react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useT } from '@/lib/i18n/client';
+import type { T } from '@/lib/i18n/translate';
 import { markdownHref, noteImageSrc } from '@/lib/item-notes';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +29,8 @@ function rest<T extends { node?: unknown }>(props: T): Omit<T, 'node'> {
 // A note sits under the page's h1, the "Ghi chú" h2 and its own h3 title, so its headings start at h4.
 const heading = 'font-heading font-semibold tracking-tight text-foreground';
 
-const components: Components = {
+/** The renderers of each markdown element, with the few words they add in the UI language. */
+const makeComponents = (t: T): Components => ({
   h1: (p: Props<'h1'>) => <h4 {...rest(p)} className={cn(heading, 'mt-5 mb-2 text-[15px] leading-5 first:mt-0')} />,
   h2: (p: Props<'h2'>) => <h4 {...rest(p)} className={cn(heading, 'mt-5 mb-2 text-[15px] leading-5 first:mt-0')} />,
   h3: (p: Props<'h3'>) => <h5 {...rest(p)} className={cn(heading, 'mt-4 mb-1.5 text-sm first:mt-0')} />,
@@ -65,7 +68,7 @@ const components: Components = {
         ) : (
           <Square aria-hidden className="absolute start-0 top-[0.3em] size-4 text-muted-foreground" />
         )}
-        <span className="sr-only">{checked ? 'Đã xong: ' : 'Chưa xong: '}</span>
+        <span className="sr-only">{checked ? t('Đã xong: ') : t('Chưa xong: ')}</span>
       </>
     ) : null,
   blockquote: (p: Props<'blockquote'>) => (
@@ -102,7 +105,7 @@ const components: Components = {
       // eslint-disable-next-line @next/next/no-img-element -- a local file of the app; next/image adds nothing here
       return <img src={local} alt={alt ?? ''} loading="lazy" decoding="async" className="my-2 max-h-96 max-w-full rounded-md" />;
     const link = markdownHref(url);
-    const label = `Ảnh${alt ? `: ${alt}` : ''}`;
+    const label = alt ? t('Ảnh: {alt}', { alt }) : t('Ảnh');
     // never loaded from another domain: the reader opens it on purpose
     return link.kind === 'external' ? (
       <a href={link.href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 decoration-primary/40">
@@ -136,12 +139,14 @@ const components: Components = {
     <th {...rest(p)} className="border-b px-2 py-1.5 text-start text-xs font-medium text-muted-foreground" />
   ),
   td: (p: Props<'td'>) => <td {...rest(p)} className="border-b px-2 py-1.5 align-top" />,
-};
+});
 
 const plugins = [remarkGfm];
 
 /** Renders `markdown` (GFM: tables, task lists, strikethrough, autolinks) as the note's reading text. */
 export default function NoteMarkdown({ markdown, className }: { markdown: string; className?: string }) {
+  const t = useT();
+  const components = useMemo(() => makeComponents(t), [t]);
   return (
     <div className={cn('min-w-0 text-sm leading-relaxed break-words text-foreground', className)}>
       <Markdown remarkPlugins={plugins} components={components}>

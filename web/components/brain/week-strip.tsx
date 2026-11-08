@@ -1,9 +1,12 @@
+'use client';
 import type { ApiDayWork } from '@/lib/api/weeks';
+import { useT } from '@/lib/i18n/client';
+import { msg, type T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 
 // The week strip (DESIGN.md §9a, D31): seven cells Monday to Sunday, the data blue for a day with a lesson done,
 // its lighter step for a day with other activity only, muted for nothing, dashed for days still to come and the
-// bw-red ring for today. A missed day is a muted cell, never red; no streak counts. Pure and server-safe.
+// bw-red ring for today. A missed day is a muted cell, never red; no streak counts. No data, no effects.
 // Forced colours (Windows contrast themes) drop fills and rings, so the cells draw their levels in system colours
 // instead: an outlined empty cell, a half-filled one, a full one, and a Highlight outline for today.
 
@@ -25,10 +28,18 @@ export function dayLevel(d: ApiDayWork): DayLevel {
   return other > 0 ? 1 : 0;
 }
 
-/** Weekday labels by `getUTCDay()` (Sunday first). */
-const WEEKDAY = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'] as const;
+/** Weekday labels by `getUTCDay()` (Sunday first): the same words as week-utils' weekdayShort. */
+const WEEKDAY = [
+  msg('CN', 'weekday'),
+  msg('T2', 'weekday'),
+  msg('T3', 'weekday'),
+  msg('T4', 'weekday'),
+  msg('T5', 'weekday'),
+  msg('T6', 'weekday'),
+  msg('T7', 'weekday'),
+];
 
-const weekday = (date: string) => WEEKDAY[new Date(`${date.slice(0, 10)}T00:00:00Z`).getUTCDay()];
+const weekday = (date: string, t: T) => t(WEEKDAY[new Date(`${date.slice(0, 10)}T00:00:00Z`).getUTCDay()]);
 
 const levelFill: Record<DayLevel, string> = {
   0: 'bg-muted forced-colors:border-[CanvasText] forced-colors:bg-[Canvas]',
@@ -41,12 +52,13 @@ const forcedCell = 'forced-color-adjust-none forced-colors:border';
 
 /** The two filled levels, named next to the strip (Tuần, Hôm nay); the swatches match the cells. */
 export function StripLegend({ className }: { className?: string }) {
+  const t = useT();
   return (
     <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground', className)}>
       {([2, 1] as const).map((level) => (
         <span key={level} className="flex items-center gap-1.5">
           <span className={cn('size-2.5 rounded-[3px]', forcedCell, levelFill[level])} aria-hidden />
-          {level === 2 ? 'Có bài học' : 'Chỉ việc khác'}
+          {level === 2 ? t('Có bài học') : t('Chỉ việc khác')}
         </span>
       ))}
     </div>
@@ -78,18 +90,21 @@ export function WeekStrip({
   label?: string;
   className?: string;
 }) {
+  const t = useT();
   const s = sizes[size];
   const past = days.filter((d) => d.date <= today);
-  const named = (level: DayLevel) => past.filter((d) => d.level === level).map((d) => weekday(d.date));
+  const named = (level: DayLevel) => past.filter((d) => d.level === level).map((d) => weekday(d.date, t));
   const lessons = named(2);
   const other = named(1);
   const now = days.find((d) => d.date === today);
   const summary =
     label ??
     [
-      `${lessons.length}/${days.length} ngày có bài học${lessons.length ? ` (${lessons.join(', ')})` : ''}`,
-      other.length ? `, ${other.length} ngày chỉ có việc khác (${other.join(', ')})` : '',
-      now ? `. Hôm nay, ${now.label}` : '',
+      lessons.length
+        ? t('{done}/{total} ngày có bài học ({days})', { done: lessons.length, total: days.length, days: lessons.join(', ') })
+        : t('{done}/{total} ngày có bài học', { done: 0, total: days.length }),
+      other.length ? t(', {n} ngày chỉ có việc khác ({days})', { n: other.length, days: other.join(', ') }) : '',
+      now ? t('. Hôm nay, {day}', { day: now.label }) : '',
     ].join('');
   return (
     <div role="img" aria-label={summary} className={cn('flex', s.strip, className)}>
@@ -99,10 +114,10 @@ export function WeekStrip({
         return (
           <div
             key={d.date}
-            title={isToday ? `Hôm nay, ${d.label}` : d.label}
+            title={isToday ? t('Hôm nay, {day}', { day: d.label }) : d.label}
             className={cn('flex flex-col items-center gap-1', s.col)}
           >
-            <span className="text-xs text-muted-foreground">{weekday(d.date)}</span>
+            <span className="text-xs text-muted-foreground">{weekday(d.date, t)}</span>
             <span
               className={cn(
                 s.cell,

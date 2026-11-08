@@ -3,20 +3,22 @@ from django.contrib.auth.models import User
 from django.core.validators import URLValidator
 from rest_framework import serializers
 
+from core.i18n import tr, tr_lazy
 from growth.models import Freshness
 from library.models import Item, Note
 from library.services import image_url, normalize_tags
 from opportunities.models import Evidence, Opportunity
 
 MAX_MARKDOWN = 200_000
-IMAGE_UNREADABLE = "Không đọc được ảnh. Chỉ nhận JPEG, PNG, GIF hoặc WebP."
-NO_HTTP_LINK = "Item chưa có link http(s)."
-_PICK_IMAGE = "Chọn một ảnh để tải lên."
+# Translated when shown, in the language of the request (core.i18n)
+IMAGE_UNREADABLE = tr_lazy("Không đọc được ảnh. Chỉ nhận JPEG, PNG, GIF hoặc WebP.")
+NO_HTTP_LINK = tr_lazy("Item chưa có link http(s).")
+_PICK_IMAGE = tr_lazy("Chọn một ảnh để tải lên.")
 
 
 def image_too_large() -> str:
     """'Ảnh lớn hơn 10 MB.' with the configured limit (ITEM_IMAGE_MAX_BYTES)."""
-    return f"Ảnh lớn hơn {round(settings.ITEM_IMAGE_MAX_BYTES / 2**20, 1):g} MB."
+    return tr("Ảnh lớn hơn {mb} MB.", mb=f"{round(settings.ITEM_IMAGE_MAX_BYTES / 2**20, 1):g}")
 
 
 class ItemSerializer(serializers.ModelSerializer[Item]):
@@ -125,7 +127,7 @@ class NoteWriteSerializer(serializers.Serializer[object]):
         user: User = self.context["user"]
         items = list(Item.objects.filter(user=user, pk__in=value))
         if len(items) != len(set(value)):
-            raise serializers.ValidationError("Không phải item của bạn.")
+            raise serializers.ValidationError(tr("Không phải item của bạn."))
         return items
 
 

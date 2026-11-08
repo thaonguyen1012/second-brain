@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { MenuItem, MenuSeparator } from '@/components/ui/menu';
 import { Sheet, SheetDescription, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
 import { ApiErrorState } from '../api-state';
 import { StatusBadge } from '../brain-card';
@@ -30,6 +31,7 @@ function EvidenceRow({
   skillId: number;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -62,14 +64,14 @@ function EvidenceRow({
               className="inline-flex items-center gap-1 underline-offset-4 hover:underline"
             >
               {evidence.title}
-              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" aria-label="(mở tab mới)" />
+              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" aria-label={t('(mở tab mới)')} />
             </a>
           ) : (
             evidence.title
           )}
         </p>
         <p className="text-xs text-muted-foreground">
-          {evidenceKindLabel[evidence.kind]} · {formatDay(evidence.date)}
+          {t(evidenceKindLabel[evidence.kind])} · {formatDay(evidence.date)}
         </p>
         {evidence.note && (
           <p className="pt-0.5 text-[13px] leading-relaxed whitespace-pre-line text-muted-foreground">
@@ -77,22 +79,24 @@ function EvidenceRow({
           </p>
         )}
       </div>
-      <RowMenu label={`Thao tác với "${evidence.title}"`}>
+      <RowMenu label={t('Thao tác với "{title}"', { title: evidence.title })}>
         <MenuItem onClick={() => setEditing(true)}>
           <Pencil aria-hidden />
-          Sửa
+          {t('Sửa')}
         </MenuItem>
         <MenuSeparator />
         <MenuItem variant="destructive" onClick={() => setDeleting(true)}>
           <Trash2 aria-hidden />
-          Xóa
+          {t('Xóa')}
         </MenuItem>
       </RowMenu>
       <ConfirmDelete
         open={deleting}
         onOpenChange={setDeleting}
-        title="Xóa bằng chứng?"
-        description={`"${evidence.title}" bị gỡ khỏi kỹ năng này; độ mới được tính lại. Không hoàn tác được.`}
+        title={t('Xóa bằng chứng?')}
+        description={t('"{title}" bị gỡ khỏi kỹ năng này; độ mới được tính lại. Không hoàn tác được.', {
+          title: evidence.title,
+        })}
         action={() => growthApi.deleteSkillEvidence(skillId, evidence.id)}
         onDeleted={onChanged}
       />
@@ -111,6 +115,7 @@ function SkillBody({
   onEdit: (skill: ApiSkillDetail) => void;
   onChanged: () => void;
 }) {
+  const t = useT();
   const detail = useApi(`skill:${id}:${version}`, () => growthApi.getSkill(id));
   const [adding, setAdding] = useState(false);
   const skill = detail.data;
@@ -128,7 +133,7 @@ function SkillBody({
     );
   if (!skill)
     return (
-      <SheetPanel className="flex flex-col gap-3" aria-busy="true" aria-label="Đang tải">
+      <SheetPanel className="flex flex-col gap-3" aria-busy="true" aria-label={t('Đang tải')}>
         <Skeleton className="h-8 w-1/2 rounded-lg" />
         <Skeleton className="h-8 w-48 rounded-lg" />
         <Skeleton className="h-36 rounded-xl" />
@@ -145,12 +150,12 @@ function SkillBody({
         </div>
         <SheetDescription render={<div />} className="flex flex-col gap-2">
           <span className="flex flex-wrap items-center gap-1.5">
-            <StatusBadge tone={f.tone}>{f.label}</StatusBadge>
-            <span>{f.hint}</span>
+            <StatusBadge tone={f.tone}>{t(f.label)}</StatusBadge>
+            <span>{t(f.hint)}</span>
           </span>
           {skill.aliases.length > 0 && (
             <span className="flex flex-wrap items-center gap-1.5">
-              <span>Tên khác:</span>
+              <span>{t('Tên khác:')}</span>
               {skill.aliases.map((a) => (
                 <Badge key={a} variant="outline">
                   {a}
@@ -165,12 +170,12 @@ function SkillBody({
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => onEdit(skill)}>
             <Pencil aria-hidden />
-            Sửa tên, tên khác, ghi chú
+            {t('Sửa tên, tên khác, ghi chú')}
           </Button>
           {!adding && (
             <Button size="sm" onClick={() => setAdding(true)}>
               <Plus aria-hidden />
-              Thêm bằng chứng
+              {t('Thêm bằng chứng')}
             </Button>
           )}
         </div>
@@ -187,12 +192,13 @@ function SkillBody({
         )}
         <section className="flex flex-col gap-2" aria-labelledby="evidence-title">
           <h3 id="evidence-title" className="text-sm font-semibold">
-            Bằng chứng
+            {t('Bằng chứng')}
           </h3>
           {skill.evidence.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Chưa có bằng chứng: thứ đã ship, case study, bài viết công khai. Không có bằng chứng thì kỹ năng ở trạng
-              thái mờ.
+              {t(
+                'Chưa có bằng chứng: thứ đã ship, case study, bài viết công khai. Không có bằng chứng thì kỹ năng ở trạng thái mờ.',
+              )}
             </p>
           ) : (
             <ul className="flex flex-col divide-y rounded-xl border">
@@ -222,9 +228,10 @@ export function SkillSheet({
   onEdit: (skill: ApiSkillDetail) => void;
   onChanged: () => void;
 }) {
+  const t = useT();
   return (
     <Sheet open={skillId !== null} onOpenChange={(open) => !open && onClose()}>
-      <SheetPopup closeProps={{ 'aria-label': 'Đóng' }} className="max-w-lg">
+      <SheetPopup closeProps={{ 'aria-label': t('Đóng') }} className="max-w-lg">
         {skillId !== null && <SkillBody key={skillId} id={skillId} version={version} onEdit={onEdit} onChanged={onChanged} />}
       </SheetPopup>
     </Sheet>

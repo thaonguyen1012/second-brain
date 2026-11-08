@@ -1,4 +1,6 @@
+'use client';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
 
 // Ghost content for a first-run empty panel (DESIGN.md §9a): what the list or chart will look like, in muted fills
 // at its real geometry. Static (no shimmer: it is not loading) and hidden from screen readers; only the caption is
@@ -22,6 +24,7 @@ export function GhostRows({
   caption?: string;
   className?: string;
 }) {
+  const t = useT();
   return (
     <div className={cn('flex w-full flex-col gap-2', className)}>
       {variant === 'chart' ? (
@@ -35,7 +38,7 @@ export function GhostRows({
         </div>
       ) : (
         <div aria-hidden className="flex flex-col">
-          <span className="text-xs text-muted-foreground">Ví dụ</span>
+          <span className="text-xs text-muted-foreground">{t('Ví dụ')}</span>
           {rowOpacity.map((o) => (
             <div key={o} className={cn('flex h-14 items-center gap-3 px-3', o)}>
               <span className="size-4 shrink-0 rounded-full bg-foreground/10" />

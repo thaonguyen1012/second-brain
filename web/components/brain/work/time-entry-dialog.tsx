@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useT } from '@/lib/i18n/client';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { fieldErrors, formatMinutes, parseDuration, todayPrague } from './format';
@@ -50,6 +51,7 @@ function EntryForm({
   defaultProject: number | null;
   onSaved: (e: ApiTimeEntry, created: boolean) => void;
 }) {
+  const t = useT();
   const [form, setForm] = useState<Form>(() => ({
     project: String(entry?.project ?? defaultProject ?? projects[0]?.id ?? ''),
     date: entry?.date ?? todayPrague(),
@@ -69,19 +71,19 @@ function EntryForm({
   if (entry && !projectChoices.some((c) => c.value === String(entry.project)))
     projectChoices.unshift({ value: String(entry.project), label: entry.projectTitle });
   const objectiveChoices = [
-    { value: 'none', label: 'Không gắn mục tiêu' },
+    { value: 'none', label: t('Không gắn mục tiêu') },
     ...objectives
       .filter((o) => o.status !== 'dropped' || o.id === entry?.objective)
       .map((o) => ({ value: String(o.id), label: o.title })),
   ];
   if (entry?.objective && !objectiveChoices.some((c) => c.value === String(entry.objective)))
-    objectiveChoices.push({ value: String(entry.objective), label: 'Mục tiêu của tuần khác (giữ nguyên)' });
+    objectiveChoices.push({ value: String(entry.objective), label: t('Mục tiêu của tuần khác (giữ nguyên)') });
 
   const submit = async () => {
-    if (!form.project) return setError('Chọn một dự án.');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return setError('Chọn ngày.');
+    if (!form.project) return setError(t('Chọn một dự án.'));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return setError(t('Chọn ngày.'));
     if (!running && minutes === null)
-      return setError('Thời gian từ 1 phút đến 24 giờ, ví dụ 90, 1:30, 1h30 hoặc 1,5h.');
+      return setError(t('Thời gian từ 1 phút đến 24 giờ, ví dụ 90, 1:30, 1h30 hoặc 1,5h.'));
     const common = {
       project: Number(form.project),
       date: form.date,
@@ -98,7 +100,7 @@ function EntryForm({
       onSaved(saved, !entry);
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
+      setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
       setBusy(false);
     }
   };
@@ -113,10 +115,10 @@ function EntryForm({
     >
       <DialogPanel className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="entry-project">Dự án</Label>
+          <Label htmlFor="entry-project">{t('Dự án')}</Label>
           <ChoiceSelect
             id="entry-project"
-            label="Dự án"
+            label={t('Dự án')}
             value={form.project}
             onChange={(v) => set('project', v)}
             choices={projectChoices}
@@ -124,15 +126,15 @@ function EntryForm({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="entry-date">Ngày</Label>
+            <Label htmlFor="entry-date">{t('Ngày')}</Label>
             <Input id="entry-date" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="entry-duration">Thời gian</Label>
+            <Label htmlFor="entry-duration">{t('Thời gian')}</Label>
             <Input
               id="entry-duration"
               value={running ? '' : form.duration}
-              placeholder={running ? 'Đang chạy' : '1:30'}
+              placeholder={running ? t('Đang chạy') : '1:30'}
               disabled={running}
               aria-describedby="entry-duration-hint"
               onChange={(e) => set('duration', e.target.value)}
@@ -140,15 +142,15 @@ function EntryForm({
             />
             <p id="entry-duration-hint" className="text-xs text-muted-foreground" aria-live="polite">
               {running
-                ? 'Dừng bộ bấm giờ trước khi sửa thời gian.'
+                ? t('Dừng bộ bấm giờ trước khi sửa thời gian.')
                 : minutes !== null
-                  ? `= ${formatMinutes(minutes)}`
-                  : 'Phút (90), giờ:phút (1:30), 1h30 hoặc 1,5h.'}
+                  ? `= ${formatMinutes(minutes, t)}`
+                  : t('Phút (90), giờ:phút (1:30), 1h30 hoặc 1,5h.')}
             </p>
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="entry-note">Ghi chú</Label>
+          <Label htmlFor="entry-note">{t('Ghi chú')}</Label>
           <Input
             id="entry-note"
             value={form.note}
@@ -158,10 +160,10 @@ function EntryForm({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="entry-objective">Mục tiêu tuần này (không bắt buộc)</Label>
+          <Label htmlFor="entry-objective">{t('Mục tiêu tuần này (không bắt buộc)')}</Label>
           <ChoiceSelect
             id="entry-objective"
-            label="Mục tiêu tuần này"
+            label={t('Mục tiêu tuần này')}
             value={form.objective}
             onChange={(v) => set('objective', v)}
             choices={objectiveChoices}
@@ -169,7 +171,7 @@ function EntryForm({
         </div>
         <Label className="flex items-center gap-2 font-normal">
           <Checkbox checked={form.billable} onCheckedChange={(v) => set('billable', v)} />
-          Tính tiền cho khách
+          {t('Tính tiền cho khách')}
         </Label>
         {error && (
           <p className="whitespace-pre-line text-sm text-destructive-foreground" role="alert">
@@ -178,10 +180,10 @@ function EntryForm({
         )}
       </DialogPanel>
       <DialogFooter>
-        <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
+        <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>
         <Button type="submit" disabled={busy || projectChoices.length === 0}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          {entry ? 'Lưu' : 'Thêm giờ'}
+          {entry ? t('Lưu') : t('Thêm giờ')}
         </Button>
       </DialogFooter>
     </form>
@@ -209,17 +211,18 @@ export function TimeEntryDialog({
   onOpenChange: (open: boolean) => void;
   onSaved: (e: ApiTimeEntry, created: boolean) => void;
 }) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
         <DialogHeader>
-          <DialogTitle>{entry ? 'Sửa giờ' : 'Nhập giờ'}</DialogTitle>
+          <DialogTitle>{entry ? t('Sửa giờ') : t('Nhập giờ')}</DialogTitle>
         </DialogHeader>
         {open &&
           (projects.length === 0 && !entry ? (
             <DialogPanel>
               <p className="text-sm text-muted-foreground" role={loadError ? 'alert' : undefined}>
-                {loadError ?? 'Chưa có dự án. Thêm một dự án ở trang Dự án trước.'}
+                {loadError ?? t('Chưa có dự án. Thêm một dự án ở trang Dự án trước.')}
               </p>
             </DialogPanel>
           ) : (

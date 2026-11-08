@@ -15,17 +15,21 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
+import type { T } from '@/lib/i18n/translate';
 import { describeApiError } from './api-state';
 
 /**
- * Vietnamese text for a failed DELETE: 409 carries the backend's own message (a project with time entries),
- * anything else falls back to the shared API error titles.
+ * The text for a failed DELETE: 409 carries the backend's own message (a project with time entries), anything else
+ * falls back to the shared API error titles.
  */
-function deleteError(err: unknown): string {
+function deleteError(err: unknown, t: T): string {
   const e = toApiError(err);
-  if (e.reachable && e.status === 409) return firstFieldError(e.body) ?? 'Chưa xóa được: mục này còn dữ liệu liên kết.';
-  if (e.reachable && e.status !== 401 && e.status !== 403) return `Chưa xóa được (lỗi ${e.status}). Thử lại sau.`;
-  return describeApiError(e).title;
+  if (e.reachable && e.status === 409)
+    return firstFieldError(e.body, t) ?? t('Chưa xóa được: mục này còn dữ liệu liên kết.');
+  if (e.reachable && e.status !== 401 && e.status !== 403)
+    return t('Chưa xóa được (lỗi {status}). Thử lại sau.', { status: e.status });
+  return describeApiError(e, t).title;
 }
 
 /**
@@ -73,7 +77,7 @@ function focusFirstConnected(candidates: HTMLElement[]) {
 export function ConfirmDelete({
   title,
   description,
-  confirmLabel = 'Xóa',
+  confirmLabel,
   action,
   onDeleted,
   open,
@@ -92,6 +96,7 @@ export function ConfirmDelete({
   trigger?: ReactElement;
   focusNeighbour?: boolean;
 }) {
+  const t = useT();
   const [innerOpen, setInnerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,7 +137,7 @@ export function ConfirmDelete({
     } catch (err) {
       const e = toApiError(err);
       if (!(e.reachable && e.status === 404)) {
-        setError(deleteError(err));
+        setError(deleteError(err, t));
         setBusy(false);
         return;
       }
@@ -153,7 +158,7 @@ export function ConfirmDelete({
       <AlertDialogPopup onKeyDown={(e) => e.stopPropagation()}>
         <AlertDialogHeader>
           <AlertDialogTitle>{shown.title}</AlertDialogTitle>
-          <AlertDialogDescription>{shown.description ?? 'Không hoàn tác được.'}</AlertDialogDescription>
+          <AlertDialogDescription>{shown.description ?? t('Không hoàn tác được.')}</AlertDialogDescription>
           {error && (
             <p className="whitespace-pre-line text-sm text-destructive-foreground" role="alert">
               {error}
@@ -161,10 +166,10 @@ export function ConfirmDelete({
           )}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogClose render={<Button variant="ghost" type="button" disabled={busy} />}>Hủy</AlertDialogClose>
+          <AlertDialogClose render={<Button variant="ghost" type="button" disabled={busy} />}>{t('Hủy')}</AlertDialogClose>
           <Button variant="destructive" type="button" onClick={() => void confirm()} disabled={busy}>
             {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
-            {confirmLabel}
+            {confirmLabel ?? t('Xóa')}
           </Button>
         </AlertDialogFooter>
       </AlertDialogPopup>
@@ -174,15 +179,16 @@ export function ConfirmDelete({
 
 /** The small "Xóa" button used on cards and rows; pass it as `trigger` or wire its onClick. */
 export function DeleteButton({
-  label = 'Xóa',
+  label,
   className,
   children,
   ...props
 }: { label?: string } & React.ComponentProps<typeof Button>) {
+  const t = useT();
   return (
     <Button size="xs" variant="ghost" className={cn('text-destructive-foreground', className)} {...props}>
       <Trash2 aria-hidden />
-      {children ?? label}
+      {children ?? label ?? t('Xóa')}
     </Button>
   );
 }

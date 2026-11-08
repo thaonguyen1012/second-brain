@@ -6,6 +6,7 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 import { api, type ApiInboxEntry } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
 import { MAX_TEXT, MAX_URL, draftFromParams, httpUrl } from '@/lib/capture';
+import { useT } from '@/lib/i18n/client';
 import { describeApiError } from '@/components/brain/api-state';
 import { refreshInboxCount } from '@/components/brain/inbox-count';
 import { SaveKeys } from '@/components/brain/save-keys';
@@ -19,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
  * Uses useSearchParams: the page renders it inside a Suspense boundary.
  */
 export function CaptureForm() {
+  const t = useT();
   const params = useSearchParams();
   const [draft] = useState(() => draftFromParams(new URLSearchParams(params.toString())));
   const [url, setUrl] = useState(draft.url);
@@ -28,7 +30,7 @@ export function CaptureForm() {
   const [saved, setSaved] = useState<ApiInboxEntry | null>(null);
 
   const href = httpUrl(url);
-  const urlError = url.trim() && !href ? 'Chỉ nhận link http hoặc https.' : null;
+  const urlError = url.trim() && !href ? t('Chỉ nhận link http hoặc https.') : null;
   const canSave = !busy && !urlError && !!(href || note.trim());
 
   const submit = async () => {
@@ -41,8 +43,8 @@ export function CaptureForm() {
       void refreshInboxCount();
     } catch (err) {
       const e = toApiError(err);
-      const d = describeApiError(e);
-      setError(e.status === 400 ? 'Link không hợp lệ (chỉ nhận http và https).' : `${d.title}. ${d.text}`);
+      const d = describeApiError(e, t);
+      setError(e.status === 400 ? t('Link không hợp lệ (chỉ nhận http và https).') : `${d.title}. ${d.text}`);
     } finally {
       setBusy(false);
     }
@@ -66,7 +68,7 @@ export function CaptureForm() {
     >
       {/* Field wires label, aria-invalid and the error's aria-describedby (Space UI Field on Base UI) */}
       <Field invalid={!!urlError} className="gap-1.5">
-        <FieldLabel>Link</FieldLabel>
+        <FieldLabel>{t('Link')}</FieldLabel>
         <Input
           id="capture-url"
           type="url"
@@ -78,24 +80,24 @@ export function CaptureForm() {
         />
         {urlError && (
           <FieldError match className="text-destructive-foreground">
-            {urlError} Sửa link hoặc xóa trống để chỉ lưu ghi chú.
+            {urlError} {t('Sửa link hoặc xóa trống để chỉ lưu ghi chú.')}
           </FieldError>
         )}
       </Field>
       <Field className="gap-1.5">
-        <FieldLabel>Ghi chú kèm theo</FieldLabel>
+        <FieldLabel>{t('Ghi chú kèm theo')}</FieldLabel>
         <Textarea
           id="capture-note"
           value={note}
           maxLength={MAX_TEXT}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Tiêu đề, đoạn trích hoặc vì sao lưu…"
+          placeholder={t('Tiêu đề, đoạn trích hoặc vì sao lưu…')}
           rows={4}
         />
       </Field>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
-          <SaveKeys /> để lưu
+          <SaveKeys /> {t('để lưu')}
         </span>
         {error && (
           <span className="text-xs text-destructive-foreground" role="alert">
@@ -105,7 +107,7 @@ export function CaptureForm() {
         {/* Focused on open: Enter saves the capture as it came from the bookmarklet or the share sheet. */}
         <Button type="submit" className="ms-auto max-sm:w-full" disabled={!canSave} autoFocus>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          Lưu vào inbox
+          {t('Lưu vào inbox')}
         </Button>
       </div>
     </form>
@@ -113,6 +115,7 @@ export function CaptureForm() {
 }
 
 function Saved({ entry }: { entry: ApiInboxEntry }) {
+  const t = useT();
   const [closeFailed, setCloseFailed] = useState(false);
   // The bookmarklet falls back to this same tab when its popup is blocked: no opener, the article one step back.
   // Closing would lose the article (and browsers refuse it anyway), so go back to it instead. The popup and the
@@ -137,19 +140,21 @@ function Saved({ entry }: { entry: ApiInboxEntry }) {
     >
       <p className="flex items-center gap-2 text-sm font-medium">
         <CheckCircle2 className="size-4 text-success-foreground" aria-hidden />
-        Đã lưu vào inbox
+        {t('Đã lưu vào inbox')}
       </p>
       <p className="truncate text-sm text-muted-foreground">{entry.url || (entry.text ?? '').split('\n')[0]}</p>
       <div className="flex flex-wrap gap-2">
         <Button type="button" onClick={close} autoFocus>
-          {sameTab ? 'Quay lại trang trước' : 'Đóng'}
+          {sameTab ? t('Quay lại trang trước') : t('Đóng')}
         </Button>
         <Button variant="outline" render={<Link href={`/inbox/?status=inbox&id=${entry.id}`} />}>
-          Mở Inbox
+          {t('Mở Inbox')}
         </Button>
       </div>
       {closeFailed && (
-        <p className="text-xs text-muted-foreground">Trình duyệt không cho trang này tự đóng. Hãy đóng tab bằng tay.</p>
+        <p className="text-xs text-muted-foreground">
+          {t('Trình duyệt không cho trang này tự đóng. Hãy đóng tab bằng tay.')}
+        </p>
       )}
     </div>
   );

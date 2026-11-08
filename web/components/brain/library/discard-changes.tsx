@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { useT } from '@/lib/i18n/client';
 
 /**
  * "Bỏ các thay đổi chưa lưu?" before unsaved note text goes (closing the Item Sheet, leaving the page, Hủy on an edited
@@ -24,17 +25,18 @@ export function DiscardChanges({
   onKeep: () => void;
   onDiscard: () => void;
 }) {
+  const t = useT();
   return (
     <AlertDialog open={open} onOpenChange={(o) => !o && onKeep()}>
       <AlertDialogPopup>
         <AlertDialogHeader>
-          <AlertDialogTitle>Bỏ các thay đổi chưa lưu?</AlertDialogTitle>
-          <AlertDialogDescription>Nội dung vừa gõ trong ghi chú sẽ mất.</AlertDialogDescription>
+          <AlertDialogTitle>{t('Bỏ các thay đổi chưa lưu?')}</AlertDialogTitle>
+          <AlertDialogDescription>{t('Nội dung vừa gõ trong ghi chú sẽ mất.')}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogClose render={<Button variant="ghost" type="button" />}>Tiếp tục sửa</AlertDialogClose>
+          <AlertDialogClose render={<Button variant="ghost" type="button" />}>{t('Tiếp tục sửa')}</AlertDialogClose>
           <Button variant="destructive" type="button" onClick={onDiscard}>
-            Bỏ thay đổi
+            {t('Bỏ thay đổi')}
           </Button>
         </AlertDialogFooter>
       </AlertDialogPopup>

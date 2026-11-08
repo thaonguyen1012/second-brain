@@ -7,30 +7,36 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useT } from '@/lib/i18n/client';
+import type { T } from '@/lib/i18n/translate';
 
-/** Vietnamese explanation of a failed API call: backend absent, not signed in, or another error. */
-export function describeApiError(error: ApiError): { title: string; text: string } {
+/** What went wrong with an API call, in the page's language: backend absent, not signed in, or another error. */
+export function describeApiError(error: ApiError, t: T): { title: string; text: string } {
   if (!error.reachable)
     return {
-      title: 'Chưa kết nối được máy chủ',
-      text: 'Phần này cần backend Django (qua nginx hoặc scripts/dev-proxy.mjs). Sổ tay vẫn đọc được bình thường.',
+      title: t('Chưa kết nối được máy chủ'),
+      text: t('Phần này cần backend Django (qua nginx hoặc scripts/dev-proxy.mjs). Sổ tay vẫn đọc được bình thường.'),
     };
   if (error.status === 401 || error.status === 403)
     return {
-      title: 'Chưa đăng nhập',
-      text: 'Phiên đăng nhập đã hết hoặc chưa có. Mở lại trang qua Cloudflare Access rồi thử lại.',
+      title: t('Chưa đăng nhập'),
+      text: t('Phiên đăng nhập đã hết hoặc chưa có. Mở lại trang qua Cloudflare Access rồi thử lại.'),
     };
-  return { title: 'Không tải được dữ liệu', text: `Máy chủ trả lỗi ${error.status}. Thử lại sau ít phút.` };
+  return {
+    title: t('Không tải được dữ liệu'),
+    text: t('Máy chủ trả lỗi {status}. Thử lại sau ít phút.', { status: error.status }),
+  };
 }
 
 /** Notice for a deep link (Cmd+K result) whose record could not be loaded: `notFound` for a 404. */
-export function openError(err: unknown, notFound: string): string {
+export function openError(err: unknown, notFound: string, t: T): string {
   const e = toApiError(err);
-  return e.reachable && e.status === 404 ? notFound : describeApiError(e).title;
+  return e.reachable && e.status === 404 ? notFound : describeApiError(e, t).title;
 }
 
 export function ApiErrorState({ error, onRetry }: { error: ApiError; onRetry?: () => void }) {
-  const { title, text } = describeApiError(error);
+  const t = useT();
+  const { title, text } = describeApiError(error, t);
   const Icon = error.reachable ? CircleAlert : PlugZap;
   return (
     <Alert variant={error.reachable ? 'error' : 'warning'}>
@@ -40,7 +46,7 @@ export function ApiErrorState({ error, onRetry }: { error: ApiError; onRetry?: (
       {onRetry && (
         <AlertAction>
           <Button size="sm" variant="outline" onClick={onRetry}>
-            Thử lại
+            {t('Thử lại')}
           </Button>
         </AlertAction>
       )}
@@ -57,16 +63,17 @@ export function ApiStaleAlert({
 }: {
   result: { error: ApiError | undefined; data: unknown; reload: () => void };
 }) {
+  const t = useT();
   if (!result.error || result.data === undefined) return null;
-  const { title } = describeApiError(result.error);
+  const { title } = describeApiError(result.error, t);
   return (
     <Alert variant="warning">
       <CircleAlert aria-hidden />
       <AlertTitle>{title}</AlertTitle>
-      <AlertDescription>Đang hiện dữ liệu tải lần trước, có thể đã cũ.</AlertDescription>
+      <AlertDescription>{t('Đang hiện dữ liệu tải lần trước, có thể đã cũ.')}</AlertDescription>
       <AlertAction>
         <Button size="sm" variant="outline" onClick={result.reload}>
-          Thử lại
+          {t('Thử lại')}
         </Button>
       </AlertAction>
     </Alert>
@@ -102,8 +109,9 @@ export function EmptyState({
  * excerpt lines and the action row, so the list does not jump when the cards arrive (DESIGN.md D27).
  */
 export function LoadingCards({ count = 3 }: { count?: number }) {
+  const t = useT();
   return (
-    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Đang tải">
+    <div className="flex flex-col gap-3" aria-busy="true" aria-label={t('Đang tải')}>
       {Array.from({ length: count }, (_, i) => (
         <div key={i} aria-hidden className="flex flex-col gap-3 rounded-xl border bg-card p-4">
           <div className="flex flex-col gap-1.5">

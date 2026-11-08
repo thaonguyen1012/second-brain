@@ -6,6 +6,7 @@ import { itemTypeLabel } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
 
 const MAX_OPTIONS = 6;
 
@@ -45,6 +46,7 @@ export function ItemPicker({
   /** Loading or error text for the Item list, shown under the box. */
   status?: string;
 }) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const listId = useId();
@@ -64,19 +66,19 @@ export function ItemPicker({
   return (
     <div className="flex flex-col gap-2">
       {value.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5" aria-label="Item đã liên kết">
+        <ul className="flex flex-wrap gap-1.5" aria-label={t('Item đã liên kết')}>
           {value.map((itemId) => {
             const item = byId.get(itemId);
             const title = item?.title ?? `Item #${itemId}`;
             return (
               <li key={itemId}>
                 <Badge variant="outline" size="lg" className="gap-1 pe-0.5">
-                  {item && <span className="text-muted-foreground">{itemTypeLabel(item.type)} ·</span>}
+                  {item && <span className="text-muted-foreground">{t(itemTypeLabel(item.type))} ·</span>}
                   <span className="max-w-60 truncate">{title}</span>
                   <button
                     type="button"
                     className="inline-flex size-5 items-center justify-center rounded-sm hover:bg-accent"
-                    aria-label={`Bỏ liên kết ${title}`}
+                    aria-label={t('Bỏ liên kết {title}', { title })}
                     onClick={() => onChange(value.filter((v) => v !== itemId))}
                   >
                     <X className="size-3.5" aria-hidden />
@@ -97,7 +99,7 @@ export function ItemPicker({
           aria-activedescendant={options.length > 0 ? `${listId}-${current}` : undefined}
           autoComplete="off"
           value={query}
-          placeholder="Gõ tên sách, phim, khóa học…"
+          placeholder={t('Gõ tên sách, phim, khóa học…')}
           onChange={(e) => {
             setQuery(e.target.value);
             setActive(0);
@@ -125,7 +127,7 @@ export function ItemPicker({
           <ul
             id={listId}
             role="listbox"
-            aria-label="Item khớp"
+            aria-label={t('Item khớp')}
             className="absolute inset-x-0 top-full z-10 mt-1 flex flex-col overflow-hidden rounded-xl border bg-popover p-1 shadow-popover"
           >
             {options.map((item, i) => (
@@ -142,7 +144,7 @@ export function ItemPicker({
                 onMouseEnter={() => setActive(i)}
                 onClick={() => add(item)}
               >
-                <span className="shrink-0 text-xs text-muted-foreground">{itemTypeLabel(item.type)}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{t(itemTypeLabel(item.type))}</span>
                 <span className="truncate">{item.title}</span>
               </li>
             ))}
@@ -150,7 +152,9 @@ export function ItemPicker({
         )}
       </div>
       {query.trim() && options.length === 0 && !status && (
-        <p className="text-xs text-muted-foreground">Không có item nào khớp (hoặc đã liên kết hết).</p>
+        <p className="text-xs text-muted-foreground">
+          {t('Không có item nào khớp (hoặc đã liên kết hết).')}
+        </p>
       )}
       {status && <p className="text-xs text-muted-foreground">{status}</p>}
     </div>

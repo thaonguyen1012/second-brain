@@ -1,5 +1,8 @@
 'use client';
 import { Inbox, Loader2 } from 'lucide-react';
+import { useT } from '@/lib/i18n/client';
+import { guides } from '@/lib/i18n/en/guides';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { Stage } from '../kit/stage';
 import type { Act } from '../kit/act';
 import { Bar, Text } from '../kit/window';
@@ -50,9 +53,9 @@ const LINK = 'https://nextjs.org/learn';
 
 /** The entries already in the inbox: one line of title and one of meta each (a domain, or a date for a note) */
 const ENTRIES = {
-  a: { title: 'CSS Grid: hướng dẫn đầy đủ', meta: 'developer.mozilla.org', thumb: true },
-  b: { title: 'Mẹo tập trung khi làm việc', meta: 'dev.to', thumb: true },
-  c: { title: 'Ý tưởng: email nhắc trả tiền', meta: null, thumb: false },
+  a: { title: msg('CSS Grid: hướng dẫn đầy đủ'), meta: 'developer.mozilla.org', thumb: true },
+  b: { title: msg('Mẹo tập trung khi làm việc'), meta: 'dev.to', thumb: true },
+  c: { title: msg('Ý tưởng: email nhắc trả tiền'), meta: null, thumb: false },
 } as const;
 
 const initial: S = {
@@ -75,11 +78,12 @@ const initial: S = {
 const POSTER: S = { ...initial, n: true, ready: true, sel: 'n' };
 
 /** The key help row of the Inbox page (inbox-page.tsx keyHelp), the keys this guide presses. */
-const LEGEND: { id: Exclude<Legend, null>; key: string; label: string }[] = [
-  { id: 'jk', key: 'J / K', label: 'xuống / lên' },
-  { id: 'l', key: 'L', label: 'đọc sau' },
-  { id: 'a', key: 'A', label: 'lưu trữ' },
-  { id: 'o', key: 'O', label: 'bằng chứng cho cơ hội' },
+const LEGEND: { id: Exclude<Legend, null>; key: string; label: Msg }[] = [
+  { id: 'jk', key: 'J / K', label: msg('xuống / lên') },
+  { id: 'l', key: 'L', label: msg('đọc sau') },
+  { id: 'a', key: 'A', label: msg('lưu trữ') },
+  // The guide's own, shorter English: the row has a fixed width (lib/i18n/en/guides.ts)
+  { id: 'o', key: 'O', label: msg('bằng chứng cho cơ hội', 'guide') },
 ];
 
 async function script(a: Act<S>) {
@@ -159,6 +163,7 @@ function Badge({ tone, children }: { tone: 'warning' | 'secondary' | 'outline'; 
 
 /** The captured entry, as a BrainCard: header panel (thumbnail, badges, title, meta), then its tags. */
 function CapturedCard({ s }: { s: S }) {
+  const t = useT(guides);
   return (
     <article className="ib-card" data-selected={s.sel === 'n' || undefined}>
       <div className="ib-panel">
@@ -173,11 +178,11 @@ function CapturedCard({ s }: { s: S }) {
             <Badge tone="warning">Inbox</Badge>
             <Swap id={s.ready ? 'ready' : 'busy'} className="ib-swap">
               {s.ready ? (
-                <Badge tone="outline">→ Bằng chứng cho cơ hội</Badge>
+                <Badge tone="outline">→ {t('Bằng chứng cho cơ hội')}</Badge>
               ) : (
                 <Badge tone="secondary">
                   <Loader2 className="ib-spin" size={12} strokeWidth={2} aria-hidden />
-                  Đang xử lý
+                  {t('Đang xử lý')}
                 </Badge>
               )}
             </Swap>
@@ -191,7 +196,7 @@ function CapturedCard({ s }: { s: S }) {
       <Collapse open={s.ready}>
         <div className="ib-tags">
           <Badge tone="outline">#nextjs</Badge>
-          <Badge tone="outline">#hoc-lap-trinh</Badge>
+          <Badge tone="outline">{t('#hoc-lap-trinh')}</Badge>
         </div>
       </Collapse>
     </article>
@@ -200,12 +205,13 @@ function CapturedCard({ s }: { s: S }) {
 
 /** An entry already in the inbox: thumbnail (a link's) and date are placeholders, the title and domain real. */
 function EntryCard({ entry, selected }: { entry: (typeof ENTRIES)[keyof typeof ENTRIES]; selected: boolean }) {
+  const t = useT(guides);
   return (
     <article className="ib-card" data-selected={selected || undefined}>
       <div className="ib-panel ib-panel--entry">
         {entry.thumb && <Bar w={44} h={44} r={12} tone={3} className="ib-fthumb" />}
         <div className="ib-head">
-          <span className="ib-title ib-title--entry">{entry.title}</span>
+          <span className="ib-title ib-title--entry">{t(entry.title)}</span>
           {entry.meta ? (
             <span className="ib-meta">{entry.meta}</span>
           ) : (
@@ -217,15 +223,15 @@ function EntryCard({ entry, selected }: { entry: (typeof ENTRIES)[keyof typeof E
   );
 }
 
-const LABEL =
-  'Hình minh họa cách dùng Inbox: dán một link vào ô Thu thập nhanh rồi nhấn Cmd+Enter; thẻ mới hiện ảnh thu nhỏ, ' +
-  'tag do AI gợi ý và nơi nên chuyển tới. Nhấn Esc để rời ô nhập, rồi dùng phím: J và K để xuống và lên, L để đọc sau, A để lưu trữ, ' +
-  'O để gắn làm bằng chứng cho một cơ hội, cho tới khi inbox về 0.';
+const LABEL = msg(
+  'Hình minh họa cách dùng Inbox: dán một link vào ô Thu thập nhanh rồi nhấn Cmd+Enter; thẻ mới hiện ảnh thu nhỏ, tag do AI gợi ý và nơi nên chuyển tới. Nhấn Esc để rời ô nhập, rồi dùng phím: J và K để xuống và lên, L để đọc sau, A để lưu trữ, O để gắn làm bằng chứng cho một cơ hội, cho tới khi inbox về 0.',
+);
 
 export default function InboxTriageGuide({ className }: { className?: string }) {
   const look = useBrainLook();
+  const t = useT(guides);
   return (
-    <div role="img" aria-label={LABEL} className={className}>
+    <div role="img" aria-label={t(LABEL)} className={className}>
       <Stage
         width={600}
         height={452}
@@ -243,21 +249,21 @@ export default function InboxTriageGuide({ className }: { className?: string }) 
               <section className="ib-capture">
                 <Field
                   className="ib-field"
-                  label="Thu thập nhanh"
+                  label={t('Thu thập nhanh')}
                   value={s.typed}
                   focused={s.focused}
-                  placeholder="Dán một link hoặc ghi một ý tưởng…"
+                  placeholder={t('Dán một link hoặc ghi một ý tưởng…')}
                 />
                 <div className="ib-capture__foot">
                   <Text filler w={150} className="ib-hint-text">
-                    tag và tóm tắt được thêm sau, trong nền
+                    {t('tag và tóm tắt được thêm sau, trong nền')}
                   </Text>
                   <span
                     className="ib-button"
                     data-off={(!s.typed && !s.saving) || undefined}
                     data-pressed={s.saving || undefined}
                   >
-                    Lưu vào inbox
+                    {t('Lưu vào inbox')}
                   </span>
                 </div>
               </section>
@@ -266,7 +272,7 @@ export default function InboxTriageGuide({ className }: { className?: string }) 
                 {LEGEND.map((h) => (
                   <span key={h.id} className="ib-legend__item" data-on={s.legend === h.id || undefined}>
                     <span className="ib-kbd">{h.key}</span>
-                    <Text>{h.label}</Text>
+                    <Text>{t(h.label)}</Text>
                   </span>
                 ))}
               </div>
@@ -289,8 +295,8 @@ export default function InboxTriageGuide({ className }: { className?: string }) 
                     <span className="ib-empty__icon">
                       <Inbox size={18} strokeWidth={2} aria-hidden />
                     </span>
-                    <Text className="ib-empty__title">Inbox đã về 0</Text>
-                    <Text className="ib-empty__text">Mọi thứ đã được xử lý.</Text>
+                    <Text className="ib-empty__title">{t('Inbox đã về 0')}</Text>
+                    <Text className="ib-empty__text">{t('Mọi thứ đã được xử lý.')}</Text>
                   </div>
                 </Collapse>
               </div>
@@ -299,16 +305,16 @@ export default function InboxTriageGuide({ className }: { className?: string }) 
             {/* The opportunity picker is a modal dialog over a soft backdrop, as in opportunity-dialog.tsx */}
             <div className="ib-scrim" data-show={s.dialog || undefined} />
             <Popover show={s.dialog} origin="center" className="ib-dialog">
-              <Text className="ib-dialog__title">Bằng chứng cho cơ hội nào?</Text>
+              <Text className="ib-dialog__title">{t('Bằng chứng cho cơ hội nào?')}</Text>
               <Text className="ib-dialog__desc">Learn Next.js</Text>
               <div className="ib-dialog__list">
                 <div className="ib-opp">
                   <span className="ib-kbd" data-on={s.pick || undefined}>
                     1
                   </span>
-                  <Text className="ib-opp__title">Khóa học Next.js tiếng Việt</Text>
+                  <Text className="ib-opp__title">{t('Khóa học Next.js tiếng Việt')}</Text>
                   <span className="ib-button ib-button--xs" data-pressed={s.pick || undefined}>
-                    Ủng hộ
+                    {t('Ủng hộ')}
                   </span>
                 </div>
                 <div className="ib-opp">

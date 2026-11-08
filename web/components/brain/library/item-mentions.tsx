@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { getItemMentions, type ApiItemMentions } from '@/lib/api/library';
 import { useApi } from '@/lib/api/use-api';
 import { formatDay } from '@/lib/dates';
+import { useT } from '@/lib/i18n/client';
 import { decisionOf, opportunityHref } from '@/lib/labels';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,27 +37,30 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function ItemMentions({ itemId }: { itemId: number }) {
+  const t = useT();
   const headingId = useId();
   const res = useApi<ApiItemMentions>(`item-mentions:${itemId}`, () => getItemMentions(itemId));
   const data = res.data;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
       <h2 id={headingId} className="font-heading text-lg font-semibold tracking-tight">
-        Được nhắc tới ở
+        {t('Được nhắc tới ở')}
       </h2>
       {res.error && !data ? (
         <ApiErrorState error={res.error} onRetry={res.reload} />
       ) : !data ? (
-        <div className="flex flex-col gap-2" role="status" aria-busy="true" aria-label="Đang tải">
+        <div className="flex flex-col gap-2" role="status" aria-busy="true" aria-label={t('Đang tải')}>
           <Skeleton className="h-3.5 w-1/2 motion-reduce:animate-none" />
           <Skeleton className="h-3.5 w-1/3 motion-reduce:animate-none" />
         </div>
       ) : data.opportunities.length === 0 && data.skills.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Chưa có cơ hội hay kỹ năng nào dùng item này làm bằng chứng.</p>
+        <p className="text-sm text-muted-foreground">
+          {t('Chưa có cơ hội hay kỹ năng nào dùng item này làm bằng chứng.')}
+        </p>
       ) : (
         <>
           {data.opportunities.length > 0 && (
-            <Group label="Cơ hội">
+            <Group label={t('Cơ hội', null, 'nav')}>
               {data.opportunities.map((o) => {
                 const d = decisionOf(o.decision);
                 return (
@@ -69,20 +73,20 @@ export function ItemMentions({ itemId }: { itemId: number }) {
                         {o.evidence.map((e, i) => (
                           <span key={e.id}>
                             {i > 0 && '; '}
-                            <span className="font-medium text-foreground">{stanceOf(e.stance).label}</span>
+                            <span className="font-medium text-foreground">{t(stanceOf(e.stance).label)}</span>
                             {` · ${formatDay(e.date)}`}
                           </span>
                         ))}
                       </p>
                     </div>
-                    <StatusBadge tone={d.tone}>{d.label}</StatusBadge>
+                    <StatusBadge tone={d.tone}>{t(d.label)}</StatusBadge>
                   </li>
                 );
               })}
             </Group>
           )}
           {data.skills.length > 0 && (
-            <Group label="Kỹ năng">
+            <Group label={t('Kỹ năng')}>
               {data.skills.map((s) => {
                 const f = freshness[s.freshness];
                 return (
@@ -93,7 +97,10 @@ export function ItemMentions({ itemId }: { itemId: number }) {
                         {s.name}
                       </Link>
                       <p className="truncate text-xs text-muted-foreground">
-                        {f.label} · bằng chứng {s.evidence.map((e) => formatDay(e.date)).join(', ')}
+                        {t('{freshness} · bằng chứng {dates}', {
+                          freshness: t(f.label),
+                          dates: s.evidence.map((e) => formatDay(e.date)).join(', '),
+                        })}
                       </p>
                     </div>
                   </li>

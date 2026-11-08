@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useRoutePathname } from '@/lib/use-app-pathname';
 import { parseView, resolveView, viewSearch, type BoardView } from './status-board';
 
 interface ViewStore {
@@ -63,7 +64,7 @@ export function useListView<A extends string>(
   const store = storeFor(viewKey, alt);
   const params = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = useRoutePathname();
   const stored = useSyncExternalStore(store.subscribe, store.read, serverSnapshot);
   const fromUrl = params.get('view');
   const view = resolveView(fromUrl, stored, alt);

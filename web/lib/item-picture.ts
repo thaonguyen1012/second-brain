@@ -3,6 +3,7 @@
 // the inbox dialog do not ship it; the Sổ tay cover of a handbook course comes from lib/handbook-picture.ts. Unit-tested
 // in item-picture.test.ts; components/brain/library/item-image.tsx draws a picture.
 import type { Book } from '@/lib/books';
+import type { T } from '@/lib/i18n/translate';
 
 export type ImageShape = 'poster' | 'cover' | 'logo';
 
@@ -20,9 +21,9 @@ export const MAX_IMAGE_PIXELS = 20_000_000;
 export const SHRINK_TO = 1600;
 
 /** Why a picked file cannot be uploaded, said before any request; null when it can. */
-export function imageFileProblem(file: { type: string; size: number }): string | null {
-  if (!acceptedTypes.has(file.type)) return 'Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.';
-  if (file.size > MAX_IMAGE_BYTES) return 'Ảnh lớn hơn 10 MB.';
+export function imageFileProblem(file: { type: string; size: number }, t: T): string | null {
+  if (!acceptedTypes.has(file.type)) return t('Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.');
+  if (file.size > MAX_IMAGE_BYTES) return t('Ảnh lớn hơn 10 MB.');
   return null;
 }
 

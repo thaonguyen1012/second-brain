@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useT } from '@/lib/i18n/client';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { ItemImageField, KEEP_IMAGE, applyImageChange, imageErrorText, type ImageChange } from '../library/item-image-field';
@@ -64,6 +65,7 @@ function ProjectForm({
   initialStatus?: ApiItemStatus;
   onSaved: (p: ApiProject, created: boolean, imageError?: string) => void;
 }) {
+  const t = useT();
   const [form, setForm] = useState<Form>(() => fromProject(project, initialStatus));
   const [logo, setLogo] = useState<ImageChange>(KEEP_IMAGE);
   const [busy, setBusy] = useState(false);
@@ -71,14 +73,14 @@ function ProjectForm({
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = async () => {
-    if (!form.title.trim()) return setError('Cần có tên dự án.');
+    if (!form.title.trim()) return setError(t('Cần có tên dự án.'));
     const price = money(form.price);
     const hourlyRate = money(form.hourlyRate);
     if (price === undefined || hourlyRate === undefined)
-      return setError('Giá là số không âm, tối đa 2 chữ số thập phân (ví dụ 800 hoặc 1200,50).');
-    if (form.billing === 'hourly' && hourlyRate === null) return setError('Dự án theo giờ cần giá giờ.');
+      return setError(t('Giá là số không âm, tối đa 2 chữ số thập phân (ví dụ 800 hoặc 1200,50).'));
+    if (form.billing === 'hourly' && hourlyRate === null) return setError(t('Dự án theo giờ cần giá giờ.'));
     const currency = form.currency.trim().toUpperCase();
-    if (!/^[A-Z]{3}$/.test(currency)) return setError('Tiền tệ là mã 3 chữ cái, ví dụ CZK, EUR.');
+    if (!/^[A-Z]{3}$/.test(currency)) return setError(t('Tiền tệ là mã 3 chữ cái, ví dụ CZK, EUR.'));
     const body = {
       title: form.title.trim(),
       client: form.client.trim(),
@@ -89,7 +91,7 @@ function ProjectForm({
       currency,
       tags: form.tags
         .split(',')
-        .map((t) => t.trim())
+        .map((tag) => tag.trim())
         .filter(Boolean),
       source: form.source.trim(),
     };
@@ -104,12 +106,12 @@ function ProjectForm({
         const picture = await applyImageChange(saved.id, logo);
         if (picture) final = { ...saved, imageUrl: picture.imageUrl };
       } catch (err) {
-        imageError = imageErrorText(toApiError(err));
+        imageError = imageErrorText(toApiError(err), t);
       }
       onSaved(final, !project, imageError);
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
+      setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
       setBusy(false);
     }
   };
@@ -124,39 +126,39 @@ function ProjectForm({
     >
       <DialogPanel className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="project-title">Tên dự án</Label>
+          <Label htmlFor="project-title">{t('Tên dự án')}</Label>
           <Input id="project-title" value={form.title} onChange={(e) => set('title', e.target.value)} autoFocus />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="project-client">Khách</Label>
+            <Label htmlFor="project-client">{t('Khách')}</Label>
             <Input id="project-client" value={form.client} onChange={(e) => set('client', e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="project-status">Trạng thái</Label>
+            <Label htmlFor="project-status">{t('Trạng thái')}</Label>
             <ChoiceSelect
               id="project-status"
-              label="Trạng thái"
+              label={t('Trạng thái')}
               value={form.status}
               onChange={(v) => set('status', v)}
-              choices={itemStatuses}
+              choices={itemStatuses.map((s) => ({ value: s.value, label: t(s.label) }))}
             />
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-[1fr_1fr_6rem]">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="project-billing">Tính tiền</Label>
+            <Label htmlFor="project-billing">{t('Tính tiền', null, 'field')}</Label>
             <ChoiceSelect
               id="project-billing"
-              label="Tính tiền"
+              label={t('Tính tiền', null, 'field')}
               value={form.billing}
               onChange={(v) => set('billing', v)}
-              choices={billingChoices}
+              choices={billingChoices.map((c) => ({ value: c.value, label: t(c.label) }))}
             />
           </div>
           {form.billing === 'hourly' ? (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="project-rate">Giá giờ</Label>
+              <Label htmlFor="project-rate">{t('Giá giờ')}</Label>
               <Input
                 id="project-rate"
                 inputMode="decimal"
@@ -166,7 +168,7 @@ function ProjectForm({
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="project-price">Giá trọn gói</Label>
+              <Label htmlFor="project-price">{t('Giá trọn gói')}</Label>
               <Input
                 id="project-price"
                 inputMode="decimal"
@@ -176,7 +178,7 @@ function ProjectForm({
             </div>
           )}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="project-currency">Tiền tệ</Label>
+            <Label htmlFor="project-currency">{t('Tiền tệ')}</Label>
             <Input
               id="project-currency"
               value={form.currency}
@@ -187,11 +189,11 @@ function ProjectForm({
         </div>
         <p className="text-xs text-muted-foreground">
           {form.billing === 'hourly'
-            ? 'Đã kiếm = giờ tính tiền × giá giờ.'
-            : 'Đã kiếm = giá trọn gói. Giá giờ thực tế = giá chia cho mọi giờ đã làm, kể cả giờ không tính tiền.'}
+            ? t('Đã kiếm = giờ tính tiền × giá giờ.')
+            : t('Đã kiếm = giá trọn gói. Giá giờ thực tế = giá chia cho mọi giờ đã làm, kể cả giờ không tính tiền.')}
         </p>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="project-source">Nguồn (kênh tìm được khách, link)</Label>
+          <Label htmlFor="project-source">{t('Nguồn (kênh tìm được khách, link)')}</Label>
           <Input id="project-source" value={form.source} onChange={(e) => set('source', e.target.value)} />
         </div>
         <ItemImageField
@@ -203,7 +205,7 @@ function ProjectForm({
           disabled={busy}
         />
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="project-tags">Tag (cách nhau bằng dấu phẩy)</Label>
+          <Label htmlFor="project-tags">{t('Tag (cách nhau bằng dấu phẩy)')}</Label>
           <Input id="project-tags" value={form.tags} onChange={(e) => set('tags', e.target.value)} />
         </div>
         {error && (
@@ -213,10 +215,10 @@ function ProjectForm({
         )}
       </DialogPanel>
       <DialogFooter>
-        <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
+        <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          {project ? 'Lưu' : 'Thêm dự án'}
+          {project ? t('Lưu') : t('Thêm dự án')}
         </Button>
       </DialogFooter>
     </form>
@@ -244,12 +246,13 @@ export function ProjectDialog({
   /** Where the focus goes when the dialog closes (default: the control that opened it, if it still exists). */
   finalFocus?: ComponentProps<typeof DialogPopup>['finalFocus'];
 }) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }} finalFocus={finalFocus}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} finalFocus={finalFocus}>
         <DialogHeader>
-          <DialogTitle>{project ? 'Sửa dự án' : 'Thêm dự án'}</DialogTitle>
-          <DialogDescription>Khách, cách tính tiền và giá. Không làm hóa đơn.</DialogDescription>
+          <DialogTitle>{project ? t('Sửa dự án') : t('Thêm dự án')}</DialogTitle>
+          <DialogDescription>{t('Khách, cách tính tiền và giá. Không làm hóa đơn.')}</DialogDescription>
         </DialogHeader>
         {open && (
           <ProjectForm

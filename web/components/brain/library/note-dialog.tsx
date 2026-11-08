@@ -31,6 +31,8 @@ import { describeApiError } from '../api-state';
 import { ItemPicker, type ItemLabel } from './item-picker';
 import { MAX_MARKDOWN } from '@/lib/item-notes';
 import { fieldErrors as sharedFieldErrors } from '@/lib/labels';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { SaveKeys } from '../save-keys';
 
 
@@ -46,9 +48,9 @@ interface Form {
   items: number[];
 }
 
-const fieldNames: Record<string, string> = { title: 'Tiêu đề', markdown: 'Nội dung', items: 'Item' };
+const fieldNames: Record<string, Msg> = { title: msg('Tiêu đề'), markdown: msg('Nội dung'), items: msg('Item') };
 
-const fieldErrors = (body: unknown) => sharedFieldErrors(body, fieldNames);
+const fieldErrors = (body: unknown, t: T) => sharedFieldErrors(body, t, fieldNames);
 
 const sameForm = (a: Form, b: Form) =>
   a.title === b.title && a.markdown === b.markdown && a.items.join(',') === b.items.join(',');
@@ -70,6 +72,7 @@ function NoteForm({
   onDirty: (dirty: boolean) => void;
   onSaved: (note: ApiNote, created: boolean) => void;
 }) {
+  const t = useT();
   const [initial] = useState<Form>(() => ({
     title: note?.title ?? draft?.title ?? '',
     markdown: note?.markdown ?? draft?.markdown ?? '',
@@ -87,11 +90,11 @@ function NoteForm({
   const submit = async () => {
     if (busy) return;
     if (!form.markdown.trim()) {
-      setError('Ghi chú cần có nội dung.');
+      setError(t('Ghi chú cần có nội dung.'));
       return;
     }
     if (form.markdown.length > MAX_MARKDOWN) {
-      setError(`Nội dung dài quá ${MAX_MARKDOWN.toLocaleString('vi-VN')} ký tự.`);
+      setError(t('Nội dung dài quá {max} ký tự.', { max: t.num(MAX_MARKDOWN) }));
       return;
     }
     const body = { title: form.title.trim(), markdown: form.markdown, items: form.items };
@@ -103,7 +106,7 @@ function NoteForm({
       onSaved(saved, !note);
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
+      setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
       setBusy(false);
     }
   };
@@ -124,32 +127,32 @@ function NoteForm({
     >
       <DialogPanel className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="note-title">Tiêu đề (không bắt buộc)</Label>
+          <Label htmlFor="note-title">{t('Tiêu đề (không bắt buộc)')}</Label>
           <Input
             id="note-title"
             value={form.title}
             maxLength={300}
             onChange={(e) => set('title', e.target.value)}
-            placeholder="Để trống thì lấy dòng đầu của nội dung"
+            placeholder={t('Để trống thì lấy dòng đầu của nội dung')}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="note-markdown">Nội dung (markdown)</Label>
+          <Label htmlFor="note-markdown">{t('Nội dung (markdown)')}</Label>
           <Textarea
             id="note-markdown"
             value={form.markdown}
             onChange={(e) => set('markdown', e.target.value)}
-            placeholder={'# Ba ý chính\n\n- …'}
+            placeholder={t('# Ba ý chính\n\n- …')}
             style={{ minHeight: '14rem' }}
             spellCheck
             autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            Ghi chú là riêng tư, không gửi cho AI. Viết bằng markdown: ## tiêu đề, - danh sách, - [ ] việc cần làm.
+            {t('Ghi chú là riêng tư, không gửi cho AI. Viết bằng markdown: ## tiêu đề, - danh sách, - [ ] việc cần làm.')}
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="note-items">Liên kết tới item</Label>
+          <Label htmlFor="note-items">{t('Liên kết tới item')}</Label>
           <ItemPicker
             id="note-items"
             items={items}
@@ -167,12 +170,12 @@ function NoteForm({
       </DialogPanel>
       <DialogFooter>
         <span className="me-auto text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
-          <SaveKeys /> để lưu
+          <SaveKeys /> {t('để lưu')}
         </span>
-        <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
+        <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          {note ? 'Lưu' : 'Tạo ghi chú'}
+          {note ? t('Lưu') : t('Tạo ghi chú')}
         </Button>
       </DialogFooter>
     </form>
@@ -207,6 +210,7 @@ export function NoteDialog({
   /** Where the focus goes when the dialog closes (default: the control that opened it, if it still exists). */
   finalFocus?: ComponentProps<typeof DialogPopup>['finalFocus'];
 }) {
+  const t = useT();
   const dirty = useRef(false);
   const [askDiscard, setAskDiscard] = useState(false);
   const change = (next: boolean) => {
@@ -224,9 +228,9 @@ export function NoteDialog({
   };
   return (
     <Dialog open={open} onOpenChange={change}>
-      <DialogPopup className="sm:max-w-2xl" closeProps={{ 'aria-label': 'Đóng' }} finalFocus={finalFocus}>
+      <DialogPopup className="sm:max-w-2xl" closeProps={{ 'aria-label': t('Đóng') }} finalFocus={finalFocus}>
         <DialogHeader>
-          <DialogTitle>{note ? 'Sửa ghi chú' : 'Ghi chú mới'}</DialogTitle>
+          <DialogTitle>{note ? t('Sửa ghi chú') : t('Ghi chú mới')}</DialogTitle>
           {description && <DialogDescription className="line-clamp-2">{description}</DialogDescription>}
         </DialogHeader>
         {/* keyed so the form resets for each note */}
@@ -251,13 +255,17 @@ export function NoteDialog({
         <AlertDialog open={askDiscard} onOpenChange={setAskDiscard}>
           <AlertDialogPopup>
             <AlertDialogHeader>
-              <AlertDialogTitle>Bỏ các thay đổi chưa lưu?</AlertDialogTitle>
-              <AlertDialogDescription>Nội dung vừa gõ trong ghi chú này sẽ mất.</AlertDialogDescription>
+              <AlertDialogTitle>{t('Bỏ các thay đổi chưa lưu?')}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t('Nội dung vừa gõ trong ghi chú này sẽ mất.')}
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogClose render={<Button variant="ghost" type="button" />}>Tiếp tục sửa</AlertDialogClose>
+              <AlertDialogClose render={<Button variant="ghost" type="button" />}>
+                {t('Tiếp tục sửa')}
+              </AlertDialogClose>
               <Button variant="destructive" type="button" onClick={discard}>
-                Bỏ thay đổi
+                {t('Bỏ thay đổi')}
               </Button>
             </AlertDialogFooter>
           </AlertDialogPopup>

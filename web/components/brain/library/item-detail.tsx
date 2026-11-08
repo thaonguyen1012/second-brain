@@ -5,6 +5,8 @@ import { Briefcase, ExternalLink, Maximize2, Pencil } from 'lucide-react';
 import { api, type ApiItem, type ApiItemStatus } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
 import { handbookForSource, itemPicture } from '@/lib/handbook-picture';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { formatDate, hostOf, itemStatusOf, itemTypeLabel } from '@/lib/labels';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { cn } from '@/lib/utils';
@@ -26,19 +28,20 @@ import { ItemNotes } from './item-notes';
 // 4.2), every note of the Item, then "Được nhắc tới ở".
 
 /** The one-click next step of the lifecycle, as on the List row (item-parts.tsx). */
-const nextStep: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: string }>> = {
-  planned: { to: 'active', label: 'Bắt đầu' },
-  active: { to: 'done', label: 'Xong' },
+const nextStep: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: Msg }>> = {
+  planned: { to: 'active', label: msg('Bắt đầu') },
+  active: { to: 'done', label: msg('Xong') },
 };
 
 /** An Item's source as a property: the handbook it is, the site it links to (new tab), or the text itself. */
 function SourceValue({ source }: { source: string }) {
+  const t = useT();
   const s = source.trim();
   if (s.startsWith('/docs/')) {
     const book = handbookForSource(s);
     return (
       <Link href={s} className="underline-offset-4 hover:underline">
-        {book ? book.title : 'Sổ tay'}
+        {book ? t(book.title) : t('Sổ tay')}
       </Link>
     );
   }
@@ -51,7 +54,7 @@ function SourceValue({ source }: { source: string }) {
         className="inline-flex max-w-full items-center gap-1 underline-offset-4 hover:underline"
       >
         <span className="truncate">{hostOf(s) || s}</span>
-        <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" aria-label="(mở tab mới)" />
+        <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" aria-label={t('(mở tab mới)')} />
       </a>
     );
   return <span className="break-words">{s}</span>;
@@ -94,6 +97,7 @@ export function ItemDetail({
   /** Whether unsaved note text is on the page (the Sheet asks before it closes). */
   onDirtyChange?: (dirty: boolean) => void;
 }) {
+  const t = useT();
   const [editOpen, setEditOpen] = useState(false);
   const [focusRating, setFocusRating] = useState(false);
   const [composeRequest, setComposeRequest] = useState(composeOnOpen ? 1 : 0);
@@ -117,9 +121,9 @@ export function ItemDetail({
   const gap = missingOutput(item);
   const picture = itemPicture(item);
   const dates = [
-    `thêm ${formatDate(item.createdAt)}`,
-    item.startedAt && `bắt đầu ${formatDate(item.startedAt)}`,
-    item.finishedAt && `xong ${formatDate(item.finishedAt)}`,
+    t('thêm {date}', { date: formatDate(item.createdAt, t) }),
+    item.startedAt && t('bắt đầu {date}', { date: formatDate(item.startedAt, t) }),
+    item.finishedAt && t('xong {date}', { date: formatDate(item.finishedAt, t) }),
   ].filter(Boolean);
 
   const openEdit = (rating = false) => {
@@ -133,9 +137,9 @@ export function ItemDetail({
     try {
       const saved = await api.updateItem(item.id, { status: to });
       onItemChange(saved);
-      setNotice(`Đã chuyển sang ${itemStatusOf(to).label}`);
+      setNotice(t('Đã chuyển sang {status}', { status: t(itemStatusOf(to).label) }));
     } catch (err) {
-      setNotice(`Không đổi được trạng thái: ${describeApiError(toApiError(err)).title}`);
+      setNotice(t('Không đổi được trạng thái: {reason}', { reason: describeApiError(toApiError(err), t).title }));
     } finally {
       setStepping(false);
     }
@@ -159,26 +163,26 @@ export function ItemDetail({
 
         {/* AFFiNE's properties at the top of the page: one label column, values left-aligned */}
         <dl className="grid grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] items-baseline gap-x-4 gap-y-2 text-sm">
-          <Property label="Trạng thái">
-            <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+          <Property label={t('Trạng thái')}>
+            <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>
           </Property>
-          <Property label="Loại">{itemTypeLabel(item.type)}</Property>
+          <Property label={t('Loại')}>{t(itemTypeLabel(item.type))}</Property>
           {item.rating ? (
-            <Property label="Điểm">
+            <Property label={t('Điểm', null, 'rating')}>
               <span className="tabular-nums">{item.rating}/10</span>
             </Property>
           ) : null}
           {item.source?.trim() ? (
-            <Property label="Nguồn">
+            <Property label={t('Nguồn')}>
               <SourceValue source={item.source} />
             </Property>
           ) : null}
           {item.tags?.length ? (
-            <Property label="Tag">
+            <Property label={t('Tag')}>
               <span className="break-words text-muted-foreground">{item.tags.map((t) => `#${t}`).join(' ')}</span>
             </Property>
           ) : null}
-          <Property label="Ngày">
+          <Property label={t('Ngày')}>
             <span className="text-muted-foreground tabular-nums">{dates.join(' · ')}</span>
           </Property>
         </dl>
@@ -186,24 +190,24 @@ export function ItemDetail({
         <div className="flex flex-wrap items-center gap-2">
           {step && (
             <Button variant="outline" size="sm" disabled={stepping} onClick={() => void stepTo(step.to)}>
-              {step.label}
+              {t(step.label)}
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={() => openEdit()}>
             <Pencil aria-hidden />
-            Sửa
+            {t('Sửa')}
           </Button>
           {item.type === 'project' && (
             // client, price and hours live on Công việc
             <Button variant="ghost" size="sm" render={<Link href="/cong-viec/" />}>
               <Briefcase aria-hidden />
-              Công việc
+              {t('Công việc')}
             </Button>
           )}
           {variant === 'sheet' && (
             <Button variant="ghost" size="sm" className="ms-auto" render={<Link href={`/thu-vien/item/?id=${item.id}`} />}>
               <Maximize2 aria-hidden />
-              Mở trang đầy đủ
+              {t('Mở trang đầy đủ')}
             </Button>
           )}
         </div>
@@ -257,7 +261,7 @@ export function ItemDetail({
         onSaved={(saved, _created, imageError) => {
           onItemChange(saved);
           setEditOpen(false);
-          setNotice(imageError ? `Đã lưu, nhưng chưa lưu được ảnh: ${imageError}.` : 'Đã lưu');
+          setNotice(imageError ? t('Đã lưu, nhưng chưa lưu được ảnh: {error}.', { error: imageError }) : t('Đã lưu'));
         }}
         onDeleted={(deleted) => {
           setEditOpen(false);

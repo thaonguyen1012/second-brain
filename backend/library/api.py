@@ -14,6 +14,7 @@ from rest_framework.serializers import BaseSerializer
 from rest_framework.views import APIView
 
 from core.authentication import request_user
+from core.i18n import tr
 from core.pagination import NewestFirstCursor
 from core.serializers import ErrorSerializer
 from core.services import thumbnails
@@ -98,7 +99,7 @@ class ItemView(APIView):
         try:
             services.delete_item(item)
         except services.ItemInUse:
-            detail = "Dự án đã có giờ làm. Hãy xóa các mục giờ làm trước."
+            detail = tr("Dự án đã có giờ làm. Hãy xóa các mục giờ làm trước.")
             return Response({"detail": detail}, status=status.HTTP_409_CONFLICT)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

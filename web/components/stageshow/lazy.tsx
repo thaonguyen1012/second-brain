@@ -2,6 +2,7 @@
 import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 import { GuideFrame } from './guides/guide-frame';
+import { msg } from '@/lib/i18n/translate';
 
 /*
  * The only entry point pages use for Stageshow guides. Each guide is loaded with next/dynamic and ssr: false,
@@ -61,13 +62,13 @@ const CaptureBookmarklet = dynamic(() => import('./guides/capture-bookmarklet'),
 });
 
 const emptyGuides = {
-  inbox: { Guide: InboxTriage, title: 'thu thập và xử lý bằng phím', replay: false },
-  bookmarklet: { Guide: CaptureBookmarklet, title: 'cài và dùng bookmarklet', replay: true },
-  week: { Guide: WeekRitual, title: 'lên kế hoạch và nhìn lại tuần', replay: true },
-  opportunity: { Guide: OpportunityEvidence, title: 'giả thuyết, bằng chứng và điểm', replay: true },
-  work: { Guide: WorkTimer, title: 'bấm giờ và tổng kết tuần', replay: true },
-  skill: { Guide: SkillFreshness, title: 'bằng chứng giữ kỹ năng còn mới', replay: true },
-  library: { Guide: LibraryItem, title: 'thêm item, xong thì viết ghi chú', replay: true },
+  inbox: { Guide: InboxTriage, title: msg('thu thập và xử lý bằng phím'), replay: false },
+  bookmarklet: { Guide: CaptureBookmarklet, title: msg('cài và dùng bookmarklet'), replay: true },
+  week: { Guide: WeekRitual, title: msg('lên kế hoạch và nhìn lại tuần'), replay: true },
+  opportunity: { Guide: OpportunityEvidence, title: msg('giả thuyết, bằng chứng và điểm'), replay: true },
+  work: { Guide: WorkTimer, title: msg('bấm giờ và tổng kết tuần'), replay: true },
+  skill: { Guide: SkillFreshness, title: msg('bằng chứng giữ kỹ năng còn mới'), replay: true },
+  library: { Guide: LibraryItem, title: msg('thêm item, xong thì viết ghi chú'), replay: true },
 } as const;
 
 export type EmptyGuideName = keyof typeof emptyGuides;

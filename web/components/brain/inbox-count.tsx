@@ -6,6 +6,7 @@ import { api } from '@/lib/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LazyTooltip } from '@/components/lazy-tooltip';
+import { useT } from '@/lib/i18n/client';
 
 // One shared count of entries with status "inbox" for the top bar and "Hôm nay"; refreshed on mount, on tab
 // focus and after every capture or triage (refreshInboxCount: GET /api/inbox/count, one COUNT on the server,
@@ -63,10 +64,14 @@ export function useInboxCount(): string | null {
  * lazily: the shell is on the home page, see components/lazy-tooltip.tsx).
  */
 export function InboxButton() {
+  const t = useT();
   const n = useInboxCount();
   return (
     <LazyTooltip label="Inbox">
-      <Button variant="outline" render={<Link href="/inbox/" aria-label={n ? `Inbox, ${n} mục chưa xử lý` : 'Inbox'} />}>
+      <Button
+        variant="outline"
+        render={<Link href="/inbox/" aria-label={n ? t('Inbox, {count} mục chưa xử lý', { count: n }) : 'Inbox'} />}
+      >
         <Inbox aria-hidden />
         <span className="hidden sm:inline">Inbox</span>
         {n && n !== '0' && (

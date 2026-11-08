@@ -5,13 +5,15 @@ import { useApi } from '@/lib/api/use-api';
 import { workApi, type ApiWeekSummary } from '@/lib/api/work';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useT } from '@/lib/i18n/client';
+import type { T } from '@/lib/i18n/translate';
 import { ApiErrorState } from '../api-state';
 import { BillableBar, Swatch } from './billable-bar';
 import { addDays, formatHours, formatWeekRange } from './format';
 
 const pct = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 100) : 0);
 /** "0 giờ" at zero (a week total, not a duration), else the exact compact hours. */
-const hours = (minutes: number) => (minutes === 0 ? '0 giờ' : formatHours(minutes));
+const hours = (minutes: number, t: T) => (minutes === 0 ? t('0 giờ') : formatHours(minutes, t));
 
 /**
  * Week summary (GET /api/time-entries/summary), a flat section: the total (18px: the timer above holds the page's big
@@ -26,6 +28,7 @@ export function WeekSummary({
   refreshKey: number;
   onSelectProject?: (projectId: number, weekStart: string) => void;
 }) {
+  const t = useT();
   // null = this week as the server sees it (Europe/Prague); set only by the arrows, so render stays stable.
   const [week, setWeek] = useState<string | null>(null);
   const summary = useApi<ApiWeekSummary>(`work:summary:${week ?? 'current'}:${refreshKey}`, () =>
@@ -39,25 +42,25 @@ export function WeekSummary({
     <section aria-labelledby="week-summary-title" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 id="week-summary-title" className="font-heading text-lg font-semibold tracking-tight">
-          Tuần {data ? formatWeekRange(data.weekStart) : ''}
+          {t('Tuần {range}', { range: data ? formatWeekRange(data.weekStart, t) : '' })}
         </h2>
         <div className="ms-auto flex items-center gap-1">
           <Button
             size="icon-sm"
             variant="ghost"
-            aria-label="Tuần trước"
+            aria-label={t('Tuần trước')}
             disabled={!data}
             onClick={() => data && setWeek(addDays(data.weekStart, -7))}
           >
             <ChevronLeft aria-hidden />
           </Button>
           <Button size="sm" variant="ghost" disabled={week === null} onClick={() => setWeek(null)}>
-            Tuần này
+            {t('Tuần này')}
           </Button>
           <Button
             size="icon-sm"
             variant="ghost"
-            aria-label="Tuần sau"
+            aria-label={t('Tuần sau')}
             disabled={!data}
             onClick={() => data && setWeek(addDays(data.weekStart, 7))}
           >
@@ -69,40 +72,42 @@ export function WeekSummary({
       {summary.error && !data ? (
         <ApiErrorState error={summary.error} onRetry={summary.reload} />
       ) : !data ? (
-        <Skeleton className="h-24 rounded-xl" aria-label="Đang tải tổng kết tuần" />
+        <Skeleton className="h-24 rounded-xl" aria-label={t('Đang tải tổng kết tuần')} />
       ) : (
         <>
           <div className="flex flex-col gap-1">
             <p className="font-heading text-lg font-semibold tabular-nums">
-              {hours(data.minutesTotal)}
-              <span className="sr-only"> tổng trong tuần</span>
+              {hours(data.minutesTotal, t)}
+              <span className="sr-only"> {t('tổng trong tuần')}</span>
             </p>
             <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground tabular-nums">
               <span className="inline-flex items-center gap-1.5">
                 <Swatch kind="billable" />
-                {hours(data.minutesBillable)} tính tiền
+                {t('{time} tính tiền', { time: hours(data.minutesBillable, t) })}
                 {data.minutesTotal > 0 && ` (${pct(data.minutesBillable, data.minutesTotal)}%)`}
               </span>
               <span aria-hidden>·</span>
               <span className="inline-flex items-center gap-1.5">
                 <Swatch kind="nonbillable" />
-                {hours(data.minutesNonBillable)} không tính tiền
+                {t('{time} không tính tiền', { time: hours(data.minutesNonBillable, t) })}
               </span>
             </p>
           </div>
           {data.minutesTotal === 0 ? (
             <div className="flex flex-col gap-1.5">
-              <p className="flex min-h-7 items-center text-sm text-muted-foreground">Chưa có giờ nào trong tuần này.</p>
+              <p className="flex min-h-7 items-center text-sm text-muted-foreground">
+                {t('Chưa có giờ nào trong tuần này.')}
+              </p>
               <div className="flex items-center gap-2" aria-hidden>
                 <span className="h-3.5 min-w-0 flex-1 rounded-sm bg-muted" />
                 <span className="w-20 shrink-0 text-end text-sm font-medium text-muted-foreground tabular-nums">
-                  0 giờ
+                  {t('0 giờ')}
                 </span>
               </div>
             </div>
           ) : (
             rows.length > 0 && (
-              <ul className="flex flex-col gap-4" aria-label="Theo dự án">
+              <ul className="flex flex-col gap-4" aria-label={t('Theo dự án')}>
                 {rows.map((p) => (
                   <li key={p.id} className="flex flex-col gap-1.5">
                     <div className="flex min-h-7 items-center gap-2">
@@ -113,11 +118,11 @@ export function WeekSummary({
                           size="xs"
                           variant="ghost"
                           className="ms-auto"
-                          aria-label={`Xem các mục giờ của ${p.title} trong tuần này`}
+                          aria-label={t('Xem các mục giờ của {title} trong tuần này', { title: p.title })}
                           onClick={() => onSelectProject(p.id, data.weekStart)}
                         >
                           <ListFilter aria-hidden />
-                          Xem mục
+                          {t('Xem mục')}
                         </Button>
                       )}
                     </div>

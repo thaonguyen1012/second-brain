@@ -6,6 +6,7 @@ import type { Page } from '@/lib/api/client';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiTimeEntry } from '@/lib/api/work';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
@@ -52,9 +53,10 @@ function EntryRow({
   onEdit: () => void;
   onDeleted: () => void;
 }) {
+  const t = useT();
   const meta = [
-    !e.billable && 'Không tính tiền',
-    e.objective && `Mục tiêu: ${objectiveTitle ?? 'mục tiêu tuần'}`,
+    !e.billable && t('Không tính tiền'),
+    e.objective && t('Mục tiêu: {title}', { title: objectiveTitle ?? t('mục tiêu tuần') }),
     e.note,
   ].filter(Boolean);
   return (
@@ -63,25 +65,34 @@ function EntryRow({
         <p className="text-sm font-medium break-words">{e.projectTitle}</p>
         {(e.running || meta.length > 0) && (
           <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
-            {e.running && <StatusBadge tone="info">Đang chạy</StatusBadge>}
+            {e.running && <StatusBadge tone="info">{t('Đang chạy')}</StatusBadge>}
             {meta.length > 0 && <span className="break-words">{meta.join(' · ')}</span>}
           </p>
         )}
       </div>
-      <span className="text-end text-sm font-medium tabular-nums">{e.running ? '—' : formatMinutes(e.minutes)}</span>
+      <span className="text-end text-sm font-medium tabular-nums">{e.running ? '—' : formatMinutes(e.minutes, t)}</span>
       <div className="flex items-center gap-1">
-        <IconTip label="Sửa">
-          <Button size="icon-sm" variant="ghost" onClick={onEdit} aria-label={`Sửa giờ của ${e.projectTitle}`}>
+        <IconTip label={t('Sửa')}>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            onClick={onEdit}
+            aria-label={t('Sửa giờ của {title}', { title: e.projectTitle })}
+          >
             <Pencil aria-hidden />
           </Button>
         </IconTip>
         <Tooltip>
           <ConfirmDelete
-            title="Xóa mục giờ này?"
+            title={t('Xóa mục giờ này?')}
             description={
               e.running
-                ? `Bộ bấm giờ của "${e.projectTitle}" đang chạy sẽ bị hủy, không ghi phút nào.`
-                : `${formatMinutes(e.minutes)} cho "${e.projectTitle}" ngày ${formatDay(e.date)}. Không hoàn tác được.`
+                ? t('Bộ bấm giờ của "{title}" đang chạy sẽ bị hủy, không ghi phút nào.', { title: e.projectTitle })
+                : t('{time} cho "{title}" ngày {day}. Không hoàn tác được.', {
+                    time: formatMinutes(e.minutes, t),
+                    title: e.projectTitle,
+                    day: formatDay(e.date, t),
+                  })
             }
             action={async () => {
               try {
@@ -96,11 +107,17 @@ function EntryRow({
             focusNeighbour
             trigger={
               <TooltipTrigger
-                render={<DeleteButton size="icon-sm" label="" aria-label={`Xóa giờ của ${e.projectTitle}`} />}
+                render={
+                  <DeleteButton
+                    size="icon-sm"
+                    label=""
+                    aria-label={t('Xóa giờ của {title}', { title: e.projectTitle })}
+                  />
+                }
               />
             }
           />
-          <TooltipPopup>Xóa</TooltipPopup>
+          <TooltipPopup>{t('Xóa')}</TooltipPopup>
         </Tooltip>
       </div>
     </li>
@@ -109,6 +126,7 @@ function EntryRow({
 
 /** Giờ: the timer, the week summary and the time entries with project and date-range filters. */
 export function TimePage() {
+  const t = useT();
   const params = useSearchParams();
   const [project, setProject] = useState(() => {
     const p = params.get('project');
@@ -222,19 +240,19 @@ export function TimePage() {
     try {
       await appendNextPage(entries);
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     } finally {
       setLoadingMore(false);
     }
   };
 
   const projectChoices = [
-    { value: 'all', label: 'Mọi dự án' },
+    { value: 'all', label: t('Mọi dự án') },
     ...choices.projects.map((p) => ({ value: String(p.id), label: p.title })),
   ];
   // Keep a filter from the URL selectable while the projects load (or if it is not in the first 200).
   if (project !== 'all' && !projectChoices.some((c) => c.value === project))
-    projectChoices.push({ value: project, label: `Dự án #${project}` });
+    projectChoices.push({ value: project, label: t('Dự án #{id}', { id: project }) });
 
   const clearFilters = () => {
     setProject('all');
@@ -243,7 +261,7 @@ export function TimePage() {
   };
   const removeEntry = (gone: ApiTimeEntry) => {
     entries.mutate((d) => d && { ...d, results: d.results.filter((e) => e.id !== gone.id) });
-    changed(`Đã xóa mục giờ của "${gone.projectTitle}"`);
+    changed(t('Đã xóa mục giờ của "{title}"', { title: gone.projectTitle }));
     if (gone.running) timer.reload();
   };
   // Unfiltered and empty: no toolbar (D26), one line with an outline "Nhập giờ"; "Bắt đầu" stays the one primary.
@@ -257,7 +275,7 @@ export function TimePage() {
   const nhapGio = (variant: 'default' | 'outline', className?: string) => (
     <Button variant={variant} className={className} onClick={openNew} aria-keyshortcuts="n">
       <Plus aria-hidden />
-      Nhập giờ
+      {t('Nhập giờ')}
       <Kbd
         className={cn(
           'pointer-coarse:hidden max-sm:hidden',
@@ -272,7 +290,7 @@ export function TimePage() {
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
       {projectsLoading ? (
-        <Skeleton className="h-24 rounded-xl" aria-label="Đang tải bộ bấm giờ" />
+        <Skeleton className="h-24 rounded-xl" aria-label={t('Đang tải bộ bấm giờ')} />
       ) : choices.error && !choices.data && !timer.running ? (
         // Unknown project list: say so, never "Chưa có dự án" (it would invite a duplicate project)
         <ApiErrorState error={choices.error} onRetry={choices.reload} />
@@ -287,7 +305,7 @@ export function TimePage() {
             entries.reload();
           }}
           onAddProject={choices.data && openProjects.length === 0 ? () => setProjectDialog(true) : undefined}
-          noProjectLabel={noProjects ? 'Chưa có dự án' : 'Không có dự án đang mở'}
+          noProjectLabel={noProjects ? t('Chưa có dự án') : t('Không có dự án đang mở')}
         />
       )}
       {(noProjects || emptyUnfiltered) && noticeLine}
@@ -308,10 +326,12 @@ export function TimePage() {
       ) : !entriesShown ? null : emptyUnfiltered ? (
         <section aria-labelledby="time-entries-title" className="flex flex-col items-start gap-3">
           <h2 id="time-entries-title" className="font-heading text-lg font-semibold tracking-tight">
-            Các mục giờ
+            {t('Các mục giờ')}
           </h2>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <p className="text-sm text-muted-foreground">Chưa có giờ nào. Bấm giờ ở trên, hoặc nhập tay giờ đã làm.</p>
+            <p className="text-sm text-muted-foreground">
+              {t('Chưa có giờ nào. Bấm giờ ở trên, hoặc nhập tay giờ đã làm.')}
+            </p>
             {nhapGio('outline')}
           </div>
           <EmptyStateGuide guide="work" className="w-full" />
@@ -319,13 +339,13 @@ export function TimePage() {
       ) : (
         <section id="time-entries" aria-labelledby="time-entries-title" className="flex flex-col gap-4">
           <h2 id="time-entries-title" className="font-heading text-lg font-semibold tracking-tight">
-            Các mục giờ
+            {t('Các mục giờ')}
           </h2>
           {/* One toolbar of h-8 controls: filters left, "Nhập giờ" right. At 390 px: project + Nhập giờ, then the dates. */}
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap">
             <ChoiceSelect
               id="time-filter-project"
-              label="Lọc theo dự án"
+              label={t('Lọc theo dự án')}
               value={project}
               onChange={setProject}
               choices={projectChoices}
@@ -333,7 +353,7 @@ export function TimePage() {
             />
             <div className="col-span-2 grid grid-cols-2 gap-2 sm:flex">
               <Label htmlFor="time-filter-from" className="sr-only">
-                Từ ngày
+                {t('Từ ngày')}
               </Label>
               <Input
                 id="time-filter-from"
@@ -343,7 +363,7 @@ export function TimePage() {
                 className="sm:w-auto"
               />
               <Label htmlFor="time-filter-to" className="sr-only">
-                Đến ngày
+                {t('Đến ngày')}
               </Label>
               <Input
                 id="time-filter-to"
@@ -356,7 +376,7 @@ export function TimePage() {
             {filtered && (
               <Button variant="ghost" className="col-span-2 justify-self-start" onClick={clearFilters}>
                 <X aria-hidden />
-                Xóa bộ lọc
+                {t('Xóa bộ lọc')}
               </Button>
             )}
             {nhapGio('default', 'col-start-2 row-start-1 sm:ms-auto')}
@@ -367,7 +387,7 @@ export function TimePage() {
           <ApiStaleAlert result={entries} />
           {badRange ? (
             <p className="text-sm text-destructive-foreground" role="alert">
-              &quot;Từ ngày&quot; phải trước hoặc bằng &quot;Đến ngày&quot;.
+              {t('"Từ ngày" phải trước hoặc bằng "Đến ngày".')}
             </p>
           ) : entries.error && !entries.data ? (
             <ApiErrorState error={entries.error} onRetry={entries.reload} />
@@ -375,18 +395,18 @@ export function TimePage() {
             <RowsSkeleton />
           ) : list.length === 0 && filtered ? (
             <p className="text-sm text-muted-foreground">
-              Không có mục nào khớp bộ lọc.{' '}
+              {t('Không có mục nào khớp bộ lọc.')}{' '}
               <Button variant="link" size="sm" className="px-0" onClick={clearFilters}>
-                Xóa bộ lọc
+                {t('Xóa bộ lọc')}
               </Button>
             </p>
           ) : (
             <div className="flex flex-col divide-y rounded-xl border bg-card">
               {days.map((d) => (
-                <section key={d.date} aria-label={formatDay(d.date)} className="flex flex-col">
+                <section key={d.date} aria-label={formatDay(d.date, t)} className="flex flex-col">
                   <div className="flex h-8 items-center justify-between px-3 text-xs font-medium text-muted-foreground">
-                    <h3>{formatDay(d.date)}</h3>
-                    <span className="tabular-nums">{formatMinutes(d.minutes)}</span>
+                    <h3>{formatDay(d.date, t)}</h3>
+                    <span className="tabular-nums">{formatMinutes(d.minutes, t)}</span>
                   </div>
                   <ul className="flex flex-col divide-y border-t">
                     {d.entries.map((e) => (
@@ -408,7 +428,7 @@ export function TimePage() {
           )}
           {entries.data?.next && !entries.loading && !badRange && (
             <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-              Tải thêm
+              {t('Tải thêm')}
             </Button>
           )}
         </section>
@@ -422,11 +442,12 @@ export function TimePage() {
           choices.mutate((d) => d && { ...d, results: [saved, ...d.results.filter((p) => p.id !== saved.id)] });
           setCreatedProject(saved.id);
           setProjectDialog(false);
-          const logo = imageError ? ` Chưa lưu được logo: ${imageError}.` : '';
+          const added = t('Đã thêm "{title}".', { title: saved.title });
+          const logo = imageError ? ` ${t('Chưa lưu được logo: {error}.', { error: imageError })}` : '';
           setNotice(
             saved.status === 'active' || saved.status === 'planned'
-              ? `Đã thêm "${saved.title}".${logo} Bấm Bắt đầu để bấm giờ.`
-              : `Đã thêm "${saved.title}".${logo}`,
+              ? `${added}${logo} ${t('Bấm Bắt đầu để bấm giờ.')}`
+              : `${added}${logo}`,
           );
         }}
       />
@@ -436,15 +457,15 @@ export function TimePage() {
         projects={choices.projects}
         objectives={week.objectives}
         defaultProject={project === 'all' ? null : Number(project)}
-        loadError={choices.error && !choices.data ? describeApiError(choices.error).title : null}
+        loadError={choices.error && !choices.data ? describeApiError(choices.error, t).title : null}
         onOpenChange={setDialogOpen}
         onSaved={(saved, created) => {
           upsert(saved);
           setDialogOpen(false);
           changed(
             created
-              ? `Đã thêm ${formatMinutes(saved.minutes)} cho "${saved.projectTitle}"`
-              : `Đã lưu mục giờ của "${saved.projectTitle}"`,
+              ? t('Đã thêm {time} cho "{title}"', { time: formatMinutes(saved.minutes, t), title: saved.projectTitle })
+              : t('Đã lưu mục giờ của "{title}"', { title: saved.projectTitle }),
           );
           if (saved.running) timer.reload();
         }}

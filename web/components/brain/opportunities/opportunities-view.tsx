@@ -1,5 +1,6 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
+import { useT } from '@/lib/i18n/client';
 import { PageHeader } from '../page-header';
 import { OpportunityDetail } from './opportunity-detail';
 import { OpportunityList } from './opportunity-list';
@@ -10,6 +11,7 @@ import { TopicHeatmap } from './topic-heatmap';
  * of a dynamic segment keeps the route static (STATIC_EXPORT still builds) while all data loads in the browser.
  */
 export function OpportunitiesView() {
+  const t = useT();
   const raw = useSearchParams().get('id');
   const id = raw && /^\d+$/.test(raw) ? Number(raw) : null;
 
@@ -24,9 +26,9 @@ export function OpportunitiesView() {
   return (
     <div className="flex w-full flex-col">
       <PageHeader
-        title="Cơ hội"
+        title={t('Cơ hội', null, 'nav')}
         nav="/co-hoi/"
-        description="Giả thuyết kinh doanh: bằng chứng, điểm tự chấm và hạn quyết định giữ, bỏ hay làm."
+        description={t('Giả thuyết kinh doanh: bằng chứng, điểm tự chấm và hạn quyết định giữ, bỏ hay làm.')}
       />
       <div className="flex flex-col gap-8 px-4 pb-12 sm:px-8">
         <OpportunityList />

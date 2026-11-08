@@ -10,9 +10,12 @@ import type { TrackSlug } from '@/lib/books';
 import { cn } from '@/lib/utils';
 import { BookCover } from './book-cover';
 import { GroupMark } from './group-mark';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 
 /** "Đã học xong" checkbox at the bottom of every lesson page. */
 export function DoneCheckbox({ url }: { url: string }) {
+  const t = useT();
   const { bookSlug, pageSlug } = pageIdentity(url);
   const done = useProgress().done[bookSlug]?.[pageSlug] === true;
   return (
@@ -23,10 +26,10 @@ export function DoneCheckbox({ url }: { url: string }) {
         checked={done}
         onChange={(e) => getProgressStore().setDone(bookSlug, pageSlug, e.target.checked)}
       />
-      Đã học xong
+      {t('Đã học xong')}
       {done && (
         <span className="ms-auto text-xs font-normal text-muted-foreground">
-          {process.env.NEXT_PUBLIC_PROGRESS_STORE === 'api' ? 'Đã lưu trên server' : 'Đã lưu trên trình duyệt này'}
+          {process.env.NEXT_PUBLIC_PROGRESS_STORE === 'api' ? t('Đã lưu trên server') : t('Đã lưu trên trình duyệt này')}
         </span>
       )}
     </label>
@@ -53,7 +56,11 @@ export function bookState(done: ProgressSnapshot['done'], book: string, total: n
 }
 
 /** The one verb of each state, on the Hôm nay hero and on the Sổ tay cards alike. */
-export const bookVerb: Record<BookState, string> = { new: 'Học ngay', started: 'Học tiếp', finished: 'Ôn lại' };
+export const bookVerb: Record<BookState, Msg> = {
+  new: msg('Học ngay'),
+  started: msg('Học tiếp'),
+  finished: msg('Ôn lại'),
+};
 
 /** "12%", or "<1%" while the first lessons of a long book round to 0 (colour still arrives with the first one). */
 export function percent(done: number, total: number): string {
@@ -78,12 +85,13 @@ export function BookProgress({
   fill: string;
   className?: string;
 }) {
+  const t = useT();
   const progress = useProgress();
   const done = doneIn(progress.done, book);
   const pct = percent(done, total);
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      <Progress value={total ? Math.min(100, (done / total) * 100) : 0} aria-label="Tiến độ" getAriaValueText={() => pct}>
+      <Progress value={total ? Math.min(100, (done / total) * 100) : 0} aria-label={t('Tiến độ')} getAriaValueText={() => pct}>
         <ProgressTrack className="h-1.5">
           <ProgressIndicator className={cn(fill, done > 0 && 'min-w-1.5')} />
         </ProgressTrack>
@@ -93,7 +101,9 @@ export function BookProgress({
         <Skeleton className="h-4 w-28" />
       ) : (
         <p className="text-xs text-muted-foreground tabular-nums">
-          {done > 0 ? `${done}/${total} bài · ${pct}` : `${total} bài · chưa bắt đầu`}
+          {done > 0
+            ? t('{done}/{total} bài · {pct}', { done, total, pct })
+            : t('{n} bài · chưa bắt đầu', { n: total })}
         </p>
       )}
     </div>
@@ -112,10 +122,10 @@ export interface HeroBook {
 }
 
 /** The hero's lead before the book title, by the state of the last visited book. */
-const heroLead: Record<BookState, string> = {
-  new: 'Xem gần nhất',
-  started: 'Tiếp tục học',
-  finished: 'Đã học xong',
+const heroLead: Record<BookState, Msg> = {
+  new: msg('Xem gần nhất'),
+  started: msg('Tiếp tục học'),
+  finished: msg('Đã học xong'),
 };
 
 export const bookHref = (b: { slug: string; track: string }, page = '') =>
@@ -148,6 +158,7 @@ export function ContinueReading({
   start: { slug: string; phase: string };
   className?: string;
 }) {
+  const t = useT();
   const { done, lastVisited: last, loaded } = useProgress();
   const frame = 'grid sm:min-h-42 sm:grid-cols-[14rem_minmax(0,1fr)]';
   const body = 'flex min-w-0 flex-col gap-4 p-4 sm:justify-center sm:p-5 lg:flex-row lg:items-center lg:gap-5';
@@ -178,7 +189,7 @@ export function ContinueReading({
   const book = resumed || books.find((b) => b.slug === start.slug);
   if (!book) return null;
   const state = bookState(done, book.slug, book.lessonCount);
-  const lead = resumed ? heroLead[state] : 'Gợi ý từ lộ trình';
+  const lead = t(resumed ? heroLead[state] : 'Gợi ý từ lộ trình');
   const others = books
     .filter((b) => b !== book && doneIn(done, b.slug) > 0)
     .sort((a, b) => doneIn(done, b.slug) - doneIn(done, a.slug))
@@ -201,19 +212,20 @@ export function ContinueReading({
               {lead} · {resumed ? book.title : start.phase}
             </span>
             <span className="line-clamp-2 font-heading text-lg font-semibold tracking-tight">
-              {/* the book's own root page is "Mở đầu sổ tay", so the book name is never said twice */}
-              {!resumed ? book.title : last?.title && last.title !== book.title ? last.title : 'Mở đầu sổ tay'}
+              {/* the book's own root page (empty pageSlug; its stored title is the untranslated book title) is
+                  "Mở đầu sổ tay", so the book name is never said twice */}
+              {!resumed ? book.title : last?.title && last.pageSlug ? last.title : t('Mở đầu sổ tay')}
             </span>
             <BookProgress book={book.slug} total={book.lessonCount} fill={book.fill} className="mt-1 max-w-md" />
           </span>
           <Button render={<span />} className="sm:self-start lg:self-auto">
-            {bookVerb[state]}
+            {t(bookVerb[state])}
             <ArrowRight aria-hidden />
           </Button>
         </span>
       </Link>
       {others.length > 0 && (
-        <ul className="divide-y border-t" aria-label="Sổ tay khác đang học">
+        <ul className="divide-y border-t" aria-label={t('Sổ tay khác đang học')}>
           {others.map((b) => {
             const n = doneIn(done, b.slug);
             const pct = percent(n, b.lessonCount);

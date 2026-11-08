@@ -1,6 +1,7 @@
 // Pure logic of the Item page's notes (DECISIONS 9.8) and of the notes page's "Theo item" view: grouping notes by
 // their Items, the words of a note's date and heading, and which markdown links and images may render. No React, no
 // API calls; unit-tested in item-notes.test.ts.
+import type { T } from '@/lib/i18n/translate';
 import { formatDate } from '@/lib/labels';
 
 /** Backend limit for a note's `markdown` (API_CONTRACT.md). */
@@ -44,9 +45,9 @@ export function groupNotesByItem<N extends NoteLike>(notes: readonly N[]): NoteG
 }
 
 /** "sửa 07/11/2026" when the note changed on a later day than it was written, else the day it was written. */
-export function noteDateLabel(note: Pick<NoteLike, 'createdAt' | 'updatedAt'>): string {
+export function noteDateLabel(note: Pick<NoteLike, 'createdAt' | 'updatedAt'>, t: T): string {
   const edited = note.updatedAt.slice(0, 10) !== note.createdAt.slice(0, 10);
-  return edited ? `sửa ${formatDate(note.updatedAt)}` : formatDate(note.createdAt);
+  return edited ? t('sửa {date}', { date: formatDate(note.updatedAt, t) }) : formatDate(note.createdAt, t);
 }
 
 /**

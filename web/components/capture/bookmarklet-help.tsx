@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, BookmarkPlus, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { bookmarkletHref } from '@/lib/capture';
+import { useT } from '@/lib/i18n/client';
 
 /**
  * "Cách thu thập", the Inbox page's help rail (a well beside the list from xl, after it below; DESIGN.md §9a, D4): a
@@ -31,6 +32,7 @@ function detectPlatform(): Platform {
 }
 
 export function BookmarkletHelp() {
+  const t = useT();
   const ref = useRef<HTMLAnchorElement>(null);
   const headingId = useId();
   const [clicked, setClicked] = useState(false);
@@ -56,73 +58,83 @@ export function BookmarkletHelp() {
   const copyButton = (
     <Button type="button" size="xs" variant="outline" onClick={() => void copy()}>
       <Copy aria-hidden />
-      Sao chép mã bookmarklet
+      {t('Sao chép mã bookmarklet')}
     </Button>
   );
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col items-start gap-3 text-sm text-muted-foreground">
       <h2 id={headingId} className="text-sm font-medium text-foreground">
-        {phone ? 'Thu thập từ điện thoại' : 'Thu thập từ trình duyệt'}
+        {phone ? t('Thu thập từ điện thoại') : t('Thu thập từ trình duyệt')}
       </h2>
       {!phone && (
         <>
           {/* Dragging needs a mouse: hidden on touch screens, where the copy button below is the way */}
           <p className="leading-relaxed pointer-coarse:hidden">
-            Kéo nút{' '}
-            <a
-              ref={ref}
-              draggable
-              title="Kéo lên thanh dấu trang"
-              className="inline-flex cursor-grab items-center gap-1 rounded-lg border bg-card px-2 py-0.5 align-middle text-xs font-medium text-foreground transition-colors hover:bg-accent active:cursor-grabbing"
-              onClick={(e) => {
-                e.preventDefault();
-                setClicked(true);
-              }}
-            >
-              <BookmarkPlus className="size-3.5" aria-hidden />
-              Lưu vào Brain
-            </a>{' '}
-            lên thanh dấu trang, rồi bấm nó ở trang bất kỳ để gửi link (và đoạn đang chọn) vào inbox.
+            {t.rich(
+              'Kéo nút {button} lên thanh dấu trang, rồi bấm nó ở trang bất kỳ để gửi link (và đoạn đang chọn) vào inbox.',
+              {
+                button: (
+                  <a
+                    ref={ref}
+                    draggable
+                    title={t('Kéo lên thanh dấu trang')}
+                    className="inline-flex cursor-grab items-center gap-1 rounded-lg border bg-card px-2 py-0.5 align-middle text-xs font-medium text-foreground transition-colors hover:bg-accent active:cursor-grabbing"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setClicked(true);
+                    }}
+                  >
+                    <BookmarkPlus className="size-3.5" aria-hidden />
+                    {t('Lưu vào Brain')}
+                  </a>
+                ),
+              },
+            )}
           </p>
           {clicked && (
             <p role="status" className="text-xs">
-              Nút này không bấm ở đây: kéo nó lên thanh dấu trang ({platform === 'mac' ? 'Cmd' : 'Ctrl'}+Shift+B để hiện
-              thanh này), hoặc sao chép mã bên dưới.
+              {t(
+                'Nút này không bấm ở đây: kéo nó lên thanh dấu trang ({key}+Shift+B để hiện thanh này), hoặc sao chép mã bên dưới.',
+                { key: platform === 'mac' ? 'Cmd' : 'Ctrl' },
+              )}
             </p>
           )}
           <p className="text-xs leading-relaxed">
-            <span className="pointer-coarse:hidden">Không kéo được? </span>Sao chép mã, rồi tạo một dấu trang mới và dán
-            mã vào ô địa chỉ (URL) của nó.
+            <span className="pointer-coarse:hidden">{t('Không kéo được?')} </span>
+            {t('Sao chép mã, rồi tạo một dấu trang mới và dán mã vào ô địa chỉ (URL) của nó.')}
           </p>
           {copyButton}
           <p className="text-xs leading-relaxed">
-            Trên Android: cài app (Thêm vào màn hình chính), rồi Chia sẻ → Alex&apos;s Brain. Trên iPhone, iPad: Safari
-            chưa hỗ trợ chia sẻ thẳng vào app, hãy dùng bookmarklet.
+            {t(
+              "Trên Android: cài app (Thêm vào màn hình chính), rồi Chia sẻ → Alex's Brain. Trên iPhone, iPad: Safari chưa hỗ trợ chia sẻ thẳng vào app, hãy dùng bookmarklet.",
+            )}
           </p>
         </>
       )}
       {platform === 'android' && (
         <p className="text-xs leading-relaxed">
-          Gửi link từ app khác: cài app (Thêm vào màn hình chính), rồi Chia sẻ → Alex&apos;s Brain.
+          {t("Gửi link từ app khác: cài app (Thêm vào màn hình chính), rồi Chia sẻ → Alex's Brain.")}
         </p>
       )}
       {platform === 'ios' && (
         <>
           <p className="text-xs leading-relaxed">
-            Safari trên iPhone, iPad chưa hỗ trợ chia sẻ thẳng vào app. Dùng bookmarklet: sao chép mã, lưu một dấu trang
-            bất kỳ, rồi sửa dấu trang đó và dán mã vào ô địa chỉ.
+            {t(
+              'Safari trên iPhone, iPad chưa hỗ trợ chia sẻ thẳng vào app. Dùng bookmarklet: sao chép mã, lưu một dấu trang bất kỳ, rồi sửa dấu trang đó và dán mã vào ô địa chỉ.',
+            )}
           </p>
           {copyButton}
         </>
       )}
       {/* Mounted before any copy, so screen readers announce the result when it appears */}
       <p role="status" className="text-xs empty:hidden">
-        {copied === 'ok' && 'Đã sao chép mã bookmarklet. Tạo dấu trang mới và dán mã vào ô địa chỉ (URL).'}
-        {copied === 'failed' && 'Không sao chép được. Trên máy tính, hãy kéo nút Lưu vào Brain lên thanh dấu trang.'}
+        {copied === 'ok' && t('Đã sao chép mã bookmarklet. Tạo dấu trang mới và dán mã vào ô địa chỉ (URL).')}
+        {copied === 'failed' &&
+          t('Không sao chép được. Trên máy tính, hãy kéo nút Lưu vào Brain lên thanh dấu trang.')}
       </p>
       <Button variant="link" size="sm" className="-my-1 px-0" render={<Link href="/huong-dan/#guide-bookmarklet" />}>
-        Xem hướng dẫn có hình
+        {t('Xem hướng dẫn có hình')}
         <ArrowRight aria-hidden />
       </Button>
     </section>

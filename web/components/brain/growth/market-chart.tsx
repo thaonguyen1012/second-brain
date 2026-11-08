@@ -2,12 +2,14 @@
 import Link from 'next/link';
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import type { ApiMarketSkill } from '@/lib/api/growth';
+import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
 import { freshness } from './labels';
 
 /** Matched skill of a market line: freshness by colour + word, or "not in the matrix". */
 export function MatchedSkill({ line }: { line: ApiMarketSkill }) {
-  if (!line.skill) return <span className="text-xs text-muted-foreground">Chưa có trong ma trận</span>;
+  const t = useT();
+  if (!line.skill) return <span className="text-xs text-muted-foreground">{t('Chưa có trong ma trận')}</span>;
   const f = freshness[line.skill.freshness];
   const sameName = line.skill.name.toLowerCase() === line.name.toLowerCase();
   return (
@@ -15,18 +17,19 @@ export function MatchedSkill({ line }: { line: ApiMarketSkill }) {
       <span className={cn('size-2 shrink-0 rounded-full', f.dot)} aria-hidden />
       <span>
         {sameName ? '' : `${line.skill.name} · `}
-        {f.label}
+        {t(f.label)}
       </span>
     </span>
   );
 }
 
 function Delta({ now, before }: { now: number; before: number }) {
+  const t = useT();
   if (now === before)
     return (
       <span className="inline-flex items-center gap-0.5 text-muted-foreground">
         <Minus className="size-3.5" aria-hidden />
-        <span className="sr-only">không đổi</span>
+        <span className="sr-only">{t('không đổi')}</span>
       </span>
     );
   const up = now > before;
@@ -34,7 +37,7 @@ function Delta({ now, before }: { now: number; before: number }) {
   return (
     <span className="inline-flex items-center gap-0.5 text-muted-foreground">
       <Icon className="size-3.5" aria-hidden />
-      <span className="sr-only">{up ? 'tăng' : 'giảm'}</span>
+      <span className="sr-only">{up ? t('tăng') : t('giảm')}</span>
     </span>
   );
 }
@@ -47,41 +50,42 @@ function Delta({ now, before }: { now: number; before: number }) {
  * baseline. Previous month: a 2px tick.
  */
 export function MarketSkillTable({ lines, processed }: { lines: ApiMarketSkill[]; processed: number }) {
+  const t = useT();
   const max = Math.max(1, ...lines.map((l) => Math.max(l.count, l.previousCount)));
   const pct = (n: number) => `${(n / max) * 100}%`;
   return (
     <div className="flex flex-col gap-2">
       <ul
         className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground max-sm:hidden"
-        aria-label="Chú giải"
+        aria-label={t('Chú giải')}
       >
         <li className="flex items-center gap-1.5">
           <span className="h-2.5 w-4 rounded-e-[4px] bg-chart-data" aria-hidden />
-          Tháng này
+          {t('Tháng này')}
         </li>
         <li className="flex items-center gap-1.5">
           <span className="h-3.5 w-0.5 rounded-full bg-foreground/70" aria-hidden />
-          Tháng trước
+          {t('Tháng trước')}
         </li>
       </ul>
       <div className="overflow-x-auto rounded-xl border bg-card">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">
-            Số tin tuyển dụng đã phân tích nhắc tới từng kỹ năng, so với tháng trước
+            {t('Số tin tuyển dụng đã phân tích nhắc tới từng kỹ năng, so với tháng trước')}
           </caption>
           <thead>
             <tr className="h-10 border-b text-xs font-medium text-muted-foreground">
               <th scope="col" className="px-3 text-start font-medium">
-                Kỹ năng được đòi
+                {t('Kỹ năng được đòi')}
               </th>
               <th scope="col" className="w-[40%] px-3 text-start font-medium max-sm:hidden">
-                <span className="sr-only">Biểu đồ</span>
+                <span className="sr-only">{t('Biểu đồ')}</span>
               </th>
               <th scope="col" className="px-3 text-end font-medium">
-                Tháng này
+                {t('Tháng này')}
               </th>
               <th scope="col" className="px-3 text-end font-medium">
-                Tháng trước
+                {t('Tháng trước')}
               </th>
             </tr>
           </thead>
@@ -116,7 +120,7 @@ export function MarketSkillTable({ lines, processed }: { lines: ApiMarketSkill[]
                 </td>
                 <td className="px-3 py-2 text-end whitespace-nowrap tabular-nums">
                   <span className="font-medium">{l.count}</span>
-                  <span className="text-muted-foreground">/{processed} tin</span>
+                  <span className="text-muted-foreground">{t('/{n} tin', { n: processed })}</span>
                 </td>
                 <td className="px-3 py-2 text-end whitespace-nowrap tabular-nums text-muted-foreground">
                   <span className="inline-flex items-center gap-1">

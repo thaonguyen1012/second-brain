@@ -9,6 +9,7 @@ from django.db import transaction
 from django.db.models import Count, Max, Q
 from django.utils import timezone
 
+from core.i18n import tr
 from growth.models import Achievement, Prediction
 from growth.services import achievements
 from inbox.models import InboxEntry
@@ -86,7 +87,7 @@ def plan_week(week: Week, carry: Iterable[int], journal: str | None) -> Week:
             else set()
         )
         if unknown := wanted - open_ids:
-            raise PlanError(f"Không phải mục tiêu đang mở của tuần trước: {sorted(unknown)}")
+            raise PlanError(tr("Không phải mục tiêu đang mở của tuần trước: {ids}", ids=sorted(unknown)))
         already = set(
             week.objectives.filter(carried_from__isnull=False).values_list("carried_from_id", flat=True)
         )

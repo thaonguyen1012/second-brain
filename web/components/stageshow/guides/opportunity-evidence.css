@@ -310,3 +310,21 @@
   left: 0;
   width: 200px;
 }
+
+/* English: "Opportunity" is longer than every Vietnamese score name. Slimmer side padding and a smaller label keep the
+   app's real label whole; 10.5px on the phone, since the stage draws it at 0.96 at 390 px and 10px would read 9.6px */
+.ssg-opp .ss-stage:lang(en) .op-score {
+  padding-inline: 6px;
+}
+
+.ssg-opp .ss-stage:lang(en) .op-score__label {
+  font-size: 11px;
+}
+
+.ssg-opp .ss-stage[data-layout='compact']:lang(en) .op-score {
+  padding-inline: 4px;
+}
+
+.ssg-opp .ss-stage[data-layout='compact']:lang(en) .op-score__label {
+  font-size: 10.5px;
+}

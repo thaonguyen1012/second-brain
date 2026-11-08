@@ -5,6 +5,7 @@ import { type ApiCarryCandidate, weeksApi } from '@/lib/api/weeks';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { useT } from '@/lib/i18n/client';
 import { ObjectiveHint, ObjectivesEditor, type ObjectivesUpdate } from './objectives-editor';
 import { WeekSection, WriteError } from './week-section';
 import { clockTime, weekRange } from './week-utils';
@@ -22,6 +23,7 @@ function CarryOver({
   candidates: ApiCarryCandidate[];
   onCarried: (week: ApiWeek, carried: number[]) => void;
 }) {
+  const t = useT();
   const pending = candidates.filter((c) => !c.carried);
   const [picked, setPicked] = useState<Set<number>>(() => new Set(pending.map((c) => c.id)));
   const [busy, setBusy] = useState(false);
@@ -43,7 +45,10 @@ function CarryOver({
 
   return (
     // The source week goes in the title; no how-to line under it (DESIGN.md §7).
-    <WeekSection id="week-carry" title={`Mục tiêu còn mở của tuần ${weekRange(candidates[0].weekStart)}`}>
+    <WeekSection
+      id="week-carry"
+      title={t('Mục tiêu còn mở của tuần {range}', { range: weekRange(candidates[0].weekStart) })}
+    >
       <ul className="flex flex-col divide-y">
         {candidates.map((c) => (
           <li key={c.id}>
@@ -61,15 +66,20 @@ function CarryOver({
                 }
               />
               <span className={c.carried ? 'flex-1 text-muted-foreground' : 'flex-1'}>{c.title}</span>
-              {c.carried && <span className="text-xs text-muted-foreground">Đã kéo sang</span>}
+              {c.carried && <span className="text-xs text-muted-foreground">{t('Đã kéo sang')}</span>}
             </label>
           </li>
         ))}
       </ul>
       {pending.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => void carry()} disabled={chosen.length === 0} loading={busy}>
-            Kéo {chosen.length} mục tiêu sang {weekName}
+          <Button
+            className="h-auto min-h-9 max-w-full whitespace-normal py-1 text-start sm:h-auto sm:min-h-8"
+            onClick={() => void carry()}
+            disabled={chosen.length === 0}
+            loading={busy}
+          >
+            {t('Kéo {n} mục tiêu sang {week}', { n: chosen.length, week: weekName })}
           </Button>
         </div>
       )}
@@ -90,11 +100,13 @@ function PlanJournal({
   week: ApiWeek;
   onSaved: (week: ApiWeek) => void;
 }) {
+  const t = useT();
   const [text, setText] = useState(week.planningJournal);
   const [saved, setSaved] = useState(week.planningJournal);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const dirty = text !== saved;
+  const hope = t('{week} mình mong...', { week: weekName });
 
   async function save() {
     if (busy) return;
@@ -112,7 +124,7 @@ function PlanJournal({
   }
 
   return (
-    <WeekSection id="week-plan-journal" title={`Kỳ vọng cho ${weekName}`}>
+    <WeekSection id="week-plan-journal" title={t('Kỳ vọng cho {week}', { week: weekName })}>
       <Textarea
         aria-labelledby="week-plan-journal"
         value={text}
@@ -124,30 +136,30 @@ function PlanJournal({
           }
         }}
         rows={6}
-        placeholder={`${weekName.charAt(0).toUpperCase()}${weekName.slice(1)} mình mong...`}
+        placeholder={`${hope.charAt(0).toUpperCase()}${hope.slice(1)}`}
       />
       {/* Quiet at rest (DESIGN.md D2, §1.2): the objectives are the focal point, so the save button is outline
           and appears only while there is something to save; Cmd/Ctrl+Enter in the field saves too. */}
       <div className="flex min-h-8 flex-wrap items-center gap-2">
         {dirty && (
           <Button variant="outline" size="sm" onClick={() => void save()} loading={busy}>
-            Lưu kế hoạch
+            {t('Lưu kế hoạch')}
           </Button>
         )}
         <span className="text-xs text-muted-foreground" aria-live="polite">
           {dirty ? (
             <>
-              Chưa lưu
+              {t('Chưa lưu')}
               {/* Key hint only where a keyboard is likely (DESIGN.md D24) */}
               <span className="max-sm:hidden pointer-coarse:hidden">
                 {' · '}
-                <SaveKeys /> để lưu
+                <SaveKeys /> {t('để lưu')}
               </span>
             </>
           ) : week.plannedAt ? (
-            `Đã lên kế hoạch lúc ${clockTime(week.plannedAt)}`
+            t('Đã lên kế hoạch lúc {time}', { time: clockTime(week.plannedAt, t) })
           ) : (
-            'Chưa lên kế hoạch'
+            t('Chưa lên kế hoạch')
           )}
         </span>
       </div>
@@ -175,6 +187,7 @@ export function PlanPanel({
   onObjectives: (update: ObjectivesUpdate) => void;
   onCarried: (week: ApiWeek, carried: number[]) => void;
 }) {
+  const t = useT();
   return (
     // One surface for the ritual (DESIGN.md D12): objectives on the left, the journal on the right, a hairline
     // between them; the shorter column no longer leaves a floating card above an empty band. Two columns from xl,
@@ -182,7 +195,7 @@ export function PlanPanel({
     <div className="grid rounded-xl border bg-card xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col divide-y">
         {carryCandidates.length > 0 && <CarryOver start={start} weekName={weekName} candidates={carryCandidates} onCarried={onCarried} />}
-        <WeekSection id="week-objectives" title="Mục tiêu tuần">
+        <WeekSection id="week-objectives" title={t('Mục tiêu tuần')}>
           <ObjectiveHint objectives={week.objectives} />
           <ObjectivesEditor start={start} objectives={week.objectives} onChange={onObjectives} />
         </WeekSection>

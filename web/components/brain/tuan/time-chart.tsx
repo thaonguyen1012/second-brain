@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import type { ApiDayWork, ApiWeekTime } from '@/lib/api/weeks';
+import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { WeekSection } from './week-section';
@@ -24,15 +25,16 @@ function hourTicks(maxMinutes: number): number[] {
 }
 
 function Legend() {
+  const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
       <span className="flex items-center gap-1.5">
         <span className={cn('size-2.5 rounded-[3px]', FOR)} aria-hidden />
-        Giờ cho mục tiêu
+        {t('Giờ cho mục tiêu')}
       </span>
       <span className="flex items-center gap-1.5">
         <span className={cn('size-2.5 rounded-[3px]', OTHER)} aria-hidden />
-        Giờ khác
+        {t('Giờ khác')}
       </span>
     </div>
   );
@@ -40,6 +42,7 @@ function Legend() {
 
 /** The week total as one segmented bar with the share of objective hours as the headline. */
 function WeekSplit({ time }: { time: ApiWeekTime }) {
+  const t = useT();
   const total = time.minutesForObjectives + time.minutesOther;
   const share = total ? Math.round((time.minutesForObjectives / total) * 100) : 0;
   return (
@@ -47,13 +50,19 @@ function WeekSplit({ time }: { time: ApiWeekTime }) {
       <p className="flex flex-wrap items-baseline gap-x-2">
         <span className="font-heading text-2xl font-semibold tabular-nums">{share}%</span>
         <span className="text-sm text-muted-foreground">
-          giờ cho mục tiêu · {minutesShort(time.minutesForObjectives)} trên tổng {minutesShort(total)}
+          {t('giờ cho mục tiêu · {objectives} trên tổng {total}', {
+            objectives: minutesShort(time.minutesForObjectives, t),
+            total: minutesShort(total, t),
+          })}
         </span>
       </p>
       <div
         className="flex h-3 w-full gap-[2px]"
         role="img"
-        aria-label={`Cho mục tiêu ${minutesLong(time.minutesForObjectives)}, giờ khác ${minutesLong(time.minutesOther)}`}
+        aria-label={t('Cho mục tiêu {objectives}, giờ khác {other}', {
+          objectives: minutesLong(time.minutesForObjectives, t),
+          other: minutesLong(time.minutesOther, t),
+        })}
       >
         {time.minutesForObjectives > 0 && (
           <div
@@ -69,8 +78,8 @@ function WeekSplit({ time }: { time: ApiWeekTime }) {
         )}
       </div>
       <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
-        <span>Cho mục tiêu {minutesShort(time.minutesForObjectives)}</span>
-        <span>Khác {minutesShort(time.minutesOther)}</span>
+        <span>{t('Cho mục tiêu {time}', { time: minutesShort(time.minutesForObjectives, t) })}</span>
+        <span>{t('Khác {time}', { time: minutesShort(time.minutesOther, t) })}</span>
       </div>
     </div>
   );
@@ -78,6 +87,7 @@ function WeekSplit({ time }: { time: ApiWeekTime }) {
 
 /** Stacked columns per day (objective hours at the baseline), hover or focus shows the values. */
 function DayColumns({ days }: { days: ApiDayWork[] }) {
+  const t = useT();
   const [active, setActive] = useState<number | null>(null);
   const max = Math.max(...days.map((d) => d.minutesForObjectives + d.minutesOther), 1);
   const ticks = hourTicks(max);
@@ -87,21 +97,25 @@ function DayColumns({ days }: { days: ApiDayWork[] }) {
   return (
     <div className="flex gap-2">
       <div className="relative h-40 w-7 shrink-0 text-end text-[11px] text-muted-foreground tabular-nums" aria-hidden>
-        {ticks.map((t) => (
-          <span key={t} className="absolute right-0 translate-y-1/2" style={{ bottom: pct(t) }}>
-            {t === 0 ? '0' : minutesShort(t)}
+        {ticks.map((tick) => (
+          <span key={tick} className="absolute right-0 translate-y-1/2" style={{ bottom: pct(tick) }}>
+            {tick === 0 ? '0' : minutesShort(tick, t)}
           </span>
         ))}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="relative h-40">
-          {ticks.map((t) => (
-            <div key={t} className="absolute inset-x-0 border-t border-border" style={{ bottom: pct(t) }} aria-hidden />
+          {ticks.map((tick) => (
+            <div key={tick} className="absolute inset-x-0 border-t border-border" style={{ bottom: pct(tick) }} aria-hidden />
           ))}
-          <ul className="absolute inset-0 flex" aria-label="Giờ theo ngày">
+          <ul className="absolute inset-0 flex" aria-label={t('Giờ theo ngày')}>
             {days.map((d, i) => {
               const total = d.minutesForObjectives + d.minutesOther;
-              const label = `${dayLabel(d.date)}: cho mục tiêu ${minutesLong(d.minutesForObjectives)}, khác ${minutesLong(d.minutesOther)}`;
+              const label = t('{day}: cho mục tiêu {objectives}, khác {other}', {
+                day: dayLabel(d.date, t),
+                objectives: minutesLong(d.minutesForObjectives, t),
+                other: minutesLong(d.minutesOther, t),
+              });
               return (
                 <li
                   key={d.date}
@@ -135,14 +149,14 @@ function DayColumns({ days }: { days: ApiDayWork[] }) {
                         i < 2 ? 'left-0' : i > 4 ? 'right-0' : 'left-1/2 -translate-x-1/2',
                       )}
                     >
-                      <p className="font-medium">{dayLabel(d.date)}</p>
+                      <p className="font-medium">{dayLabel(d.date, t)}</p>
                       <p className="flex items-center gap-1.5 tabular-nums">
                         <span className={cn('size-2 rounded-[2px]', FOR)} aria-hidden />
-                        Cho mục tiêu: {minutesLong(d.minutesForObjectives)}
+                        {t('Cho mục tiêu: {time}', { time: minutesLong(d.minutesForObjectives, t) })}
                       </p>
                       <p className="flex items-center gap-1.5 tabular-nums">
                         <span className={cn('size-2 rounded-[2px]', OTHER)} aria-hidden />
-                        Khác: {minutesLong(d.minutesOther)}
+                        {t('Khác: {time}', { time: minutesLong(d.minutesOther, t) })}
                       </p>
                     </div>
                   )}
@@ -154,7 +168,7 @@ function DayColumns({ days }: { days: ApiDayWork[] }) {
         <div className="flex text-center text-[11px] text-muted-foreground" aria-hidden>
           {days.map((d, i) => (
             <span key={d.date} className="flex-1">
-              {weekdayShort[i]}
+              {t(weekdayShort[i])}
               <span className="hidden sm:inline"> {shortDate(d.date)}</span>
             </span>
           ))}
@@ -169,6 +183,7 @@ function DayColumns({ days }: { days: ApiDayWork[] }) {
  * no bars, and the message and the way to log time over it, so the section keeps its shape before any data.
  */
 function EmptyFrame({ days }: { days: ApiDayWork[] }) {
+  const t = useT();
   return (
     <div className="flex gap-2">
       <div className="relative h-24 w-7 shrink-0 text-end text-[11px] text-muted-foreground tabular-nums" aria-hidden>
@@ -180,16 +195,16 @@ function EmptyFrame({ days }: { days: ApiDayWork[] }) {
           <div className="absolute inset-x-0 top-0 border-t border-border" aria-hidden />
           <div className="absolute inset-x-0 bottom-0 border-t border-border" aria-hidden />
           <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-2">
-            <p className="text-sm text-muted-foreground">Chưa có giờ nào tuần này</p>
+            <p className="text-sm text-muted-foreground">{t('Chưa có giờ nào tuần này')}</p>
             <Button size="xs" variant="outline" render={<Link href="/cong-viec/gio/" />}>
-              Bấm giờ
+              {t('Bấm giờ', null, 'chart')}
             </Button>
           </div>
         </div>
         <div className="flex text-center text-[11px] text-muted-foreground" aria-hidden>
           {days.map((d, i) => (
             <span key={d.date} className="flex-1">
-              {weekdayShort[i]}
+              {t(weekdayShort[i])}
               <span className="hidden sm:inline"> {shortDate(d.date)}</span>
             </span>
           ))}
@@ -204,22 +219,23 @@ const HEAD = 'h-10 px-2 text-xs font-medium text-muted-foreground first:ps-0 las
 const CELL = 'px-2 first:ps-0 last:pe-0';
 
 function DayTable({ days }: { days: ApiDayWork[] }) {
+  const t = useT();
   return (
     <table className="w-full text-sm">
-      <caption className="sr-only">Giờ cho mục tiêu và giờ khác theo ngày</caption>
+      <caption className="sr-only">{t('Giờ cho mục tiêu và giờ khác theo ngày')}</caption>
       <thead>
         <tr className="border-b">
           <th scope="col" className={cn(HEAD, 'text-start')}>
-            Ngày
+            {t('Ngày')}
           </th>
           <th scope="col" className={cn(HEAD, 'text-end')}>
-            Cho mục tiêu
+            {t('Cho mục tiêu')}
           </th>
           <th scope="col" className={cn(HEAD, 'text-end')}>
-            Khác
+            {t('Khác')}
           </th>
           <th scope="col" className={cn(HEAD, 'text-end')}>
-            Tổng
+            {t('Tổng')}
           </th>
         </tr>
       </thead>
@@ -227,11 +243,13 @@ function DayTable({ days }: { days: ApiDayWork[] }) {
         {days.map((d) => (
           <tr key={d.date} className="h-10">
             <th scope="row" className={cn(CELL, 'text-start font-normal')}>
-              {dayLabel(d.date)}
+              {dayLabel(d.date, t)}
             </th>
-            <td className={cn(CELL, 'text-end tabular-nums')}>{minutesShort(d.minutesForObjectives)}</td>
-            <td className={cn(CELL, 'text-end tabular-nums')}>{minutesShort(d.minutesOther)}</td>
-            <td className={cn(CELL, 'text-end tabular-nums')}>{minutesShort(d.minutesForObjectives + d.minutesOther)}</td>
+            <td className={cn(CELL, 'text-end tabular-nums')}>{minutesShort(d.minutesForObjectives, t)}</td>
+            <td className={cn(CELL, 'text-end tabular-nums')}>{minutesShort(d.minutesOther, t)}</td>
+            <td className={cn(CELL, 'text-end tabular-nums')}>
+              {minutesShort(d.minutesForObjectives + d.minutesOther, t)}
+            </td>
           </tr>
         ))}
       </tbody>
@@ -241,12 +259,13 @@ function DayTable({ days }: { days: ApiDayWork[] }) {
 
 /** Minutes per objective: one series, bars ranked, value at the tip. */
 function ByObjective({ time }: { time: ApiWeekTime }) {
+  const t = useT();
   const rows = [...time.byObjective].filter((o) => o.minutes > 0).sort((a, b) => b.minutes - a.minutes);
   if (rows.length === 0) return null;
   const max = rows[0].minutes;
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-xs font-medium text-muted-foreground">Theo mục tiêu</h3>
+      <h3 className="text-xs font-medium text-muted-foreground">{t('Theo mục tiêu')}</h3>
       <ul className="flex flex-col gap-1.5">
         {rows.map((o) => (
           <li key={o.id} className="grid grid-cols-[minmax(0,10rem)_1fr] items-center gap-3 text-sm sm:grid-cols-[minmax(0,14rem)_1fr]">
@@ -260,8 +279,8 @@ function ByObjective({ time }: { time: ApiWeekTime }) {
                 aria-hidden
               />
               <span className="text-xs text-muted-foreground tabular-nums">
-                <span className="sr-only">{minutesLong(o.minutes)}</span>
-                <span aria-hidden>{minutesShort(o.minutes)}</span>
+                <span className="sr-only">{minutesLong(o.minutes, t)}</span>
+                <span aria-hidden>{minutesShort(o.minutes, t)}</span>
               </span>
             </span>
           </li>
@@ -273,16 +292,17 @@ function ByObjective({ time }: { time: ApiWeekTime }) {
 
 /** "Giờ cho mục tiêu vs giờ khác" (DECISIONS 9.2), from GET /review: `time` and the per-day minutes. */
 export function TimeChart({ days, time }: { days: ApiDayWork[]; time: ApiWeekTime }) {
+  const t = useT();
   const [table, setTable] = useState(false);
   const total = time.minutesForObjectives + time.minutesOther;
   return (
     <WeekSection
       id="week-time"
-      title="Giờ cho mục tiêu và giờ khác"
+      title={t('Giờ cho mục tiêu và giờ khác')}
       action={
         total > 0 && (
-          <Button size="xs" variant="ghost" aria-pressed={table} onClick={() => setTable((t) => !t)}>
-            {table ? 'Xem biểu đồ' : 'Xem bảng'}
+          <Button size="xs" variant="ghost" aria-pressed={table} onClick={() => setTable((on) => !on)}>
+            {table ? t('Xem biểu đồ') : t('Xem bảng')}
           </Button>
         )
       }

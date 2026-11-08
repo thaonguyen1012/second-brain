@@ -5,14 +5,16 @@ import { capturePath } from '@/lib/capture';
 // Web app manifest (DECISIONS 4.3): installable app with a share target that opens the inbox capture page.
 // Colours from app/global.css: --primary (light) and --background. No service worker: current Chrome and
 // Safari install without one, and none is needed for the share target (GET). Icons: public/icons/.
+// Vietnamese only (lib/i18n/README.md): browsers fetch the manifest without cookies, so it cannot follow the
+// `lang` cookie, and an installed app keeps the name it was installed with.
 const base = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: `${base}/`,
     name: appName,
-    short_name: 'Bộ não Alex',
-    description: 'Sổ tay học tập và bộ não thứ hai của Alex.',
+    short_name: 'Bộ não Alex', // i18n-ignore: the manifest has one language (see above)
+    description: 'Sổ tay học tập và bộ não thứ hai của Alex.', // i18n-ignore: the manifest has one language
     lang: 'vi',
     start_url: `${base}/`,
     scope: `${base}/`,
@@ -33,7 +35,7 @@ export default function manifest(): MetadataRoute.Manifest {
     },
     shortcuts: [
       { name: 'Inbox', url: `${base}/inbox/` },
-      { name: 'Thêm vào Inbox', url: capturePath },
+      { name: 'Thêm vào Inbox', url: capturePath }, // i18n-ignore: the manifest has one language
     ],
   };
 }

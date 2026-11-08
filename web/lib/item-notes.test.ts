@@ -8,6 +8,7 @@ import {
   noteImageSrc,
 } from './item-notes';
 import { formatDate } from './labels';
+import { tVi } from './i18n/translate';
 
 const note = (id: number, items: number[], createdAt = '2026-11-07T10:00:00Z', updatedAt = createdAt) => ({
   id,
@@ -42,9 +43,9 @@ describe('groupNotesByItem', () => {
 describe('noteDateLabel', () => {
   it('says the day written, or "sửa" with the day of a later change', () => {
     const written = '2026-11-03T08:00:00Z';
-    expect(noteDateLabel({ createdAt: written, updatedAt: '2026-11-03T20:00:00Z' })).toBe(formatDate(written));
-    expect(noteDateLabel({ createdAt: written, updatedAt: '2026-11-07T08:00:00Z' })).toBe(
-      `sửa ${formatDate('2026-11-07T08:00:00Z')}`,
+    expect(noteDateLabel({ createdAt: written, updatedAt: '2026-11-03T20:00:00Z' }, tVi)).toBe(formatDate(written, tVi));
+    expect(noteDateLabel({ createdAt: written, updatedAt: '2026-11-07T08:00:00Z' }, tVi)).toBe(
+      `sửa ${formatDate('2026-11-07T08:00:00Z', tVi)}`,
     );
   });
 });

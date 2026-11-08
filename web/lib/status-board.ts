@@ -4,6 +4,7 @@
 // state and to the API.
 import type { ApiError, ApiItemStatus } from '@/lib/api/client';
 import { firstFieldError, itemStatuses } from '@/lib/labels';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 
 /** What a board needs of a record. An Item's status is optional in the API schema (the model has a default). */
 export interface BoardRecord {
@@ -113,23 +114,40 @@ export function unrankMove(ranks: Ranks, move: Move): Ranks {
 }
 
 /** The polite announcement of a move (screen readers), the same for a drag and the card menu. */
-export function moveMessage(title: string, statusLabel: string): string {
-  return `Đã chuyển “${title}” sang ${statusLabel}`;
+export function moveMessage(title: string, statusLabel: string, t: T): string {
+  return t('Đã chuyển “{title}” sang {status}', { title, status: statusLabel });
 }
 
 /** Why a status change failed, as the end of "Không đổi được trạng thái: ...". */
-export function moveFailureReason(e: Pick<ApiError, 'status' | 'reachable' | 'body'>, noun: string): string {
-  if (!e.reachable) return 'chưa kết nối được máy chủ';
-  if (e.status === 401 || e.status === 403) return 'chưa đăng nhập';
-  if (e.status === 404) return `${noun} này không còn nữa`;
-  if (e.status === 400) return firstFieldError(e.body) ?? 'dữ liệu không hợp lệ';
-  return `máy chủ trả lỗi ${e.status}`;
+export function moveFailureReason(e: Pick<ApiError, 'status' | 'reachable' | 'body'>, kind: BoardKind, t: T): string {
+  if (!e.reachable) return t('chưa kết nối được máy chủ');
+  if (e.status === 401 || e.status === 403) return t('chưa đăng nhập');
+  if (e.status === 404) return t(kind.words.gone);
+  if (e.status === 400) return firstFieldError(e.body, t) ?? t('dữ liệu không hợp lệ');
+  return t('máy chủ trả lỗi {status}', { status: e.status });
+}
+
+/** A board's sentences about its records, whole (an English noun needs its own article and plural). */
+export interface BoardWords {
+  /** The lane's button: "Thêm dự án". */
+  add: Msg;
+  /** Its accessible name: "Thêm dự án vào cột {lane}". */
+  addToLane: Msg;
+  /** An empty lane: "Chưa có dự án". */
+  none: Msg;
+  /** An empty lane under a drag: "Thả dự án vào đây". */
+  dropHere: Msg;
+  /** Read after a card's title, what its button opens: "sửa dự án" (the edit dialog), "xem item" (the Item page). */
+  edit: Msg;
+  /** A lane's count as a screen reader hears it: "{n} dự án". */
+  count: Msg;
+  /** A move refused with 404: "dự án này không còn nữa". */
+  gone: Msg;
 }
 
 /** What differs between the boards of the app. */
 export interface BoardKind {
-  /** The record's name in the board's words: "Thêm dự án", "Chưa có item", "item này không còn nữa". */
-  noun: string;
+  words: BoardWords;
   /**
    * The DataTransfer type a dragged card carries (its id). A lane accepts only drags that carry its own type, so
    * files, text, links from other pages and cards of another board are ignored. Lower case: browsers lower-case it.
@@ -140,13 +158,30 @@ export interface BoardKind {
 }
 
 export const PROJECT_BOARD: BoardKind = {
-  noun: 'dự án',
+  words: {
+    add: msg('Thêm dự án'),
+    addToLane: msg('Thêm dự án vào cột {lane}'),
+    none: msg('Chưa có dự án'),
+    dropHere: msg('Thả dự án vào đây'),
+    edit: msg('sửa dự án'),
+    count: msg('{n} dự án'),
+    gone: msg('dự án này không còn nữa'),
+  },
   dragType: 'application/x-alex-brain-project',
   viewKey: 'alex-brain:projects-view',
 };
 
 export const ITEM_BOARD: BoardKind = {
-  noun: 'item',
+  words: {
+    add: msg('Thêm item'),
+    addToLane: msg('Thêm item vào cột {lane}'),
+    none: msg('Chưa có item'),
+    dropHere: msg('Thả item vào đây'),
+    // the card's title opens the Item page (the Sheet), where the Item is read and its notes written
+    edit: msg('xem item'),
+    count: msg('{n} item'),
+    gone: msg('item này không còn nữa'),
+  },
   dragType: 'application/x-alex-brain-item',
   viewKey: 'alex-brain:library-view',
 };

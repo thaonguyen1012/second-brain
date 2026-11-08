@@ -333,3 +333,9 @@
   flex: none;
   color: var(--ss-icon);
 }
+
+/* English: the real placeholder "Search by name or other names" (188.5 px) needs a wider box than the
+   Vietnamese */
+.ssg-skill .ss-stage:lang(en) .sk-search {
+  width: 216px;
+}

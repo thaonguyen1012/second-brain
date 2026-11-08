@@ -7,6 +7,8 @@ import { notesApi, type ApiNote } from '@/lib/api/library';
 import { loadAllPages } from '@/lib/api/pages';
 import { toApiError, useApi } from '@/lib/api/use-api';
 import { MAX_MARKDOWN, changedFromTemplate, noteDateLabel, noteHeading } from '@/lib/item-notes';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { fieldErrors } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { Button } from '@/components/ui/button';
@@ -28,7 +30,7 @@ import { NoteTextEditor } from './note-text-editor';
 // like NoteDialog (an explicit "Lưu", Cmd/Ctrl+Enter); unsaved text is reported up (onDirtyChange) so the Sheet and the
 // page ask before it goes. The block editor (after the owner picks it) replaces NoteTextEditor only.
 
-const FIELD_NAMES: Record<string, string> = { title: 'Tiêu đề', markdown: 'Nội dung', items: 'Item' };
+const FIELD_NAMES: Record<string, Msg> = { title: msg('Tiêu đề'), markdown: msg('Nội dung'), items: msg('Item') };
 
 interface Draft {
   title: string;
@@ -48,16 +50,17 @@ const loadNotes = (item: number) => () =>
   );
 
 /** Why a draft cannot be saved yet, before any request; null when it can. */
-function draftProblem(draft: Draft, template: string): string | null {
-  if (!draft.markdown.trim()) return 'Ghi chú cần có nội dung.';
-  if (template && !changedFromTemplate(draft.markdown, template)) return 'Viết vài dòng vào mẫu trước khi lưu.';
-  if (draft.markdown.length > MAX_MARKDOWN) return `Nội dung dài quá ${MAX_MARKDOWN.toLocaleString('vi-VN')} ký tự.`;
+function draftProblem(draft: Draft, template: string, t: T): string | null {
+  if (!draft.markdown.trim()) return t('Ghi chú cần có nội dung.');
+  if (template && !changedFromTemplate(draft.markdown, template)) return t('Viết vài dòng vào mẫu trước khi lưu.');
+  if (draft.markdown.length > MAX_MARKDOWN)
+    return t('Nội dung dài quá {max} ký tự.', { max: t.num(MAX_MARKDOWN) });
   return null;
 }
 
-function saveError(err: unknown): string {
+function saveError(err: unknown, t: T): string {
   const e = toApiError(err);
-  return (e.status === 400 && fieldErrors(e.body, FIELD_NAMES)) || describeApiError(e).title;
+  return (e.status === 400 && fieldErrors(e.body, t, FIELD_NAMES)) || describeApiError(e, t).title;
 }
 
 /** Title (optional) and markdown of one note, with Hủy and Lưu: the composer and the in-place edit share it. */
@@ -82,6 +85,7 @@ function InlineNoteForm({
   onCancel: () => void;
   textareaRef?: Ref<HTMLTextAreaElement>;
 }) {
+  const t = useT();
   return (
     <form
       className="flex flex-col gap-2"
@@ -106,15 +110,15 @@ function InlineNoteForm({
         value={draft.title}
         maxLength={300}
         onChange={(e) => onDraft({ ...draft, title: e.target.value })}
-        aria-label="Tiêu đề ghi chú (không bắt buộc)"
-        placeholder="Tiêu đề (không bắt buộc)"
+        aria-label={t('Tiêu đề ghi chú (không bắt buộc)')}
+        placeholder={t('Tiêu đề (không bắt buộc)')}
       />
       <NoteTextEditor
         id={`${idBase}-body`}
         value={draft.markdown}
         onChange={(markdown) => onDraft({ ...draft, markdown })}
-        label="Nội dung ghi chú"
-        placeholder="Viết bằng markdown: ## tiêu đề, - danh sách, - [ ] việc cần làm"
+        label={t('Nội dung ghi chú')}
+        placeholder={t('Viết bằng markdown: ## tiêu đề, - danh sách, - [ ] việc cần làm')}
         onSave={onSave}
         onCancel={onCancel}
         textareaRef={textareaRef}
@@ -126,10 +130,10 @@ function InlineNoteForm({
       )}
       <div className="flex items-center justify-end gap-2">
         <span className="me-auto text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
-          <SaveKeys /> để lưu
+          <SaveKeys /> {t('để lưu')}
         </span>
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          Hủy
+          {t('Hủy')}
         </Button>
         <Button type="submit" size="sm" disabled={busy}>
           {busy && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />}
@@ -142,8 +146,9 @@ function InlineNoteForm({
 
 /** Loading notes at their geometry (D27): a date line and a few lines of text, twice. */
 function NotesSkeleton() {
+  const t = useT();
   return (
-    <div className="flex flex-col divide-y" role="status" aria-busy="true" aria-label="Đang tải ghi chú">
+    <div className="flex flex-col divide-y" role="status" aria-busy="true" aria-label={t('Đang tải ghi chú')}>
       {[0, 1].map((i) => (
         <div key={i} className="flex flex-col gap-2 py-4 first:pt-0" aria-hidden>
           <Skeleton className="h-3 w-24 motion-reduce:animate-none" />
@@ -173,11 +178,12 @@ export function ItemNotes({
   /** Whether some note text here is not saved yet. */
   onDirtyChange: (dirty: boolean) => void;
 }) {
+  const t = useT();
   const base = useId();
   const headingId = `${base}-heading`;
   const composeButtonId = `${base}-compose`;
   const editButtonId = (id: number) => `${base}-note-${id}-edit`;
-  const template = noteTemplateFor(item.type);
+  const template = noteTemplateFor(item.type, t);
   const freshDraft = (): Draft => ({ title: item.title.slice(0, 300), markdown: template });
 
   const notes = useApi<Page<ApiNote>>(`item-notes:${item.id}`, loadNotes(item.id));
@@ -268,7 +274,7 @@ export function ItemNotes({
 
   const create = async () => {
     if (composeBusy) return;
-    const problem = draftProblem(draft, template);
+    const problem = draftProblem(draft, template, t);
     if (problem) return setComposeError(problem);
     setComposeBusy(true);
     setComposeError(null);
@@ -281,9 +287,9 @@ export function ItemNotes({
       const next = freshDraft();
       setDraft(next);
       setDraftBase(next);
-      say(`Đã lưu ghi chú "${noteTitle(saved)}"`);
+      say(t('Đã lưu ghi chú "{title}"', { title: noteTitle(saved, t) }));
     } catch (err) {
-      setComposeError(saveError(err));
+      setComposeError(saveError(err, t));
     } finally {
       setComposeBusy(false);
     }
@@ -310,7 +316,7 @@ export function ItemNotes({
   const saveEdit = async (note: ApiNote) => {
     const edit = edits.get(note.id);
     if (!edit || edit.busy) return;
-    const problem = draftProblem(edit, '');
+    const problem = draftProblem(edit, '', t);
     if (problem) return setEdit(note.id, { ...edit, error: problem });
     if (!editDirty(note, edit)) return stopEdit(note.id);
     setEdit(note.id, { ...edit, busy: true, error: null });
@@ -318,10 +324,10 @@ export function ItemNotes({
       // links to other Items stay as they are: only title and text are sent
       const saved = await notesApi.update(note.id, { title: edit.title.trim(), markdown: edit.markdown });
       notes.mutate((d) => d && { ...d, results: d.results.map((n) => (n.id === saved.id ? saved : n)) });
-      say(`Đã lưu ghi chú "${noteTitle(saved)}"`);
+      say(t('Đã lưu ghi chú "{title}"', { title: noteTitle(saved, t) }));
       stopEdit(note.id);
     } catch (err) {
-      setEdit(note.id, { ...edit, busy: false, error: saveError(err) });
+      setEdit(note.id, { ...edit, busy: false, error: saveError(err, t) });
     }
   };
 
@@ -330,7 +336,7 @@ export function ItemNotes({
       <div className="flex min-h-8 items-center gap-2">
         {/* tabIndex -1: only a place for the focus to wait while a form closes (focusAfter) */}
         <h2 id={headingId} tabIndex={-1} className="font-heading text-lg font-semibold tracking-tight outline-none">
-          Ghi chú
+          {t('Ghi chú', null, 'nav')}
         </h2>
         {loaded && <span className="text-xs text-muted-foreground tabular-nums">{list.length}</span>}
         {!showComposer && (
@@ -345,7 +351,7 @@ export function ItemNotes({
             }}
           >
             <Plus aria-hidden />
-            Viết ghi chú
+            {t('Viết ghi chú')}
           </Button>
         )}
       </div>
@@ -357,7 +363,7 @@ export function ItemNotes({
           onDraft={setDraft}
           busy={composeBusy}
           error={composeError}
-          saveLabel="Lưu ghi chú"
+          saveLabel={t('Lưu ghi chú')}
           onSave={() => void create()}
           onCancel={() => unlessDirty(composerDirty, closeComposer)}
           textareaRef={composerRef}
@@ -372,14 +378,14 @@ export function ItemNotes({
       ) : !loaded ? (
         <NotesSkeleton />
       ) : list.length === 0 ? (
-        !showComposer && <p className="text-sm text-muted-foreground">Chưa có ghi chú nào.</p>
+        !showComposer && <p className="text-sm text-muted-foreground">{t('Chưa có ghi chú nào.')}</p>
       ) : (
-        <ul aria-label="Ghi chú của item" className="flex flex-col divide-y">
+        <ul aria-label={t('Ghi chú của item')} className="flex flex-col divide-y">
           {list.map((note) => {
             const edit = edits.get(note.id);
             const heading = noteHeading(note.title, item.title);
             const others = note.itemLabels.filter((l) => l.id !== item.id);
-            const name = noteTitle(note);
+            const name = noteTitle(note, t);
             return (
               <li key={note.id} className="flex flex-col gap-2 py-5 first:pt-0 last:pb-0">
                 <div className="flex items-start gap-2">
@@ -388,11 +394,10 @@ export function ItemNotes({
                       <h3 className="font-heading text-[15px] leading-5 font-semibold break-words">{heading}</h3>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      {noteDateLabel(note)}
-                      {others.length > 0 && (
-                        <>
-                          {' · cũng gắn với '}
-                          {others.map((o, i) => (
+                      {noteDateLabel(note, t)}
+                      {others.length > 0 &&
+                        t.rich(' · cũng gắn với {items}', {
+                          items: others.map((o, i) => (
                             <span key={o.id}>
                               {i > 0 && ', '}
                               <Link
@@ -402,9 +407,8 @@ export function ItemNotes({
                                 {o.title}
                               </Link>
                             </span>
-                          ))}
-                        </>
-                      )}
+                          )),
+                        })}
                     </p>
                   </div>
                   {!edit && (
@@ -416,24 +420,24 @@ export function ItemNotes({
                               id={editButtonId(note.id)}
                               size="icon-sm"
                               variant="ghost"
-                              aria-label={`Sửa ghi chú “${name}”`}
+                              aria-label={t('Sửa ghi chú “{title}”', { title: name })}
                               onClick={() => startEdit(note)}
                             />
                           }
                         >
                           <Pencil aria-hidden />
                         </TooltipTrigger>
-                        <TooltipPopup>Sửa</TooltipPopup>
+                        <TooltipPopup>{t('Sửa')}</TooltipPopup>
                       </Tooltip>
-                      <RowMenu label={`Thao tác cho ghi chú “${name}”`}>
+                      <RowMenu label={t('Thao tác cho ghi chú “{title}”', { title: name })}>
                         <MenuLinkItem render={<Link href={`/thu-vien/ghi-chu/?id=${note.id}`} />}>
                           <NotebookPen aria-hidden />
-                          Mở ở trang Ghi chú
+                          {t('Mở ở trang Ghi chú')}
                         </MenuLinkItem>
                         <MenuSeparator />
                         <MenuItem variant="destructive" onClick={() => setDeleting(note)}>
                           <Trash2 aria-hidden />
-                          Xóa
+                          {t('Xóa')}
                         </MenuItem>
                       </RowMenu>
                     </div>
@@ -446,7 +450,7 @@ export function ItemNotes({
                     onDraft={(d) => setEdit(note.id, { ...edit, ...d })}
                     busy={edit.busy}
                     error={edit.error}
-                    saveLabel="Lưu"
+                    saveLabel={t('Lưu')}
                     onSave={() => void saveEdit(note)}
                     onCancel={() => unlessDirty(editDirty(note, edit), () => stopEdit(note.id))}
                   />
@@ -471,10 +475,12 @@ export function ItemNotes({
       <ConfirmDelete
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Xóa ghi chú?"
+        title={t('Xóa ghi chú?')}
         description={
           deleting
-            ? `"${noteTitle(deleting)}" bị xóa hẳn, cả ở các item khác nó gắn với. Không hoàn tác được.`
+            ? t('"{title}" bị xóa hẳn, cả ở các item khác nó gắn với. Không hoàn tác được.', {
+                title: noteTitle(deleting, t),
+              })
             : undefined
         }
         action={() => (deleting ? notesApi.delete(deleting.id) : Promise.resolve())}
@@ -486,7 +492,7 @@ export function ItemNotes({
           notes.mutate((d) => d && { ...d, results: d.results.filter((n) => n.id !== gone) });
           setEdit(gone, null);
           onCountChange(deleting.items, -1);
-          say(`Đã xóa ghi chú "${noteTitle(deleting)}"`);
+          say(t('Đã xóa ghi chú "{title}"', { title: noteTitle(deleting, t) }));
           // the deleted note's menu is gone: the next note's (or the composer's) button takes the focus
           focusAfter(neighbour ? editButtonId(neighbour.id) : composeButtonId);
         }}

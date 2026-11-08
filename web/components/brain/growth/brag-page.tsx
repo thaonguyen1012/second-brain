@@ -4,6 +4,8 @@ import { CalendarCheck, Pencil, Plus, Scale, Trash2, Trophy } from 'lucide-react
 import type { Page } from '@/lib/api/client';
 import { growthApi, type ApiAchievement, type ApiOutcome, type ApiPrediction } from '@/lib/api/growth';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -40,6 +42,7 @@ function AchievementRow({
   onEdit: () => void;
   onDeleted: () => void;
 }) {
+  const t = useT();
   const [deleting, setDeleting] = useState(false);
   const meta = [formatDay(a.date), a.projectTitle, a.skills.map((k) => k.name).join(', ')].filter(Boolean).join(' · ');
   return (
@@ -60,22 +63,22 @@ function AchievementRow({
         )}
         <p className="pt-0.5 text-xs text-muted-foreground">{meta}</p>
       </div>
-      <RowMenu label={`Thao tác với "${a.title}"`}>
+      <RowMenu label={t('Thao tác với "{title}"', { title: a.title })}>
         <MenuItem onClick={onEdit}>
           <Pencil aria-hidden />
-          Sửa
+          {t('Sửa')}
         </MenuItem>
         <MenuSeparator />
         <MenuItem variant="destructive" onClick={() => setDeleting(true)}>
           <Trash2 aria-hidden />
-          Xóa
+          {t('Xóa')}
         </MenuItem>
       </RowMenu>
       <ConfirmDelete
         open={deleting}
         onOpenChange={setDeleting}
-        title="Xóa dòng thành tựu?"
-        description={`"${a.title}" bị xóa khỏi nhật ký thành tựu. Không hoàn tác được.`}
+        title={t('Xóa dòng thành tựu?')}
+        description={t('"{title}" bị xóa khỏi nhật ký thành tựu. Không hoàn tác được.', { title: a.title })}
         action={() => growthApi.deleteAchievement(a.id)}
         onDeleted={onDeleted}
       />
@@ -85,16 +88,18 @@ function AchievementRow({
 
 /** Loading placeholder at the geometry of a row list (DESIGN.md D27). */
 function LoadingRows() {
-  return <Skeleton className="h-36 rounded-xl" aria-busy="true" aria-label="Đang tải" />;
+  const t = useT();
+  return <Skeleton className="h-36 rounded-xl" aria-busy="true" aria-label={t('Đang tải')} />;
 }
 
 type Scope = 'week' | 'all';
-const scopeChoices: { value: Scope; label: string }[] = [
-  { value: 'week', label: 'Theo tuần' },
-  { value: 'all', label: 'Mọi tuần' },
+const scopeChoices: { value: Scope; label: Msg }[] = [
+  { value: 'week', label: msg('Theo tuần') },
+  { value: 'all', label: msg('Mọi tuần') },
 ];
 
 function BragSection() {
+  const t = useT();
   const thisWeek = mondayOf(today());
   const [week, setWeek] = useState(thisWeek);
   const [scope, setScope] = useState<Scope>('week');
@@ -144,7 +149,7 @@ function BragSection() {
         setEditing(a);
         setOpen(true);
       },
-      (err: unknown) => setNotice(openError(err, `Không tìm thấy thành tựu #${id}, có thể đã bị xóa.`)),
+      (err: unknown) => setNotice(openError(err, t('Không tìm thấy thành tựu #{id}, có thể đã bị xóa.', { id }), t)),
     );
   });
 
@@ -155,38 +160,44 @@ function BragSection() {
     try {
       await appendNextPage(list);
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     } finally {
       setLoadingMore(false);
     }
   };
 
   return (
-    <section className="flex flex-col gap-6" aria-label="Thành tựu">
+    <section className="flex flex-col gap-6" aria-label={t('Thành tựu')}>
       {/* One toolbar: period and stepper left, "Ghi thành tựu" right; at 390 px the stepper takes row 2. None
           before the first line (D26): the first-run panel carries the add. Kept while that is being checked, so a
           week that is empty only for now does not make it flicker. */}
       {!firstRun && (
         <div className="flex flex-wrap items-center gap-2">
-          <ChoiceSelect label="Phạm vi" value={scope} onChange={setScope} choices={scopeChoices} className="w-auto" />
+          <ChoiceSelect
+            label={t('Phạm vi')}
+            value={scope}
+            onChange={setScope}
+            choices={scopeChoices.map((c) => ({ value: c.value, label: t(c.label) }))}
+            className="w-auto"
+          />
           {scope === 'week' && (
             <div className="order-last w-full sm:order-none sm:w-auto">
               <PeriodStepper
-                name="tuần"
+                name={t('tuần')}
                 label={weekLabel(week)}
                 onPrev={() => setWeek((w) => addDays(w, -7))}
                 onNext={() => setWeek((w) => addDays(w, 7))}
                 nextDisabled={week >= thisWeek}
                 current={week === thisWeek}
                 onCurrent={() => setWeek(thisWeek)}
-                currentLabel="Tuần này"
+                currentLabel={t('Tuần này')}
               />
             </div>
           )}
           {/* While the list is empty the EmptyState button is the one primary (DESIGN.md D2) */}
           <Button className="ms-auto" variant={empty ? 'outline' : 'default'} onClick={create}>
             <Plus aria-hidden />
-            Ghi thành tựu <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
+            {t('Ghi thành tựu')} <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
           </Button>
         </div>
       )}
@@ -203,22 +214,22 @@ function BragSection() {
       ) : firstRun ? (
         <EmptyPanel
           glyph={Trophy}
-          title="Chưa có thành tựu nào"
-          text="Mỗi tuần ghi việc đã làm được, kèm kết quả bằng số: nguyên liệu cho CV và case study."
+          title={t('Chưa có thành tựu nào')}
+          text={t('Mỗi tuần ghi việc đã làm được, kèm kết quả bằng số: nguyên liệu cho CV và case study.')}
           action={
             <Button onClick={create} aria-keyshortcuts="n">
               <Plus aria-hidden />
-              Ghi thành tựu
+              {t('Ghi thành tựu')}
               <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
             </Button>
           }
           quick={
             <>
-              <p className="basis-full text-xs text-muted-foreground">Hoặc ghi nhanh một dòng</p>
+              <p className="basis-full text-xs text-muted-foreground">{t('Hoặc ghi nhanh một dòng')}</p>
               <AchievementQuickAdd
                 date={defaultDate}
-                titlePlaceholder="Giảm build từ 14 GB xuống 1,9 GB"
-                onAdded={(a) => added(a, `Đã ghi "${a.title}"`)}
+                titlePlaceholder={t('Giảm build từ 14 GB xuống 1,9 GB')}
+                onAdded={(a) => added(a, t('Đã ghi "{title}"', { title: a.title }))}
               />
             </>
           }
@@ -230,15 +241,15 @@ function BragSection() {
           title={
             scope === 'week'
               ? week === thisWeek
-                ? 'Tuần này chưa ghi gì'
-                : `Tuần ${weekLabel(week)} không có dòng nào`
-              : 'Nhật ký còn trống'
+                ? t('Tuần này chưa ghi gì')
+                : t('Tuần {week} không có dòng nào', { week: weekLabel(week) })
+              : t('Nhật ký còn trống')
           }
-          description="Mỗi tuần ghi những việc đã làm được, kèm kết quả bằng số. Đây là nguyên liệu cho CV và case study."
+          description={t('Mỗi tuần ghi những việc đã làm được, kèm kết quả bằng số. Đây là nguyên liệu cho CV và case study.')}
         >
           <Button onClick={create}>
             <Plus aria-hidden />
-            Ghi thành tựu
+            {t('Ghi thành tựu')}
           </Button>
         </EmptyState>
       ) : (
@@ -253,7 +264,7 @@ function BragSection() {
               }}
               onDeleted={() => {
                 list.mutate((d) => d && { ...d, results: d.results.filter((x) => x.id !== a.id) });
-                setNotice(`Đã xóa "${a.title}"`);
+                setNotice(t('Đã xóa "{title}"', { title: a.title }));
                 if (anyLine.data) anyLine.reload();
               }}
             />
@@ -262,7 +273,7 @@ function BragSection() {
       )}
       {list.data?.next && !list.loading && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-          Tải thêm
+          {t('Tải thêm')}
         </Button>
       )}
       <AchievementDialog
@@ -272,7 +283,10 @@ function BragSection() {
         onOpenChange={setOpen}
         onSaved={(saved, created) => {
           setOpen(false);
-          added(saved, created ? `Đã ghi "${saved.title}"` : `Đã lưu "${saved.title}"`);
+          added(
+            saved,
+            created ? t('Đã ghi "{title}"', { title: saved.title }) : t('Đã lưu "{title}"', { title: saved.title }),
+          );
         }}
       />
     </section>
@@ -282,9 +296,9 @@ function BragSection() {
 // --- Predictions -------------------------------------------------------------------------------------
 
 type PredFilter = 'all' | 'due' | ApiOutcome;
-const predChoices: { value: PredFilter; label: string }[] = [
-  { value: 'all', label: 'Mọi dự đoán' },
-  { value: 'due', label: 'Đến hạn chấm lại' },
+const predChoices: { value: PredFilter; label: Msg }[] = [
+  { value: 'all', label: msg('Mọi dự đoán') },
+  { value: 'due', label: msg('Đến hạn chấm lại') },
   ...outcomes.map((o) => ({ value: o.value as PredFilter, label: o.label })),
 ];
 
@@ -303,13 +317,16 @@ function PredictionRow({
   onEdit: () => void;
   onDeleted: () => void;
 }) {
+  const t = useT();
   const [deleting, setDeleting] = useState(false);
   const o = outcomeOf(p.outcome);
   const due = p.outcome === 'open' && p.checkOn <= today();
   const meta = [
-    `ghi ${formatDay(p.madeOn)}`,
-    p.outcome === 'open' ? `chấm lại ${formatDay(p.checkOn)}` : `chấm ${formatDay(p.scoredAt)}`,
-    p.confidence ? `tự tin ${p.confidence}/10` : null,
+    t('ghi {date}', { date: formatDay(p.madeOn) }),
+    p.outcome === 'open'
+      ? t('chấm lại {date}', { date: formatDay(p.checkOn) })
+      : t('chấm {date}', { date: formatDay(p.scoredAt) }),
+    p.confidence ? t('tự tin {confidence}/10', { confidence: p.confidence }) : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -320,10 +337,10 @@ function PredictionRow({
           {due ? (
             <StatusBadge tone="warning">
               <CalendarCheck aria-hidden />
-              Đến hạn chấm lại
+              {t('Đến hạn chấm lại')}
             </StatusBadge>
           ) : p.outcome !== 'open' ? (
-            <StatusBadge tone={o.tone}>{o.label}</StatusBadge>
+            <StatusBadge tone={o.tone}>{t(o.label)}</StatusBadge>
           ) : null}
           <p className="min-w-0 text-sm font-medium break-words">{p.statement}</p>
         </div>
@@ -337,25 +354,25 @@ function PredictionRow({
       <div className="flex shrink-0 items-center gap-1">
         <Button size="xs" variant="outline" onClick={onScore}>
           <Scale aria-hidden />
-          {p.outcome === 'open' ? 'Chấm' : 'Chấm lại'}
+          {p.outcome === 'open' ? t('Chấm') : t('Chấm lại')}
         </Button>
-        <RowMenu label="Thao tác với dự đoán">
+        <RowMenu label={t('Thao tác với dự đoán')}>
           <MenuItem onClick={onEdit}>
             <Pencil aria-hidden />
-            Sửa
+            {t('Sửa')}
           </MenuItem>
           <MenuSeparator />
           <MenuItem variant="destructive" onClick={() => setDeleting(true)}>
             <Trash2 aria-hidden />
-            Xóa
+            {t('Xóa')}
           </MenuItem>
         </RowMenu>
       </div>
       <ConfirmDelete
         open={deleting}
         onOpenChange={setDeleting}
-        title="Xóa dự đoán?"
-        description={`"${p.statement}" bị xóa, kể cả kết quả đã chấm. Không hoàn tác được.`}
+        title={t('Xóa dự đoán?')}
+        description={t('"{statement}" bị xóa, kể cả kết quả đã chấm. Không hoàn tác được.', { statement: p.statement })}
         action={() => growthApi.deletePrediction(p.id)}
         onDeleted={onDeleted}
       />
@@ -364,6 +381,7 @@ function PredictionRow({
 }
 
 function PredictionsSection() {
+  const t = useT();
   const [filter, setFilter] = useState<PredFilter>('all');
   const [target, setTarget] = useState<ApiPrediction | null>(null);
   const [mode, setMode] = useState<PredictionMode>('edit');
@@ -396,7 +414,7 @@ function PredictionsSection() {
   useOpenFromUrl('prediction', (id) => {
     growthApi.getPrediction(id).then(
       (p) => show(p, 'edit'),
-      (err: unknown) => setNotice(openError(err, `Không tìm thấy dự đoán #${id}, có thể đã bị xóa.`)),
+      (err: unknown) => setNotice(openError(err, t('Không tìm thấy dự đoán #{id}, có thể đã bị xóa.', { id }), t)),
     );
   });
   useShortcuts({ p: () => show(null, 'edit') });
@@ -408,7 +426,7 @@ function PredictionsSection() {
     try {
       await appendNextPage(list);
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     } finally {
       setLoadingMore(false);
     }
@@ -417,7 +435,7 @@ function PredictionsSection() {
   const addButton = (
     <Button className="shrink-0" variant="outline" onClick={() => show(null, 'edit')}>
       <Plus aria-hidden />
-      Ghi dự đoán <Kbd className="max-sm:hidden pointer-coarse:hidden">P</Kbd>
+      {t('Ghi dự đoán')} <Kbd className="max-sm:hidden pointer-coarse:hidden">P</Kbd>
     </Button>
   );
 
@@ -427,13 +445,14 @@ function PredictionsSection() {
         <Alert variant="warning">
           <CalendarCheck aria-hidden />
           <AlertTitle>
-            {dueCount}
-            {due.data?.next ? '+' : ''} dự đoán đến hạn chấm lại
+            {t('{n}{plus} dự đoán đến hạn chấm lại', { n: dueCount, plus: due.data?.next ? '+' : '' })}
           </AlertTitle>
-          <AlertDescription>Mỗi quý xem lại danh sách dự đoán: đúng, sai, hay đúng một phần, và vì sao.</AlertDescription>
+          <AlertDescription>
+            {t('Mỗi quý xem lại danh sách dự đoán: đúng, sai, hay đúng một phần, và vì sao.')}
+          </AlertDescription>
           <AlertAction>
             <Button size="sm" variant="outline" onClick={() => setFilter('due')}>
-              Xem
+              {t('Xem')}
             </Button>
           </AlertAction>
         </Alert>
@@ -453,17 +472,17 @@ function PredictionsSection() {
             id="pred-title"
             className="me-auto min-w-0 font-heading text-lg font-semibold tracking-tight text-balance"
           >
-            Dự đoán, chấm lại sau 6 tháng
+            {t('Dự đoán, chấm lại sau 6 tháng')}
           </h2>
           {none ? (
             addButton
           ) : (
             <div className="flex items-center gap-2 max-sm:w-full">
               <ChoiceSelect
-                label="Lọc dự đoán"
+                label={t('Lọc dự đoán')}
                 value={filter}
                 onChange={setFilter}
-                choices={predChoices}
+                choices={predChoices.map((c) => ({ value: c.value, label: t(c.label) }))}
                 className="w-auto max-sm:min-w-0 max-sm:flex-1"
               />
               {addButton}
@@ -475,24 +494,25 @@ function PredictionsSection() {
             <ApiErrorState error={list.error} onRetry={list.reload} />
           </div>
         ) : list.loading && rows.length === 0 ? (
-          <div className="flex flex-col gap-2 p-3" aria-busy="true" aria-label="Đang tải">
+          <div className="flex flex-col gap-2 p-3" aria-busy="true" aria-label={t('Đang tải')}>
             <Skeleton className="h-10" />
             <Skeleton className="h-10" />
           </div>
         ) : none ? (
           <p className="px-3 py-3 text-sm text-muted-foreground">
-            Chưa có dự đoán nào. Ghi một dự đoán về AI, kinh tế hay địa chính trị kèm độ tự tin; 6 tháng sau app nhắc
-            chấm lại.
+            {t(
+              'Chưa có dự đoán nào. Ghi một dự đoán về AI, kinh tế hay địa chính trị kèm độ tự tin; 6 tháng sau app nhắc chấm lại.',
+            )}
           </p>
         ) : rows.length === 0 ? (
           <p className="px-3 py-3 text-sm text-muted-foreground">
-            Không có mục nào khớp bộ lọc.{' '}
+            {t('Không có mục nào khớp bộ lọc.')}{' '}
             <Button variant="link" size="sm" className="px-0" onClick={() => setFilter('all')}>
-              Xóa bộ lọc
+              {t('Xóa bộ lọc')}
             </Button>
           </p>
         ) : (
-          <ul className="flex flex-col divide-y" aria-label="Dự đoán">
+          <ul className="flex flex-col divide-y" aria-label={t('Dự đoán', null, 'list')}>
             {rows.map((p) => (
               <PredictionRow
                 key={p.id}
@@ -502,7 +522,7 @@ function PredictionsSection() {
                 onDeleted={() => {
                   list.mutate((d) => d && { ...d, results: d.results.filter((x) => x.id !== p.id) });
                   due.reload();
-                  setNotice('Đã xóa dự đoán');
+                  setNotice(t('Đã xóa dự đoán'));
                 }}
               />
             ))}
@@ -511,7 +531,7 @@ function PredictionsSection() {
       </div>
       {list.data?.next && !list.loading && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-          Tải thêm
+          {t('Tải thêm')}
         </Button>
       )}
       <PredictionDialog
@@ -523,10 +543,10 @@ function PredictionsSection() {
           setOpen(false);
           setNotice(
             created
-              ? `Đã ghi dự đoán, chấm lại ngày ${formatDay(saved.checkOn)}`
+              ? t('Đã ghi dự đoán, chấm lại ngày {date}', { date: formatDay(saved.checkOn) })
               : mode === 'score'
-                ? `Đã chấm: ${outcomeOf(saved.outcome).label}`
-                : 'Đã lưu dự đoán',
+                ? t('Đã chấm: {outcome}', { outcome: t(outcomeOf(saved.outcome).label) })
+                : t('Đã lưu dự đoán'),
           );
           list.reload();
           due.reload();

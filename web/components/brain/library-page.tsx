@@ -19,6 +19,8 @@ import { useBoardView } from '@/lib/use-board-view';
 import { useRememberedFlag } from '@/lib/use-remembered-flag';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
+import { msg } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { ApiErrorState, ApiStaleAlert, describeApiError, openError } from './api-state';
 import { ChoiceSelect } from './choice-select';
@@ -36,8 +38,8 @@ import { ViewSwitch } from './view-switch';
 type TypeFilter = ApiItemType | 'all';
 type StatusFilter = ApiItemStatus | 'all';
 
-const typeChoices = [{ value: 'all' as const, label: 'Mọi loại' }, ...itemTypes];
-const statusChoices = [{ value: 'all' as const, label: 'Mọi trạng thái' }, ...itemStatuses];
+const typeChoices = [{ value: 'all' as const, label: msg('Mọi loại') }, ...itemTypes];
+const statusChoices = [{ value: 'all' as const, label: msg('Mọi trạng thái') }, ...itemStatuses];
 
 /** Every Item of one type (all cursor pages, at most 20 of 100), newest first: one list for both views. */
 const loadItems = (type: TypeFilter) => () =>
@@ -54,6 +56,7 @@ const loadItems = (type: TypeFilter) => () =>
  * through ItemDialog (POST/PATCH /api/items).
  */
 export function LibraryPage() {
+  const t = useT();
   // Before useOpenFromUrl: a remembered board waits until ?item= is gone, so the two URL updates never collide.
   const [view, setView] = useBoardView(ITEM_BOARD.viewKey, 'item');
   const [type, setType] = useState<TypeFilter>('all');
@@ -90,6 +93,9 @@ export function LibraryPage() {
   // the loading skeleton takes the picture geometry the library had last time (D27), so nothing jumps on arrival
   const anyPicture = useMemo(() => (ready ? all.some((i) => itemPicture(i) !== null) : null), [ready, all]);
   const skeletonPictures = useRememberedFlag('alex-brain:library-pictures', anyPicture);
+  // The filter choices in the page's language (the Select keeps the same lists between renders)
+  const typeOptions = useMemo(() => typeChoices.map((c) => ({ value: c.value, label: t(c.label) })), [t]);
+  const statusOptions = useMemo(() => statusChoices.map((c) => ({ value: c.value, label: t(c.label) })), [t]);
 
   const openEdit = (item: ApiItem, rating = false) => {
     returnTo.current = item.id;
@@ -117,7 +123,8 @@ export function LibraryPage() {
   useOpenFromUrl('item', (id) => {
     api.getItem(id).then(
       (item) => openSheet(item),
-      (err: unknown) => setNotice(openError(err, `Không tìm thấy item #${id}, có thể đã bị xóa.`)),
+      (err: unknown) =>
+        setNotice(openError(err, t('Không tìm thấy item #{id}, có thể đã bị xóa.', { id }), t)),
     );
   });
 
@@ -148,9 +155,9 @@ export function LibraryPage() {
   const step = async (item: ApiItem, to: ApiItemStatus) => {
     try {
       upsert(await api.updateItem(item.id, { status: to }), false);
-      setNotice(`"${item.title}" → ${itemStatusOf(to).label}`);
+      setNotice(`"${item.title}" → ${t(itemStatusOf(to).label)}`);
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     }
   };
 
@@ -160,7 +167,7 @@ export function LibraryPage() {
     try {
       await appendNextPage(items);
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     } finally {
       setLoadingMore(false);
     }
@@ -179,14 +186,19 @@ export function LibraryPage() {
       const active = res.created.filter((i) => i.status === 'active').length;
       const parts = [
         res.created.length > 0 &&
-          `Đã thêm ${res.created.length} khóa học từ Sổ tay` +
-            (active > 0 ? ` (${active} ${itemStatusOf('active').label.toLowerCase()})` : ''),
-        res.skipped > 0 && `${res.skipped} khóa đã có trong thư viện`,
-        res.error && `dừng lại vì lỗi: ${describeApiError(res.error).title}`,
+          (active > 0
+            ? t('Đã thêm {n} khóa học từ Sổ tay ({active} {status})', {
+                n: res.created.length,
+                active,
+                status: t(itemStatusOf('active').label).toLowerCase(),
+              })
+            : t('Đã thêm {n} khóa học từ Sổ tay', { n: res.created.length })),
+        res.skipped > 0 && t('{n} khóa đã có trong thư viện', { n: res.skipped }),
+        res.error && t('dừng lại vì lỗi: {error}', { error: describeApiError(res.error, t).title }),
       ].filter(Boolean);
       setNotice(parts.length ? `${parts.join('; ')}.` : null);
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     } finally {
       importLock.current = false;
       setImporting(null);
@@ -221,20 +233,26 @@ export function LibraryPage() {
                 view === 'list' && 'grid-cols-2',
               )}
             >
-              <ChoiceSelect label="Loại" value={type} onChange={setType} choices={typeChoices} className="min-w-0 @xl:w-auto" />
+              <ChoiceSelect
+                label={t('Loại')}
+                value={type}
+                onChange={setType}
+                choices={typeOptions}
+                className="min-w-0 @xl:w-auto"
+              />
               {view === 'list' && (
                 <ChoiceSelect
-                  label="Trạng thái"
+                  label={t('Trạng thái')}
                   value={status}
                   onChange={setStatus}
-                  choices={statusChoices}
+                  choices={statusOptions}
                   className="min-w-0 @xl:w-auto"
                 />
               )}
             </div>
             <Button className="ms-auto shrink-0" onClick={() => openNew()}>
               <Plus aria-hidden />
-              Thêm item
+              {t('Thêm item')}
             </Button>
           </div>
         </div>
@@ -263,17 +281,17 @@ export function LibraryPage() {
             setStatus('all');
           }}
         >
-          Không có mục nào khớp bộ lọc.
+          {t('Không có mục nào khớp bộ lọc.')}
         </FilteredEmpty>
       ) : all.length === 0 ? (
         <EmptyPanel
           glyph={BookPlus}
-          title="Chưa có item nào"
-          text="Thêm sách, phim, khóa học, bài viết hoặc dự án; mục từ inbox cũng có thể thành item."
+          title={t('Chưa có item nào')}
+          text={t('Thêm sách, phim, khóa học, bài viết hoặc dự án; mục từ inbox cũng có thể thành item.')}
           action={
             <Button onClick={() => openNew()}>
               <Plus aria-hidden />
-              Thêm item
+              {t('Thêm item')}
             </Button>
           }
           quick={
@@ -285,8 +303,8 @@ export function LibraryPage() {
             >
               {importing ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Plus aria-hidden />}
               {importing
-                ? `Đang thêm ${importing.sent}/${importing.total} khóa học…`
-                : `Thêm ${handbooks.length} khóa học từ Sổ tay`}
+                ? t('Đang thêm {sent}/{n} khóa học…', { sent: importing.sent, n: importing.total })
+                : t('Thêm {n} khóa học từ Sổ tay', { n: handbooks.length })}
             </Button>
           }
           guide={items.error ? undefined : 'library'}
@@ -297,7 +315,6 @@ export function LibraryPage() {
           records={all}
           moves={moves}
           onOpen={(item) => openSheet(item)}
-          openHint="xem item"
           onAdd={(lane) => openNew({ status: lane })}
           renderBody={(item) => (
             <ItemCardBody
@@ -315,12 +332,12 @@ export function LibraryPage() {
               onRate={() => openEdit(item, true)}
             />
           )}
-          renderMedia={(item) => boardMedia(itemPicture(item))}
+          renderMedia={(item) => boardMedia(itemPicture(item), t)}
         />
       ) : (
         // One container, rows on a shared subgrid so status, rating and actions line up (DESIGN.md §3 Columns)
         <ul
-          aria-label="Item"
+          aria-label={t('Item', null, 'nav')}
           className={cn('grid gap-x-3 divide-y overflow-hidden rounded-xl border bg-card', itemListGrid(withPicture))}
         >
           {list.map((item) => (
@@ -340,7 +357,7 @@ export function LibraryPage() {
       {/* Only past the 20-page cap of loadItems */}
       {ready && items.data?.next && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-          Tải thêm
+          {t('Tải thêm')}
         </Button>
       )}
 
@@ -359,14 +376,22 @@ export function LibraryPage() {
           // a new Item, or one whose status changed, lands on top of its lane like a moved card
           if (created || editing?.status !== saved.status) moves.bump(saved.id);
           setDialogOpen(false);
-          const done = created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`;
-          setNotice(imageError ? `${done}, nhưng chưa lưu được ảnh: ${imageError}.` : done);
+          const vars = { title: saved.title, error: imageError ?? '' };
+          setNotice(
+            imageError
+              ? created
+                ? t('Đã thêm "{title}", nhưng chưa lưu được ảnh: {error}.', vars)
+                : t('Đã lưu "{title}", nhưng chưa lưu được ảnh: {error}.', vars)
+              : created
+                ? t('Đã thêm "{title}"', vars)
+                : t('Đã lưu "{title}"', vars),
+          );
         }}
         onDeleted={(deleted) => {
           removeItem(deleted.id);
           setDialogOpen(false);
           setEditing(null);
-          setNotice(`Đã xóa "${deleted.title}"`);
+          setNotice(t('Đã xóa "{title}"', { title: deleted.title }));
         }}
         onWriteNote={(item) => {
           setDialogOpen(false);
@@ -397,7 +422,7 @@ export function LibraryPage() {
           removeItem(deleted.id);
           setSheetOpen(false);
           returnTo.current = null;
-          setNotice(`Đã xóa "${deleted.title}"`);
+          setNotice(t('Đã xóa "{title}"', { title: deleted.title }));
         }}
       />
     </div>
