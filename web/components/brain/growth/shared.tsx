@@ -3,6 +3,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
 
 function isTyping(target: EventTarget | null): boolean {
@@ -55,13 +56,14 @@ export function PeriodStepper({
   /** What is stepped, for the button names ("tháng", "tuần"). */
   name: string;
 }) {
+  const t = useT();
   useShortcuts({
     '[': onPrev,
     ']': () => !nextDisabled && onNext(),
   });
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <Button size="icon-sm" variant="outline" onClick={onPrev} aria-label={`${name} trước`}>
+      <Button size="icon-sm" variant="outline" onClick={onPrev} aria-label={t('{name} trước', { name })}>
         <ChevronLeft aria-hidden />
       </Button>
       <span className="min-w-36 text-center text-sm font-medium tabular-nums" aria-live="polite">
@@ -72,7 +74,7 @@ export function PeriodStepper({
         variant="outline"
         onClick={onNext}
         disabled={nextDisabled}
-        aria-label={`${name} sau`}
+        aria-label={t('{name} sau', { name })}
       >
         <ChevronRight aria-hidden />
       </Button>

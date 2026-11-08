@@ -1,44 +1,45 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiInboxEntry } from '@/lib/api/client';
 import { formatDate } from './labels';
+import { tVi } from './i18n/translate';
 import { itemDateLabel, itemDraftFromEntry, itemSourceLabel, itemTypeForEntry, noteTitle } from './library-labels';
 
 describe('itemSourceLabel', () => {
   it('names a handbook "Sổ tay", a link by its host, and keeps free text', () => {
-    expect(itemSourceLabel('/docs/kinh-doanh/handbook-01/')).toBe('Sổ tay');
-    expect(itemSourceLabel('https://www.goodreads.com/book/show/1')).toBe('goodreads.com');
-    expect(itemSourceLabel('HTTP://Example.com/x')).toBe('example.com');
-    expect(itemSourceLabel('James Clear')).toBe('James Clear');
-    expect(itemSourceLabel('  Udemy ')).toBe('Udemy');
+    expect(itemSourceLabel('/docs/kinh-doanh/handbook-01/', tVi)).toBe('Sổ tay');
+    expect(itemSourceLabel('https://www.goodreads.com/book/show/1', tVi)).toBe('goodreads.com');
+    expect(itemSourceLabel('HTTP://Example.com/x', tVi)).toBe('example.com');
+    expect(itemSourceLabel('James Clear', tVi)).toBe('James Clear');
+    expect(itemSourceLabel('  Udemy ', tVi)).toBe('Udemy');
   });
 
   it('is empty without a source and keeps a broken link as text', () => {
-    expect(itemSourceLabel('')).toBe('');
-    expect(itemSourceLabel(undefined)).toBe('');
-    expect(itemSourceLabel(null)).toBe('');
-    expect(itemSourceLabel('https://')).toBe('https://');
+    expect(itemSourceLabel('', tVi)).toBe('');
+    expect(itemSourceLabel(undefined, tVi)).toBe('');
+    expect(itemSourceLabel(null, tVi)).toBe('');
+    expect(itemSourceLabel('https://', tVi)).toBe('https://');
   });
 });
 
 describe('itemDateLabel', () => {
-  const at = (iso: string) => formatDate(iso);
+  const at = (iso: string) => formatDate(iso, tVi);
   const base = { createdAt: '2026-11-01T08:00:00Z', startedAt: null, finishedAt: null };
 
   it('names the finish in Xong, the start in Đang làm', () => {
-    expect(itemDateLabel({ ...base, status: 'done', finishedAt: '2026-11-07T08:00:00Z' })).toBe(
+    expect(itemDateLabel({ ...base, status: 'done', finishedAt: '2026-11-07T08:00:00Z' }, tVi)).toBe(
       `xong ${at('2026-11-07T08:00:00Z')}`,
     );
-    expect(itemDateLabel({ ...base, status: 'active', startedAt: '2026-11-03T08:00:00Z' })).toBe(
+    expect(itemDateLabel({ ...base, status: 'active', startedAt: '2026-11-03T08:00:00Z' }, tVi)).toBe(
       `bắt đầu ${at('2026-11-03T08:00:00Z')}`,
     );
   });
 
   it('falls back to the day it was added', () => {
-    expect(itemDateLabel({ ...base, status: 'done' })).toBe(`thêm ${at(base.createdAt)}`);
-    expect(itemDateLabel({ ...base, status: 'planned', startedAt: '2026-11-03T08:00:00Z' })).toBe(
+    expect(itemDateLabel({ ...base, status: 'done' }, tVi)).toBe(`thêm ${at(base.createdAt)}`);
+    expect(itemDateLabel({ ...base, status: 'planned', startedAt: '2026-11-03T08:00:00Z' }, tVi)).toBe(
       `thêm ${at(base.createdAt)}`,
     );
-    expect(itemDateLabel({ ...base, status: undefined })).toBe(`thêm ${at(base.createdAt)}`);
+    expect(itemDateLabel({ ...base, status: undefined }, tVi)).toBe(`thêm ${at(base.createdAt)}`);
   });
 });
 
@@ -46,24 +47,24 @@ describe('noteTitle', () => {
   const note = (title: string, markdown: string) => ({ id: 7, title, markdown });
 
   it('prefers the trimmed title', () => {
-    expect(noteTitle(note('  Ý tưởng  ', '# Khác'))).toBe('Ý tưởng');
+    expect(noteTitle(note('  Ý tưởng  ', '# Khác'), tVi)).toBe('Ý tưởng');
   });
 
   it('falls back to the first non-empty markdown line without heading, quote or list marks', () => {
-    expect(noteTitle(note('', '\n\n## Kế hoạch tuần\nchi tiết'))).toBe('Kế hoạch tuần');
-    expect(noteTitle(note('  ', '> trích dẫn hay'))).toBe('trích dẫn hay');
-    expect(noteTitle(note('', '- việc một\n- việc hai'))).toBe('việc một');
-    expect(noteTitle(note('', '#hashtag không phải heading'))).toBe('#hashtag không phải heading');
+    expect(noteTitle(note('', '\n\n## Kế hoạch tuần\nchi tiết'), tVi)).toBe('Kế hoạch tuần');
+    expect(noteTitle(note('  ', '> trích dẫn hay'), tVi)).toBe('trích dẫn hay');
+    expect(noteTitle(note('', '- việc một\n- việc hai'), tVi)).toBe('việc một');
+    expect(noteTitle(note('', '#hashtag không phải heading'), tVi)).toBe('#hashtag không phải heading');
   });
 
   it('skips lines that are only marks and cuts long lines at 120 characters', () => {
-    expect(noteTitle(note('', '#   \nnội dung'))).toBe('nội dung');
-    expect(noteTitle(note('', 'x'.repeat(300)))).toHaveLength(120);
+    expect(noteTitle(note('', '#   \nnội dung'), tVi)).toBe('nội dung');
+    expect(noteTitle(note('', 'x'.repeat(300)), tVi)).toHaveLength(120);
   });
 
   it('uses "Ghi chú #id" for an empty note', () => {
-    expect(noteTitle(note('', ''))).toBe('Ghi chú #7');
-    expect(noteTitle(note('', '\n  \n'))).toBe('Ghi chú #7');
+    expect(noteTitle(note('', ''), tVi)).toBe('Ghi chú #7');
+    expect(noteTitle(note('', '\n  \n'), tVi)).toBe('Ghi chú #7');
   });
 });
 

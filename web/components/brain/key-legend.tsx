@@ -4,6 +4,7 @@ import { Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from '@/components/ui/dialog';
 import { Kbd } from '@/components/ui/kbd';
+import { useT } from '@/lib/i18n/client';
 
 function isTyping(el: EventTarget | null): boolean {
   const t = el as HTMLElement | null;
@@ -14,7 +15,8 @@ function isTyping(el: EventTarget | null): boolean {
  * The full keyboard legend of a keyboard-driven page behind one "Phím tắt" control (DESIGN.md §6, D24): a small
  * dialog, also opened with "?". Hidden on touch screens and below md, where the keys do not apply.
  */
-export function KeyLegend({ keys, title = 'Phím tắt' }: { keys: [string, string][]; title?: string }) {
+export function KeyLegend({ keys, title }: { keys: [string, string][]; title?: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -35,13 +37,13 @@ export function KeyLegend({ keys, title = 'Phím tắt' }: { keys: [string, stri
         onClick={() => setOpen(true)}
       >
         <Keyboard aria-hidden />
-        Phím tắt
+        {t('Phím tắt')}
         <Kbd>?</Kbd>
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogPopup className="max-w-sm" closeProps={{ 'aria-label': 'Đóng' }}>
+        <DialogPopup className="max-w-sm" closeProps={{ 'aria-label': t('Đóng') }}>
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
+            <DialogTitle>{title ?? t('Phím tắt')}</DialogTitle>
           </DialogHeader>
           <DialogPanel>
             <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">

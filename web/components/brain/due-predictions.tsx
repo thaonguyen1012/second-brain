@@ -4,6 +4,7 @@ import { useApi } from '@/lib/api/use-api';
 import { formatDay } from '@/lib/dates';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useT } from '@/lib/i18n/client';
 import { ApiErrorState } from './api-state';
 
 /** Where predictions are re-scored: the predictions section of "Nhật ký thành tựu". */
@@ -18,13 +19,14 @@ export function useDuePredictions() {
 
 /** Short list of due predictions for "Hôm nay" and the week review; scoring happens on Thành tựu. */
 export function DuePredictionList({ due }: { due: ReturnType<typeof useDuePredictions> }) {
+  const t = useT();
   if (due.error && !due.data) return <ApiErrorState error={due.error} onRetry={due.reload} />;
   if (!due.data) return <Skeleton className="h-16 rounded-xl" />;
   const rows = due.data.results;
   if (rows.length === 0)
     return (
       <p className="text-sm text-muted-foreground">
-        Chưa có dự đoán nào đến hạn. Mỗi dự đoán được chấm lại 6 tháng sau khi ghi.
+        {t('Chưa có dự đoán nào đến hạn. Mỗi dự đoán được chấm lại 6 tháng sau khi ghi.')}
       </p>
     );
   const more = rows.length - SHOWN;
@@ -37,18 +39,17 @@ export function DuePredictionList({ due }: { due: ReturnType<typeof useDuePredic
             <p className="line-clamp-2 text-sm">{p.statement}</p>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <Badge variant="warning" size="sm">
-                Đến hạn {formatDay(p.checkOn)}
+                {t('Đến hạn {date}', { date: formatDay(p.checkOn) })}
               </Badge>
-              <span>Ghi ngày {formatDay(p.madeOn)}</span>
-              {p.confidence ? <span>· tự tin {p.confidence}/10</span> : null}
+              <span>{t('Ghi ngày {date}', { date: formatDay(p.madeOn) })}</span>
+              {p.confidence ? <span>{t('· tự tin {confidence}/10', { confidence: p.confidence })}</span> : null}
             </div>
           </li>
         ))}
       </ul>
       {more > 0 && (
         <p className="text-xs text-muted-foreground">
-          Còn {more}
-          {due.data.next ? '+' : ''} dự đoán đến hạn nữa.
+          {t('Còn {n}{plus} dự đoán đến hạn nữa.', { n: more, plus: due.data.next ? '+' : '' })}
         </p>
       )}
     </div>

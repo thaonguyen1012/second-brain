@@ -6,6 +6,8 @@ import { itemPicture } from '@/lib/handbook-picture';
 import { formatDate, itemStatusOf, itemTypeLabel } from '@/lib/labels';
 import { itemDateLabel, itemSourceLabel } from '@/lib/library-labels';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
 import { StatusBadge } from '../brain-card';
@@ -28,9 +30,9 @@ export function itemListGrid(withPicture: boolean): string {
 // status-board.tsx) and the menu entries both share.
 
 /** The one-click next step of the lifecycle (DECISIONS 4.2); "done" still needs a note to count. */
-const nextStep: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: string }>> = {
-  planned: { to: 'active', label: 'Bắt đầu' },
-  active: { to: 'done', label: 'Xong' },
+const nextStep: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: Msg }>> = {
+  planned: { to: 'active', label: msg('Bắt đầu') },
+  active: { to: 'done', label: msg('Xong') },
 };
 
 /** Sửa, Ghi chú, Viết ghi chú, Chấm điểm (a done film without a rating) and, for a project, Công việc. */
@@ -45,32 +47,33 @@ export function ItemMenuItems({
   onWriteNote: () => void;
   onRate: () => void;
 }) {
+  const t = useT();
   const gap = missingOutput(item);
   return (
     <>
       <MenuItem onClick={onEdit}>
         <Pencil aria-hidden />
-        Sửa
+        {t('Sửa')}
       </MenuItem>
       <MenuLinkItem render={<Link href={`/thu-vien/ghi-chu/?item=${item.id}`} />}>
         <NotebookPen aria-hidden />
-        Ghi chú
+        {t('Ghi chú', null, 'nav')}
       </MenuLinkItem>
       <MenuItem onClick={onWriteNote}>
         <Plus aria-hidden />
-        Viết ghi chú
+        {t('Viết ghi chú')}
       </MenuItem>
       {gap?.rating && (
         <MenuItem onClick={onRate}>
           <Star aria-hidden />
-          Chấm điểm
+          {t('Chấm điểm', null, 'rating')}
         </MenuItem>
       )}
       {item.type === 'project' && (
         // client, price and hours live on Công việc
         <MenuLinkItem render={<Link href="/cong-viec/" />}>
           <Briefcase aria-hidden />
-          Mở ở Công việc
+          {t('Mở ở Công việc')}
         </MenuLinkItem>
       )}
     </>
@@ -93,21 +96,22 @@ export function ItemRow({
   onWriteNote: () => void;
   onRate: () => void;
 }) {
+  const t = useT();
   const s = itemStatusOf(item.status);
   const gap = missingOutput(item);
   const step = nextStep[item.status ?? 'planned'];
   const dates = [
-    item.startedAt && `bắt đầu ${formatDate(item.startedAt)}`,
-    item.finishedAt && `xong ${formatDate(item.finishedAt)}`,
+    item.startedAt && t('bắt đầu {date}', { date: formatDate(item.startedAt, t) }),
+    item.finishedAt && t('xong {date}', { date: formatDate(item.finishedAt, t) }),
   ].filter(Boolean);
   const meta = [
-    itemTypeLabel(item.type),
-    itemSourceLabel(item.source),
-    ...(dates.length ? dates : [`thêm ${formatDate(item.createdAt)}`]),
+    t(itemTypeLabel(item.type)),
+    itemSourceLabel(item.source, t),
+    ...(dates.length ? dates : [t('thêm {date}', { date: formatDate(item.createdAt, t) })]),
   ]
     .filter(Boolean)
     .join(' · ');
-  const tags = (item.tags ?? []).map((t) => `#${t}`).join(' ');
+  const tags = (item.tags ?? []).map((tag) => `#${tag}`).join(' ');
   return (
     // One row of the shared subgrid (status | title over meta | rating | actions), DESIGN.md §3 "list row beats card"
     <li
@@ -121,7 +125,7 @@ export function ItemRow({
     >
       {withPicture && <RowPicture picture={itemPicture(item)} />}
       <span className={cn('flex', withPicture && 'max-md:hidden')}>
-        <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+        <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">
         <button
@@ -132,12 +136,12 @@ export function ItemRow({
           {item.title}
         </button>
         <p className="truncate text-xs text-muted-foreground">
-          {withPicture && <span className="md:hidden">{s.label} · </span>}
+          {withPicture && <span className="md:hidden">{t(s.label)} · </span>}
           {meta}
           {gap && (
             <>
               {' · '}
-              <span className="text-warning-foreground">{gapLabel(gap)}</span>
+              <span className="text-warning-foreground">{gapLabel(gap, t)}</span>
             </>
           )}
           {tags && ` · ${tags}`}
@@ -149,7 +153,7 @@ export function ItemRow({
       <div className="flex items-center justify-end gap-1">
         {step && (
           <Button size="xs" variant="outline" onClick={() => onStep(step.to)}>
-            {step.label}
+            {t(step.label)}
           </Button>
         )}
         <RowMenu>
@@ -176,8 +180,9 @@ export function ItemCardBody({
   onWriteNote: () => void;
   onRate: () => void;
 }) {
+  const t = useT();
   const gap = missingOutput(item);
-  const meta = [showType && itemTypeLabel(item.type), itemSourceLabel(item.source), itemDateLabel(item)]
+  const meta = [showType && t(itemTypeLabel(item.type)), itemSourceLabel(item.source, t), itemDateLabel(item, t)]
     .filter(Boolean)
     .join(' · ');
   const footer = !!item.rating || item.noteCount > 0 || gap !== null;
@@ -189,17 +194,19 @@ export function ItemCardBody({
           {!!item.rating && (
             <span>
               <span className="font-medium text-foreground">{item.rating}</span>/10
-              <span className="sr-only"> điểm</span>
+              <span className="sr-only"> {t('điểm')}</span>
             </span>
           )}
           {item.noteCount > 0 && (
             <span className="inline-flex items-center gap-1">
               <NotebookPen className="size-3.5" aria-hidden />
-              {item.noteCount}
-              <span className="sr-only"> ghi chú</span>
+              {t.rich('{n}<sr> ghi chú</sr>', {
+                n: item.noteCount,
+                sr: (chunks) => <span className="sr-only">{chunks}</span>,
+              })}
             </span>
           )}
-          {gap && <span className="text-warning-foreground">{gapLabel(gap)}</span>}
+          {gap && <span className="text-warning-foreground">{gapLabel(gap, t)}</span>}
         </div>
       )}
       {gap && (
@@ -209,10 +216,14 @@ export function ItemCardBody({
           className="self-start"
           onClick={gap.note ? onWriteNote : onRate}
           // several cards show this button: the name says whose (it starts with the visible words)
-          aria-label={`${gap.note ? 'Viết ghi chú' : 'Chấm điểm'} cho “${item.title}”`}
+          aria-label={
+            gap.note
+              ? t('Viết ghi chú cho “{title}”', { title: item.title })
+              : t('Chấm điểm cho “{title}”', { title: item.title })
+          }
         >
           {gap.note ? <Plus aria-hidden /> : <Star aria-hidden />}
-          {gap.note ? 'Viết ghi chú' : 'Chấm điểm'}
+          {gap.note ? t('Viết ghi chú') : t('Chấm điểm', null, 'rating')}
         </Button>
       )}
     </>

@@ -4,6 +4,8 @@ import { Check, Inbox, Loader2, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { api, type ApiNewsFeedback, type ApiNewsItem } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
 import { firstFieldError } from '@/lib/labels';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { describeApiError } from './api-state';
@@ -60,13 +62,14 @@ function useSent(id: number): boolean {
   return sentIds(raw).includes(id);
 }
 
-function errorText(err: unknown): string {
+function errorText(err: unknown, t: T): string {
   const e = toApiError(err);
-  return (e.status === 400 && firstFieldError(e.body)) || describeApiError(e).title;
+  return (e.status === 400 && firstFieldError(e.body, t)) || describeApiError(e, t).title;
 }
 
 /** "Đưa vào Inbox": one tap moves a brief story into the inbox (POST /api/inbox with its URL, DECISIONS 5). */
 function ToInbox({ item }: { item: ApiNewsItem }) {
+  const t = useT();
   const sent = useSent(item.id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +83,7 @@ function ToInbox({ item }: { item: ApiNewsItem }) {
       markSent(item.id);
       void refreshInboxCount();
     } catch (err) {
-      setError(errorText(err));
+      setError(errorText(err, t));
     } finally {
       setBusy(false);
     }
@@ -97,7 +100,9 @@ function ToInbox({ item }: { item: ApiNewsItem }) {
           variant={sent ? 'ghost' : 'outline'}
           aria-disabled={sent || busy || undefined}
           aria-busy={busy || undefined}
-          aria-label={sent ? `Đã vào Inbox: ${item.title}` : `Đưa vào Inbox: ${item.title}`}
+          aria-label={
+            sent ? t('Đã vào Inbox: {title}', { title: item.title }) : t('Đưa vào Inbox: {title}', { title: item.title })
+          }
           className={sent ? 'cursor-default text-muted-foreground hover:bg-transparent' : undefined}
           onClick={() => void send()}
         >
@@ -108,7 +113,7 @@ function ToInbox({ item }: { item: ApiNewsItem }) {
           ) : (
             <Inbox aria-hidden />
           )}
-          {sent ? 'Đã vào Inbox' : 'Đưa vào Inbox'}
+          {sent ? t('Đã vào Inbox') : t('Đưa vào Inbox')}
         </Button>
       </span>
       {error && (
@@ -122,11 +127,11 @@ function ToInbox({ item }: { item: ApiNewsItem }) {
 
 const ratings: {
   value: ApiNewsFeedback;
-  label: string;
+  label: Msg;
   icon: typeof ThumbsUp;
 }[] = [
-  { value: 'useful', label: 'Hữu ích', icon: ThumbsUp },
-  { value: 'not_useful', label: 'Không hữu ích', icon: ThumbsDown },
+  { value: 'useful', label: msg('Hữu ích'), icon: ThumbsUp },
+  { value: 'not_useful', label: msg('Không hữu ích'), icon: ThumbsDown },
 ];
 
 /**
@@ -141,6 +146,7 @@ function Feedback({
   item: ApiNewsItem;
   onRated: (id: number, feedback: ApiNewsFeedback | null) => void;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const current = item.feedback ?? null;
@@ -156,7 +162,7 @@ function Feedback({
       onRated(item.id, saved.feedback ?? null);
     } catch (err) {
       onRated(item.id, current);
-      setError(errorText(err));
+      setError(errorText(err, t));
     } finally {
       setBusy(false);
     }
@@ -164,7 +170,11 @@ function Feedback({
 
   return (
     <>
-      <div role="group" aria-label={`Tin "${item.title}" có hữu ích không?`} className="flex items-center gap-0.5">
+      <div
+        role="group"
+        aria-label={t('Tin "{title}" có hữu ích không?', { title: item.title })}
+        className="flex items-center gap-0.5"
+      >
         {ratings.map(({ value, label, icon: Icon }) => {
           const on = current === value;
           return (
@@ -174,7 +184,7 @@ function Feedback({
                   <Button
                     size="icon-sm"
                     variant={on ? 'secondary' : 'ghost'}
-                    aria-label={label}
+                    aria-label={t(label)}
                     aria-pressed={on}
                     aria-busy={busy || undefined}
                     onClick={() => void rate(value)}
@@ -183,7 +193,7 @@ function Feedback({
               >
                 <Icon aria-hidden />
               </TooltipTrigger>
-              <TooltipPopup>{on ? `${label} (bấm lần nữa để bỏ)` : label}</TooltipPopup>
+              <TooltipPopup>{on ? t('{label} (bấm lần nữa để bỏ)', { label: t(label) }) : t(label)}</TooltipPopup>
             </Tooltip>
           );
         })}

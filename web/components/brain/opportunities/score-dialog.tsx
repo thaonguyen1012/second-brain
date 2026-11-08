@@ -4,6 +4,8 @@ import { Loader2 } from 'lucide-react';
 import { opportunitiesApi, type ApiScoreSnapshot } from '@/lib/api/opportunities';
 import type { ApiOpportunity } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,11 +23,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { describeApiError } from '../api-state';
 import { fieldErrors, scoreDims, type ScoreKey } from './labels';
 
-const hints: Record<ScoreKey, string> = {
-  opportunity: 'thị trường đủ lớn để đáng làm',
-  pain: 'họ đau đến mức trả tiền',
-  feasibility: 'mình làm được với sức hiện có',
-  timing: 'bây giờ là lúc đúng',
+const hints: Record<ScoreKey, Msg> = {
+  opportunity: msg('thị trường đủ lớn để đáng làm'),
+  pain: msg('họ đau đến mức trả tiền'),
+  feasibility: msg('mình làm được với sức hiện có'),
+  timing: msg('bây giờ là lúc đúng'),
 };
 
 function ScoreForm({
@@ -35,6 +37,7 @@ function ScoreForm({
   opportunity: ApiOpportunity;
   onSaved: (snapshot: ApiScoreSnapshot) => void;
 }) {
+  const t = useT();
   const last = opportunity.scores;
   const [values, setValues] = useState<Record<ScoreKey, string>>({
     opportunity: last ? String(last.opportunity) : '',
@@ -51,7 +54,7 @@ function ScoreForm({
     for (const d of scoreDims) {
       const n = Number(values[d.key]);
       if (!values[d.key].trim() || !Number.isInteger(n) || n < 1 || n > 10) {
-        setError(`${d.label}: cần một số nguyên từ 1 đến 10.`);
+        setError(t('{name}: cần một số nguyên từ 1 đến 10.', { name: t(d.label) }));
         return;
       }
       nums[d.key] = n;
@@ -62,7 +65,7 @@ function ScoreForm({
       onSaved(await opportunitiesApi.recordScores(opportunity.id, { ...nums, note: note.trim() }));
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
+      setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
       setBusy(false);
     }
   };
@@ -79,7 +82,7 @@ function ScoreForm({
         <div className="grid grid-cols-2 gap-4">
           {scoreDims.map((d, i) => (
             <div key={d.key} className="flex flex-col gap-1.5">
-              <Label htmlFor={`score-${d.key}`}>{d.label}</Label>
+              <Label htmlFor={`score-${d.key}`}>{t(d.label)}</Label>
               <Input
                 id={`score-${d.key}`}
                 type="number"
@@ -93,13 +96,13 @@ function ScoreForm({
                 onChange={(e) => setValues((v) => ({ ...v, [d.key]: e.target.value }))}
               />
               <span id={`score-${d.key}-hint`} className="text-xs text-muted-foreground">
-                {hints[d.key]}
+                {t(hints[d.key])}
               </span>
             </div>
           ))}
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="score-note">Vì sao đổi điểm (không bắt buộc)</Label>
+          <Label htmlFor="score-note">{t('Vì sao đổi điểm (không bắt buộc)')}</Label>
           <Textarea id="score-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
         {error && (
@@ -109,10 +112,10 @@ function ScoreForm({
         )}
       </DialogPanel>
       <DialogFooter>
-        <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
+        <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          Lưu điểm
+          {t('Lưu điểm')}
         </Button>
       </DialogFooter>
     </form>
@@ -131,12 +134,13 @@ export function ScoreDialog({
   onOpenChange: (open: boolean) => void;
   onSaved: (snapshot: ApiScoreSnapshot) => void;
 }) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
         <DialogHeader>
-          <DialogTitle>Chấm điểm lại</DialogTitle>
-          <DialogDescription>Mỗi điểm từ 1 đến 10. Lần chấm cũ được giữ làm lịch sử.</DialogDescription>
+          <DialogTitle>{t('Chấm điểm lại')}</DialogTitle>
+          <DialogDescription>{t('Mỗi điểm từ 1 đến 10. Lần chấm cũ được giữ làm lịch sử.')}</DialogDescription>
         </DialogHeader>
         {open && <ScoreForm opportunity={opportunity} onSaved={onSaved} />}
       </DialogPopup>

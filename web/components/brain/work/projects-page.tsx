@@ -11,6 +11,8 @@ import { PROJECT_BOARD } from '@/lib/status-board';
 import { ownPicture } from '@/lib/item-picture';
 import { useBoardView } from '@/lib/use-board-view';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
@@ -33,7 +35,10 @@ import { TimerPanel } from './timer-panel';
 import { sortProjectChoices, useTimer, useWeekObjectives } from './use-work';
 
 type StatusFilter = ApiItemStatus | 'all';
-const statusChoices = [{ value: 'all' as const, label: 'Mọi trạng thái' }, ...itemStatuses];
+const statusChoices: { value: StatusFilter; label: Msg }[] = [
+  { value: 'all', label: msg('Mọi trạng thái') },
+  ...itemStatuses,
+];
 
 /**
  * One grid for the header and every row, so the number columns line up (DESIGN.md §3 "Columns"). With logos (some
@@ -68,12 +73,13 @@ function ProjectRow({
   onEdit: () => void;
   onStart: () => void;
 }) {
+  const t = useT();
   const s = itemStatusOf(p.status);
   return (
     <li className={cn(rowGrid(withLogo), 'min-h-14 py-2')}>
       {withLogo && <RowPicture picture={logoOf(p)} className="max-md:hidden" />}
       <span className="flex max-md:hidden">
-        <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+        <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">
         <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
@@ -81,47 +87,52 @@ function ProjectRow({
             <span className="size-2 shrink-0 rounded-full bg-bw-red" aria-hidden />
           )}
           <span className="truncate">{p.title}</span>
-          {running && <span className="sr-only">(đang bấm giờ)</span>}
+          {running && <span className="sr-only">{t('(đang bấm giờ)')}</span>}
         </p>
         <p className="truncate text-xs text-muted-foreground">
-          <span className="md:hidden">{s.label} · </span>
-          {projectMeta(p)}
+          <span className="md:hidden">{t(s.label)} · </span>
+          {projectMeta(p, t)}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1">
-        <span className="text-sm font-medium tabular-nums">{formatHours(p.minutesTotal)}</span>
+        <span className="text-sm font-medium tabular-nums">{formatHours(p.minutesTotal, t)}</span>
         <span className="w-full max-w-16 max-md:hidden">
           <MiniBillableBar billable={p.minutesBillable} nonBillable={p.minutesNonBillable} />
         </span>
       </div>
       <span className="text-end text-sm tabular-nums max-md:hidden">
-        {p.effectiveRate ? `${formatMoney(p.effectiveRate, p.currency)}/giờ` : '—'}
+        {p.effectiveRate ? t('{money}/giờ', { money: formatMoney(p.effectiveRate, p.currency, t) }) : '—'}
       </span>
-      <span className="text-end text-sm tabular-nums max-md:hidden">{formatMoney(p.earned, p.currency) || '—'}</span>
+      <span className="text-end text-sm tabular-nums max-md:hidden">{formatMoney(p.earned, p.currency, t) || '—'}</span>
       <div className="flex items-center justify-end gap-1">
         {canStartTimer(p, running) ? (
           <Tooltip>
             <TooltipTrigger
               render={
-                <Button size="icon-sm" variant="ghost" onClick={onStart} aria-label={`Bấm giờ cho ${p.title}`} />
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={onStart}
+                  aria-label={t('Bấm giờ cho {title}', { title: p.title })}
+                />
               }
             >
               <Play aria-hidden />
             </TooltipTrigger>
-            <TooltipPopup>Bấm giờ</TooltipPopup>
+            <TooltipPopup>{t('Bấm giờ')}</TooltipPopup>
           </Tooltip>
         ) : (
           // keeps the actions track the same width on every row
           <span className="size-8 sm:size-7" aria-hidden />
         )}
-        <RowMenu label={`Thao tác cho "${p.title}"`}>
+        <RowMenu label={t('Thao tác cho "{title}"', { title: p.title })}>
           <MenuItem onClick={onEdit}>
             <Pencil aria-hidden />
-            Sửa
+            {t('Sửa')}
           </MenuItem>
           <MenuLinkItem render={<Link href={`/cong-viec/gio/?project=${p.id}`} />}>
             <Clock aria-hidden />
-            Xem giờ
+            {t('Xem giờ')}
           </MenuLinkItem>
         </RowMenu>
       </div>
@@ -140,6 +151,7 @@ function ProjectList({
   onEdit: (p: ApiProject) => void;
   onStart: (p: ApiProject) => void;
 }) {
+  const t = useT();
   const withLogo = projects.some((p) => logoOf(p) !== null);
   return (
     // overflow-hidden: a flush logo is clipped by the list's radius
@@ -147,10 +159,10 @@ function ProjectList({
       {/* Column labels for the eye (the rows carry their own text); only the rate's definition is focusable */}
       <div className={cn(rowGrid(withLogo), 'h-8 text-xs font-medium text-muted-foreground max-md:hidden')}>
         {withLogo && <span aria-hidden />}
-        <span aria-hidden>Trạng thái</span>
-        <span aria-hidden>Dự án</span>
+        <span aria-hidden>{t('Trạng thái')}</span>
+        <span aria-hidden>{t('Dự án')}</span>
         <span className="text-end" aria-hidden>
-          Giờ
+          {t('Giờ', null, 'column')}
         </span>
         <Tooltip>
           <TooltipTrigger
@@ -161,16 +173,18 @@ function ProjectList({
               />
             }
           >
-            Giá giờ thực tế
+            {t('Giá giờ thực tế')}
           </TooltipTrigger>
-          <TooltipPopup className="max-w-64">Số tiền chia cho mọi giờ đã làm, kể cả giờ không tính tiền.</TooltipPopup>
+          <TooltipPopup className="max-w-64">
+            {t('Số tiền chia cho mọi giờ đã làm, kể cả giờ không tính tiền.')}
+          </TooltipPopup>
         </Tooltip>
         <span className="text-end" aria-hidden>
-          Đã kiếm
+          {t('Đã kiếm')}
         </span>
         <span className="w-15" aria-hidden />
       </div>
-      <ul className="flex flex-col divide-y" aria-label="Dự án">
+      <ul className="flex flex-col divide-y" aria-label={t('Dự án', null, 'nav')}>
         {projects.map((p) => (
           <ProjectRow
             key={p.id}
@@ -193,6 +207,7 @@ function ProjectList({
  * other without a reload.
  */
 export function ProjectsPage() {
+  const t = useT();
   const [view, setView] = useBoardView(PROJECT_BOARD.viewKey);
   const [status, setStatus] = useState<StatusFilter>('all');
   const [editing, setEditing] = useState<ApiProject | null>(null);
@@ -213,8 +228,8 @@ export function ProjectsPage() {
   const all = useMemo(() => projects.data?.results ?? [], [projects.data]);
   const list = useMemo(() => (status === 'all' ? all : all.filter((p) => p.status === status)), [all, status]);
   const choices = useMemo(
-    () => sortProjectChoices(all).filter((p) => p.status === 'active' || p.status === 'planned'),
-    [all],
+    () => sortProjectChoices(all, t).filter((p) => p.status === 'active' || p.status === 'planned'),
+    [all, t],
   );
 
   const upsert = (saved: ApiProject, created: boolean) =>
@@ -231,13 +246,16 @@ export function ProjectsPage() {
       await timer.start({ project: p.id, billable: true });
       setNotice(
         stopped
-          ? `Đã dừng giờ của "${stopped.projectTitle}" và bắt đầu bấm giờ cho "${p.title}", chưa gắn mục tiêu tuần`
-          : `Bắt đầu bấm giờ cho "${p.title}", chưa gắn mục tiêu tuần`,
+          ? t('Đã dừng giờ của "{stopped}" và bắt đầu bấm giờ cho "{title}", chưa gắn mục tiêu tuần', {
+              stopped: stopped.projectTitle,
+              title: p.title,
+            })
+          : t('Bắt đầu bấm giờ cho "{title}", chưa gắn mục tiêu tuần', { title: p.title }),
       );
       // totals change when a timer starts or stops: refresh the rows and cards from the API
       projects.reload();
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     }
   };
 
@@ -247,7 +265,7 @@ export function ProjectsPage() {
     try {
       await appendNextPage(projects);
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     } finally {
       setLoadingMore(false);
     }
@@ -295,16 +313,16 @@ export function ProjectsPage() {
           <ViewSwitch view={view} onChange={setView} />
           {view === 'list' && (
             <ChoiceSelect
-              label="Trạng thái"
+              label={t('Trạng thái')}
               value={status}
               onChange={setStatus}
-              choices={statusChoices}
+              choices={statusChoices.map((c) => ({ value: c.value, label: t(c.label) }))}
               className="order-last w-full sm:order-none sm:w-auto"
             />
           )}
           <Button className="ms-auto shrink-0" onClick={() => openNew()}>
             <Plus aria-hidden />
-            Thêm dự án
+            {t('Thêm dự án')}
           </Button>
         </div>
       )}
@@ -328,21 +346,21 @@ export function ProjectsPage() {
       ) : all.length === 0 && !filtered ? (
         <EmptyPanel
           glyph={FolderPlus}
-          title="Chưa có dự án nào"
-          text="Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế."
+          title={t('Chưa có dự án nào')}
+          text={t('Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế.')}
           action={
             <Button onClick={() => openNew()}>
               <Plus aria-hidden />
-              Thêm dự án
+              {t('Thêm dự án')}
             </Button>
           }
           guide="work"
         />
       ) : list.length === 0 && filtered ? (
         <p className="text-sm text-muted-foreground">
-          Không có mục nào khớp bộ lọc.{' '}
+          {t('Không có mục nào khớp bộ lọc.')}{' '}
           <Button variant="link" size="sm" className="px-0" onClick={() => setStatus('all')}>
-            Xóa bộ lọc
+            {t('Xóa bộ lọc')}
           </Button>
         </p>
       ) : (
@@ -364,7 +382,7 @@ export function ProjectsPage() {
                   onStart={() => void startFor(p)}
                 />
               )}
-              renderMedia={(p) => boardMedia(logoOf(p))}
+              renderMedia={(p) => boardMedia(logoOf(p), t)}
             />
           ) : (
             <ProjectList projects={list} runningId={runningId} onEdit={openEdit} onStart={(p) => void startFor(p)} />
@@ -374,7 +392,7 @@ export function ProjectsPage() {
       {/* Only past the 20-page cap of loadProjects */}
       {projects.data?.next && (
         <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-          Tải thêm
+          {t('Tải thêm')}
         </Button>
       )}
 
@@ -390,8 +408,16 @@ export function ProjectsPage() {
           // a new project, or one whose status changed, lands on top of its lane like a moved card
           if (created || editing?.status !== saved.status) moves.bump(saved.id);
           setDialogOpen(false);
-          const done = created ? `Đã thêm "${saved.title}"` : `Đã lưu "${saved.title}"`;
-          setNotice(imageError ? `${done}, nhưng chưa lưu được logo: ${imageError}.` : done);
+          const vars = { title: saved.title, error: imageError ?? '' };
+          setNotice(
+            imageError
+              ? created
+                ? t('Đã thêm "{title}", nhưng chưa lưu được logo: {error}.', vars)
+                : t('Đã lưu "{title}", nhưng chưa lưu được logo: {error}.', vars)
+              : created
+                ? t('Đã thêm "{title}"', vars)
+                : t('Đã lưu "{title}"', vars),
+          );
         }}
       />
     </div>

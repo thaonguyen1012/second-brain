@@ -4,6 +4,8 @@ import { Loader2 } from 'lucide-react';
 import type { ApiStance } from '@/lib/api/client';
 import { opportunitiesApi, type ApiEvidence, type ApiEvidenceKind } from '@/lib/api/opportunities';
 import { toApiError } from '@/lib/api/use-api';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,9 +27,9 @@ import { evidenceKinds, fieldErrors, stances, todayIso } from './labels';
 /** Kinds the owner adds by hand here; inbox, item and note evidence come from their own pages. */
 type ManualKind = Extract<ApiEvidenceKind, 'conversation' | 'link'>;
 
-const manualKinds: { value: ManualKind; label: string }[] = [
-  { value: 'conversation', label: 'Cuộc nói chuyện (The Mom Test)' },
-  { value: 'link', label: 'Link (nguồn bên ngoài)' },
+const manualKinds: { value: ManualKind; label: Msg }[] = [
+  { value: 'conversation', label: msg('Cuộc nói chuyện (The Mom Test)') },
+  { value: 'link', label: msg('Link (nguồn bên ngoài)') },
 ];
 
 export type EvidenceTarget = { mode: 'add'; kind: ManualKind } | { mode: 'edit'; evidence: ApiEvidence };
@@ -41,6 +43,7 @@ function EvidenceForm({
   target: EvidenceTarget;
   onSaved: (evidence: ApiEvidence, created: boolean) => void;
 }) {
+  const t = useT();
   const ev = target.mode === 'edit' ? target.evidence : null;
   const [kind, setKind] = useState<ApiEvidenceKind>(ev?.kind ?? (target.mode === 'add' ? target.kind : 'link'));
   const [stance, setStance] = useState<ApiStance>(ev?.stance ?? 'supports');
@@ -54,11 +57,11 @@ function EvidenceForm({
 
   const submit = async () => {
     if (!title.trim()) {
-      setError(kind === 'conversation' ? 'Cần ghi nói chuyện với ai.' : 'Cần có tiêu đề.');
+      setError(t(kind === 'conversation' ? 'Cần ghi nói chuyện với ai.' : 'Cần có tiêu đề.'));
       return;
     }
     if (kind === 'link' && !/^https?:\/\/\S+$/i.test(url.trim())) {
-      setError('Link phải bắt đầu bằng http:// hoặc https://.');
+      setError(t('Link phải bắt đầu bằng http:// hoặc https://.'));
       return;
     }
     const fields = {
@@ -77,7 +80,7 @@ function EvidenceForm({
       onSaved(saved, !ev);
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
+      setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
       setBusy(false);
     }
   };
@@ -94,54 +97,54 @@ function EvidenceForm({
         <div className="grid gap-4 sm:grid-cols-2">
           {!ev && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ev-kind">Loại</Label>
+              <Label htmlFor="ev-kind">{t('Loại')}</Label>
               <ChoiceSelect
                 id="ev-kind"
-                label="Loại bằng chứng"
+                label={t('Loại bằng chứng')}
                 value={kind as ManualKind}
                 onChange={setKind}
-                choices={manualKinds}
+                choices={manualKinds.map((k) => ({ value: k.value, label: t(k.label) }))}
               />
             </div>
           )}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="ev-stance">Ủng hộ hay phản bác</Label>
+            <Label htmlFor="ev-stance">{t('Ủng hộ hay phản bác')}</Label>
             <ChoiceSelect
               id="ev-stance"
-              label="Ủng hộ hay phản bác"
+              label={t('Ủng hộ hay phản bác')}
               value={stance}
               onChange={setStance}
-              choices={stances}
+              choices={stances.map((s) => ({ value: s.value, label: t(s.label) }))}
             />
           </div>
           {ev && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ev-date">Ngày</Label>
+              <Label htmlFor="ev-date">{t('Ngày')}</Label>
               <Input id="ev-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           )}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="ev-title">
-            {kind === 'conversation' ? 'Nói chuyện với ai (vai trò, công ty)' : 'Tiêu đề'}
+            {t(kind === 'conversation' ? 'Nói chuyện với ai (vai trò, công ty)' : 'Tiêu đề')}
           </Label>
           <Input id="ev-title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
         </div>
         {showUrl && (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="ev-url">Link</Label>
+            <Label htmlFor="ev-url">{t('Link')}</Label>
             <Input id="ev-url" type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} />
           </div>
         )}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="ev-note">
-            {kind === 'conversation' ? 'Họ nói gì (sự việc đã xảy ra, không phải lời khen)' : 'Ghi chú'}
+            {t(kind === 'conversation' ? 'Họ nói gì (sự việc đã xảy ra, không phải lời khen)' : 'Ghi chú')}
           </Label>
           <Textarea id="ev-note" rows={4} value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
         {!ev && (
           <div className="flex flex-col gap-1.5 sm:w-1/2">
-            <Label htmlFor="ev-date">Ngày</Label>
+            <Label htmlFor="ev-date">{t('Ngày')}</Label>
             <Input id="ev-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
         )}
@@ -152,10 +155,10 @@ function EvidenceForm({
         )}
       </DialogPanel>
       <DialogFooter>
-        <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
+        <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          {ev ? 'Lưu' : 'Thêm bằng chứng'}
+          {t(ev ? 'Lưu' : 'Thêm bằng chứng')}
         </Button>
       </DialogFooter>
     </form>
@@ -174,16 +177,19 @@ export function EvidenceDialog({
   onClose: () => void;
   onSaved: (evidence: ApiEvidence, created: boolean) => void;
 }) {
+  const t = useT();
   const ev = target?.mode === 'edit' ? target.evidence : null;
   return (
     <Dialog open={target !== null} onOpenChange={(o) => !o && onClose()}>
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
         <DialogHeader>
-          <DialogTitle>{ev ? 'Sửa bằng chứng' : 'Thêm bằng chứng'}</DialogTitle>
+          <DialogTitle>{t(ev ? 'Sửa bằng chứng' : 'Thêm bằng chứng')}</DialogTitle>
           <DialogDescription>
             {ev
-              ? evidenceKinds[ev.kind]
-              : 'Cuộc nói chuyện thật hoặc một nguồn bên ngoài. Tin từ bản tin sáng và mục inbox được gắn từ trang của chúng.'}
+              ? t(evidenceKinds[ev.kind])
+              : t(
+                  'Cuộc nói chuyện thật hoặc một nguồn bên ngoài. Tin từ bản tin sáng và mục inbox được gắn từ trang của chúng.',
+                )}
           </DialogDescription>
         </DialogHeader>
         {target && (

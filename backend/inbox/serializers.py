@@ -1,6 +1,7 @@
 from django.core.validators import URLValidator
 from rest_framework import serializers
 
+from core.i18n import tr
 from inbox.models import InboxEntry
 from library.models import Item
 
@@ -60,7 +61,7 @@ class InboxEntrySerializer(serializers.ModelSerializer[InboxEntry]):
 
     def validate(self, attrs: dict[str, object]) -> dict[str, object]:
         if not attrs.get("url") and not attrs.get("text"):
-            raise serializers.ValidationError("Cần một link hoặc một đoạn văn bản.")
+            raise serializers.ValidationError(tr("Cần một link hoặc một đoạn văn bản."))
         return attrs
 
 
@@ -70,7 +71,7 @@ class InboxTriageSerializer(serializers.Serializer[object]):
 
     def validate_item(self, item: Item | None) -> Item | None:
         if item is not None and item.user_id != self.context["user"].pk:
-            raise serializers.ValidationError("Không tìm thấy item.")
+            raise serializers.ValidationError(tr("Không tìm thấy item."))
         return item
 
 

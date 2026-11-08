@@ -1,5 +1,7 @@
 // Handbook registry. The block between the BOOKS markers is maintained by
 // scripts/import-gitbook.mjs (registerBook); titles, descriptions and links may be edited by hand.
+// i18n-ignore-file: registry data. The UI shows titles, descriptions and track names through t(); their English is
+// in lib/i18n/en/shell.ts, keyed by the Vietnamese, and lib/i18n/coverage.test.ts checks that every one has it.
 
 export type TrackSlug = 'kinh-doanh' | 'it' | 'ky-nang';
 

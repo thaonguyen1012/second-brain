@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { opportunitiesApi, type ApiTopicCounts } from '@/lib/api/opportunities';
 import { useApi } from '@/lib/api/use-api';
+import { useT } from '@/lib/i18n/client';
+import { msg } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiErrorState, ApiStaleAlert } from '../api-state';
@@ -13,13 +15,14 @@ import { formatDay } from './labels';
 // Heatmap: rows = topics (most frequent first, tail folded into "khác"), columns = weeks, one sequential hue.
 
 const TOP = 10;
-const OTHER = 'khác';
+/** The folded tail's row: `OTHER.msgid` is its tag in the matrix, shown as t(OTHER). */
+const OTHER = msg('khác');
 
 const weekChoices = [
-  { value: '4', label: '4 tuần' },
-  { value: '8', label: '8 tuần' },
-  { value: '12', label: '12 tuần' },
-  { value: '26', label: '26 tuần' },
+  { value: '4', label: msg('4 tuần') },
+  { value: '8', label: msg('8 tuần') },
+  { value: '12', label: msg('12 tuần') },
+  { value: '26', label: msg('26 tuần') },
 ] as const;
 type WeeksValue = (typeof weekChoices)[number]['value'];
 
@@ -42,7 +45,7 @@ function buildMatrix(data: ApiTopicCounts): Matrix {
   });
   if (rest.size) {
     const counts = weeks.map((w) => w.topics.reduce((s, t) => s + (rest.has(t.tag) ? t.count : 0), 0));
-    rows.push({ tag: OTHER, counts, total: counts.reduce((a, b) => a + b, 0) });
+    rows.push({ tag: OTHER.msgid, counts, total: counts.reduce((a, b) => a + b, 0) });
   }
   const max = Math.max(1, ...rows.flatMap((r) => r.counts));
   return { weeks, rows, max };
@@ -58,8 +61,10 @@ function fill(count: number, max: number): string | undefined {
 const shortWeek = (week: string) => week.replace(/^\d{4}-/, '');
 
 function Heatmap({ m }: { m: Matrix }) {
+  const t = useT();
   const [hover, setHover] = useState<{ r: number; c: number } | null>(null);
   const [cursor, setCursor] = useState<{ r: number; c: number } | null>(null);
+  const tagLabel = (tag: string) => (tag === OTHER.msgid ? t(OTHER) : tag);
   const nCols = m.weeks.length;
   const active = hover ?? cursor;
   const cell =
@@ -80,20 +85,21 @@ function Heatmap({ m }: { m: Matrix }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
-        {cell ? (
-          <>
-            <span className="font-semibold text-foreground tabular-nums">{cell.count} tin</span> · {cell.row.tag} · tuần{' '}
-            {shortWeek(cell.week.week)} (từ {formatDay(cell.week.start)})
-          </>
-        ) : (
-          'Rê chuột lên ô, hoặc chọn bảng rồi dùng phím mũi tên.'
-        )}
+        {cell
+          ? t.rich('<b>{n} tin</b> · {tag} · tuần {week} (từ {date})', {
+              b: (chunks) => <span className="font-semibold text-foreground tabular-nums">{chunks}</span>,
+              n: cell.count,
+              tag: tagLabel(cell.row.tag),
+              week: shortWeek(cell.week.week),
+              date: formatDay(cell.week.start),
+            })
+          : t('Rê chuột lên ô, hoặc chọn bảng rồi dùng phím mũi tên.')}
       </p>
       <div className="overflow-x-auto">
         <div
           tabIndex={0}
           role="group"
-          aria-label="Bản đồ nhiệt chủ đề theo tuần. Phím mũi tên để đi qua từng ô."
+          aria-label={t('Bản đồ nhiệt chủ đề theo tuần. Phím mũi tên để đi qua từng ô.')}
           className="grid min-w-max gap-0.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
           style={{ gridTemplateColumns: `minmax(6rem, max-content) repeat(${nCols}, minmax(1.75rem, 1fr))` }}
           onKeyDown={(e) => {
@@ -116,11 +122,11 @@ function Heatmap({ m }: { m: Matrix }) {
               <span
                 className={cn(
                   'truncate pe-3 text-xs leading-7',
-                  row.tag === OTHER ? 'text-muted-foreground italic' : 'text-foreground',
+                  row.tag === OTHER.msgid ? 'text-muted-foreground italic' : 'text-foreground',
                   active?.r === r && 'font-semibold',
                 )}
               >
-                {row.tag}
+                {tagLabel(row.tag)}
               </span>
               {row.counts.map((n, c) => {
                 const on = active?.r === r && active?.c === c;
@@ -140,7 +146,7 @@ function Heatmap({ m }: { m: Matrix }) {
             </div>
           ))}
           <span className="pt-1 pe-3 text-[11px] text-muted-foreground" aria-hidden>
-            số tin đã gắn tag
+            {t('số tin đã gắn tag')}
           </span>
           {m.weeks.map((w) => (
             <span key={w.week} aria-hidden className="pt-1 text-center text-[11px] text-muted-foreground tabular-nums">
@@ -150,34 +156,38 @@ function Heatmap({ m }: { m: Matrix }) {
         </div>
       </div>
       <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-hidden>
-        <span>ít</span>
+        <span>{t('ít')}</span>
         {[0.15, 0.35, 0.55, 0.78, 1].map((f) => (
           <span key={f} className="h-3 w-5 rounded-sm" style={{ background: fill(f * m.max, m.max) }} />
         ))}
-        <span>nhiều (tối đa {m.max} tin một tuần)</span>
+        <span>{t('nhiều (tối đa {n} tin một tuần)', { n: m.max })}</span>
         <span className="ms-2 inline-block h-3 w-5 rounded-sm bg-muted" />
-        <span>không có</span>
+        <span>{t('không có')}</span>
       </div>
       <details className="text-sm">
-        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Xem dạng bảng</summary>
+        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{t('Xem dạng bảng')}</summary>
         <div className="mt-2 overflow-x-auto">
           <table className="text-left tabular-nums">
             <thead className="text-xs text-muted-foreground">
               <tr>
-                <th className="py-1 pe-3 font-medium">Chủ đề</th>
+                <th className="py-1 pe-3 font-medium">{t('Chủ đề')}</th>
                 {m.weeks.map((w) => (
-                  <th key={w.week} className="py-1 pe-3 font-medium" title={`từ ${formatDay(w.start)}`}>
+                  <th
+                    key={w.week}
+                    className="py-1 pe-3 font-medium"
+                    title={t('từ {date}', { date: formatDay(w.start) })}
+                  >
                     {shortWeek(w.week)}
                   </th>
                 ))}
-                <th className="py-1 font-medium">Tổng</th>
+                <th className="py-1 font-medium">{t('Tổng')}</th>
               </tr>
             </thead>
             <tbody>
               {m.rows.map((row) => (
                 <tr key={row.tag} className="border-t">
                   <th scope="row" className="py-1 pe-3 font-normal">
-                    {row.tag}
+                    {tagLabel(row.tag)}
                   </th>
                   {row.counts.map((n, c) => (
                     <td key={c} className="py-1 pe-3">
@@ -204,6 +214,7 @@ const ghostLabel = ['w-14', 'w-10', 'w-12', 'w-8'] as const;
  * what the block will become). Cells stay neutral; the data blue arrives only with data.
  */
 function EmptyHeatmap({ weeks: range }: { weeks: Matrix['weeks'] }) {
+  const t = useT();
   const weeks = range.slice(-8);
   const cols = { gridTemplateColumns: `minmax(4.5rem, max-content) repeat(${weeks.length}, minmax(1.75rem, 1fr))` };
   return (
@@ -228,8 +239,10 @@ function EmptyHeatmap({ weeks: range }: { weeks: Matrix['weeks'] }) {
         ))}
       </div>
       <p className="text-sm text-pretty text-muted-foreground max-sm:order-first sm:absolute sm:inset-x-4 sm:top-1/2 sm:mx-auto sm:w-fit sm:max-w-[calc(100%-2rem)] sm:-translate-y-1/2 sm:rounded-lg sm:bg-card/90 sm:px-3 sm:py-2 sm:text-center">
-        <span className="font-medium text-foreground">Chưa có tin nào được gắn tag.</span> Bản tin sáng gắn tag chủ đề
-        mỗi ngày; số đếm sẽ hiện ở đây.
+        {t.rich(
+          '<b>Chưa có tin nào được gắn tag.</b> Bản tin sáng gắn tag chủ đề mỗi ngày; số đếm sẽ hiện ở đây.',
+          { b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> },
+        )}
       </p>
     </div>
   );
@@ -237,6 +250,7 @@ function EmptyHeatmap({ weeks: range }: { weeks: Matrix['weeks'] }) {
 
 /** "Chủ đề trong bản tin": GET /api/news/topics, with its own range filter. */
 export function TopicHeatmap() {
+  const t = useT();
   const [weeks, setWeeks] = useState<WeeksValue>('8');
   const topics = useApi(`news-topics:${weeks}`, () => opportunitiesApi.topicCounts(Number(weeks)));
   const m = topics.data ? buildMatrix(topics.data) : null;
@@ -249,20 +263,22 @@ export function TopicHeatmap() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="me-auto flex flex-col gap-1">
           <h2 id="topics-heading" className="font-heading text-lg font-semibold tracking-tight">
-            Chủ đề trong bản tin theo tuần
+            {t('Chủ đề trong bản tin theo tuần')}
           </h2>
           {!nothing && (
             <p className="text-sm text-muted-foreground">
-              Số tin mỗi tag xuất hiện trong bản tin sáng, theo tuần ISO. Chủ đề nóng dần là gợi ý tìm bằng chứng.
+              {t(
+                'Số tin mỗi tag xuất hiện trong bản tin sáng, theo tuần ISO. Chủ đề nóng dần là gợi ý tìm bằng chứng.',
+              )}
             </p>
           )}
         </div>
         {!nothing && (
           <ChoiceSelect
-            label="Khoảng thời gian"
+            label={t('Khoảng thời gian')}
             value={weeks}
             onChange={setWeeks}
-            choices={weekChoices}
+            choices={weekChoices.map((c) => ({ value: c.value, label: t(c.label) }))}
             className="w-auto"
           />
         )}
@@ -271,7 +287,7 @@ export function TopicHeatmap() {
       {topics.error && !topics.data ? (
         <ApiErrorState error={topics.error} onRetry={topics.reload} />
       ) : !m ? (
-        <Skeleton className="h-48 rounded-xl" aria-busy="true" aria-label="Đang tải" />
+        <Skeleton className="h-48 rounded-xl" aria-busy="true" aria-label={t('Đang tải')} />
       ) : m.rows.length === 0 ? (
         <EmptyHeatmap weeks={m.weeks} />
       ) : (

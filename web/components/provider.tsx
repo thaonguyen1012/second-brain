@@ -1,20 +1,22 @@
 'use client';
-import { RootProvider } from 'fumadocs-ui/provider/next';
+import NextLink from 'next/link';
+import NextImage from 'next/image';
+import { useParams, useRouter } from 'next/navigation';
+import { RootProvider } from 'fumadocs-ui/provider/base';
+import { FrameworkProvider, type Framework } from 'fumadocs-core/framework';
 import { useSearchContext, type SearchLink } from 'fumadocs-ui/contexts/search';
-import { lazy, useEffect, type ReactNode } from 'react';
+import { lazy, useEffect, useMemo, type ReactNode } from 'react';
 import { navAreas } from '@/lib/app-nav';
-import { viTranslations } from '@/lib/i18n-vi';
+import { locales, localeNames, type Locale } from '@/lib/i18n/config';
+import { I18nProvider, switchLocale, useT } from '@/lib/i18n/client';
+import type { Dictionary } from '@/lib/i18n/translate';
+import { useAppPathname } from '@/lib/use-app-pathname';
 
 /** Handbooks + second brain (Cmd+K "find everything"); lazy like Fumadocs' default dialog, so off the first load. */
 const SearchDialog = lazy(() => import('./search-dialog'));
 
-/** What the dialog lists before anything is typed: the sidebar's six areas, Inbox and the guides. */
-const searchLinks: SearchLink[] = [
-  ...navAreas.slice(0, 1).map((n): SearchLink => [n.title, n.href]),
-  ['Inbox', '/inbox/'],
-  ...navAreas.slice(1).map((n): SearchLink => [n.title, n.href]),
-  ['Hướng dẫn', '/huong-dan/'],
-];
+/** Fumadocs' language list: its docs sidebar switch calls switchLocale (one URL per page, lib/i18n/config.ts). */
+const fumadocsLocales = locales.map((locale) => ({ locale, name: localeNames[locale] }));
 
 /**
  * "/" opens search (in addition to ⌘K / Ctrl+K), unless the user is typing, another handler took the key, or
@@ -37,11 +39,66 @@ function SlashToSearch() {
   return null;
 }
 
-export function Provider({ children }: { children: ReactNode }) {
+/** Fumadocs and the app, inside the language: search's first links are the sidebar's areas in that language. */
+function Inner({ locale, fumadocs, children }: { locale: Locale; fumadocs?: Dictionary; children: ReactNode }) {
+  const t = useT();
+  // What the dialog lists before anything is typed: the sidebar's six areas, Inbox and the guides
+  const links = useMemo<SearchLink[]>(
+    () => [
+      ...navAreas.slice(0, 1).map((n): SearchLink => [t(n.title), n.href]),
+      ['Inbox', '/inbox/'],
+      ...navAreas.slice(1).map((n): SearchLink => [t(n.title), n.href]),
+      [t('Hướng dẫn'), '/huong-dan/'],
+    ],
+    [t],
+  );
   return (
-    <RootProvider i18n={{ locale: 'vi', translations: viTranslations }} search={{ SearchDialog, links: searchLinks }}>
+    <RootProvider
+      i18n={{
+        locale,
+        locales: fumadocsLocales,
+        onLocaleChange: (v) => switchLocale(v as Locale),
+        translations: fumadocs as Record<string, string> | undefined,
+      }}
+      search={{ SearchDialog, links }}
+    >
       <SlashToSearch />
       {children}
     </RootProvider>
+  );
+}
+
+/**
+ * The app's providers. Fumadocs gets Next's router through its framework seam, with the path read without the
+ * language (useAppPathname): pages are prerendered at /vi/... and /en/..., and its sidebar and footer compare that
+ * path with the page tree's /docs/... links.
+ */
+export function Provider({
+  locale,
+  dict,
+  fumadocs,
+  children,
+}: {
+  locale: Locale;
+  dict: Dictionary | null;
+  /** Fumadocs' own strings (lib/i18n-vi.ts) in Vietnamese; English is its default. */
+  fumadocs?: Dictionary;
+  children: ReactNode;
+}) {
+  return (
+    <FrameworkProvider
+      usePathname={useAppPathname}
+      useRouter={useRouter}
+      useParams={useParams as () => Record<string, string | string[]>}
+      // Fumadocs' own Next adapter passes these the same way; its prop types are looser than Next's
+      Link={NextLink as Framework['Link']}
+      Image={NextImage as Framework['Image']}
+    >
+      <I18nProvider locale={locale} dict={dict}>
+        <Inner locale={locale} fumadocs={fumadocs}>
+          {children}
+        </Inner>
+      </I18nProvider>
+    </FrameworkProvider>
   );
 }

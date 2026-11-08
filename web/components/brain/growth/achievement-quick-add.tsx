@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { weeksApi, type ApiAchievement } from '@/lib/api/weeks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
 import { WriteError } from '../tuan/week-section';
 
@@ -15,7 +16,7 @@ import { WriteError } from '../tuan/week-section';
 export function AchievementQuickAdd({
   date,
   onAdded,
-  titlePlaceholder = 'Đã làm gì',
+  titlePlaceholder,
   className,
 }: {
   /** YYYY-MM-DD */
@@ -24,6 +25,7 @@ export function AchievementQuickAdd({
   titlePlaceholder?: string;
   className?: string;
 }) {
+  const t = useT();
   const [title, setTitle] = useState('');
   const [impact, setImpact] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,21 +59,21 @@ export function AchievementQuickAdd({
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={titlePlaceholder}
-          aria-label="Thành tựu"
+          placeholder={titlePlaceholder ?? t('Đã làm gì')}
+          aria-label={t('Thành tựu', null, 'field')}
           maxLength={200}
           className="col-span-2 @min-[27rem]:col-span-1"
         />
         <Input
           value={impact}
           onChange={(e) => setImpact(e.target.value)}
-          placeholder="Con số tác động"
-          aria-label="Tác động (con số)"
+          placeholder={t('Con số tác động')}
+          aria-label={t('Tác động (con số)')}
           maxLength={200}
         />
         <Button type="submit" variant="outline" disabled={!title.trim()} loading={busy}>
           <Plus aria-hidden />
-          Thêm
+          {t('Thêm')}
         </Button>
       </form>
       <WriteError error={error} />

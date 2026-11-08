@@ -5,8 +5,10 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { rehypeSafeHtml } from '../mdx/rehype-safe-html';
 import { rehypeCodeClasses } from '../mdx/rehype-code-classes';
+import type { T } from '../i18n/translate';
 
-export const mdxOptions: CompilerOptions = {
+/** The compile options for one UI language: only the image and embed placeholders' words depend on it. */
+export const mdxOptionsFor = (t: T): CompilerOptions => ({
   format: 'md',
   // images are replaced by placeholders, never measured or fetched
   remarkImageOptions: false,
@@ -26,9 +28,9 @@ export const mdxOptions: CompilerOptions = {
       rehypeRaw,
       { passThrough: ['mdxjsEsm', 'mdxFlowExpression', 'mdxJsxFlowElement', 'mdxJsxTextElement', 'mdxTextExpression'] },
     ],
-    rehypeSafeHtml,
+    [rehypeSafeHtml, { t }],
     rehypeKatex,
     ...v,
     rehypeCodeClasses,
   ],
-};
+});

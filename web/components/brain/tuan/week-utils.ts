@@ -3,6 +3,8 @@
 // arithmetic never depends on the browser's time zone.
 import type { ApiReviewField } from '@/lib/api/weeks';
 import { addDays } from '@/lib/dates';
+import { unpadded } from '@/lib/labels';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 
 const DAY_MS = 86_400_000;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -48,12 +50,29 @@ export function weekRange(start: string): string {
   return `${a.getUTCDate()}–${dayMonth(b)}/${b.getUTCFullYear()}`;
 }
 
-export const weekdayShort = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-export const weekdayLong = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ nhật'];
+/** Monday first; shown through t(). */
+export const weekdayShort: readonly Msg[] = [
+  msg('T2', 'weekday'),
+  msg('T3', 'weekday'),
+  msg('T4', 'weekday'),
+  msg('T5', 'weekday'),
+  msg('T6', 'weekday'),
+  msg('T7', 'weekday'),
+  msg('CN', 'weekday'),
+];
+export const weekdayLong: readonly Msg[] = [
+  msg('Thứ Hai'),
+  msg('Thứ Ba'),
+  msg('Thứ Tư'),
+  msg('Thứ Năm'),
+  msg('Thứ Sáu'),
+  msg('Thứ Bảy'),
+  msg('Chủ nhật'),
+];
 
-/** "Thứ Hai 2/11". */
-export function dayLabel(iso: string): string {
-  return `${weekdayLong[weekdayIndex(iso)]} ${dayMonth(parse(iso))}`;
+/** "Thứ Hai 2/11" / "Monday 2/11". */
+export function dayLabel(iso: string, t: T): string {
+  return `${t(weekdayLong[weekdayIndex(iso)])} ${dayMonth(parse(iso))}`;
 }
 
 export function shortDate(iso: string): string {
@@ -61,47 +80,53 @@ export function shortDate(iso: string): string {
 }
 
 /** Clock time of a timestamp in the browser, for "đã lưu lúc". */
-export function clockTime(iso: string | null | undefined): string {
+export function clockTime(iso: string | null | undefined, t: T): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: 'numeric',
-    month: 'numeric',
-  });
+  return unpadded(
+    new Intl.DateTimeFormat(t.intl, { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric' }),
+    new Date(iso),
+  );
 }
 
-/** Compact duration for axes and labels: "45p", "2h", "1h30". */
-export function minutesShort(m: number): string {
-  if (m < 60) return `${m}p`;
+/** Compact duration for axes and labels: "45p" / "45m", "2h", "1h30". */
+export function minutesShort(m: number, t: T): string {
+  if (m < 60) return t('{m}p', { m });
   const h = Math.floor(m / 60);
   const rest = m % 60;
   return rest ? `${h}h${String(rest).padStart(2, '0')}` : `${h}h`;
 }
 
-/** Full duration for tooltips and screen readers: "1 giờ 30 phút". */
-export function minutesLong(m: number): string {
-  if (m === 0) return '0 phút';
+/** Full duration for tooltips and screen readers: "1 giờ 30 phút" / "1 h 30 min". */
+export function minutesLong(m: number, t: T): string {
   const h = Math.floor(m / 60);
   const rest = m % 60;
-  return [h ? `${h} giờ` : '', rest ? `${rest} phút` : ''].filter(Boolean).join(' ');
+  if (h === 0) return t('{m} phút', { m: rest });
+  return rest ? t('{h} giờ {m} phút', { h, m: rest }) : t('{h} giờ', { h });
 }
 
 /** The six review questions (DECISIONS 9.2): four fixed ones and two of Alex's own. */
-export const reviewQuestions: { field: ApiReviewField; label: string; hint: string }[] = [
-  { field: 'reviewWin', label: 'Thắng lớn nhất tuần này là gì?', hint: 'Một việc, có số nếu được.' },
+export const reviewQuestions: { field: ApiReviewField; label: Msg; hint: Msg | null }[] = [
+  { field: 'reviewWin', label: msg('Thắng lớn nhất tuần này là gì?'), hint: msg('Một việc, có số nếu được.') },
   {
     field: 'reviewDistraction',
-    label: 'Cái gì kéo thời gian khỏi ưu tiên?',
-    hint: 'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở phần Giờ.',
+    label: msg('Cái gì kéo thời gian khỏi ưu tiên?'),
+    hint: msg('Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở phần Giờ.'),
   },
-  { field: 'reviewLearned', label: 'Học được gì?', hint: '' },
-  { field: 'reviewSatisfied', label: 'Có hài lòng với tuần này không?', hint: 'Có, không, hay một nửa, và vì sao.' },
-  { field: 'reviewChangedMind', label: 'Tuần này điều gì làm mình đổi ý?', hint: 'Một niềm tin, một kế hoạch, một tin.' },
+  { field: 'reviewLearned', label: msg('Học được gì?'), hint: null },
+  {
+    field: 'reviewSatisfied',
+    label: msg('Có hài lòng với tuần này không?'),
+    hint: msg('Có, không, hay một nửa, và vì sao.'),
+  },
+  {
+    field: 'reviewChangedMind',
+    label: msg('Tuần này điều gì làm mình đổi ý?'),
+    hint: msg('Một niềm tin, một kế hoạch, một tin.'),
+  },
   {
     field: 'reviewOpportunityEvidence',
-    label: 'Cơ hội nào có thêm bằng chứng?',
-    hint: 'Ủng hộ hay phản bác, và quyết định giữ, bỏ hay làm.',
+    label: msg('Cơ hội nào có thêm bằng chứng?'),
+    hint: msg('Ủng hộ hay phản bác, và quyết định giữ, bỏ hay làm.'),
   },
 ];
 

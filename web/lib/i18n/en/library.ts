@@ -1,0 +1,145 @@
+// English for the library area: Vietnamese text (the key, exactly as in the code) -> English. See ../README.md.
+import type { Dictionary } from '../translate';
+
+export const library = {
+  // Pages (app/[lang]/(home)/thu-vien/)
+  'Sách, phim, khóa học, bài viết và dự án.': 'Books, films, courses, articles and projects.',
+  'Ghi chú markdown; item xong cần có ghi chú.': 'Markdown notes; a done item needs a note.',
+
+  // Items page (components/brain/library-page.tsx)
+  'Mọi loại': 'All types',
+  'Không tìm thấy item #{id}, có thể đã bị xóa.': 'Item #{id} not found; it may have been deleted.',
+  'Đã thêm {n} khóa học từ Sổ tay': {
+    one: 'Added {n} course from the handbooks',
+    other: 'Added {n} courses from the handbooks',
+  },
+  'Đã thêm {n} khóa học từ Sổ tay ({active} {status})': {
+    one: 'Added {n} course from the handbooks ({active} {status})',
+    other: 'Added {n} courses from the handbooks ({active} {status})',
+  },
+  '{n} khóa đã có trong thư viện': {
+    one: '{n} course was already in the library',
+    other: '{n} courses were already in the library',
+  },
+  'dừng lại vì lỗi: {error}': 'stopped because of an error: {error}',
+  'Chưa có item nào': 'No items yet',
+  'Thêm sách, phim, khóa học, bài viết hoặc dự án; mục từ inbox cũng có thể thành item.':
+    'Add books, films, courses, articles or projects; an inbox entry can become an item too.',
+  'Đang thêm {sent}/{n} khóa học…': { one: 'Adding {sent}/{n} course…', other: 'Adding {sent}/{n} courses…' },
+  'Thêm {n} khóa học từ Sổ tay': { one: 'Add {n} handbook course', other: 'Add {n} handbook courses' },
+  'Đã thêm "{title}", nhưng chưa lưu được ảnh: {error}.': 'Added "{title}", but the image was not saved: {error}.',
+  'Đã lưu "{title}", nhưng chưa lưu được ảnh: {error}.': 'Saved "{title}", but the image was not saved: {error}.',
+  'Đầu ra cho: {title}': 'Output for: {title}',
+  'Đã tạo ghi chú "{title}"': 'Created note "{title}"',
+
+  // Item dialog (components/brain/item-dialog.tsx)
+  'Sửa item': 'Edit item',
+  'Điểm là số nguyên từ 1 đến 10, hoặc để trống.': 'The rating is a whole number from 1 to 10, or empty.',
+  'Nguồn (tác giả, nền tảng, link)': 'Source (author, platform, link)',
+  'Điểm 1–10': 'Rating 1–10',
+  'Xóa item?': 'Delete this item?',
+  '"{title}" bị xóa hẳn. Dự án còn giờ làm thì phải xóa các giờ đó trước. Ghi chú liên kết vẫn giữ, chỉ mất liên kết. Không hoàn tác được.':
+    '"{title}" is deleted for good. A project with logged time needs that time deleted first. Linked notes stay; only the link goes. This cannot be undone.',
+  '"{title}" bị xóa hẳn. Ghi chú liên kết vẫn giữ, chỉ mất liên kết; bằng chứng cho cơ hội giữ lại tiêu đề. Không hoàn tác được.':
+    '"{title}" is deleted for good. Linked notes stay, only the link goes; evidence for an opportunity keeps the title. This cannot be undone.',
+  'Thêm vào thư viện': 'Add to library',
+
+  // A done Item needs an output (components/brain/library/done-output.tsx); "rating" = an Item's 1-10 rating
+  '## Highlights\n\n- \n\n## 3 ý chính\n\n1. \n2. \n3. \n': '## Highlights\n\n- \n\n## 3 key ideas\n\n1. \n2. \n3. \n',
+  'Nhận xét: ': 'Review: ',
+  'Ghi highlights và 3 ý chính.': 'Write down the highlights and 3 key ideas.',
+  'Ghi một câu nhận xét.': 'Write a one-line review.',
+  'Ghi lại những gì đã học được.': 'Write down what you learned.',
+  'Ghi vài ý chính đáng nhớ.': 'Write down a few key ideas worth remembering.',
+  'Ghi kết quả và bài học rút ra.': 'Write down the result and the lessons learned.',
+  'Ghi một câu nhận xét và chấm điểm 1–10.': 'Write a one-line review and rate it 1–10.',
+  'Ghi lại vài dòng về nó.': 'Write a few lines about it.',
+  'Còn thiếu điểm 1–10.': 'The 1–10 rating is still missing.',
+  'Chưa có ghi chú, chưa chấm điểm': 'No note yet, not rated yet',
+  'Chưa có ghi chú': 'No note yet',
+  'rating::Chưa chấm điểm': 'Not rated yet',
+  'Xong rồi, nhưng chưa có đầu ra.': 'Done, but no output yet.',
+  'rating::Chấm điểm': 'Rate',
+
+  // Item pictures (components/brain/library/item-image-field.tsx, lib/item-picture.ts); also the project logo
+  Logo: 'Logo',
+  'Ảnh bìa': 'Cover image',
+  'Logo hiện tại': 'Current logo',
+  'Ảnh bìa hiện tại': 'Current cover image',
+  'Tải ảnh lên': 'Upload image',
+  'Đổi ảnh': 'Change image',
+  'Lấy ảnh từ link': 'Fetch image from link',
+  'Bỏ ảnh': 'Remove image',
+  'Đang đọc ảnh…': 'Reading the image…',
+  'Ảnh sẽ được lấy từ link sau khi lưu; nó hiện sau vài phút.':
+    'The image will be fetched from the link after saving; it shows up in a few minutes.',
+  'Ảnh mới được lưu khi bấm Lưu.': 'The new image is saved when you press Save.',
+  'Ảnh được bỏ khi bấm Lưu.': 'The image is removed when you press Save.',
+  'Đang lấy ảnh từ link; nó hiện sau vài phút.': 'Fetching the image from the link; it shows up in a few minutes.',
+  'Khi lưu, ảnh sẽ được lấy từ link; nó hiện sau vài phút.':
+    'On saving, the image will be fetched from the link; it shows up in a few minutes.',
+  'Chưa có ảnh.': 'No image yet.',
+  'Không đọc được ảnh này. Chỉ nhận JPEG, PNG, GIF hoặc WebP.':
+    'Cannot read this image. Only JPEG, PNG, GIF or WebP are accepted.',
+  'Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.': 'Only JPEG, PNG, GIF or WebP images are accepted.',
+  'Ảnh lớn hơn 10 MB.': 'The image is larger than 10 MB.',
+  'ảnh lớn hơn giới hạn của máy chủ': 'the image is larger than the server allows',
+  'mục này không còn nữa': 'this item no longer exists',
+  'ảnh không hợp lệ': 'invalid image',
+
+  // Item rows and board cards (components/brain/library/item-parts.tsx)
+  'Mở ở Công việc': 'Open in Work',
+  điểm: 'rating',
+  '{n}<sr> ghi chú</sr>': { one: '{n}<sr> note</sr>', other: '{n}<sr> notes</sr>' },
+  'Viết ghi chú cho “{title}”': 'Write a note for “{title}”',
+  'Chấm điểm cho “{title}”': 'Rate “{title}”',
+
+  // Linking a note to Items (components/brain/library/item-picker.tsx)
+  'Item đã liên kết': 'Linked items',
+  'Bỏ liên kết {title}': 'Unlink {title}',
+  'Gõ tên sách, phim, khóa học…': 'Type the title of a book, film, course…',
+  'Item khớp': 'Matching items',
+  'Không có item nào khớp (hoặc đã liên kết hết).': 'No matching items (or they are all linked already).',
+
+  // Note dialog (components/brain/library/note-dialog.tsx)
+  'Ghi chú mới': 'New note',
+  'Sửa ghi chú': 'Edit note',
+  'Ghi chú cần có nội dung.': 'A note needs some content.',
+  'Nội dung dài quá {max} ký tự.': 'The content is longer than {max} characters.',
+  'Tiêu đề (không bắt buộc)': 'Title (optional)',
+  'Để trống thì lấy dòng đầu của nội dung': 'Leave empty to use the first line',
+  'Nội dung (markdown)': 'Content (markdown)',
+  '# Ba ý chính\n\n- …': '# Three key ideas\n\n- …',
+  'Ghi chú là riêng tư, không gửi cho AI. Hiển thị dạng văn bản thô, giữ nguyên xuống dòng.':
+    'Notes are private and never sent to AI. They show as plain text, with line breaks kept.',
+  'Liên kết tới item': 'Link to items',
+  'Tạo ghi chú': 'Create note',
+  'Bỏ các thay đổi chưa lưu?': 'Discard unsaved changes?',
+  'Nội dung vừa gõ trong ghi chú này sẽ mất.': 'What you just typed in this note will be lost.',
+  'Tiếp tục sửa': 'Keep editing',
+  'Bỏ thay đổi': 'Discard changes',
+
+  // Notes page (components/brain/library/notes-page.tsx)
+  'Ghi chú sách': 'Book note',
+  'Nhận xét phim': 'Film review',
+  '## Một câu nhận xét\n\n': '## One-line review\n\n',
+  'sửa {date}': 'edited {date}',
+  'Chưa liên kết item': 'Not linked to an item',
+  'Lọc ghi chú theo item này': 'Filter notes by this item',
+  'đọc ghi chú': 'read the note',
+  sửa: 'edit',
+  'ghi chú mới': 'new note',
+  tìm: 'search',
+  'Phím tắt của Ghi chú': 'Keyboard shortcuts for Notes',
+  'Không tìm thấy ghi chú #{id}, có thể đã bị xóa.': 'Note #{id} not found; it may have been deleted.',
+  'Không tải được danh sách item: {error}': 'Could not load the items: {error}',
+  'Tìm trong ghi chú': 'Search notes',
+  'Tìm trong tiêu đề và nội dung…': 'Search titles and content…',
+  'Item: {title}, bỏ lọc': 'Item: {title}, clear the filter',
+  'Bỏ lọc theo item': 'Clear the item filter',
+  'Không có ghi chú nào khớp bộ lọc.': 'No notes match the filters.',
+  'Chưa có ghi chú nào': 'No notes yet',
+  'Xóa ghi chú?': 'Delete this note?',
+  '"{title}" bị xóa hẳn. Item liên kết vẫn giữ nguyên. Không hoàn tác được.':
+    '"{title}" is deleted for good. Linked items stay as they are. This cannot be undone.',
+} satisfies Dictionary;

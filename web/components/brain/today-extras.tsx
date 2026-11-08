@@ -4,6 +4,8 @@ import { CircleAlert } from 'lucide-react';
 import { api, type ApiStatus } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import { daysBetween, formatDay, todayPrague } from '@/lib/dates';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,33 +20,34 @@ import { Panel, TileError } from './today-main';
  * checklist and the roadmap below the rail (phone, lg) up and down on every visit.
  */
 export function TodayPredictions({ className }: { className?: string }) {
+  const t = useT();
   const due = useDuePredictions();
   const failed = due.error && !due.data;
   if (!failed && (!due.data || due.data.results.length === 0)) return null;
   return (
     <Panel
-      title="Dự đoán cần chấm lại"
+      title={t('Dự đoán cần chấm lại')}
       href={PREDICTIONS_HREF}
-      linkLabel="Thành tựu"
+      linkLabel={t('Thành tựu')}
       className={className}
     >
-      {failed ? <TileError text="Chưa đọc được dự đoán" onRetry={due.reload} /> : <DuePredictionList due={due} />}
+      {failed ? <TileError text={t('Chưa đọc được dự đoán')} onRetry={due.reload} /> : <DuePredictionList due={due} />}
     </Panel>
   );
 }
 
 /** Background job kinds (backend `@jobs.handler`), in Vietnamese. Unknown kinds show as sent. */
-const jobKinds: Record<string, string> = {
-  unfurl: 'lấy thẻ link',
-  tag: 'gắn tag inbox',
-  feeds: 'tải nguồn tin',
-  brief: 'dựng bản tin',
-  news_tag: 'gắn tag tin',
-  brief_intro: 'lời mở bản tin',
-  jd_skills: 'đọc tin tuyển dụng',
+const jobKinds: Record<string, Msg> = {
+  unfurl: msg('lấy thẻ link'),
+  tag: msg('gắn tag inbox'),
+  feeds: msg('tải nguồn tin'),
+  brief: msg('dựng bản tin'),
+  news_tag: msg('gắn tag tin'),
+  brief_intro: msg('lời mở bản tin'),
+  jd_skills: msg('đọc tin tuyển dụng'),
 };
 
-const usd = (n: number) => `${n.toLocaleString('vi-VN', { maximumFractionDigits: n > 0 && n < 1 ? 3 : 2 })} USD`;
+const usd = (n: number, t: T) => `${t.num(n, { maximumFractionDigits: n > 0 && n < 1 ? 3 : 2 })} USD`;
 
 /** A warning chip: the warning badge plus an icon, so the state is never colour alone. Keep the text short. */
 function Warn({ children }: { children: React.ReactNode }) {
@@ -57,9 +60,10 @@ function Warn({ children }: { children: React.ReactNode }) {
 }
 
 function StatusParts({ status }: { status: ApiStatus }) {
+  const t = useT();
   const { llm, jobs, lastBriefDate } = status;
   const overBudget = llm.budgetUsd > 0 && llm.monthCostUsd >= llm.budgetUsd * 0.8;
-  const costText = `LLM tháng này ${usd(llm.monthCostUsd)} / ${usd(llm.budgetUsd)}`;
+  const costText = t('LLM tháng này {cost} / {budget}', { cost: usd(llm.monthCostUsd, t), budget: usd(llm.budgetUsd, t) });
   // On the free tier the cost is what the calls would cost on the paid tier: said in a tooltip, not in the line
   const costLabel = llm.freeTier ? (
     <Tooltip>
@@ -73,35 +77,43 @@ function StatusParts({ status }: { status: ApiStatus }) {
       >
         {costText}
       </TooltipTrigger>
-      <TooltipPopup>Gói miễn phí, tính theo giá trả phí</TooltipPopup>
+      <TooltipPopup>{t('Gói miễn phí, tính theo giá trả phí')}</TooltipPopup>
     </Tooltip>
   ) : (
     costText
   );
-  const calls = ` · ${llm.calls} lần gọi${llm.failedCalls > 0 ? `, ${llm.failedCalls} lỗi` : ''}`;
+  const calls =
+    llm.failedCalls > 0
+      ? t('{n} lần gọi, {failed} lỗi', { n: llm.calls, failed: t.count(llm.failedCalls) })
+      : t('{n} lần gọi', { n: llm.calls });
 
   // Only a missed day is a warning. Before 06:30 the newest brief is yesterday's (age 1), and after it a missing
   // brief of today is already said by the empty state of "Bản tin hôm nay"; no brief at all (age null) too.
   const age = lastBriefDate ? daysBetween(lastBriefDate, todayPrague()) : null;
-  const brief = lastBriefDate ? `Bản tin gần nhất ${formatDay(lastBriefDate)}` : 'Chưa có bản tin nào';
+  const brief = lastBriefDate
+    ? t('Bản tin gần nhất {date}', { date: formatDay(lastBriefDate) })
+    : t('Chưa có bản tin nào');
 
   const pending = jobs.pending.reduce((n, j) => n + j.count, 0);
   const failed = jobs.failed.reduce((n, j) => n + j.count, 0);
-  const failedKinds = jobs.failed.map((j) => `${jobKinds[j.kind] ?? j.kind} ${j.count}`).join(', ');
+  const failedKinds = jobs.failed
+    .map((j) => `${jobKinds[j.kind] ? t(jobKinds[j.kind]) : j.kind} ${t.count(j.count)}`)
+    .join(', ');
 
   return (
     <>
       <span>
         {overBudget ? <Warn>{costLabel}</Warn> : costLabel}
+        {' · '}
         {calls}
       </span>
       <span>{age !== null && age > 1 ? <Warn>{brief}</Warn> : brief}</span>
       <span>
-        {pending > 0 ? `${pending} tác vụ đang chờ` : 'Không có tác vụ chờ'}
+        {pending > 0 ? t('{n} tác vụ đang chờ', { n: pending }) : t('Không có tác vụ chờ')}
         {failed > 0 && (
           <>
             {' · '}
-            <Warn>{failed} tác vụ lỗi</Warn> ({failedKinds})
+            <Warn>{t('{n} tác vụ lỗi', { n: failed })}</Warn> ({failedKinds})
           </>
         )}
       </span>
@@ -111,6 +123,7 @@ function StatusParts({ status }: { status: ApiStatus }) {
 
 /** "AI và tác vụ nền" (GET /api/status): month LLM cost vs budget, last brief, waiting and failed jobs. */
 export function TodayStatus({ className }: { className?: string }) {
+  const t = useT();
   const status = useApi('status', api.getStatus);
   return (
     <section
@@ -121,15 +134,15 @@ export function TodayStatus({ className }: { className?: string }) {
       )}
     >
       <h2 id="today-status" className="font-medium text-foreground">
-        AI và tác vụ nền
+        {t('AI và tác vụ nền')}
       </h2>
       {status.data ? (
         <StatusParts status={status.data} />
       ) : status.error ? (
         <span>
-          {describeApiError(status.error).title}.{' '}
+          {describeApiError(status.error, t).title}.{' '}
           <button type="button" onClick={status.reload} className="underline underline-offset-2 hover:text-foreground">
-            Thử lại
+            {t('Thử lại')}
           </button>
         </span>
       ) : (

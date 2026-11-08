@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.authentication import request_user
+from core.i18n import tr
 from core.pagination import NewestFirstCursor
 from library.models import Item
 from weeks import services as week_services
@@ -151,7 +152,7 @@ class TimeEntryView(APIView):
         body = TimeEntryUpdateSerializer(data=request.data, partial=True, context={"user": user})
         body.is_valid(raise_exception=True)
         if entry.running and "minutes" in body.validated_data:
-            raise ValidationError({"minutes": "Hãy dừng đồng hồ trước."})
+            raise ValidationError({"minutes": tr("Hãy dừng đồng hồ trước.")})
         entry = services.update_entry(entry, dict(body.validated_data))
         return Response(TimeEntrySerializer(entry).data)
 

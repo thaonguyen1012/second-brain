@@ -4,6 +4,8 @@ import { Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
+import type { Msg } from '@/lib/i18n/translate';
 
 /*
  * The frame around a guide in a page's empty state: a title, "Xem lại" (replay a guide that plays once) and
@@ -94,8 +96,8 @@ function FrameControl({
 }
 
 /** Sentence case for a page-variant title ("thu thập..." -> "Thu thập..."). */
-function sentence(text: string): string {
-  return text.charAt(0).toLocaleUpperCase('vi') + text.slice(1);
+function sentence(text: string, locale: string): string {
+  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
 }
 
 export function GuideFrame({
@@ -112,7 +114,7 @@ export function GuideFrame({
   /** Storage key part, one per guide */
   id: string;
   /** What the guide shows, after "Hướng dẫn: " (the page variant capitalises it instead) */
-  title: string;
+  title: Msg;
   Guide: ComponentType<{ className?: string }>;
   /** Offer "Xem lại" (guides that play once) */
   replay?: boolean;
@@ -132,6 +134,7 @@ export function GuideFrame({
   fallback?: ReactNode;
   className?: string;
 }) {
+  const t = useT();
   const stored = useSyncExternalStore(
     subscribe,
     () => readHidden(id, defaultHidden),
@@ -170,15 +173,15 @@ export function GuideFrame({
               : cn('text-sm font-medium', hidden && 'font-normal text-muted-foreground'),
           )}
         >
-          {variant === 'page' ? sentence(title) : `Hướng dẫn: ${title}`}
+          {variant === 'page' ? sentence(t(title), t.intl) : t('Hướng dẫn: {title}', { title: t(title) })}
         </h2>
         <div className="flex shrink-0 items-center gap-1">
           {!hidden && replay && (
-            <FrameControl label="Xem lại" icon={<RotateCcw aria-hidden />} onClick={() => setRun((r) => r + 1)} />
+            <FrameControl label={t('Xem lại')} icon={<RotateCcw aria-hidden />} onClick={() => setRun((r) => r + 1)} />
           )}
           {stoppable && (
             <FrameControl
-              label={hidden ? 'Xem hướng dẫn' : 'Ẩn hướng dẫn'}
+              label={hidden ? t('Xem hướng dẫn') : t('Ẩn hướng dẫn')}
               icon={hidden ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
               expanded={!hidden}
               onClick={() => (hideable ? writeHidden(id, !hidden) : setHiddenHere(!hidden))}

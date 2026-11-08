@@ -6,6 +6,8 @@ import type { Page } from '@/lib/api/client';
 import { growthApi, type ApiJobAd, type ApiMarketReport, type ApiMarketSkill } from '@/lib/api/growth';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { hostOf } from '@/lib/labels';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -26,15 +28,16 @@ import { addMonths, formatDay, monthLabel, seniority, thisMonth, twoQuestions } 
 import { PeriodStepper, SectionTitle, useShortcuts } from './shared';
 import { SkillDialog } from './skill-dialog';
 
-function adState(ad: ApiJobAd): { label: string; tone: 'success' | 'secondary' | 'error' } {
-  if (ad.processed) return { label: 'Đã phân tích', tone: 'success' };
-  if (ad.error) return { label: 'Lỗi phân tích', tone: 'error' };
-  return { label: 'Đang chờ phân tích', tone: 'secondary' };
+function adState(ad: ApiJobAd): { label: Msg; tone: 'success' | 'secondary' | 'error' } {
+  if (ad.processed) return { label: msg('Đã phân tích'), tone: 'success' };
+  if (ad.error) return { label: msg('Lỗi phân tích'), tone: 'error' };
+  return { label: msg('Đang chờ phân tích'), tone: 'secondary' };
 }
 
 /** "tự động" after a value the AI derived (DESIGN.md §4, D18). */
 function Auto() {
-  return <span className="text-xs text-muted-foreground">tự động</span>;
+  const t = useT();
+  return <span className="text-xs text-muted-foreground">{t('tự động')}</span>;
 }
 
 /**
@@ -42,6 +45,7 @@ function Auto() {
  * (labelled "tự động"); the title opens the edit dialog, the rest of the actions sit in the row menu.
  */
 function JobAdRow({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void; onDeleted: () => void }) {
+  const t = useT();
   const [deleting, setDeleting] = useState(false);
   const s = adState(ad);
   const host = hostOf(ad.url);
@@ -49,7 +53,7 @@ function JobAdRow({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void;
     <li className="flex items-start gap-2 px-3 py-2">
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+          <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>
           <button
             type="button"
             onClick={onEdit}
@@ -59,11 +63,11 @@ function JobAdRow({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void;
           </button>
         </div>
         <p className="text-xs text-muted-foreground">
-          {[ad.company, host, `thêm ${formatDay(ad.createdAt)}`].filter(Boolean).join(' · ')}
+          {[ad.company, host, t('thêm {date}', { date: formatDay(ad.createdAt) })].filter(Boolean).join(' · ')}
         </p>
         {ad.processed && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5" aria-label="Cấp bậc và kỹ năng được đòi">
-            <Badge variant="secondary">{seniority[ad.seniority]}</Badge>
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5" aria-label={t('Cấp bậc và kỹ năng được đòi')}>
+            <Badge variant="secondary">{t(seniority[ad.seniority])}</Badge>
             {ad.skills.map((k) => (
               <Badge key={k} variant="outline">
                 {k}
@@ -74,9 +78,9 @@ function JobAdRow({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void;
         )}
         {!ad.processed && ad.error && (
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-            <p>AI không trả về kết quả hợp lệ. Sửa tin để phân tích lại, hoặc tự điền kỹ năng.</p>
+            <p>{t('AI không trả về kết quả hợp lệ. Sửa tin để phân tích lại, hoặc tự điền kỹ năng.')}</p>
             <details>
-              <summary className="w-fit cursor-pointer select-none">Chi tiết kỹ thuật</summary>
+              <summary className="w-fit cursor-pointer select-none">{t('Chi tiết kỹ thuật')}</summary>
               <p className="mt-1 break-words font-mono text-xs" lang="en">
                 {ad.error}
               </p>
@@ -84,31 +88,33 @@ function JobAdRow({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void;
           </div>
         )}
         {!ad.processed && !ad.error && (
-          <p className="text-xs text-muted-foreground">Kỹ năng và cấp bậc sẽ được rút ra trong nền, vài phút sau.</p>
+          <p className="text-xs text-muted-foreground">{t('Kỹ năng và cấp bậc sẽ được rút ra trong nền, vài phút sau.')}</p>
         )}
       </div>
-      <RowMenu label={`Thao tác với tin "${ad.title}"`}>
+      <RowMenu label={t('Thao tác với tin "{title}"', { title: ad.title })}>
         <MenuItem onClick={onEdit}>
           <Pencil aria-hidden />
-          Sửa
+          {t('Sửa')}
         </MenuItem>
         {/^https?:\/\//.test(ad.url) && (
           <MenuLinkItem render={<a href={ad.url} target="_blank" rel="noopener noreferrer" />}>
             <ExternalLink aria-hidden />
-            Mở tin
+            {t('Mở tin')}
           </MenuLinkItem>
         )}
         <MenuSeparator />
         <MenuItem variant="destructive" onClick={() => setDeleting(true)}>
           <Trash2 aria-hidden />
-          Xóa
+          {t('Xóa')}
         </MenuItem>
       </RowMenu>
       <ConfirmDelete
         open={deleting}
         onOpenChange={setDeleting}
-        title="Xóa tin tuyển dụng?"
-        description={`"${ad.title}" bị xóa và không còn tính vào báo cáo thị trường tháng này. Không hoàn tác được.`}
+        title={t('Xóa tin tuyển dụng?')}
+        description={t('"{title}" bị xóa và không còn tính vào báo cáo thị trường tháng này. Không hoàn tác được.', {
+          title: ad.title,
+        })}
         action={() => growthApi.deleteJobAd(ad.id)}
         onDeleted={onDeleted}
       />
@@ -118,14 +124,15 @@ function JobAdRow({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void;
 
 /** Gaps: one flat section, rows in one bordered list on a shared grid (name, count, matched skill, action). */
 function Gaps({ gaps, onAdd }: { gaps: ApiMarketSkill[]; onAdd: (name: string) => void }) {
+  const t = useT();
   return (
     <section className="flex flex-col gap-3" aria-labelledby="market-gaps">
       <SectionTitle>
-        <span id="market-gaps">Thị trường đòi mà mình chưa có bằng chứng</span>
+        <span id="market-gaps">{t('Thị trường đòi mà mình chưa có bằng chứng')}</span>
       </SectionTitle>
       {gaps.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Không có khoảng trống: mọi kỹ năng được đòi đều có trong ma trận và chưa mờ.
+          {t('Không có khoảng trống: mọi kỹ năng được đòi đều có trong ma trận và chưa mờ.')}
         </p>
       ) : (
         <ul className="flex flex-col divide-y rounded-xl border bg-card">
@@ -135,19 +142,21 @@ function Gaps({ gaps, onAdd }: { gaps: ApiMarketSkill[]; onAdd: (name: string) =
               className="grid min-h-10 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-1.5 sm:grid-cols-[minmax(0,1fr)_4rem_10rem_auto]"
             >
               <span className="text-sm font-medium break-words">{g.name}</span>
-              <span className="text-end text-xs text-muted-foreground tabular-nums">{g.count} tin</span>
+              <span className="text-end text-xs text-muted-foreground tabular-nums">
+                {t('{n} tin', { n: g.count }, 'ad')}
+              </span>
               <span className="min-w-0 max-sm:hidden">
                 <MatchedSkill line={g} />
               </span>
               <span className="justify-self-end">
                 {g.skill ? (
                   <Button size="xs" variant="outline" render={<Link href={`/phat-trien/ky-nang/?id=${g.skill.id}`} />}>
-                    Thêm bằng chứng
+                    {t('Thêm bằng chứng')}
                   </Button>
                 ) : (
                   <Button size="xs" variant="outline" onClick={() => onAdd(g.name)}>
                     <Plus aria-hidden />
-                    Thêm vào ma trận
+                    {t('Thêm vào ma trận')}
                   </Button>
                 )}
               </span>
@@ -161,26 +170,27 @@ function Gaps({ gaps, onAdd }: { gaps: ApiMarketSkill[]; onAdd: (name: string) =
 
 /** New tools from the morning brief: stories worth reading in place, so cards, one column; none yet: one surface. */
 function NewTools({ items }: { items: ApiMarketReport['newTools'] }) {
+  const t = useT();
   return (
     <section className="flex flex-col gap-3" aria-labelledby="new-tools">
       <SectionTitle>
-        <span id="new-tools">Công cụ và kỹ năng mới từ bản tin sáng</span>
+        <span id="new-tools">{t('Công cụ và kỹ năng mới từ bản tin sáng')}</span>
       </SectionTitle>
       {items.length === 0 ? (
         <p className="rounded-xl border bg-card px-4 py-3 text-sm text-muted-foreground">
-          Tháng này bản tin chưa gắn tin nào là công cụ hay kỹ năng mới.
+          {t('Tháng này bản tin chưa gắn tin nào là công cụ hay kỹ năng mới.')}
         </p>
       ) : (
         <>
           {/* DECISIONS 6.1: the two questions, behind a disclosure (DESIGN.md §7: help text is not content) */}
           <details className="text-xs text-muted-foreground">
-            <summary className="w-fit cursor-pointer select-none font-medium">Hai câu hỏi trước khi học</summary>
+            <summary className="w-fit cursor-pointer select-none font-medium">{t('Hai câu hỏi trước khi học')}</summary>
             <ol className="mt-1.5 list-decimal ps-5 leading-relaxed">
               {twoQuestions.map((q) => (
-                <li key={q}>{q}</li>
+                <li key={q.msgid}>{t(q)}</li>
               ))}
             </ol>
-            <p className="mt-1">Chỉ học thứ trả lời &quot;có&quot; cho cả hai.</p>
+            <p className="mt-1">{t('Chỉ học thứ trả lời "có" cho cả hai.')}</p>
           </details>
           <ul className="flex flex-col gap-3">
             {items.map((n) => (
@@ -191,7 +201,7 @@ function NewTools({ items }: { items: ApiMarketReport['newTools'] }) {
                       <Badge variant="secondary">{n.source.name}</Badge>
                       {n.relevance ? (
                         <>
-                          <Badge variant="outline">liên quan {n.relevance}/5</Badge>
+                          <Badge variant="outline">{t('liên quan {relevance}/5', { relevance: n.relevance })}</Badge>
                           <Auto />
                         </>
                       ) : null}
@@ -210,7 +220,7 @@ function NewTools({ items }: { items: ApiMarketReport['newTools'] }) {
                 >
                   {n.summary && (
                     <p className="text-[13px] leading-relaxed text-muted-foreground">
-                      <span className="text-xs">Tóm tắt tự động: </span>
+                      <span className="text-xs">{t('Tóm tắt tự động:')} </span>
                       {n.summary}
                     </p>
                   )}
@@ -225,22 +235,28 @@ function NewTools({ items }: { items: ApiMarketReport['newTools'] }) {
 }
 
 function Report({ report, onAddSkill }: { report: ApiMarketReport; onAddSkill: (name: string) => void }) {
+  const t = useT();
   const pending = report.jobAds - report.processed;
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <p className="text-sm">
-          <span className="font-heading text-2xl font-semibold tabular-nums">{report.jobAds}</span>{' '}
-          <span className="text-muted-foreground">tin trong tháng</span>
-          {pending > 0 && <span className="text-muted-foreground"> · {pending} đang chờ phân tích</span>}
+          {t.rich('<num>{n}</num> <muted>tin trong tháng</muted>', {
+            n: report.jobAds,
+            num: (c) => <span className="font-heading text-2xl font-semibold tabular-nums">{c}</span>,
+            muted: (c) => <span className="text-muted-foreground">{c}</span>,
+          })}
+          {pending > 0 && (
+            <span className="text-muted-foreground"> · {t('{n} đang chờ phân tích', { n: pending })}</span>
+          )}
         </p>
         {report.seniority.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
-            <ul className="flex flex-wrap items-center gap-1.5" aria-label="Cấp bậc">
+            <ul className="flex flex-wrap items-center gap-1.5" aria-label={t('Cấp bậc')}>
               {report.seniority.map((s) => (
                 <li key={s.level}>
                   <Badge variant="outline">
-                    {seniority[s.level]} <span className="font-semibold tabular-nums">{s.count}</span>
+                    {t(seniority[s.level])} <span className="font-semibold tabular-nums">{s.count}</span>
                   </Badge>
                 </li>
               ))}
@@ -250,13 +266,13 @@ function Report({ report, onAddSkill }: { report: ApiMarketReport; onAddSkill: (
         )}
       </div>
       {report.processed === 0 ? (
-        <p className="text-sm text-muted-foreground">Chưa có tin nào được phân tích xong trong tháng này.</p>
+        <p className="text-sm text-muted-foreground">{t('Chưa có tin nào được phân tích xong trong tháng này.')}</p>
       ) : (
         <>
           <Gaps gaps={report.gaps} onAdd={onAddSkill} />
           <section className="flex flex-col gap-3" aria-labelledby="market-skills">
             <SectionTitle>
-              <span id="market-skills">Tần suất kỹ năng so với tháng trước</span>
+              <span id="market-skills">{t('Tần suất kỹ năng so với tháng trước')}</span>
             </SectionTitle>
             <MarketSkillTable lines={report.skills} processed={report.processed} />
           </section>
@@ -268,6 +284,7 @@ function Report({ report, onAddSkill }: { report: ApiMarketReport; onAddSkill: (
 
 /** Thị trường: paste job ads, see what the market asks for vs the skills matrix (DECISIONS 9.2 Market). */
 export function MarketPage() {
+  const t = useT();
   const [month, setMonth] = useState(thisMonth);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ApiJobAd | null>(null);
@@ -286,6 +303,8 @@ export function MarketPage() {
   // Only a fresh answer decides: an earlier "none" may be stale after an ad was pasted
   const checking = askAny && anyAds.loading;
   const firstRun = askAny && !anyAds.loading && !anyAds.error && anyAds.data?.results.length === 0;
+  // Inside a sentence the Vietnamese "Tháng 11/2026" goes lower case; English month names keep their capital
+  const monthInSentence = t.locale === 'vi' ? monthLabel(month, t).toLowerCase() : monthLabel(month, t);
 
   const paste = () => {
     setEditing(null);
@@ -306,7 +325,8 @@ export function MarketPage() {
         setEditing(ad);
         setDialogOpen(true);
       },
-      (err: unknown) => setNotice(openError(err, `Không tìm thấy tin tuyển dụng #${id}, có thể đã bị xóa.`)),
+      (err: unknown) =>
+        setNotice(openError(err, t('Không tìm thấy tin tuyển dụng #{id}, có thể đã bị xóa.', { id }), t)),
     );
   });
 
@@ -317,7 +337,7 @@ export function MarketPage() {
     try {
       await appendNextPage(ads);
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     } finally {
       setLoadingMore(false);
     }
@@ -330,30 +350,30 @@ export function MarketPage() {
       {!firstRun && (
         <div className="flex flex-wrap items-center gap-2">
           <PeriodStepper
-            name="tháng"
-            label={monthLabel(month)}
+            name={t('tháng')}
+            label={monthLabel(month, t)}
             onPrev={() => setMonth((m) => addMonths(m, -1))}
             onNext={() => setMonth((m) => addMonths(m, 1))}
             nextDisabled={month >= current}
             current={month === current}
             onCurrent={() => setMonth(current)}
-            currentLabel="Tháng này"
+            currentLabel={t('Tháng này')}
           />
           <div className="ms-auto flex flex-wrap gap-2">
             {/* Icon-only below 640 px, so it carries a tooltip (DESIGN.md D21) */}
             {!empty && (
               <Tooltip>
-                <TooltipTrigger render={<Button variant="outline" onClick={refresh} aria-label="Làm mới" />}>
+                <TooltipTrigger render={<Button variant="outline" onClick={refresh} aria-label={t('Làm mới')} />}>
                   <RefreshCw aria-hidden />
-                  <span className="max-sm:hidden">Làm mới</span>
+                  <span className="max-sm:hidden">{t('Làm mới')}</span>
                 </TooltipTrigger>
-                <TooltipPopup>Làm mới</TooltipPopup>
+                <TooltipPopup>{t('Làm mới')}</TooltipPopup>
               </Tooltip>
             )}
             {/* While the month is empty the EmptyState button is the one primary (DESIGN.md D2) */}
             <Button variant={empty ? 'outline' : 'default'} onClick={paste}>
               <ClipboardPaste aria-hidden />
-              Dán tin tuyển dụng <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
+              {t('Dán tin tuyển dụng')} <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
             </Button>
           </div>
         </div>
@@ -373,26 +393,30 @@ export function MarketPage() {
       ) : firstRun ? (
         <EmptyPanel
           glyph={Newspaper}
-          title="Chưa có tin tuyển dụng nào"
-          text="Dán 5 đến 10 tin của vai trò nhắm tới; kỹ năng được rút ra trong nền rồi so với ma trận."
+          title={t('Chưa có tin tuyển dụng nào')}
+          text={t('Dán 5 đến 10 tin của vai trò nhắm tới; kỹ năng được rút ra trong nền rồi so với ma trận.')}
           action={
             <Button onClick={paste} aria-keyshortcuts="n">
               <ClipboardPaste aria-hidden />
-              Dán tin đầu tiên
+              {t('Dán tin đầu tiên')}
               <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
             </Button>
           }
-          ghost={<GhostRows variant="chart" caption="Biểu đồ tần suất hiện khi có tin tuyển dụng đầu tiên." />}
+          ghost={<GhostRows variant="chart" caption={t('Biểu đồ tần suất hiện khi có tin tuyển dụng đầu tiên.')} />}
         />
       ) : empty ? (
         <EmptyState
           icon={<Newspaper aria-hidden />}
-          title={month === current ? 'Tháng này chưa có tin nào' : `${monthLabel(month)} chưa có tin nào`}
-          description="Dán 5 đến 10 tin của vai trò nhắm tới; kỹ năng được rút ra trong nền rồi so với ma trận."
+          title={
+            month === current
+              ? t('Tháng này chưa có tin nào')
+              : t('{month} chưa có tin nào', { month: monthLabel(month, t) })
+          }
+          description={t('Dán 5 đến 10 tin của vai trò nhắm tới; kỹ năng được rút ra trong nền rồi so với ma trận.')}
         >
           <Button onClick={paste}>
             <ClipboardPaste aria-hidden />
-            Dán tin tuyển dụng
+            {t('Dán tin tuyển dụng')}
           </Button>
         </EmptyState>
       ) : report.data ? (
@@ -406,7 +430,7 @@ export function MarketPage() {
       {adList.length > 0 && (
         <section className="flex flex-col gap-3" aria-labelledby="job-ads">
           <SectionTitle>
-            <span id="job-ads">Tin tuyển dụng {monthLabel(month).toLowerCase()}</span>
+            <span id="job-ads">{t('Tin tuyển dụng {month}', { month: monthInSentence })}</span>
           </SectionTitle>
           <ul className="flex flex-col divide-y rounded-xl border bg-card">
             {adList.map((ad) => (
@@ -421,14 +445,14 @@ export function MarketPage() {
                   ads.mutate((d) => d && { ...d, results: d.results.filter((x) => x.id !== ad.id) });
                   report.reload();
                   if (anyAds.data) anyAds.reload();
-                  setNotice(`Đã xóa "${ad.title}"`);
+                  setNotice(t('Đã xóa "{title}"', { title: ad.title }));
                 }}
               />
             ))}
           </ul>
           {ads.data?.next && (
             <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-              Tải thêm
+              {t('Tải thêm')}
             </Button>
           )}
         </section>
@@ -445,8 +469,8 @@ export function MarketPage() {
           setDialogOpen(false);
           setNotice(
             created
-              ? `Đã lưu "${saved.title}". Kỹ năng sẽ được rút ra trong nền, bấm Làm mới sau vài phút.`
-              : `Đã lưu "${saved.title}"`,
+              ? t('Đã lưu "{title}". Kỹ năng sẽ được rút ra trong nền, bấm Làm mới sau vài phút.', { title: saved.title })
+              : t('Đã lưu "{title}"', { title: saved.title }),
           );
           if (saved.month !== month) setMonth(saved.month);
           else refresh();
@@ -459,7 +483,9 @@ export function MarketPage() {
         onOpenChange={(open) => !open && setNewSkill(null)}
         onSaved={(saved) => {
           setNewSkill(null);
-          setNotice(`Đã thêm "${saved.name}" vào ma trận. Gắn bằng chứng ở trang Kỹ năng để nó sáng lên.`);
+          setNotice(
+            t('Đã thêm "{name}" vào ma trận. Gắn bằng chứng ở trang Kỹ năng để nó sáng lên.', { name: saved.name }),
+          );
           report.reload();
         }}
       />

@@ -3,6 +3,26 @@ import nextVitals from 'eslint-config-next/core-web-vitals';
 
 const eslintConfig = defineConfig([
   ...nextVitals,
+  {
+    // Pages are prerendered at /vi/... and /en/... behind rewrites: the path without the language comes from
+    // lib/use-app-pathname.ts (lib/i18n/README.md).
+    files: ['app/**/*.{ts,tsx}', 'components/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}'],
+    ignores: ['lib/use-app-pathname.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'next/navigation',
+              importNames: ['usePathname'],
+              message: 'Use useAppPathname to render, useRoutePathname to navigate (@/lib/use-app-pathname).',
+            },
+          ],
+        },
+      ],
+    },
+  },
   globalIgnores([
     '.next/**',
     'out/**',

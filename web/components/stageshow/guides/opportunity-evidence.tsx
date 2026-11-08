@@ -1,4 +1,5 @@
 'use client';
+import { useCallback, useMemo } from 'react';
 import {
   FlaskConical,
   Gauge,
@@ -10,6 +11,9 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react';
+import { useT } from '@/lib/i18n/client';
+import { guides } from '@/lib/i18n/en/guides';
+import { msg, type T } from '@/lib/i18n/translate';
 import { Stage } from '../kit/stage';
 import type { Act } from '../kit/act';
 import { Collapse } from '../kit/motion/Collapse';
@@ -49,10 +53,10 @@ type S = {
   scored: boolean;
 };
 
-const TITLE = 'Mẫu hợp đồng cho freelancer';
-const HYP = 'Freelancer mới vào nghề trả tiền cho mẫu hợp đồng dễ hiểu.';
-const EV1 = 'Kế toán của một văn phòng dịch vụ';
-const EV2 = 'Mẫu miễn phí trên một diễn đàn';
+const TITLE = msg('Mẫu hợp đồng cho freelancer');
+const HYP = msg('Freelancer mới vào nghề trả tiền cho mẫu hợp đồng dễ hiểu.');
+const EV1 = msg('Kế toán của một văn phòng dịch vụ');
+const EV2 = msg('Mẫu miễn phí trên một diễn đàn');
 
 const initial: S = {
   page: 'list',
@@ -70,35 +74,35 @@ const initial: S = {
   scored: false,
 };
 
-const POSTER: S = {
+const posterOf = (t: T): S => ({
   ...initial,
   page: 'detail',
   dialog: null,
-  hyp: HYP,
+  hyp: t(HYP),
   created: true,
   ev1: true,
   ev2: true,
   filled: 4,
   scored: true,
-};
+});
 
 /** Where the cursor rests, off the content, in each design */
 const REST = { wide: { x: 560, y: 425 }, compact: { x: 330, y: 445 } };
 
 /** The four self-scores (labels.ts scoreDims) with an example value each. */
 const SCORES = [
-  { label: 'Cơ hội', value: 6 },
-  { label: 'Nỗi đau', value: 7 },
-  { label: 'Khả thi', value: 8 },
-  { label: 'Thời điểm', value: 5 },
+  { label: msg('Cơ hội'), value: 6 },
+  { label: msg('Nỗi đau'), value: 7 },
+  { label: msg('Khả thi'), value: 8 },
+  { label: msg('Thời điểm'), value: 5 },
 ];
 
-async function script(a: Act<S>) {
+async function script(a: Act<S>, t: T) {
   await a.wait(500);
 
   // 1. The hypothesis: who, what pain, what they pay for; then "Tạo cơ hội"
   a.mark('create');
-  await a.type('hyp', HYP, { interval: 20 });
+  await a.type('hyp', t(HYP), { interval: 20 });
   await a.wait(300);
   await a.click('create');
   await a.set({ dialog: null, created: true });
@@ -112,7 +116,7 @@ async function script(a: Act<S>) {
   await a.click('add-conversation');
   await a.set({ dialog: 'evidence', kind: 'conversation', against: false });
   await a.wait(350);
-  await a.type('evTitle', EV1, { interval: 20 });
+  await a.type('evTitle', t(EV1), { interval: 20 });
   await a.wait(200);
   await a.click('add-evidence');
   await a.set({ dialog: null });
@@ -124,7 +128,7 @@ async function script(a: Act<S>) {
   // 3. Evidence against: a link, Phản bác picked in "Ủng hộ hay phản bác"
   a.mark('against');
   await a.click('add-link');
-  await a.set({ dialog: 'evidence', kind: 'link', evUrl: 'https://diendan.example/mau-hop-dong' });
+  await a.set({ dialog: 'evidence', kind: 'link', evUrl: t('https://diendan.example/mau-hop-dong') });
   await a.wait(300);
   await a.click('stance');
   await a.set({ menu: true });
@@ -132,7 +136,7 @@ async function script(a: Act<S>) {
   await a.click('stance-against');
   await a.set({ against: true, menu: false });
   await a.wait(200);
-  await a.type('evTitle', EV2, { interval: 20 });
+  await a.type('evTitle', t(EV2), { interval: 20 });
   await a.wait(200);
   await a.click('add-evidence');
   await a.set({ dialog: null });
@@ -158,13 +162,14 @@ async function script(a: Act<S>) {
 }
 
 function ListPage({ s, compact }: { s: S; compact: boolean }) {
+  const t = useT(guides);
   return (
     <div className="op-page" data-show={s.page === 'list' || undefined}>
       <div className="op-toolbar">
-        <GSelect value="Mọi quyết định" className="op-filter" />
-        {!compact && <GSelect value="Mọi tình trạng" className="op-filter" />}
+        <GSelect value={t('Mọi quyết định')} className="op-filter" />
+        {!compact && <GSelect value={t('Mọi tình trạng')} className="op-filter" />}
         <GButton icon={Plus} kbd={compact ? undefined : 'N'} className="op-new">
-          Cơ hội mới
+          {t('Cơ hội mới')}
         </GButton>
       </div>
       <Collapse open={!s.created}>
@@ -172,33 +177,35 @@ function ListPage({ s, compact }: { s: S; compact: boolean }) {
           <span className="op-empty__icon">
             <FlaskConical size={16} strokeWidth={2} aria-hidden />
           </span>
-          <span className="op-empty__title">Chưa có cơ hội nào</span>
-          <span className="g-desc">Ghi một giả thuyết: ai, đau gì, trả tiền cho gì.</span>
+          <span className="op-empty__title">{t('Chưa có cơ hội nào')}</span>
+          <span className="g-desc">{t('Ghi một giả thuyết: ai, đau gì, trả tiền cho gì.')}</span>
         </div>
       </Collapse>
       <Collapse open={s.created} reveal="drop">
         <div className="g-brain">
           <div className="g-brain__panel">
             <span className="g-brain__badges">
-              <GBadge tone="secondary">Chưa quyết</GBadge>
+              <GBadge tone="secondary">{t('Chưa quyết')}</GBadge>
             </span>
-            <span className="g-brain__title">{TITLE}</span>
+            <span className="g-brain__title">{t(TITLE)}</span>
             <span className="op-meta">
               <span>
-                <ThumbsUp size={12} strokeWidth={2} aria-hidden />0 ủng hộ
+                <ThumbsUp size={12} strokeWidth={2} aria-hidden />
+                {t('{n} ủng hộ', { n: 0 })}
               </span>
               <span>
-                <ThumbsDown size={12} strokeWidth={2} aria-hidden />0 phản bác
+                <ThumbsDown size={12} strokeWidth={2} aria-hidden />
+                {t('{n} phản bác', { n: 0 })}
               </span>
             </span>
           </div>
           <div className="g-brain__body">
             <span className="g-actions">
               <GButton size="xs" name="open">
-                Mở
+                {t('Mở')}
               </GButton>
               <GButton size="xs" variant="outline" icon={Pencil}>
-                Sửa
+                {t('Sửa')}
               </GButton>
             </span>
           </div>
@@ -209,49 +216,51 @@ function ListPage({ s, compact }: { s: S; compact: boolean }) {
 }
 
 function EvidenceRow({ against }: { against: boolean }) {
+  const t = useT(guides);
   return (
     <div className="op-ev">
       <span className="op-ev__badges">
-        <GBadge tone={against ? 'error' : 'success'}>{against ? 'Phản bác' : 'Ủng hộ'}</GBadge>
-        <GBadge tone="secondary">{against ? 'Link' : 'Cuộc nói chuyện'}</GBadge>
+        <GBadge tone={against ? 'error' : 'success'}>{t(against ? 'Phản bác' : 'Ủng hộ')}</GBadge>
+        <GBadge tone="secondary">{t(against ? 'Link' : 'Cuộc nói chuyện')}</GBadge>
       </span>
-      <span className="op-ev__title">{against ? EV2 : EV1}</span>
+      <span className="op-ev__title">{t(against ? EV2 : EV1)}</span>
     </div>
   );
 }
 
 function DetailPage({ s, compact }: { s: S; compact: boolean }) {
+  const t = useT(guides);
   return (
     <div className="op-page" data-show={s.page === 'detail' || undefined}>
       <div className="op-head">
         <span className="g-brain__badges">
-          <GBadge tone="secondary">Chưa quyết</GBadge>
+          <GBadge tone="secondary">{t('Chưa quyết')}</GBadge>
         </span>
         <span className="op-title-row">
           <span className="op-tile" aria-hidden>
             <Lightbulb size={compact ? 14 : 16} strokeWidth={2} />
           </span>
-          <span className="op-title">{TITLE}</span>
+          <span className="op-title">{t(TITLE)}</span>
         </span>
-        <span className="op-hyp">{HYP}</span>
+        <span className="op-hyp">{t(HYP)}</span>
       </div>
 
       <GCard
-        title="Điểm tự chấm"
+        title={t('Điểm tự chấm')}
         action={
           <GButton size={compact ? 'xs' : 'sm'} icon={Gauge} kbd={compact ? undefined : 'S'}>
-            Chấm điểm
+            {t('Chấm điểm')}
           </GButton>
         }
       >
         <Collapse open={!s.scored}>
-          <span className="g-desc op-noscore">Chưa chấm lần nào. Chấm 4 điểm để bắt đầu lịch sử.</span>
+          <span className="g-desc op-noscore">{t('Chưa chấm lần nào. Chấm 4 điểm để bắt đầu lịch sử.')}</span>
         </Collapse>
         <Collapse open={s.scored} reveal="drop">
           <div className="op-scores">
             {SCORES.map((d) => (
-              <span key={d.label} className="op-score">
-                <span className="op-score__label">{d.label}</span>
+              <span key={d.label.msgid} className="op-score">
+                <span className="op-score__label">{t(d.label)}</span>
                 <span className="op-score__value">
                   {d.value}
                   <span className="op-score__of">/10</span>
@@ -266,7 +275,7 @@ function DetailPage({ s, compact }: { s: S; compact: boolean }) {
       </GCard>
 
       <GCard
-        title="Bằng chứng"
+        title={t('Bằng chứng')}
         className="op-evcard"
         action={
           <>
@@ -277,7 +286,7 @@ function DetailPage({ s, compact }: { s: S; compact: boolean }) {
               kbd={compact ? undefined : 'C'}
               name="add-conversation"
             >
-              Cuộc nói chuyện
+              {t('Cuộc nói chuyện')}
             </GButton>
             <GButton
               size={compact ? 'xs' : 'sm'}
@@ -292,7 +301,7 @@ function DetailPage({ s, compact }: { s: S; compact: boolean }) {
         }
       >
         <Collapse open={!s.ev1}>
-          <div className="op-noev">Chưa có bằng chứng</div>
+          <div className="op-noev">{t('Chưa có bằng chứng')}</div>
         </Collapse>
         <div className="op-evs">
           <Collapse open={s.ev2} reveal="drop">
@@ -311,22 +320,25 @@ function DetailPage({ s, compact }: { s: S; compact: boolean }) {
   );
 }
 
-const LABEL =
-  'Hình minh họa trang Cơ hội: viết một giả thuyết (ai, đau gì, trả tiền cho gì) trong hộp thoại Cơ hội mới rồi bấm Tạo cơ hội; mở cơ hội vừa tạo; ' +
-  'thêm một cuộc nói chuyện làm bằng chứng ủng hộ và một link làm bằng chứng phản bác; nhấn S để chấm bốn điểm từ 1 đến 10: ' +
-  'cơ hội, nỗi đau, khả thi, thời điểm.';
+const LABEL = msg(
+  'Hình minh họa trang Cơ hội: viết một giả thuyết (ai, đau gì, trả tiền cho gì) trong hộp thoại Cơ hội mới rồi bấm Tạo cơ hội; mở cơ hội vừa tạo; thêm một cuộc nói chuyện làm bằng chứng ủng hộ và một link làm bằng chứng phản bác; nhấn S để chấm bốn điểm từ 1 đến 10: cơ hội, nỗi đau, khả thi, thời điểm.',
+);
 
 export default function OpportunityEvidenceGuide({ className }: { className?: string }) {
   const look = useBrainLook();
+  const t = useT(guides);
+  // Typed text and poster in the page's language, kept stable (a new script would restart the scene)
+  const run = useCallback((a: Act<S>) => script(a, t), [t]);
+  const poster = useMemo(() => posterOf(t), [t]);
   return (
-    <div role="img" aria-label={LABEL} className={className}>
+    <div role="img" aria-label={t(LABEL)} className={className}>
       <Stage
         width={GUIDE_SIZE.width}
         height={GUIDE_SIZE.height}
         compact={GUIDE_SIZE.compact}
         initial={initial}
-        poster={POSTER}
-        script={script}
+        poster={poster}
+        script={run}
         play="once"
         keys="bottom"
         cursor={{ at: REST, style: 'arrow' }}
@@ -347,21 +359,21 @@ export default function OpportunityEvidenceGuide({ className }: { className?: st
               <GDialog
                 show={s.dialog === 'create'}
                 className="op-dialog"
-                title="Cơ hội mới"
-                desc="Một giả thuyết của mình, sẽ được giữ, bỏ hoặc làm khi đủ bằng chứng."
+                title={t('Cơ hội mới')}
+                desc={t('Một giả thuyết của mình, sẽ được giữ, bỏ hoặc làm khi đủ bằng chứng.')}
                 foot={
                   <>
-                    <GButton variant="ghost">Hủy</GButton>
-                    <GButton name="create">Tạo cơ hội</GButton>
+                    <GButton variant="ghost">{t('Hủy')}</GButton>
+                    <GButton name="create">{t('Tạo cơ hội')}</GButton>
                   </>
                 }
               >
-                <GRow label="Tên">
-                  <span className="g-box">{TITLE}</span>
+                <GRow label={t('Tên')}>
+                  <span className="g-box">{t(TITLE)}</span>
                 </GRow>
                 <Field
                   className="g-field op-hypfield"
-                  label="Giả thuyết (một câu: ai, đau gì, trả tiền cho gì)"
+                  label={t('Giả thuyết (một câu: ai, đau gì, trả tiền cho gì)')}
                   value={s.hyp}
                   focused={s.dialog === 'create'}
                 />
@@ -370,21 +382,21 @@ export default function OpportunityEvidenceGuide({ className }: { className?: st
               <GDialog
                 show={s.dialog === 'evidence'}
                 className="op-dialog"
-                title="Thêm bằng chứng"
-                desc={compact ? undefined : 'Cuộc nói chuyện thật hoặc một nguồn bên ngoài.'}
+                title={t('Thêm bằng chứng')}
+                desc={compact ? undefined : t('Cuộc nói chuyện thật hoặc một nguồn bên ngoài.')}
                 foot={
                   <>
-                    <GButton variant="ghost">Hủy</GButton>
-                    <GButton name="add-evidence">Thêm bằng chứng</GButton>
+                    <GButton variant="ghost">{t('Hủy')}</GButton>
+                    <GButton name="add-evidence">{t('Thêm bằng chứng')}</GButton>
                   </>
                 }
               >
-                <GRow label="Ủng hộ hay phản bác">
-                  <GSelect value={s.against ? 'Phản bác' : 'Ủng hộ'} name="stance" open={s.menu} />
+                <GRow label={t('Ủng hộ hay phản bác')}>
+                  <GSelect value={t(s.against ? 'Phản bác' : 'Ủng hộ')} name="stance" open={s.menu} />
                 </GRow>
                 <Field
                   className="g-field"
-                  label={s.kind === 'conversation' ? 'Nói chuyện với ai (vai trò, công ty)' : 'Tiêu đề'}
+                  label={t(s.kind === 'conversation' ? 'Nói chuyện với ai (vai trò, công ty)' : 'Tiêu đề')}
                   value={s.evTitle}
                   focused={s.dialog === 'evidence' && !s.menu}
                 />
@@ -398,18 +410,18 @@ export default function OpportunityEvidenceGuide({ className }: { className?: st
               <GDialog
                 show={s.dialog === 'score'}
                 className="op-dialog"
-                title="Chấm điểm lại"
-                desc="Mỗi điểm từ 1 đến 10. Lần chấm cũ được giữ làm lịch sử."
+                title={t('Chấm điểm lại')}
+                desc={t('Mỗi điểm từ 1 đến 10. Lần chấm cũ được giữ làm lịch sử.')}
                 foot={
                   <>
-                    <GButton variant="ghost">Hủy</GButton>
-                    <GButton name="save-score">Lưu điểm</GButton>
+                    <GButton variant="ghost">{t('Hủy')}</GButton>
+                    <GButton name="save-score">{t('Lưu điểm')}</GButton>
                   </>
                 }
               >
                 <div className="op-scoregrid">
                   {SCORES.map((d, i) => (
-                    <GRow key={d.label} label={d.label}>
+                    <GRow key={d.label.msgid} label={t(d.label)}>
                       <span className="g-box" data-focused={(s.filled === i + 1 && s.dialog === 'score') || undefined}>
                         {i < s.filled ? d.value : ''}
                       </span>
@@ -422,7 +434,7 @@ export default function OpportunityEvidenceGuide({ className }: { className?: st
                 show={s.menu}
                 className="op-menu"
                 on={s.against ? 1 : 0}
-                items={[{ label: 'Ủng hộ' }, { label: 'Phản bác', name: 'stance-against' }]}
+                items={[{ label: t('Ủng hộ') }, { label: t('Phản bác'), name: 'stance-against' }]}
                 {...(stance && stance.width > 0
                   ? { style: { top: stance.y + stance.height + 4, left: stance.x, width: stance.width } }
                   : {})}

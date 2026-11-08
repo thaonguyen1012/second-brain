@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.authentication import request_user
+from core.i18n import tr
 from weeks import services
 from weeks.models import Objective, Week
 from weeks.serializers import (
@@ -32,7 +33,7 @@ START = OpenApiParameter(
 
 def _monday(start: dt.date) -> dt.date:
     if start.weekday() != 0:
-        raise ValidationError({"start": "Tuần bắt đầu vào thứ Hai."})
+        raise ValidationError({"start": tr("Tuần bắt đầu vào thứ Hai.")})
     return start
 
 

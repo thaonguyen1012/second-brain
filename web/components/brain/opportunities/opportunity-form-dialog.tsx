@@ -5,6 +5,7 @@ import { Check, Loader2 } from 'lucide-react';
 import { opportunitiesApi, type ApiDecision, type ApiOpportunityDetail, type ApiSkill } from '@/lib/api/opportunities';
 import type { ApiOpportunity } from '@/lib/api/client';
 import { toApiError, useApi } from '@/lib/api/use-api';
+import { useT } from '@/lib/i18n/client';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -51,27 +52,32 @@ function loadSkills() {
 
 /** "Hợp với mình": toggle chips over the owner's skills (GET /api/skills). */
 function FitPicker({ value, onChange }: { value: number[]; onChange: (ids: number[]) => void }) {
+  const t = useT();
   const skills = useApi('opportunity-fit-skills', loadSkills);
   const list = skills.data ?? NO_SKILLS;
   const toggle = (id: number) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
 
   if (skills.error)
     return (
-      <p className="text-sm text-muted-foreground">{describeApiError(skills.error).title}: không tải được kỹ năng.</p>
+      <p className="text-sm text-muted-foreground">
+        {t('{error}: không tải được kỹ năng.', { error: describeApiError(skills.error, t).title })}
+      </p>
     );
-  if (!skills.data) return <p className="text-sm text-muted-foreground">Đang tải kỹ năng…</p>;
+  if (!skills.data) return <p className="text-sm text-muted-foreground">{t('Đang tải kỹ năng…')}</p>;
   if (list.length === 0)
     return (
       <p className="text-sm text-muted-foreground">
-        Chưa có kỹ năng nào.{' '}
-        <Link href="/phat-trien/ky-nang/" className="text-primary underline">
-          Thêm ở trang Kỹ năng
-        </Link>
-        .
+        {t.rich('Chưa có kỹ năng nào. <link>Thêm ở trang Kỹ năng</link>.', {
+          link: (chunks) => (
+            <Link href="/phat-trien/ky-nang/" className="text-primary underline">
+              {chunks}
+            </Link>
+          ),
+        })}
       </p>
     );
   return (
-    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Kỹ năng hợp với cơ hội này">
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('Kỹ năng hợp với cơ hội này')}>
       {list.map((s) => {
         const on = value.includes(s.id);
         return (
@@ -81,7 +87,7 @@ function FitPicker({ value, onChange }: { value: number[]; onChange: (ids: numbe
             size="xs"
             variant={on ? 'default' : 'outline'}
             aria-pressed={on}
-            title={freshness[s.freshness].label}
+            title={t(freshness[s.freshness].label)}
             onClick={() => toggle(s.id)}
           >
             {on && <Check aria-hidden />}
@@ -100,6 +106,7 @@ function OpportunityForm({
   opportunity: ApiOpportunity | null;
   onSaved: (saved: ApiOpportunityDetail, created: boolean) => void;
 }) {
+  const t = useT();
   const [form, setForm] = useState<Form>(() => fromOpportunity(opportunity));
   const [fitTouched, setFitTouched] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -108,7 +115,7 @@ function OpportunityForm({
 
   const submit = async () => {
     if (!form.title.trim() || !form.hypothesis.trim()) {
-      setError('Cần có tên và giả thuyết.');
+      setError(t('Cần có tên và giả thuyết.'));
       return;
     }
     const body = {
@@ -130,7 +137,7 @@ function OpportunityForm({
       onSaved(saved, !opportunity);
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
+      setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
       setBusy(false);
     }
   };
@@ -145,11 +152,11 @@ function OpportunityForm({
     >
       <DialogPanel className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="opp-title">Tên</Label>
+          <Label htmlFor="opp-title">{t('Tên')}</Label>
           <Input id="opp-title" value={form.title} onChange={(e) => set('title', e.target.value)} autoFocus />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="opp-hypothesis">Giả thuyết (một câu: ai, đau gì, trả tiền cho gì)</Label>
+          <Label htmlFor="opp-hypothesis">{t('Giả thuyết (một câu: ai, đau gì, trả tiền cho gì)')}</Label>
           <Textarea
             id="opp-hypothesis"
             rows={2}
@@ -158,16 +165,16 @@ function OpportunityForm({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="opp-why-now">Vì sao bây giờ</Label>
+          <Label htmlFor="opp-why-now">{t('Vì sao bây giờ')}</Label>
           <Textarea id="opp-why-now" rows={2} value={form.whyNow} onChange={(e) => set('whyNow', e.target.value)} />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="opp-next">Hành động kế tiếp</Label>
+          <Label htmlFor="opp-next">{t('Hành động kế tiếp')}</Label>
           <Input id="opp-next" value={form.nextAction} onChange={(e) => set('nextAction', e.target.value)} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="opp-decide-by">Hạn quyết định</Label>
+            <Label htmlFor="opp-decide-by">{t('Hạn quyết định')}</Label>
             <Input
               id="opp-decide-by"
               type="date"
@@ -176,18 +183,18 @@ function OpportunityForm({
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="opp-decision">Quyết định</Label>
+            <Label htmlFor="opp-decision">{t('Quyết định')}</Label>
             <ChoiceSelect
               id="opp-decision"
-              label="Quyết định"
+              label={t('Quyết định')}
               value={form.decision}
               onChange={(v) => set('decision', v)}
-              choices={decisions}
+              choices={decisions.map((d) => ({ value: d.value, label: t(d.label) }))}
             />
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Hợp với mình (kỹ năng)</span>
+          <span className="text-sm font-medium">{t('Hợp với mình (kỹ năng)')}</span>
           <FitPicker
             value={form.fit}
             onChange={(ids) => {
@@ -203,10 +210,10 @@ function OpportunityForm({
         )}
       </DialogPanel>
       <DialogFooter>
-        <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
+        <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          {opportunity ? 'Lưu' : 'Tạo cơ hội'}
+          {t(opportunity ? 'Lưu' : 'Tạo cơ hội')}
         </Button>
       </DialogFooter>
     </form>
@@ -225,12 +232,15 @@ export function OpportunityFormDialog({
   onOpenChange: (open: boolean) => void;
   onSaved: (saved: ApiOpportunityDetail, created: boolean) => void;
 }) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
         <DialogHeader>
-          <DialogTitle>{opportunity ? 'Sửa cơ hội' : 'Cơ hội mới'}</DialogTitle>
-          <DialogDescription>Một giả thuyết của mình, sẽ được giữ, bỏ hoặc làm khi đủ bằng chứng.</DialogDescription>
+          <DialogTitle>{t(opportunity ? 'Sửa cơ hội' : 'Cơ hội mới')}</DialogTitle>
+          <DialogDescription>
+            {t('Một giả thuyết của mình, sẽ được giữ, bỏ hoặc làm khi đủ bằng chứng.')}
+          </DialogDescription>
         </DialogHeader>
         {open && <OpportunityForm key={opportunity?.id ?? 'new'} opportunity={opportunity} onSaved={onSaved} />}
       </DialogPopup>

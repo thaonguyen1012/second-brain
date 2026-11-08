@@ -20,6 +20,7 @@ import {
   viewSearch,
   type Ranks,
 } from './status-board';
+import { tVi } from './i18n/translate';
 
 interface P {
   id: number;
@@ -177,7 +178,7 @@ describe('drag payload', () => {
 
 describe('moveMessage', () => {
   it('names the record and the new status', () => {
-    expect(moveMessage('Acme', 'Đang làm')).toBe('Đã chuyển “Acme” sang Đang làm');
+    expect(moveMessage('Acme', 'Đang làm', tVi)).toBe('Đã chuyển “Acme” sang Đang làm');
   });
 });
 
@@ -185,24 +186,24 @@ describe('moveFailureReason', () => {
   const e = (status: number, reachable = true, body: unknown = null) => ({ status, reachable, body });
 
   it('says why in the words of the board', () => {
-    expect(moveFailureReason(e(0, false), 'dự án')).toBe('chưa kết nối được máy chủ');
-    expect(moveFailureReason(e(401), 'dự án')).toBe('chưa đăng nhập');
-    expect(moveFailureReason(e(403), 'item')).toBe('chưa đăng nhập');
-    expect(moveFailureReason(e(404), 'dự án')).toBe('dự án này không còn nữa');
-    expect(moveFailureReason(e(404), 'item')).toBe('item này không còn nữa');
-    expect(moveFailureReason(e(400, true, { status: ['Không hợp lệ.'] }), 'item')).toBe('Không hợp lệ.');
-    expect(moveFailureReason(e(400), 'item')).toBe('dữ liệu không hợp lệ');
-    expect(moveFailureReason(e(500), 'item')).toBe('máy chủ trả lỗi 500');
+    expect(moveFailureReason(e(0, false), PROJECT_BOARD, tVi)).toBe('chưa kết nối được máy chủ');
+    expect(moveFailureReason(e(401), PROJECT_BOARD, tVi)).toBe('chưa đăng nhập');
+    expect(moveFailureReason(e(403), ITEM_BOARD, tVi)).toBe('chưa đăng nhập');
+    expect(moveFailureReason(e(404), PROJECT_BOARD, tVi)).toBe('dự án này không còn nữa');
+    expect(moveFailureReason(e(404), ITEM_BOARD, tVi)).toBe('item này không còn nữa');
+    expect(moveFailureReason(e(400, true, { status: ['Không hợp lệ.'] }), ITEM_BOARD, tVi)).toBe('Không hợp lệ.');
+    expect(moveFailureReason(e(400), ITEM_BOARD, tVi)).toBe('dữ liệu không hợp lệ');
+    expect(moveFailureReason(e(500), ITEM_BOARD, tVi)).toBe('máy chủ trả lỗi 500');
   });
 });
 
 describe('board kinds', () => {
   it('keeps the Dự án literals, so the remembered view and the drag type still work', () => {
-    expect(PROJECT_BOARD).toEqual({
-      noun: 'dự án',
+    expect(PROJECT_BOARD).toMatchObject({
       dragType: 'application/x-alex-brain-project',
       viewKey: 'alex-brain:projects-view',
     });
+    expect(PROJECT_BOARD.words.add.msgid).toBe('Thêm dự án');
   });
 
   it('gives each board its own lower-case drag type and view key', () => {

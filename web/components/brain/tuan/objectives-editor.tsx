@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { ApiObjective } from '@/lib/api/client';
 import { type ApiObjectiveStatus, weeksApi } from '@/lib/api/weeks';
+import { useT } from '@/lib/i18n/client';
 import { objectiveStatuses } from '@/lib/labels';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +35,11 @@ function StatusSelect({
   label: string;
   onChange: (value: ApiObjectiveStatus) => void;
 }) {
+  const t = useT();
+  const items = statusChoices.map((c) => ({ value: c.value, label: t(c.label) }));
   return (
     <Select
-      items={statusChoices}
+      items={items}
       value={value}
       onValueChange={(v) => v !== null && onChange(v as ApiObjectiveStatus)}
     >
@@ -44,12 +47,12 @@ function StatusSelect({
         <SelectValue>
           {(v: ApiObjectiveStatus) => {
             const s = objectiveStatuses[v] ?? objectiveStatuses.open;
-            return <StatusBadge tone={s.tone}>{s.label}</StatusBadge>;
+            return <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>;
           }}
         </SelectValue>
       </SelectTrigger>
       <SelectPopup>
-        {statusChoices.map((c) => (
+        {items.map((c) => (
           <SelectItem key={c.value} value={c.value}>
             {c.label}
           </SelectItem>
@@ -64,13 +67,14 @@ function StatusSelect({
  * example the short "Kết quả muốn có" placeholder leaves out; above 5 it turns into a gentle warning.
  */
 export function ObjectiveHint({ objectives }: { objectives: ApiObjective[] }) {
+  const t = useT();
   const active = objectives.filter((o) => o.status !== 'dropped').length;
   const warn = active > 5;
   return (
     <p className={cn('text-xs leading-relaxed', warn ? 'text-warning-foreground' : 'text-muted-foreground')}>
       {warn
-        ? `${active} mục tiêu: hơn 5 thường là quá nhiều. Cân nhắc bỏ bớt hoặc để sang tuần sau.`
-        : '3–5 mục tiêu: kết quả muốn có, không phải danh sách task. Ví dụ: Gửi báo giá cho 2 khách.'}
+        ? t('{n} mục tiêu: hơn 5 thường là quá nhiều. Cân nhắc bỏ bớt hoặc để sang tuần sau.', { n: active })
+        : t('3–5 mục tiêu: kết quả muốn có, không phải danh sách task. Ví dụ: Gửi báo giá cho 2 khách.')}
     </p>
   );
 }
@@ -99,6 +103,7 @@ export function ObjectivesEditor({
   minutes?: Map<number, number>;
   allowAdd?: boolean;
 }) {
+  const t = useT();
   const [error, setError] = useState<unknown>(null);
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
@@ -229,7 +234,7 @@ export function ObjectivesEditor({
   return (
     <div className="flex flex-col gap-3">
       {objectives.length > 0 && (
-        <ol className="-mx-2 flex flex-col" aria-label="Mục tiêu tuần">
+        <ol className="-mx-2 flex flex-col" aria-label={t('Mục tiêu tuần')}>
           {objectives.map((o, i) => {
             const status = o.status ?? 'open';
             const s = objectiveStatuses[status] ?? objectiveStatuses.open;
@@ -242,7 +247,7 @@ export function ObjectivesEditor({
                   else rows.current.delete(o.id);
                 }}
                 tabIndex={0}
-                aria-label={`${i + 1}. ${o.title}, ${s.label}`}
+                aria-label={`${i + 1}. ${o.title}, ${t(s.label)}`}
                 onKeyDown={(e) => onRowKey(e, o, i)}
                 className="group flex min-h-10 flex-wrap items-center gap-2 rounded-md px-2 py-1.5 outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
               >
@@ -251,7 +256,7 @@ export function ObjectivesEditor({
                   <Input
                     autoFocus
                     size="sm"
-                    aria-label="Tên mục tiêu"
+                    aria-label={t('Tên mục tiêu')}
                     value={editing.title}
                     onChange={(e) => setEditing({ id: o.id, title: e.target.value })}
                     onBlur={() => saveTitle(false)}
@@ -276,44 +281,44 @@ export function ObjectivesEditor({
                       'min-w-0 flex-1 basis-48 text-start text-sm font-medium break-words hover:text-primary',
                       status === 'dropped' && 'text-muted-foreground line-through',
                     )}
-                    title="Sửa tên"
+                    title={t('Sửa tên')}
                   >
                     {o.title}
                   </button>
                 )}
                 <div className="ms-auto flex shrink-0 items-center gap-1.5">
-                  {o.carriedFrom !== null && <Badge variant="outline">Từ tuần trước</Badge>}
+                  {o.carriedFrom !== null && <Badge variant="outline">{t('Từ tuần trước')}</Badge>}
                   {m !== undefined && m > 0 && (
-                    <Badge variant="secondary" title="Giờ đã ghi cho mục tiêu này">
-                      {minutesShort(m)}
+                    <Badge variant="secondary" title={t('Giờ đã ghi cho mục tiêu này')}>
+                      {minutesShort(m, t)}
                     </Badge>
                   )}
                   <StatusSelect
                     value={status}
-                    label={`Trạng thái: ${o.title}`}
+                    label={t('Trạng thái: {title}', { title: o.title })}
                     onChange={(v) => v !== status && patch(o, { status: v })}
                   />
                   {/* Rename, reorder and delete live in one menu (DESIGN.md D22); the row keys still do them */}
-                  <RowMenu label="Thao tác mục tiêu">
+                  <RowMenu label={t('Thao tác mục tiêu')}>
                     <MenuItem onClick={() => setEditing({ id: o.id, title: o.title })}>
                       <Pencil aria-hidden />
-                      Sửa tên
+                      {t('Sửa tên')}
                       <MenuShortcut>Enter</MenuShortcut>
                     </MenuItem>
                     <MenuItem disabled={i === 0} onClick={() => move(i, -1)}>
                       <ArrowUp aria-hidden />
-                      Đưa lên
+                      {t('Đưa lên')}
                       <MenuShortcut>Alt+↑</MenuShortcut>
                     </MenuItem>
                     <MenuItem disabled={i === objectives.length - 1} onClick={() => move(i, 1)}>
                       <ArrowDown aria-hidden />
-                      Đưa xuống
+                      {t('Đưa xuống')}
                       <MenuShortcut>Alt+↓</MenuShortcut>
                     </MenuItem>
                     <MenuSeparator />
                     <MenuItem variant="destructive" onClick={() => setDeleting(o)}>
                       <Trash2 aria-hidden />
-                      Xóa
+                      {t('Xóa')}
                       <MenuShortcut>Del</MenuShortcut>
                     </MenuItem>
                   </RowMenu>
@@ -335,14 +340,14 @@ export function ObjectivesEditor({
           <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Kết quả muốn có"
-            aria-label="Thêm mục tiêu"
+            placeholder={t('Kết quả muốn có')}
+            aria-label={t('Thêm mục tiêu')}
             maxLength={200}
             className="flex-1"
           />
           <Button type="submit" variant="outline" disabled={!draft.trim()} loading={adding}>
             <Plus aria-hidden />
-            Thêm
+            {t('Thêm')}
           </Button>
         </form>
       )}
@@ -352,10 +357,13 @@ export function ObjectivesEditor({
       <ConfirmDelete
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Xóa mục tiêu?"
+        title={t('Xóa mục tiêu?')}
         description={
           deleting
-            ? `"${deleting.title}" bị xóa khỏi tuần này. Giờ đã ghi cho nó vẫn giữ, chỉ không còn gắn với mục tiêu nào; mục tiêu đã chuyển sang tuần sau vẫn giữ tên. Không hoàn tác được.`
+            ? t(
+                '"{title}" bị xóa khỏi tuần này. Giờ đã ghi cho nó vẫn giữ, chỉ không còn gắn với mục tiêu nào; mục tiêu đã chuyển sang tuần sau vẫn giữ tên. Không hoàn tác được.',
+                { title: deleting.title },
+              )
             : undefined
         }
         action={() => (deleting ? weeksApi.deleteObjective(start, deleting.id) : Promise.resolve())}

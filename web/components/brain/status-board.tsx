@@ -19,9 +19,11 @@ import {
   unrankMove,
   type BoardCardRecord,
   type BoardKind,
+  type BoardWords,
   type Ranks,
 } from '@/lib/status-board';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuSeparator } from '@/components/ui/menu';
@@ -71,6 +73,7 @@ export function useStatusMoves<T extends BoardCardRecord>(
   kind: BoardKind,
   save: (id: number, status: ApiItemStatus) => Promise<T>,
 ): StatusMoves<T> {
+  const t = useT();
   const { mutate } = result;
   const list = result.data?.results;
   const seq = useRef(0);
@@ -94,7 +97,7 @@ export function useStatusMoves<T extends BoardCardRecord>(
     update((rows) => applyMove(rows, plan));
     setRanks((r) => rankMove(r, plan));
     setPending((s) => new Set(s).add(record.id));
-    const message = moveMessage(record.title, itemStatusOf(to).label);
+    const message = moveMessage(record.title, t(itemStatusOf(to).label), t);
     // the same words twice in a row (moved back and forth) must still change the region to be read out again
     setAnnouncement((prev) => (prev === message ? `${message} ` : message));
     try {
@@ -106,7 +109,7 @@ export function useStatusMoves<T extends BoardCardRecord>(
     } catch (err) {
       update((rows) => rollbackMove(rows, plan));
       setRanks((r) => unrankMove(r, plan));
-      setFailure({ id: record.id, title: record.title, from: plan.from, reason: moveFailureReason(toApiError(err), kind.noun) });
+      setFailure({ id: record.id, title: record.title, from: plan.from, reason: moveFailureReason(toApiError(err), kind, t) });
       // back in its old lane the card is a new element again: the focus follows it there
       if (via === 'menu') setFocusId(record.id);
       return false;
@@ -142,16 +145,17 @@ export function useStatusMoves<T extends BoardCardRecord>(
 
 /** The one alert of a refused move, with a close action; the card is already back in its lane. */
 export function MoveFailedAlert({ failure, onClose }: { failure: MoveFailure; onClose: () => void }) {
+  const t = useT();
   return (
     <Alert variant="error">
       <CircleAlert aria-hidden />
-      <AlertTitle>Không đổi được trạng thái: {failure.reason}</AlertTitle>
+      <AlertTitle>{t('Không đổi được trạng thái: {reason}', { reason: failure.reason })}</AlertTitle>
       <AlertDescription>
-        “{failure.title}” vẫn ở {itemStatusOf(failure.from).label}.
+        {t('“{title}” vẫn ở {status}.', { title: failure.title, status: t(itemStatusOf(failure.from).label) })}
       </AlertDescription>
       <AlertAction>
         <Button size="sm" variant="outline" onClick={onClose}>
-          Đóng
+          {t('Đóng')}
         </Button>
       </AlertAction>
     </Alert>
@@ -203,7 +207,7 @@ function BoardCard({
   id,
   title,
   status,
-  noun,
+  words,
   pending,
   dimmed,
   focus,
@@ -219,7 +223,7 @@ function BoardCard({
   id: number;
   title: string;
   status: ApiItemStatus;
-  noun: string;
+  words: BoardWords;
   pending: boolean;
   dimmed: boolean;
   focus: boolean;
@@ -235,6 +239,7 @@ function BoardCard({
   /** Meta lines and footer under the title. */
   children: ReactNode;
 }) {
+  const t = useT();
   const titleRef = useRef<HTMLButtonElement>(null);
   // After a move from the menu the card is a new element in another lane: give it the focus the menu had.
   useEffect(() => {
@@ -264,10 +269,10 @@ function BoardCard({
           )}
         >
           <span className="line-clamp-2 break-words">{title}</span>
-          <span className="sr-only">, sửa {noun}</span>
+          <span className="sr-only">, {t(words.edit)}</span>
         </button>
         <span className="-me-1.5 -mt-0.5 shrink-0">
-          <RowMenu label={`Thao tác cho "${title}"`}>
+          <RowMenu label={t('Thao tác cho "{title}"', { title })}>
             {menu}
             <MenuSeparator />
             {itemStatuses
@@ -275,7 +280,7 @@ function BoardCard({
               .map((s) => (
                 <MenuItem key={s.value} disabled={pending} onClick={() => onMove(s.value)}>
                   <ArrowRight aria-hidden />
-                  Chuyển sang {s.label}
+                  {t('Chuyển sang {status}', { status: t(s.label) })}
                 </MenuItem>
               ))}
           </RowMenu>
@@ -328,6 +333,7 @@ function BoardLane({
   onAdd: () => void;
   children: ReactNode;
 }) {
+  const t = useT();
   const s = itemStatusOf(status);
   const headingId = useId();
   // dragenter/dragleave also fire for every child the pointer crosses: count them per drag, so the ring does not
@@ -374,11 +380,10 @@ function BoardLane({
       className={cn(LANE, target && 'ring-2 ring-ring ring-inset')}
     >
       <h2 id={headingId} className="flex h-7 items-center gap-2">
-        <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+        <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>
         <span className="text-xs font-normal text-muted-foreground tabular-nums">
-          <span className="sr-only">, </span>
-          {count}
-          <span className="sr-only"> {kind.noun}</span>
+          <span className="sr-only">, {t(kind.words.count, { n: count })}</span>
+          <span aria-hidden>{count}</span>
         </span>
       </h2>
       {count > 0 ? (
@@ -391,7 +396,7 @@ function BoardLane({
             drag ? 'border-foreground/25' : 'border-transparent',
           )}
         >
-          {drag ? `Thả ${kind.noun} vào đây` : `Chưa có ${kind.noun}`}
+          {t(drag ? kind.words.dropHere : kind.words.none)}
         </p>
       )}
       <Button
@@ -399,10 +404,10 @@ function BoardLane({
         size="xs"
         className="self-start text-muted-foreground"
         onClick={onAdd}
-        aria-label={`Thêm ${kind.noun} vào cột ${s.label}`}
+        aria-label={t(kind.words.addToLane, { lane: t(s.label) })}
       >
         <Plus aria-hidden />
-        Thêm {kind.noun}
+        {t(kind.words.add)}
       </Button>
     </section>
   );
@@ -496,7 +501,7 @@ export function StatusBoard<T extends BoardCardRecord>({
                   id={record.id}
                   title={record.title}
                   status={lane.status}
-                  noun={kind.noun}
+                  words={kind.words}
                   pending={pending.has(record.id)}
                   dimmed={drag?.id === record.id}
                   focus={focusId === record.id}
@@ -524,8 +529,9 @@ export function StatusBoard<T extends BoardCardRecord>({
  * so a screen reader finds "Đang tải" like the list's skeleton (a name on a plain div is not read).
  */
 export function BoardSkeleton({ media = false }: { media?: boolean }) {
+  const t = useT();
   return (
-    <div className="@container" role="status" aria-busy="true" aria-label="Đang tải">
+    <div className="@container" role="status" aria-busy="true" aria-label={t('Đang tải')}>
       <div className="-mx-4 overflow-hidden sm:-mx-8 @4xl:mx-0">
         <div className={TRACK}>
           {itemStatuses.map((s, i) => (

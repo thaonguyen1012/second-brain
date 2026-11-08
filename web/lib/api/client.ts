@@ -76,6 +76,10 @@ export const API_WRITE_EVENT = 'brain:api-write';
  */
 export async function request<T>(method: Method, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
+  // The page's language (<html lang>, app/[lang]/layout.tsx): Django answers in it before the cookie, so a page
+  // opened at /en/... gets English messages whatever the cookie says (backend/core/middleware.py)
+  const lang = document.documentElement?.lang;
+  if (lang) headers['X-UI-Lang'] = lang;
   if (method !== 'GET') headers['X-CSRFToken'] = csrfToken();
   // A FormData body (a file upload) goes as it is: the browser writes multipart/form-data with its boundary.
   const form = body instanceof FormData;

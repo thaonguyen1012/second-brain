@@ -1,5 +1,9 @@
 'use client';
+import { useCallback } from 'react';
 import { ArrowRightLeft, Check, Clock, Info, MessageSquareText, Plus, Target } from 'lucide-react';
+import { useT } from '@/lib/i18n/client';
+import { guides } from '@/lib/i18n/en/guides';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { Stage } from '../kit/stage';
 import type { Act } from '../kit/act';
 import { Collapse } from '../kit/motion/Collapse';
@@ -35,42 +39,43 @@ const initial: S = { carried: false, count: 0, draft: '', typing: false, tab: 'p
 const POSTER: S = { carried: true, count: 3, draft: '', typing: false, tab: 'review', answering: true };
 
 // Short enough to show whole in the review's "Theo mục tiêu" name column (no ellipsis on the poster)
-const CARRIED = ['Viết case study', 'Ôn lại React hooks'];
-const ADDED = 'Gửi 2 báo giá';
+const CARRIED = [msg('Viết case study'), msg('Ôn lại React hooks')];
+const ADDED = msg('Gửi 2 báo giá');
 
 /** ObjectiveHint (objectives-editor.tsx) for 0, 2 and 3 objectives, word for word. */
-const HINT: Record<S['count'], string> = {
-  0: 'Chọn 3–5 mục tiêu cho tuần: kết quả muốn có, không phải danh sách task.',
-  2: 'Đang có 2 mục tiêu. 3–5 là vừa cho một tuần, ít hơn cũng được.',
-  3: '3 mục tiêu: vừa đủ cho một tuần.',
+const HINT: Record<S['count'], Msg> = {
+  0: msg('Chọn 3–5 mục tiêu cho tuần: kết quả muốn có, không phải danh sách task.'),
+  2: msg('Đang có 2 mục tiêu. 3–5 là vừa cho một tuần, ít hơn cũng được.'),
+  3: msg('3 mục tiêu: vừa đủ cho một tuần.'),
 };
 
 /** reviewQuestions (week-utils.ts), word for word; the second one points at the chart. */
 const QUESTIONS = [
-  'Thắng lớn nhất tuần này là gì?',
-  'Cái gì kéo thời gian khỏi ưu tiên?',
-  'Học được gì?',
-  'Có hài lòng với tuần này không?',
-  'Tuần này điều gì làm mình đổi ý?',
-  'Cơ hội nào có thêm bằng chứng?',
+  msg('Thắng lớn nhất tuần này là gì?'),
+  // The guide's own, shorter English: one line in half the page (lib/i18n/en/guides.ts)
+  msg('Cái gì kéo thời gian khỏi ưu tiên?', 'guide'),
+  msg('Học được gì?'),
+  msg('Có hài lòng với tuần này không?'),
+  msg('Tuần này điều gì làm mình đổi ý?'),
+  msg('Cơ hội nào có thêm bằng chứng?'),
 ];
-const Q2_HINT = 'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở bên trái.';
+const Q2_HINT = msg('Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở bên trái.');
 /** The compact design stacks the chart above the journal, so its hint points up instead */
-const Q2_HINT_COMPACT = 'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở trên.';
+const Q2_HINT_COMPACT = msg('Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở trên.');
 
 // Example shape of a week (share of the tallest day): objective hours at the baseline, other hours on top
-const DAYS: { day: string; obj: number; other: number }[] = [
-  { day: 'T2', obj: 0.62, other: 0.2 },
-  { day: 'T3', obj: 0.42, other: 0.34 },
-  { day: 'T4', obj: 0.78, other: 0.12 },
-  { day: 'T5', obj: 0.3, other: 0.46 },
-  { day: 'T6', obj: 0.55, other: 0.22 },
-  { day: 'T7', obj: 0, other: 0.16 },
-  { day: 'CN', obj: 0, other: 0 },
+const DAYS: { day: Msg; obj: number; other: number }[] = [
+  { day: msg('T2', 'weekday'), obj: 0.62, other: 0.2 },
+  { day: msg('T3', 'weekday'), obj: 0.42, other: 0.34 },
+  { day: msg('T4', 'weekday'), obj: 0.78, other: 0.12 },
+  { day: msg('T5', 'weekday'), obj: 0.3, other: 0.46 },
+  { day: msg('T6', 'weekday'), obj: 0.55, other: 0.22 },
+  { day: msg('T7', 'weekday'), obj: 0, other: 0.16 },
+  { day: msg('CN', 'weekday'), obj: 0, other: 0 },
 ];
 const BY_OBJECTIVE = [0.9, 0.55, 0.3];
 
-async function script(a: Act<S>) {
+async function script(a: Act<S>, t: T) {
   await a.wait(600);
 
   // 1. Carry over: last week's open objectives, both ticked, moved in one action
@@ -83,7 +88,7 @@ async function script(a: Act<S>) {
   a.mark('add');
   await a.click('add');
   await a.set({ typing: true });
-  await a.type('draft', ADDED, { interval: 40 });
+  await a.type('draft', t(ADDED), { interval: 40 });
   await a.wait(250);
   await a.key('enter');
   await a.set({ count: 3, draft: '' });
@@ -113,40 +118,41 @@ function Checkbox() {
 }
 
 function PlanPane({ s, compact }: { s: S; compact: boolean }) {
+  const t = useT(guides);
   return (
     <div className="wk-pane" data-show={s.tab === 'plan' || undefined}>
       <Collapse open={!s.carried}>
         <div className="wk-gap">
-          <GCard icon={ArrowRightLeft} title="Kéo mục tiêu chưa xong sang">
-            <span className="g-desc">Mục tiêu còn mở của tuần trước. Bỏ chọn cái không còn quan trọng.</span>
+          <GCard icon={ArrowRightLeft} title={t('Kéo mục tiêu chưa xong sang')}>
+            <span className="g-desc">{t('Mục tiêu còn mở của tuần trước. Bỏ chọn cái không còn quan trọng.')}</span>
             <div className="wk-carry">
-              {CARRIED.map((t) => (
-                <span key={t} className="wk-carry__row">
+              {CARRIED.map((o) => (
+                <span key={o.msgid} className="wk-carry__row">
                   <Checkbox />
-                  {t}
+                  {t(o)}
                 </span>
               ))}
             </div>
-            <GButton name="carry">Kéo 2 mục tiêu sang tuần này</GButton>
+            <GButton name="carry">{t('Kéo 2 mục tiêu sang tuần này')}</GButton>
           </GCard>
         </div>
       </Collapse>
 
-      <GCard icon={Target} title="Mục tiêu tuần">
+      <GCard icon={Target} title={t('Mục tiêu tuần')}>
         <span className="wk-hint">
           <Info size={13} strokeWidth={2} aria-hidden />
           <Swap id={s.count} className="wk-hint__text">
-            {HINT[s.count]}
+            {t(HINT[s.count])}
           </Swap>
         </span>
         <div className="wk-list">
-          {[...CARRIED, ADDED].map((t, i) => (
-            <Collapse key={t} open={i < s.count} reveal="drop">
+          {[...CARRIED, ADDED].map((o, i) => (
+            <Collapse key={o.msgid} open={i < s.count} reveal="drop">
               <div className="wk-obj">
                 <span className="wk-obj__n">{i + 1}.</span>
-                <span className="wk-obj__title">{t}</span>
-                {i < 2 && <GBadge tone="outline">Từ tuần trước</GBadge>}
-                {!compact && <GBadge tone="info">Đang làm</GBadge>}
+                <span className="wk-obj__title">{t(o)}</span>
+                {i < 2 && <GBadge tone="outline">{t('Từ tuần trước')}</GBadge>}
+                {!compact && <GBadge tone="info">{t('Đang làm')}</GBadge>}
               </div>
             </Collapse>
           ))}
@@ -156,11 +162,11 @@ function PlanPane({ s, compact }: { s: S; compact: boolean }) {
             className="g-field wk-add__field"
             value={s.draft}
             focused={s.typing}
-            placeholder="Thêm mục tiêu, ví dụ: Gửi báo giá cho 2 khách"
+            placeholder={t('Thêm mục tiêu, ví dụ: Gửi báo giá cho 2 khách')}
             box={{ 'data-target': 'add', 'data-cursor': 'ibeam' }}
           />
           <GButton variant="outline" icon={Plus} off={!s.draft}>
-            Thêm
+            {t('Thêm')}
           </GButton>
         </div>
       </GCard>
@@ -169,37 +175,38 @@ function PlanPane({ s, compact }: { s: S; compact: boolean }) {
 }
 
 function ReviewPane({ s, compact }: { s: S; compact: boolean }) {
+  const t = useT(guides);
   const shown = s.tab === 'review';
   return (
     <div className="wk-pane wk-review" data-show={shown || undefined}>
-      <GCard icon={Clock} title="Giờ cho mục tiêu và giờ khác" className="wk-time">
+      <GCard icon={Clock} title={t('Giờ cho mục tiêu và giờ khác', null, 'guide')} className="wk-time">
         <span className="wk-legend">
           <span className="wk-legend__item">
             <span className="wk-swatch" data-kind="obj" />
-            Giờ cho mục tiêu
+            {t('Giờ cho mục tiêu')}
           </span>
           <span className="wk-legend__item">
             <span className="wk-swatch" data-kind="other" />
-            Giờ khác
+            {t('Giờ khác')}
           </span>
         </span>
         <div className="wk-chart" aria-hidden>
           {DAYS.map((d, i) => (
-            <span key={d.day} className="wk-day">
+            <span key={d.day.msgid} className="wk-day">
               <span className="wk-day__bar" style={{ ['--d' as string]: `${i * 70}ms` }}>
                 {d.other > 0 && <span className="wk-seg" data-kind="other" style={{ height: `${d.other * 100}%` }} />}
                 {d.obj > 0 && <span className="wk-seg" data-kind="obj" style={{ height: `${d.obj * 100}%` }} />}
               </span>
-              <span className="wk-day__label">{d.day}</span>
+              <span className="wk-day__label">{t(d.day)}</span>
             </span>
           ))}
         </div>
         {!compact && (
           <div className="wk-by">
-            <span className="wk-by__title">Theo mục tiêu</span>
-            {[...CARRIED, ADDED].map((t, i) => (
-              <span key={t} className="wk-by__row">
-                <span className="wk-by__name">{t}</span>
+            <span className="wk-by__title">{t('Theo mục tiêu')}</span>
+            {[...CARRIED, ADDED].map((o, i) => (
+              <span key={o.msgid} className="wk-by__row">
+                <span className="wk-by__name">{t(o)}</span>
                 <span
                   className="wk-by__bar"
                   style={{ width: `${BY_OBJECTIVE[i] * 100}%`, ['--d' as string]: `${500 + i * 80}ms` }}
@@ -210,17 +217,17 @@ function ReviewPane({ s, compact }: { s: S; compact: boolean }) {
         )}
       </GCard>
 
-      <GCard icon={MessageSquareText} title="Nhật ký nhìn lại" className="wk-journal">
+      <GCard icon={MessageSquareText} title={t('Nhật ký nhìn lại')} className="wk-journal">
         <div className="wk-qs">
           {QUESTIONS.map((q, i) => (
-            <div key={q} className="wk-q">
+            <div key={q.msgid} className="wk-q">
               <span className="wk-q__label">
                 <span className="wk-q__n">{i + 1}.</span>
-                {q}
+                {t(q)}
               </span>
               {i === 1 && (
                 <Collapse open={s.answering}>
-                  <span className="g-hint wk-q__hint">{compact ? Q2_HINT_COMPACT : Q2_HINT}</span>
+                  <span className="g-hint wk-q__hint">{t(compact ? Q2_HINT_COMPACT : Q2_HINT)}</span>
                 </Collapse>
               )}
               <span
@@ -238,22 +245,24 @@ function ReviewPane({ s, compact }: { s: S; compact: boolean }) {
   );
 }
 
-const LABEL =
-  'Hình minh họa trang Tuần. Đầu tuần, ở thẻ Kế hoạch: bấm "Kéo 2 mục tiêu sang tuần này" để mang mục tiêu chưa xong của tuần trước sang, ' +
-  'rồi thêm mục tiêu mới; gợi ý cho biết 3 đến 5 mục tiêu là vừa. Cuối tuần, nhấn R để mở Nhìn lại: biểu đồ cho thấy giờ cho mục tiêu so với giờ khác ' +
-  'theo từng ngày, bên cạnh sáu câu hỏi của nhật ký nhìn lại, như "Cái gì kéo thời gian khỏi ưu tiên?".';
+const LABEL = msg(
+  'Hình minh họa trang Tuần. Đầu tuần, ở thẻ Kế hoạch: bấm "Kéo 2 mục tiêu sang tuần này" để mang mục tiêu chưa xong của tuần trước sang, rồi thêm mục tiêu mới; gợi ý cho biết 3 đến 5 mục tiêu là vừa. Cuối tuần, nhấn R để mở Nhìn lại: biểu đồ cho thấy giờ cho mục tiêu so với giờ khác theo từng ngày, bên cạnh sáu câu hỏi của nhật ký nhìn lại, như "Cái gì kéo thời gian khỏi ưu tiên?".',
+);
 
 export default function WeekRitualGuide({ className }: { className?: string }) {
   const look = useBrainLook();
+  const t = useT(guides);
+  // Typed text in the page's language, kept stable (a new script would restart the scene)
+  const run = useCallback((a: Act<S>) => script(a, t), [t]);
   return (
-    <div role="img" aria-label={LABEL} className={className}>
+    <div role="img" aria-label={t(LABEL)} className={className}>
       <Stage
         width={GUIDE_SIZE.width}
         height={GUIDE_SIZE.height}
         compact={GUIDE_SIZE.compact}
         initial={initial}
         poster={POSTER}
-        script={script}
+        script={run}
         play="once"
         keys="bottom"
         cursor={{ at: { wide: { x: 560, y: 420 }, compact: { x: 330, y: 440 } }, style: 'arrow' }}
@@ -268,15 +277,15 @@ export default function WeekRitualGuide({ className }: { className?: string }) {
                 <span className="wk-tabs" data-tab={s.tab}>
                   <span className="wk-tabs__thumb" />
                   <span className="wk-tab" data-on={s.tab === 'plan' || undefined}>
-                    Kế hoạch
+                    {t('Kế hoạch')}
                   </span>
                   <span className="wk-tab" data-on={s.tab === 'review' || undefined}>
-                    Nhìn lại
+                    {t('Nhìn lại')}
                   </span>
                 </span>
                 {!compact && (
                   <span className="wk-keys">
-                    <GKbd>P</GKbd> kế hoạch · <GKbd>R</GKbd> nhìn lại
+                    <GKbd>P</GKbd> {t('kế hoạch')} · <GKbd>R</GKbd> {t('nhìn lại')}
                   </span>
                 )}
               </div>

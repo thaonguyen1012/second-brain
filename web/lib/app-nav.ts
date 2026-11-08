@@ -21,6 +21,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import type { ApiCounts } from '@/lib/api/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 
 /**
  * The six areas of the sidebar; each has one colour, `--area-<key>` in app/global.css (DESIGN.md §4). Hôm nay's is
@@ -32,120 +33,121 @@ export type AreaKey = 'today' | 'week' | 'growth' | 'library' | 'opportunity' | 
 export type CountKey = Exclude<keyof ApiCounts, 'timerRunning'>;
 
 export interface NavLink {
-  title: string;
+  /** Shown through t(); also the row's accessible name. */
+  title: Msg;
   href: string;
   icon: LucideIcon;
 }
 
 export interface NavRow extends NavLink {
   area: AreaKey;
-  /** The row's count and how a screen reader says it ("Tuần, còn 2 mục tiêu"). */
-  count?: { key: CountKey; label: (n: number) => string };
+  /** The row's count and how a screen reader says it ("Tuần, còn 2 mục tiêu"): `label` takes the count as {n}. */
+  count?: { key: CountKey; label: Msg };
   /** Giờ: the "now" dot while a timer runs. */
   timerDot?: boolean;
 }
 
 export interface NavGroup {
   /** None for the first group (Hôm nay, Tuần). */
-  label?: string;
+  label?: Msg;
   rows: readonly NavRow[];
 }
 
 export const appNav = [
   {
     rows: [
-      { title: 'Hôm nay', href: '/', area: 'today', icon: Sun },
+      { title: msg('Hôm nay'), href: '/', area: 'today', icon: Sun },
       {
-        title: 'Tuần',
+        title: msg('Tuần'),
         href: '/tuan/',
         area: 'week',
         icon: CalendarRange,
-        count: { key: 'objectivesOpen', label: (n) => `còn ${n} mục tiêu` },
+        count: { key: 'objectivesOpen', label: msg('còn {n} mục tiêu') },
       },
     ],
   },
   {
-    label: 'Phát triển',
+    label: msg('Phát triển'),
     rows: [
-      { title: 'Sổ tay', href: '/phat-trien/', area: 'growth', icon: BookOpen },
-      { title: 'Lộ trình', href: '/lo-trinh/', area: 'growth', icon: Route },
+      { title: msg('Sổ tay'), href: '/phat-trien/', area: 'growth', icon: BookOpen },
+      { title: msg('Lộ trình'), href: '/lo-trinh/', area: 'growth', icon: Route },
       {
-        title: 'Kỹ năng',
+        title: msg('Kỹ năng'),
         href: '/phat-trien/ky-nang/',
         area: 'growth',
         icon: Dumbbell,
-        count: { key: 'skills', label: (n) => `${n} kỹ năng` },
+        count: { key: 'skills', label: msg('{n} kỹ năng') },
       },
       {
-        title: 'Thị trường',
+        title: msg('Thị trường'),
         href: '/phat-trien/thi-truong/',
         area: 'growth',
         icon: TrendingUp,
-        count: { key: 'jobAds', label: (n) => `${n} tin tuyển dụng tháng này` },
+        count: { key: 'jobAds', label: msg('{n} tin tuyển dụng tháng này') },
       },
       {
-        title: 'Nhật ký thành tựu',
+        title: msg('Nhật ký thành tựu'),
         href: '/phat-trien/thanh-tuu/',
         area: 'growth',
         icon: Trophy,
-        count: { key: 'achievements', label: (n) => `${n} thành tựu tuần này` },
+        count: { key: 'achievements', label: msg('{n} thành tựu tuần này') },
       },
     ],
   },
   {
-    label: 'Thư viện',
+    label: msg('Thư viện'),
     rows: [
       {
-        title: 'Item',
+        title: msg('Item', 'nav'),
         href: '/thu-vien/',
         area: 'library',
         icon: Library,
-        count: { key: 'items', label: (n) => `${n} item` },
+        count: { key: 'items', label: msg('{n} item') },
       },
       {
-        title: 'Ghi chú',
+        title: msg('Ghi chú', 'nav'),
         href: '/thu-vien/ghi-chu/',
         area: 'library',
         icon: NotebookPen,
-        count: { key: 'notes', label: (n) => `${n} ghi chú` },
+        count: { key: 'notes', label: msg('{n} ghi chú') },
       },
     ],
   },
   {
-    label: 'Cơ hội',
+    label: msg('Cơ hội', 'nav'),
     rows: [
       {
-        title: 'Cơ hội',
+        title: msg('Cơ hội', 'nav'),
         href: '/co-hoi/',
         area: 'opportunity',
         icon: Lightbulb,
-        count: { key: 'opportunities', label: (n) => `${n} cơ hội` },
+        count: { key: 'opportunities', label: msg('{n} cơ hội') },
       },
     ],
   },
   {
-    label: 'Công việc',
+    label: msg('Công việc'),
     rows: [
       {
-        title: 'Dự án',
+        title: msg('Dự án', 'nav'),
         href: '/cong-viec/',
         area: 'work',
         icon: Briefcase,
-        count: { key: 'projects', label: (n) => `${n} dự án` },
+        count: { key: 'projects', label: msg('{n} dự án') },
       },
-      { title: 'Giờ', href: '/cong-viec/gio/', area: 'work', icon: Clock, timerDot: true },
+      { title: msg('Giờ', 'nav'), href: '/cong-viec/gio/', area: 'work', icon: Clock, timerDot: true },
     ],
   },
 ] as const satisfies readonly NavGroup[];
 
 /** Not an area (DECISIONS 4.4): the intro page and the animated guides, last in the sidebar. */
 export const otherNav = {
-  label: 'Khác',
+  label: msg('Khác', 'nav'),
   links: [
-    { title: 'Giới thiệu', href: '/gioi-thieu/', icon: Info },
-    { title: 'Hướng dẫn', href: '/huong-dan/', icon: CircleHelp },
+    { title: msg('Giới thiệu'), href: '/gioi-thieu/', icon: Info },
+    { title: msg('Hướng dẫn'), href: '/huong-dan/', icon: CircleHelp },
   ],
-} as const satisfies { label: string; links: readonly NavLink[] };
+} as const satisfies { label: Msg; links: readonly NavLink[] };
 
 /** Every area page with a sidebar row; what `PageHeader nav` takes. */
 export type NavHref = (typeof appNav)[number]['rows'][number]['href'];

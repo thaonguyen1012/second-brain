@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import type { ApiOpportunity, ApiStance } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
+import { useT } from '@/lib/i18n/client';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -33,6 +34,7 @@ export function OpportunityDialog({
   entryTitle: string;
   onPick: (opportunity: ApiOpportunity, stance: ApiStance) => void;
 }) {
+  const t = useT();
   const opps = useApi(open ? 'open-opportunities' : null, loadOpenOpportunities);
   const list = opps.data ?? NONE;
 
@@ -52,23 +54,25 @@ export function OpportunityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
         <DialogHeader>
-          <DialogTitle>Bằng chứng cho cơ hội nào?</DialogTitle>
+          <DialogTitle className="pe-6">{t('Bằng chứng cho cơ hội nào?')}</DialogTitle>
           <DialogDescription className="line-clamp-2">{entryTitle}</DialogDescription>
         </DialogHeader>
         <DialogPanel>
           {opps.error ? (
             <ApiErrorState error={opps.error} onRetry={opps.reload} />
           ) : !opps.data ? (
-            <p className="text-sm text-muted-foreground">Đang tải…</p>
+            <p className="text-sm text-muted-foreground">{t('Đang tải…')}</p>
           ) : list.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Chưa có cơ hội nào đang mở.{' '}
-              <Link href="/co-hoi/" className="text-primary underline">
-                Tạo ở trang Cơ hội
-              </Link>
-              .
+              {t.rich('Chưa có cơ hội nào đang mở. <link>Tạo ở trang Cơ hội</link>.', {
+                link: (chunks) => (
+                  <Link href="/co-hoi/" className="text-primary underline">
+                    {chunks}
+                  </Link>
+                ),
+              })}
             </p>
           ) : (
             <ol className="flex flex-col gap-1.5">
@@ -77,10 +81,10 @@ export function OpportunityDialog({
                   {i < 9 && <Kbd>{i + 1}</Kbd>}
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{o.title}</span>
                   <Button size="xs" onClick={() => onPick(o, 'supports')}>
-                    Ủng hộ
+                    {t('Ủng hộ')}
                   </Button>
                   <Button size="xs" variant="outline" onClick={() => onPick(o, 'contradicts')}>
-                    Phản bác
+                    {t('Phản bác')}
                   </Button>
                 </li>
               ))}
@@ -89,7 +93,9 @@ export function OpportunityDialog({
         </DialogPanel>
         <DialogFooter className="text-xs text-muted-foreground sm:justify-start">
           <span>
-            <Kbd>1</Kbd>–<Kbd>9</Kbd> ủng hộ · <Kbd>Shift</Kbd>+số phản bác · mục inbox được lưu trữ sau khi gắn
+            {t.rich('<k>1</k>–<k>9</k> ủng hộ · <k>Shift</k>+số phản bác · mục inbox được lưu trữ sau khi gắn', {
+              k: (chunks) => <Kbd>{chunks}</Kbd>,
+            })}
           </span>
         </DialogFooter>
       </DialogPopup>

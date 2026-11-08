@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { BookCover } from '@/components/book-cover';
 import type { ItemPicture } from '@/lib/item-picture';
+import type { T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 
 // How an Item's picture (lib/item-picture.ts) is drawn (DESIGN.md §9a "Item images"): flush with the edges of its row
@@ -57,12 +58,12 @@ export interface BoardMedia {
  * A board card's picture: the handbook's cover band or a landscape cover flush on top (16:7), a poster flush down the
  * card's start (a 4rem column, 2:3 at the card's minimum height), or a 40px logo before the title.
  */
-export function boardMedia(picture: ItemPicture | null): BoardMedia | null {
+export function boardMedia(picture: ItemPicture | null, t: T): BoardMedia | null {
   if (!picture) return null;
   if (picture.kind === 'handbook')
     return {
       placement: 'top',
-      node: <BookCover slug={picture.book.slug} title={picture.book.title} variant="band" />,
+      node: <BookCover slug={picture.book.slug} title={t(picture.book.title)} variant="band" />,
     };
   if (picture.shape === 'logo')
     return { placement: 'inline', node: <Logo url={picture.url} className="size-10 overflow-hidden rounded-md p-1" /> };

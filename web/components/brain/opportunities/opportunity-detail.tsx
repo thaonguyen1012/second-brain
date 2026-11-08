@@ -10,6 +10,7 @@ import {
 } from '@/lib/api/opportunities';
 import { toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate } from '@/lib/labels';
+import { useT } from '@/lib/i18n/client';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -69,6 +70,7 @@ function EvidenceRow({
   onEdit: () => void;
   onDeleted: () => void;
 }) {
+  const t = useT();
   const s = stanceOf(e.stance);
   const href = safeUrl(e.url);
   const name = e.title || e.url;
@@ -76,7 +78,8 @@ function EvidenceRow({
     <li className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{s.label}</span> · {evidenceKinds[e.kind]} · {formatDay(e.date)}
+          <span className="font-medium text-foreground">{t(s.label)}</span> · {t(evidenceKinds[e.kind])} ·{' '}
+          {formatDay(e.date)}
         </p>
         <p className="text-sm font-medium break-words">
           {href ? (
@@ -87,7 +90,10 @@ function EvidenceRow({
               className="inline-flex items-start gap-1 hover:underline"
             >
               {e.title || href}
-              <ExternalLink className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-label="(mở tab mới)" />
+              <ExternalLink
+                className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+                aria-label={t('(mở tab mới)')}
+              />
             </a>
           ) : (
             e.title
@@ -100,27 +106,37 @@ function EvidenceRow({
       <div className="flex shrink-0 items-center gap-1">
         <Tip
           trigger={
-            <Button size="icon-sm" variant="ghost" onClick={onEdit} aria-label={`Sửa bằng chứng "${name}"`}>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              onClick={onEdit}
+              aria-label={t('Sửa bằng chứng "{title}"', { title: name })}
+            >
               <Pencil aria-hidden />
             </Button>
           }
         >
-          Sửa
+          {t('Sửa')}
         </Tip>
         <Tooltip>
           <ConfirmDelete
-            title="Xóa bằng chứng?"
-            description={`"${name}" bị gỡ khỏi cơ hội này. Mục inbox, item hay ghi chú gốc vẫn giữ nguyên. Không hoàn tác được.`}
+            title={t('Xóa bằng chứng?')}
+            description={t(
+              '"{title}" bị gỡ khỏi cơ hội này. Mục inbox, item hay ghi chú gốc vẫn giữ nguyên. Không hoàn tác được.',
+              { title: name },
+            )}
             action={() => opportunitiesApi.deleteEvidence(opportunityId, e.id)}
             onDeleted={onDeleted}
             focusNeighbour
             trigger={
               <TooltipTrigger
-                render={<DeleteButton size="icon-sm" label="" aria-label={`Xóa bằng chứng "${name}"`} />}
+                render={
+                  <DeleteButton size="icon-sm" label="" aria-label={t('Xóa bằng chứng "{title}"', { title: name })} />
+                }
               />
             }
           />
-          <TooltipPopup>Xóa</TooltipPopup>
+          <TooltipPopup>{t('Xóa')}</TooltipPopup>
         </Tooltip>
       </div>
     </li>
@@ -129,8 +145,9 @@ function EvidenceRow({
 
 /** Loading state at the real geometry: badge row, title, hypothesis, action row, then the two panels. */
 function DetailSkeleton() {
+  const t = useT();
   return (
-    <div className="flex flex-col gap-6" aria-busy="true" aria-label="Đang tải">
+    <div className="flex flex-col gap-6" aria-busy="true" aria-label={t('Đang tải')}>
       <div className="flex flex-col gap-3">
         <div className="flex gap-1.5">
           <Skeleton className="h-4.5 w-16" />
@@ -161,25 +178,26 @@ function DetailSkeleton() {
 
 /** Decision picker whose value is the decision's status badge (same pattern as the objective status). */
 function DecisionSelect({ value, onChange }: { value: ApiDecision; onChange: (value: ApiDecision) => void }) {
+  const t = useT();
   return (
     <Select
-      items={decisions}
+      items={decisions.map((d) => ({ value: d.value, label: t(d.label) }))}
       value={value}
       onValueChange={(v) => v !== null && v !== value && onChange(v as ApiDecision)}
     >
-      <SelectTrigger aria-label="Quyết định" className="w-auto min-w-0">
-        <span className="text-sm text-muted-foreground">Quyết định</span>
+      <SelectTrigger aria-label={t('Quyết định')} className="w-auto min-w-0">
+        <span className="text-sm text-muted-foreground">{t('Quyết định')}</span>
         <SelectValue>
           {(v: ApiDecision) => {
             const d = decisionOf(v);
-            return <StatusBadge tone={d.tone}>{d.label}</StatusBadge>;
+            return <StatusBadge tone={d.tone}>{t(d.label)}</StatusBadge>;
           }}
         </SelectValue>
       </SelectTrigger>
       <SelectPopup>
         {decisions.map((x) => (
           <SelectItem key={x.value} value={x.value}>
-            {x.label}
+            {t(x.label)}
           </SelectItem>
         ))}
       </SelectPopup>
@@ -189,6 +207,7 @@ function DecisionSelect({ value, onChange }: { value: ApiDecision; onChange: (va
 
 /** One opportunity: hypothesis, decision, score history, fit skills and the evidence list. */
 export function OpportunityDetail({ id }: { id: number }) {
+  const t = useT();
   const opp = useApi<ApiOpportunityDetail>(`opportunity:${id}`, () => opportunitiesApi.get(id));
   const [editOpen, setEditOpen] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(false);
@@ -213,9 +232,9 @@ export function OpportunityDetail({ id }: { id: number }) {
     try {
       const saved = await opportunitiesApi.update(o.id, { decision });
       opp.mutate(() => saved);
-      setNotice(`Quyết định: ${decisionOf(decision).label}`);
+      setNotice(t('Quyết định: {decision}', { decision: t(decisionOf(decision).label) }));
     } catch (err) {
-      setNotice(describeApiError(toApiError(err)).title);
+      setNotice(describeApiError(toApiError(err), t).title);
     }
   };
 
@@ -225,7 +244,7 @@ export function OpportunityDetail({ id }: { id: number }) {
       className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
     >
       <ArrowLeft className="size-4" aria-hidden />
-      Tất cả cơ hội
+      {t('Tất cả cơ hội')}
     </Link>
   );
 
@@ -236,8 +255,8 @@ export function OpportunityDetail({ id }: { id: number }) {
           {back}
           <EmptyState
             icon={<SearchX aria-hidden />}
-            title="Không tìm thấy cơ hội này"
-            description="Có thể link đã cũ. Quay lại danh sách để chọn cơ hội khác."
+            title={t('Không tìm thấy cơ hội này')}
+            description={t('Có thể link đã cũ. Quay lại danh sách để chọn cơ hội khác.')}
           />
         </div>
       );
@@ -258,9 +277,9 @@ export function OpportunityDetail({ id }: { id: number }) {
 
   const shown = o.evidence.filter((e) => stanceFilter === 'all' || e.stance === stanceFilter);
   const stanceTabs: { value: StanceFilter; label: string }[] = [
-    { value: 'all', label: `Tất cả (${o.evidence.length})` },
-    { value: 'supports', label: `Ủng hộ (${o.evidenceSupports})` },
-    { value: 'contradicts', label: `Phản bác (${o.evidenceContradicts})` },
+    { value: 'all', label: t('Tất cả ({n})', { n: o.evidence.length }) },
+    { value: 'supports', label: t('Ủng hộ ({n})', { n: o.evidenceSupports }) },
+    { value: 'contradicts', label: t('Phản bác ({n})', { n: o.evidenceContradicts }) },
   ];
   const undecided = o.decision === 'open' || o.decision === 'keep';
   const flags = o.stale || (undecided && !!o.decideBy);
@@ -271,7 +290,7 @@ export function OpportunityDetail({ id }: { id: number }) {
         {back}
         {flags && (
           <div className="flex flex-wrap items-center gap-1.5">
-            {o.stale && <StatusBadge tone="warning">{STALE_LABEL}</StatusBadge>}
+            {o.stale && <StatusBadge tone="warning">{t(STALE_LABEL)}</StatusBadge>}
             {undecided && <DecideByBadge day={o.decideBy} />}
           </div>
         )}
@@ -284,17 +303,19 @@ export function OpportunityDetail({ id }: { id: number }) {
         <div className="flex flex-wrap items-center gap-2">
           <DecisionSelect value={o.decision} onChange={(v) => void decide(v)} />
           {o.decidedAt && o.decision !== 'open' && (
-            <span className="text-xs text-muted-foreground">từ {formatDate(o.decidedAt)}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('từ {date}', { date: formatDate(o.decidedAt, t) }, 'since')}
+            </span>
           )}
           <Tip
             trigger={
               <Button variant="outline" onClick={() => setEditOpen(true)} aria-keyshortcuts="e">
                 <Pencil aria-hidden />
-                Sửa
+                {t('Sửa')}
               </Button>
             }
           >
-            Sửa cơ hội <Kbd>E</Kbd>
+            {t('Sửa cơ hội')} <Kbd>E</Kbd>
           </Tip>
         </div>
         {notice && (
@@ -305,44 +326,44 @@ export function OpportunityDetail({ id }: { id: number }) {
       </header>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <Section id="opp-plan" title="Vì sao bây giờ và bước kế tiếp">
+        <Section id="opp-plan" title={t('Vì sao bây giờ và bước kế tiếp')}>
           <dl className="flex flex-col gap-3 text-sm">
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-medium text-muted-foreground">Vì sao bây giờ</dt>
+              <dt className="text-xs font-medium text-muted-foreground">{t('Vì sao bây giờ')}</dt>
               <dd className="leading-relaxed whitespace-pre-line">{o.whyNow || '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-medium text-muted-foreground">Hành động kế tiếp</dt>
+              <dt className="text-xs font-medium text-muted-foreground">{t('Hành động kế tiếp')}</dt>
               <dd className="leading-relaxed">{o.nextAction || '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-medium text-muted-foreground">Hạn quyết giữ, bỏ hay làm</dt>
-              <dd>{o.decideBy ? formatDay(o.decideBy) : 'Chưa đặt'}</dd>
+              <dt className="text-xs font-medium text-muted-foreground">{t('Hạn quyết giữ, bỏ hay làm')}</dt>
+              <dd>{o.decideBy ? formatDay(o.decideBy) : t('Chưa đặt')}</dd>
             </div>
             <div className="flex flex-col gap-1">
-              <dt className="text-xs font-medium text-muted-foreground">Hợp với mình</dt>
+              <dt className="text-xs font-medium text-muted-foreground">{t('Hợp với mình')}</dt>
               <dd>
                 {o.fit.length ? (
                   <FitBadges fit={o.fit} />
                 ) : (
-                  <span className="text-muted-foreground">Chưa chọn kỹ năng nào</span>
+                  <span className="text-muted-foreground">{t('Chưa chọn kỹ năng nào')}</span>
                 )}
               </dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-medium text-muted-foreground">Bằng chứng gần nhất</dt>
-              <dd>{o.lastEvidenceAt ? formatDate(o.lastEvidenceAt) : 'Chưa có'}</dd>
+              <dt className="text-xs font-medium text-muted-foreground">{t('Bằng chứng gần nhất')}</dt>
+              <dd>{o.lastEvidenceAt ? formatDate(o.lastEvidenceAt, t) : t('Chưa có')}</dd>
             </div>
           </dl>
         </Section>
 
         <Section
           id="opp-scores"
-          title="Điểm tự chấm"
+          title={t('Điểm tự chấm')}
           action={
             <Button size="sm" onClick={() => setScoreOpen(true)} aria-keyshortcuts="s">
               <Gauge aria-hidden />
-              Chấm điểm
+              {t('Chấm điểm')}
               <Kbd className="bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">
                 S
               </Kbd>
@@ -355,7 +376,7 @@ export function OpportunityDetail({ id }: { id: number }) {
 
       <Section
         id="opp-evidence"
-        title="Bằng chứng"
+        title={t('Bằng chứng')}
         action={
           <>
             <Button
@@ -365,7 +386,7 @@ export function OpportunityDetail({ id }: { id: number }) {
               aria-keyshortcuts="c"
             >
               <MessagesSquare aria-hidden />
-              Cuộc nói chuyện
+              {t('Cuộc nói chuyện')}
               <Kbd className="pointer-coarse:hidden max-sm:hidden">C</Kbd>
             </Button>
             <Tip
@@ -377,33 +398,34 @@ export function OpportunityDetail({ id }: { id: number }) {
                   aria-keyshortcuts="l"
                 >
                   <Link2 aria-hidden />
-                  Link
+                  {t('Link')}
                 </Button>
               }
             >
-              Thêm link <Kbd>L</Kbd>
+              {t('Thêm link')} <Kbd>L</Kbd>
             </Tip>
           </>
         }
       >
         {o.evidence.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Chưa có bằng chứng. Ghi lại một cuộc nói chuyện thật hoặc một link; tin trong bản tin sáng và mục inbox
-            cũng gắn được vào đây.
+            {t(
+              'Chưa có bằng chứng. Ghi lại một cuộc nói chuyện thật hoặc một link; tin trong bản tin sáng và mục inbox cũng gắn được vào đây.',
+            )}
           </p>
         ) : (
           <>
             <Tabs value={stanceFilter} onValueChange={(v) => setStanceFilter(v as StanceFilter)}>
-              <TabsList variant="underline" aria-label="Lọc bằng chứng">
-                {stanceTabs.map((t) => (
-                  <TabsTab key={t.value} value={t.value}>
-                    {t.label}
+              <TabsList variant="underline" aria-label={t('Lọc bằng chứng')}>
+                {stanceTabs.map((tab) => (
+                  <TabsTab key={tab.value} value={tab.value}>
+                    {tab.label}
                   </TabsTab>
                 ))}
               </TabsList>
             </Tabs>
             {shown.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Không có bằng chứng nào loại này.</p>
+              <p className="text-sm text-muted-foreground">{t('Không có bằng chứng nào loại này.')}</p>
             ) : (
               <ul className="flex flex-col divide-y">
                 {shown.map((e) => (
@@ -414,7 +436,7 @@ export function OpportunityDetail({ id }: { id: number }) {
                     onEdit={() => setEvidence({ mode: 'edit', evidence: e })}
                     onDeleted={() => {
                       opp.mutate((d) => d && { ...d, evidence: d.evidence.filter((x) => x.id !== e.id) });
-                      setNotice('Đã xóa bằng chứng');
+                      setNotice(t('Đã xóa bằng chứng'));
                       // counts, last evidence date and "stale" are computed by the server
                       opp.reload();
                     }}
@@ -433,7 +455,7 @@ export function OpportunityDetail({ id }: { id: number }) {
         onSaved={(saved) => {
           opp.mutate(() => saved);
           setEditOpen(false);
-          setNotice('Đã lưu');
+          setNotice(t('Đã lưu'));
         }}
       />
       <ScoreDialog
@@ -442,7 +464,7 @@ export function OpportunityDetail({ id }: { id: number }) {
         onOpenChange={setScoreOpen}
         onSaved={() => {
           setScoreOpen(false);
-          setNotice('Đã lưu điểm mới');
+          setNotice(t('Đã lưu điểm mới'));
           opp.reload();
         }}
       />
@@ -452,7 +474,7 @@ export function OpportunityDetail({ id }: { id: number }) {
         onClose={() => setEvidence(null)}
         onSaved={(_, created) => {
           setEvidence(null);
-          setNotice(created ? 'Đã thêm bằng chứng' : 'Đã lưu bằng chứng');
+          setNotice(t(created ? 'Đã thêm bằng chứng' : 'Đã lưu bằng chứng'));
           opp.reload();
         }}
       />

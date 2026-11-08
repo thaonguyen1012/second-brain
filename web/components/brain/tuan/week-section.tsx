@@ -6,6 +6,7 @@ import { toApiError } from '@/lib/api/use-api';
 import { firstFieldError } from '@/lib/labels';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useT } from '@/lib/i18n/client';
 import { describeApiError } from '../api-state';
 
 /**
@@ -41,14 +42,15 @@ export function WeekSection({
 
 /** A failed write, in Vietnamese; the first DRF validation message is shown (translated by lib/labels). */
 export function WriteError({ error, className }: { error: unknown; className?: string }) {
+  const t = useT();
   if (!error) return null;
   const err: ApiError = toApiError(error);
-  const { title, text } = describeApiError(err);
-  const detail = err.status === 400 ? firstFieldError(err.body) : null;
+  const { title, text } = describeApiError(err, t);
+  const detail = err.status === 400 ? firstFieldError(err.body, t) : null;
   return (
     <Alert variant="error" className={className} role="alert">
       <CircleAlert aria-hidden />
-      <AlertTitle>{err.status === 400 ? 'Chưa lưu được' : title}</AlertTitle>
+      <AlertTitle>{err.status === 400 ? t('Chưa lưu được') : title}</AlertTitle>
       <AlertDescription>{detail ?? text}</AlertDescription>
     </Alert>
   );

@@ -6,6 +6,8 @@ import { itemImageApi } from '@/lib/api/library';
 import { firstFieldError } from '@/lib/labels';
 import { IMAGE_ACCEPT, imageFileProblem, imageShapeOf, isLocalImage, isWebLink, shrinkTarget } from '@/lib/item-picture';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
+import type { T } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
@@ -43,12 +45,12 @@ export async function applyImageChange(id: number, change: ImageChange): Promise
 }
 
 /** The words for a picture change the server refused (the record itself was saved), without final punctuation. */
-export function imageErrorText(e: ApiError): string {
-  if (!e.reachable) return 'chưa kết nối được máy chủ';
-  if (e.status === 413) return 'ảnh lớn hơn giới hạn của máy chủ';
-  if (e.status === 404) return 'mục này không còn nữa';
-  if (e.status === 400) return (firstFieldError(e.body) ?? 'ảnh không hợp lệ').replace(/[.\s]+$/, '');
-  return `máy chủ trả lỗi ${e.status}`;
+export function imageErrorText(e: ApiError, t: T): string {
+  if (!e.reachable) return t('chưa kết nối được máy chủ');
+  if (e.status === 413) return t('ảnh lớn hơn giới hạn của máy chủ');
+  if (e.status === 404) return t('mục này không còn nữa');
+  if (e.status === 400) return (firstFieldError(e.body, t) ?? t('ảnh không hợp lệ')).replace(/[.\s]+$/, '');
+  return t('máy chủ trả lỗi {status}', { status: e.status });
 }
 
 /**
@@ -107,6 +109,7 @@ export function ItemImageField({
   onChange: (change: ImageChange) => void;
   disabled?: boolean;
 }) {
+  const t = useT();
   const labelId = useId();
   const statusId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -128,14 +131,15 @@ export function ItemImageField({
   const saved = isLocalImage(imageUrl) ? imageUrl : null;
   const pickedUrl = change.kind === 'upload' && picked?.file === change.file ? picked.url : null;
   const preview = change.kind === 'upload' ? pickedUrl : change.kind === 'remove' ? null : saved;
-  const label = type === 'project' ? 'Logo' : 'Ảnh bìa';
+  const label = type === 'project' ? t('Logo') : t('Ảnh bìa');
+  const currentLabel = type === 'project' ? t('Logo hiện tại') : t('Ảnh bìa hiện tại');
   // a project's link is a site, whose OG card is a banner, not a logo: only an upload makes a logo
   const canFetch = type !== 'project' && isWebLink(source);
   const fetchChosen = change.kind === 'fetch';
 
   const pick = async (file: File | undefined) => {
     if (!file) return;
-    const why = imageFileProblem(file);
+    const why = imageFileProblem(file, t);
     setProblem(why);
     if (why) return;
     setReading(true);
@@ -146,26 +150,26 @@ export function ItemImageField({
       setPicked({ file: upload, url: objectUrl.current });
       onChange({ kind: 'upload', file: upload });
     } catch {
-      setProblem('Không đọc được ảnh này. Chỉ nhận JPEG, PNG, GIF hoặc WebP.');
+      setProblem(t('Không đọc được ảnh này. Chỉ nhận JPEG, PNG, GIF hoặc WebP.'));
     } finally {
       setReading(false);
     }
   };
 
   const status = reading
-    ? 'Đang đọc ảnh…'
+    ? t('Đang đọc ảnh…')
     : fetchChosen
-      ? 'Ảnh sẽ được lấy từ link sau khi lưu; nó hiện sau vài phút.'
+      ? t('Ảnh sẽ được lấy từ link sau khi lưu; nó hiện sau vài phút.')
       : change.kind === 'upload'
-        ? 'Ảnh mới được lưu khi bấm Lưu.'
+        ? t('Ảnh mới được lưu khi bấm Lưu.')
         : change.kind === 'remove'
-          ? 'Ảnh được bỏ khi bấm Lưu.'
+          ? t('Ảnh được bỏ khi bấm Lưu.')
           : pending && !saved
-            ? 'Đang lấy ảnh từ link; nó hiện sau vài phút.'
+            ? t('Đang lấy ảnh từ link; nó hiện sau vài phút.')
             : !saved && fetchOnSave
-              ? 'Khi lưu, ảnh sẽ được lấy từ link; nó hiện sau vài phút.'
+              ? t('Khi lưu, ảnh sẽ được lấy từ link; nó hiện sau vài phút.')
               : !saved
-                ? 'Chưa có ảnh.'
+                ? t('Chưa có ảnh.')
                 : '';
 
   return (
@@ -174,7 +178,7 @@ export function ItemImageField({
       <div role="group" aria-labelledby={labelId} className="flex items-start gap-3">
         {preview && (
           // eslint-disable-next-line @next/next/no-img-element -- a local webp or the picked file's blob: preview
-          <img src={preview} alt={`${label} hiện tại`} className={cn(previewBox[shape], 'shrink-0 overflow-hidden')} />
+          <img src={preview} alt={currentLabel} className={cn(previewBox[shape], 'shrink-0 overflow-hidden')} />
         )}
         <div className="flex min-w-0 flex-col gap-2">
           {/* The buttons stay where they are when used (a toggle, a label that changes), so the focus stays too */}
@@ -189,7 +193,7 @@ export function ItemImageField({
               onClick={() => fileInput.current?.click()}
             >
               <ImagePlus aria-hidden />
-              {preview ? 'Đổi ảnh' : 'Tải ảnh lên'}
+              {preview ? t('Đổi ảnh') : t('Tải ảnh lên')}
             </Button>
             {canFetch && !fetchOnSave && (
               <Button
@@ -202,7 +206,7 @@ export function ItemImageField({
                 onClick={() => onChange(fetchChosen ? KEEP_IMAGE : { kind: 'fetch' })}
               >
                 <Link2 aria-hidden />
-                Lấy ảnh từ link
+                {t('Lấy ảnh từ link')}
               </Button>
             )}
             {preview && (
@@ -220,7 +224,7 @@ export function ItemImageField({
                 }}
               >
                 <X aria-hidden />
-                Bỏ ảnh
+                {t('Bỏ ảnh')}
               </Button>
             )}
           </div>
