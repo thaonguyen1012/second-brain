@@ -38,6 +38,10 @@ const headingPage = cn(heading, 'mt-5 mb-2 text-[18px] leading-7'); // a note pa
  *  below the page's title), as in the editor there. */
 export type NoteLook = 'inline' | 'page';
 
+/** When the note's pictures load: as they come near the screen (reading), or at once (the editor's loading state:
+ *  the editor shows them all at once, and a lazy picture in the Item Sheet waits for the Sheet to scroll to it). */
+export type ImageLoading = 'lazy' | 'eager';
+
 // Lists, apart from the renderers below: a done task tells the lists under it from its own text by them
 const ul = (p: Props<'ul'>) => (
   <ul {...rest(p)} className="my-2 flex list-disc flex-col gap-1 ps-5 first:mt-0 last:mb-0" />
@@ -45,14 +49,15 @@ const ul = (p: Props<'ul'>) => (
 const ol = (p: Props<'ol'>) => (
   <ol {...rest(p)} className="my-2 flex list-decimal flex-col gap-1 ps-5 first:mt-0 last:mb-0" />
 );
-/** A done task's own text, muted and struck through: each run of what it holds apart from the lists under it. */
+/** A done task's own text, muted and struck through: each run of what it holds apart from the lists under it (a run
+ *  after such a list, a loose task's next paragraph, keeps a paragraph's 0.5rem from it, as in the editor). */
 const doneText = (children: ReactNode): ReactNode[] => {
   const out: ReactNode[] = [];
   let run: ReactNode[] = [];
   const flush = () => {
     if (run.some((child) => typeof child !== 'string' || child.trim()))
       out.push(
-        <div key={`done-${out.length}`} className="text-muted-foreground line-through">
+        <div key={`done-${out.length}`} className="text-muted-foreground line-through [ol+&]:mt-2 [ul+&]:mt-2">
           {run}
         </div>,
       );
@@ -70,7 +75,7 @@ const doneText = (children: ReactNode): ReactNode[] => {
 };
 
 /** The renderers of each markdown element, with the few words they add in the UI language. */
-const makeComponents = (t: T, noteLook: NoteLook): Components => ({
+const makeComponents = (t: T, noteLook: NoteLook, images: ImageLoading): Components => ({
   h1: (p: Props<'h1'>) => <h4 {...rest(p)} className={noteLook === 'page' ? headingPage : headingLarge} />,
   h2: (p: Props<'h2'>) => <h4 {...rest(p)} className={headingLarge} />,
   h3: (p: Props<'h3'>) => <h5 {...rest(p)} className={headingSmall} />,
@@ -83,12 +88,19 @@ const makeComponents = (t: T, noteLook: NoteLook): Components => ({
   // A task (- [ ] / - [x]) carries its own box at the list's edge instead of a bullet, as in the editor; the other
   // items of the same list keep theirs. A done task reads as done (muted, struck through), as in the editor: its own
   // text, not the open subtasks under it.
+  // Inside an item the blocks are spaced as in the editor, whose item text is always a paragraph: a list under the
+  // text sits 0.25rem below it, also under bare text (a tight item, where the list is the item's first element and its
+  // own first:mt-0 would put it right under the text), and the item's paragraphs have no bottom margin (the next
+  // block's top margin parts them: 0.5rem to a paragraph, 0.25rem to a list).
   li: ({ className, node, children, ...p }: Props<'li'>) => {
     const task = className?.includes('task-list-item');
     return (
       <li
         {...p}
-        className={cn('marker:text-muted-foreground [&>ol]:my-1 [&>ul]:my-1', task && 'relative -ms-5 list-none ps-6')}
+        className={cn(
+          'marker:text-muted-foreground [&>ol]:my-1 [&>ol:first-child]:mt-1 [&>p]:mb-0 [&>ul]:my-1 [&>ul:first-child]:mt-1',
+          task && 'relative -ms-5 list-none ps-6',
+        )}
       >
         {task && taskDone(node) ? doneText(children) : children}
       </li>
@@ -137,9 +149,19 @@ const makeComponents = (t: T, noteLook: NoteLook): Components => ({
   img: ({ src, alt }: Props<'img'>) => {
     const url = typeof src === 'string' ? src : '';
     const local = noteImageSrc(url);
+    // in its line, as in the editor: a picture is an inline node there, and ProseMirror's cursor helpers beside it
+    // (note-editor.css) share its line; drawn as a block it would leave the editor a line taller than when read
     if (local)
-      // eslint-disable-next-line @next/next/no-img-element -- a local file of the app; next/image adds nothing here
-      return <img src={local} alt={alt ?? ''} loading="lazy" decoding="async" className="max-h-96 max-w-full rounded-md" />;
+      return (
+        // eslint-disable-next-line @next/next/no-img-element -- a local file of the app; next/image adds nothing here
+        <img
+          src={local}
+          alt={alt ?? ''}
+          loading={images}
+          decoding="async"
+          className="inline-block max-h-96 max-w-full rounded-md align-middle"
+        />
+      );
     const link = markdownHref(url);
     const label = alt ? t('Ảnh: {alt}', { alt }) : t('Ảnh');
     // never loaded from another domain: the reader opens it on purpose
@@ -226,14 +248,16 @@ const plugins = [remarkGfm, remarkEmptyLines];
 export default function NoteMarkdown({
   markdown,
   look = 'inline',
+  images = 'lazy',
   className,
 }: {
   markdown: string;
   look?: NoteLook;
+  images?: ImageLoading;
   className?: string;
 }) {
   const t = useT();
-  const components = useMemo(() => makeComponents(t, look), [t, look]);
+  const components = useMemo(() => makeComponents(t, look, images), [t, look, images]);
   return (
     <div className={cn('min-w-0 text-sm leading-relaxed break-words text-foreground', className)}>
       <Markdown remarkPlugins={plugins} components={components}>
