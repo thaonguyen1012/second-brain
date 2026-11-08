@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.authentication import request_user
+from core.i18n import tr
 from core.pagination import NewestFirstCursor
 from core.services.search import normalize_query
 from growth.models import Skill
@@ -143,7 +144,9 @@ class EvidenceListView(APIView):
         try:
             evidence = services.add_evidence(opportunity, dict(body.validated_data))
         except services.DuplicateEvidence as error:
-            raise ValidationError({"inboxEntry": "Mục inbox này đã là bằng chứng cho cơ hội này."}) from error
+            raise ValidationError(
+                {"inboxEntry": tr("Mục inbox này đã là bằng chứng cho cơ hội này.")}
+            ) from error
         return Response(EvidenceSerializer(evidence).data, status=status.HTTP_201_CREATED)
 
 

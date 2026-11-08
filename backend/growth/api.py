@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.authentication import request_user
+from core.i18n import tr
 from core.pagination import NewestFirstCursor
 from core.services.search import normalize_query
 from growth import services
@@ -81,7 +82,7 @@ def _save(skill: Skill, data: dict[str, object]) -> None:
     try:
         services.save_skill(skill, data)
     except services.SkillConflict as error:
-        raise ValidationError({"name": f"Đã dùng cho kỹ năng khác: {error}."}) from error
+        raise ValidationError({"name": tr("Đã dùng cho kỹ năng khác: {name}.", name=error)}) from error
 
 
 @extend_schema_view(
@@ -255,7 +256,7 @@ def _week(request: Request) -> dt.date | None:
     except ValidationError as error:
         raise ValidationError({"week": error.detail}) from error
     if start.weekday() != 0:
-        raise ValidationError({"week": "Tuần bắt đầu vào thứ Hai."})
+        raise ValidationError({"week": tr("Tuần bắt đầu vào thứ Hai.")})
     return start
 
 
@@ -332,7 +333,7 @@ def _save_prediction(prediction: Prediction, data: dict[str, object]) -> Predict
     try:
         return services.save_prediction(prediction, data)
     except services.PredictionDates as error:
-        raise ValidationError({"checkOn": "Ngày chấm lại không được trước ngày ghi."}) from error
+        raise ValidationError({"checkOn": tr("Ngày chấm lại không được trước ngày ghi.")}) from error
 
 
 @extend_schema_view(

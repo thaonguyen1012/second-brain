@@ -3,6 +3,7 @@ from typing import Any
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
+from core.i18n import tr
 from library.models import Item
 from library.services import image_url, normalize_tags
 from weeks.models import Objective
@@ -89,7 +90,7 @@ class ProjectWriteSerializer(serializers.Serializer[object]):
         billing = attrs.get("billing", current.billing if current else ProjectDetails.Billing.FIXED)
         rate = attrs.get("hourly_rate", current.hourly_rate if current else None)
         if billing == ProjectDetails.Billing.HOURLY and rate is None:
-            raise serializers.ValidationError({"hourlyRate": "Dự án tính theo giờ cần đơn giá mỗi giờ."})
+            raise serializers.ValidationError({"hourlyRate": tr("Dự án tính theo giờ cần đơn giá mỗi giờ.")})
         return attrs
 
 
@@ -129,7 +130,7 @@ class _EntryLinks(serializers.Serializer[object]):
         user: User = self.context["user"]
         project = Item.objects.filter(pk=value, user=user, type=Item.Type.PROJECT).first()
         if project is None:
-            raise serializers.ValidationError("Không phải dự án của bạn.")
+            raise serializers.ValidationError(tr("Không phải dự án của bạn."))
         return project
 
     def validate_objective(self, value: int | None) -> Objective | None:
@@ -137,7 +138,7 @@ class _EntryLinks(serializers.Serializer[object]):
             return None
         objective = Objective.objects.filter(pk=value, week__user=self.context["user"]).first()
         if objective is None:
-            raise serializers.ValidationError("Không phải mục tiêu của bạn.")
+            raise serializers.ValidationError(tr("Không phải mục tiêu của bạn."))
         return objective
 
 
