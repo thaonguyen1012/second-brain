@@ -178,6 +178,12 @@
 .note-editor .selectedCell {
   background: var(--accent);
 }
+/* an image that is not one of the app's files: shown as text, never loaded */
+.note-editor .note-image-external {
+  color: var(--muted-foreground);
+  font-size: 0.875em;
+  overflow-wrap: anywhere;
+}
 
 /* Placeholder: the whole note empty, or the empty top-level paragraph holding the caret while the editor has focus */
 .note-editor p.is-empty::before {
@@ -199,9 +205,10 @@
   gap: 0.5rem;
   margin-inline-start: -1.25rem;
 }
+/* no user-select: none on the box: Chrome then restarts an IME composition typed at the start of the note's first task
+   (Telex v, vi, ... gave 'vviệt') */
 .note-editor li[data-item-type='task'] > .task-box {
   flex: none;
-  user-select: none;
   display: inline-flex;
   align-items: center;
   height: 1lh;

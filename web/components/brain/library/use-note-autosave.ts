@@ -234,10 +234,18 @@ export function useNoteAutosave({
     [catchUp, run],
   );
 
-  /** Something was typed (the markdown follows): "Đang lưu…" at once, not 200 ms later. */
+  /**
+   * Something was typed (its markdown follows through `change`): "Đang lưu…" at once, not 200 ms later. Should no
+   * markdown follow (the text came back to what is saved), the save after the pause finds that out and says so.
+   */
   const touch = useCallback(() => {
     if (!failed.current) show('waiting');
-  }, [show]);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      catchUp();
+      void run();
+    }, DELAY_MS);
+  }, [catchUp, run, show]);
 
   /**
    * The page may go away (hidden, closed, another page): send what is left with keepalive, so the request outlives

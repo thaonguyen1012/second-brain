@@ -8,23 +8,33 @@ import {
   defaultValueCtx,
   editorViewCtx,
   editorViewOptionsCtx,
+  parserCtx,
   remarkStringifyOptionsCtx,
   rootAttrsCtx,
   rootCtx,
+  schemaCtx,
 } from '@milkdown/kit/core';
 import type { Ctx } from '@milkdown/kit/ctx';
+import { clipboard } from '@milkdown/kit/plugin/clipboard';
+import { gapCursorPlugin } from '@milkdown/kit/plugin/cursor';
 import { history } from '@milkdown/kit/plugin/history';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { SlashProvider, slashFactory } from '@milkdown/kit/plugin/slash';
+import { trailing, trailingConfig } from '@milkdown/kit/plugin/trailing';
 import {
+  blockquoteSchema,
   bulletListSchema,
   codeBlockSchema,
   commonmark,
   createCodeBlockCommand,
+  hardbreakSchema,
   hrSchema,
+  imageSchema,
   insertHrCommand,
+  insertHrInputRule,
   linkSchema,
   listItemSchema,
+  paragraphSchema,
   splitListItemCommand,
   turnIntoTextCommand,
   wrapInBlockquoteCommand,
@@ -33,9 +43,11 @@ import {
   wrapInOrderedListCommand,
 } from '@milkdown/kit/preset/commonmark';
 import { gfm, insertTableCommand, tableSchema } from '@milkdown/kit/preset/gfm';
+import { customInputRulesKey, isTextOnlySlice } from '@milkdown/kit/prose';
+import { lift } from '@milkdown/kit/prose/commands';
 import { closeHistory } from '@milkdown/kit/prose/history';
 import { InputRule } from '@milkdown/kit/prose/inputrules';
-import { DOMSerializer, type Node as ProseNode, type NodeType } from '@milkdown/kit/prose/model';
+import { DOMParser, DOMSerializer, Fragment, Slice, type NodeType } from '@milkdown/kit/prose/model';
 import {
   Plugin,
   PluginKey,
@@ -46,7 +58,7 @@ import {
   type PluginSpec,
   type Transaction,
 } from '@milkdown/kit/prose/state';
-import { canJoin, findWrapping } from '@milkdown/kit/prose/transform';
+import { Transform, canJoin, findWrapping } from '@milkdown/kit/prose/transform';
 import { Decoration, DecorationSet, type EditorView, type NodeViewConstructor } from '@milkdown/kit/prose/view';
 import {
   $command,
@@ -172,6 +184,171 @@ const codeFenceKeymap = $useKeymap('noteCodeFence', {
     },
   },
 });
+
+/** '---', '___ ', '*** ': the rule, then the caret in a paragraph below it. The preset's rule (filtered out below) left
+ *  the rule selected at the end of a note, so the next key typed replaced it. */
+const hrInputRule = $inputRule(
+  (ctx) =>
+    new InputRule(/^(?:---|___\s|\*\*\*\s)$/, (state, _match, start, end) => {
+      const $start = state.doc.resolve(start);
+      if ($start.parent.type !== paragraphSchema.type(ctx)) return null;
+      const rest = $start.parent.content.cut(end - $start.start());
+      const nodes = [hrSchema.type(ctx).create(), paragraphSchema.type(ctx).create(null, rest)];
+      if (!$start.node(-1).canReplace($start.index(-1), $start.indexAfter(-1), Fragment.from(nodes))) return null;
+      const from = $start.before();
+      const tr = state.tr.replaceWith(from, $start.after(), nodes);
+      return tr.setSelection(TextSelection.create(tr.doc, from + nodes[0].nodeSize + 1)).scrollIntoView();
+    }),
+);
+
+/** What Milkdown's input-rule plugin keeps for undo; `text` is '\n' when Enter fired the rule ('```' Enter). */
+interface UndoableRule {
+  transform: Transform;
+  text: string;
+}
+
+/** Backspace right after a rule fired by Enter undoes it without putting the Enter back as a '\n' in the paragraph
+ *  (prosemirror's undoInputRule does): '```' + '\n' was saved as an open code fence that turned the rest of the note
+ *  into code on the next load. */
+const undoEnterRule: Command = (state, dispatch) => {
+  const undoable = customInputRulesKey.getState(state) as UndoableRule | null | undefined;
+  if (!undoable || undoable.text !== '\n') return false;
+  if (dispatch) {
+    const tr = state.tr;
+    const { steps, docs } = undoable.transform;
+    for (let i = steps.length - 1; i >= 0; i--) tr.step(steps[i].invert(docs[i]));
+    dispatch(tr.scrollIntoView());
+  }
+  return true;
+};
+
+/** Backspace at the start of a note: an empty code block becomes a paragraph, the first paragraph of a quote leaves
+ *  the quote (Milkdown's Backspace only joins textblocks, so with nothing before them they never went away). */
+const backspaceAtNoteStart =
+  (ctx: Ctx): Command =>
+  (state, dispatch) => {
+    const { selection } = state;
+    const { $from } = selection;
+    if (!(selection instanceof TextSelection) || !selection.empty || $from.parentOffset !== 0) return false;
+    if (Selection.findFrom(state.doc.resolve($from.before()), -1, true)) return false; // a textblock before: joined
+    if ($from.parent.type === codeBlockSchema.type(ctx)) {
+      if ($from.parent.content.size > 0) return false;
+      if (dispatch) {
+        const paragraph = paragraphSchema.type(ctx);
+        const tr = state.tr.setNodeMarkup($from.before(), paragraph);
+        // the empty paragraph kept after a last code block (trailing) is not needed now; two would save a '<br />'
+        const next = tr.doc.resolve($from.after());
+        if (
+          next.nodeAfter?.type === paragraph &&
+          next.nodeAfter.content.size === 0 &&
+          next.index() === tr.doc.childCount - 1
+        )
+          tr.delete(next.pos, next.pos + next.nodeAfter.nodeSize);
+        dispatch(tr);
+      }
+      return true;
+    }
+    if ($from.depth >= 2 && $from.node(-1).type === blockquoteSchema.type(ctx) && $from.index(-1) === 0)
+      return lift(state, dispatch);
+    return false;
+  };
+
+/** ArrowUp on the first line, or ArrowLeft at the very start, of a code block that opens the note: a paragraph above it
+ *  (there was no way to write above it; tables and rules get a gap cursor instead). */
+const paragraphAboveCode =
+  (key: 'up' | 'left') =>
+  (ctx: Ctx): Command =>
+  (state, dispatch, view) => {
+    const { $from, empty } = state.selection;
+    if (!empty || $from.depth !== 1 || $from.index(0) !== 0 || $from.parent.type !== codeBlockSchema.type(ctx))
+      return false;
+    if (key === 'left' ? $from.parentOffset !== 0 : !view?.endOfTextblock('up')) return false;
+    if (dispatch) {
+      const tr = state.tr.insert(0, paragraphSchema.type(ctx).create());
+      dispatch(tr.setSelection(TextSelection.create(tr.doc, 1)).scrollIntoView());
+    }
+    return true;
+  };
+
+// One command per key in a keymap: the two Backspace commands live in two keymaps.
+const undoEnterRuleKeymap = $useKeymap('noteUndoEnterRule', {
+  UndoEnterRule: { shortcuts: 'Backspace', priority: 60, command: () => undoEnterRule },
+});
+const noteStartKeymap = $useKeymap('noteStart', {
+  BackspaceAtNoteStart: { shortcuts: 'Backspace', priority: 55, command: backspaceAtNoteStart },
+  ParagraphAboveCodeUp: { shortcuts: 'ArrowUp', command: paragraphAboveCode('up') },
+  ParagraphAboveCodeLeft: { shortcuts: 'ArrowLeft', command: paragraphAboveCode('left') },
+});
+
+/** Plain text pasted (no HTML) is read as markdown, so '- [ ] a' and '## b' become blocks, and each line break stays a
+ *  line break (markdown joins a paragraph's lines, so lines pasted from a chat or an email ran together). HTML and
+ *  text pasted into code go on as before (Milkdown's clipboard plugin, used after this one). */
+const pasteTextAsMarkdown = $prose(
+  (ctx) =>
+    new Plugin({
+      key: new PluginKey('NOTE_PASTE_TEXT'),
+      props: {
+        handlePaste: (view, event) => {
+          const data = event.clipboardData;
+          if (!data || !view.editable || data.getData('text/html') || data.getData('vscode-editor-data')) return false;
+          const text = data.getData('text/plain');
+          if (!text || view.state.selection.$from.parent.type.spec.code) return false;
+          const doc = ctx.get(parserCtx)(text);
+          if (!doc || typeof doc === 'string') return false;
+          const hardbreak = hardbreakSchema.type(ctx);
+          const lines = new Transform(doc);
+          doc.descendants((node, pos) => {
+            if (node.type === hardbreak && node.attrs.isInline) lines.setNodeMarkup(pos, undefined, { isInline: false });
+          });
+          const schema = ctx.get(schemaCtx);
+          const only = lines.doc.childCount === 1 ? lines.doc.firstChild : null;
+          if (!text.trim().includes('\n')) {
+            if (only?.type === paragraphSchema.type(ctx)) {
+              // one line of text: its inline content, with the spaces around it that markdown trims
+              const [lead, trail] = [/^\s*/.exec(text)![0], /\s*$/.exec(text)![0]];
+              let inline = only.content;
+              if (lead) inline = Fragment.from(schema.text(lead)).append(inline);
+              if (trail) inline = inline.append(Fragment.from(schema.text(trail)));
+              view.dispatch(view.state.tr.replaceSelection(new Slice(inline, 0, 0)).scrollIntoView());
+              return true;
+            }
+            // one line of block syntax ('## a', '- [ ] a') inside a line of text stays as typed: a block only starts
+            // a line
+            if (view.state.selection.$from.parent.content.size > 0) {
+              view.dispatch(view.state.tr.insertText(text).scrollIntoView());
+              return true;
+            }
+          }
+          // as the clipboard plugin does: through the DOM, for a slice that joins the text around the caret
+          const slice = DOMParser.fromSchema(schema).parseSlice(
+            DOMSerializer.fromSchema(schema).serializeFragment(lines.doc.content),
+          );
+          const node = isTextOnlySlice(slice);
+          view.dispatch(
+            (node ? view.state.tr.replaceSelectionWith(node, true) : view.state.tr.replaceSelection(slice)).scrollIntoView(),
+          );
+          return true;
+        },
+      },
+    }),
+);
+
+/** Images: only the app's own files load (as in note-markdown.tsx); any other image (pasted from a web page, or
+ *  ![](https://...)) shows as text, so the editor never asks another site for anything. The markdown is unchanged. */
+const isLocalSrc = (src: string) => (src.startsWith('/') && !src.startsWith('//')) || /^(data|blob):/i.test(src);
+function imageView(fallbackAlt: string) {
+  return $view(
+    imageSchema.node,
+    (): NodeViewConstructor => (node) => {
+      const src = String(node.attrs.src);
+      if (isLocalSrc(src)) return { dom: DOMSerializer.renderSpec(document, node.type.spec.toDOM!(node)).dom };
+      const dom = document.createElement('span');
+      dom.className = 'note-image-external';
+      dom.textContent = `[${String(node.attrs.alt) || fallbackAlt}: ${src}]`;
+      return { dom };
+    },
+  );
+}
 
 /* -------------------------------------------------------------------------------------------------------------------
  * Ticking a task: a real checkbox (mouse) in a node view, Cmd/Ctrl+Enter inside a task (keyboard). A tick is its own
@@ -458,6 +635,12 @@ class SlashController {
             if (!this.element.contains(event.relatedTarget as Node | null)) this.#provider?.hide();
             return false;
           },
+          // Back in the editor with a '/query' before the caret: the menu shows again (a focus makes no transaction,
+          // so it stayed hidden while Enter and the arrows still acted on it)
+          focus: (view) => {
+            this.#provider?.update(view);
+            return false;
+          },
           // The provider skips updates while composing, and the state may not change at compositionend
           compositionend: (view) => {
             setTimeout(() => this.#provider?.update(view));
@@ -560,7 +743,14 @@ function SlashMenu({ slash }: { slash: SlashController }) {
   }, [active, slash]);
   if (!open) return null;
   return (
-    <ul role="listbox" id={slash.listId} aria-label={t('Chèn khối')} className="note-popover-list">
+    // a press anywhere on the list (padding, scrollbar too) keeps the focus in the editor and the menu open
+    <ul
+      role="listbox"
+      id={slash.listId}
+      aria-label={t('Chèn khối')}
+      className="note-popover-list"
+      onMouseDown={(event) => event.preventDefault()}
+    >
       {items.map((item, i) => (
         <li
           key={item.id}
@@ -568,7 +758,6 @@ function SlashMenu({ slash }: { slash: SlashController }) {
           role="option"
           aria-selected={i === index}
           className="note-popover-option"
-          onMouseDown={(event) => event.preventDefault()}
           onMouseEnter={() => slash.setIndex(i)}
           onClick={() => slash.choose(i)}
         >
@@ -629,15 +818,23 @@ function pageKeys(keys: { current: { onEscape?: () => void; onSubmit?: () => voi
   );
 }
 
-/** Tells the page at once that the text changed (Milkdown's listener reports the markdown 200 ms later). */
+/**
+ * Tells the page at once that the text changed (Milkdown's listener reports the markdown 200 ms later). Changes made by
+ * plugins on their own (the trailing paragraph after a last code block) are no input.
+ */
 function inputSignal(onInput: () => void) {
+  const key = new PluginKey<number>('NOTE_INPUT');
   return $prose(
     () =>
-      new Plugin({
-        key: new PluginKey('NOTE_INPUT'),
+      new Plugin<number>({
+        key,
+        state: {
+          init: () => 0,
+          apply: (tr, count) => (tr.docChanged && !tr.getMeta('appendedTransaction') ? count + 1 : count),
+        },
         view: () => ({
           update: (view, prev) => {
-            if (!prev.doc.eq(view.state.doc)) onInput();
+            if (key.getState(view.state) !== key.getState(prev)) onInput();
           },
         }),
       }),
@@ -696,12 +893,15 @@ export default function NoteEditor({
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const [opening] = useState(() => ({
-    markdown: defaultMarkdown,
     label,
     placeholder: placeholder ?? '',
     items: slashItems(t),
     taskLabel: t('Đã xong'),
+    imageLabel: t('Ảnh'),
   }));
+  // The text as last reported: an effect that runs again on this component (Fast Refresh, <Activity>) makes its editor
+  // from it, not from the first render's text, which would drop what was typed since
+  const latest = useRef(defaultMarkdown);
   const [ready, setReady] = useState<Ready | null>(null);
   const keys = useRef<{ onEscape?: () => void; onSubmit?: () => void }>({});
   useEffect(() => {
@@ -724,23 +924,20 @@ export default function NoteEditor({
     const root = host.appendChild(document.createElement('div'));
     const slash = new SlashController(opening.items, base);
     const picker = new LinkPicker(base);
-    let last = opening.markdown;
+    // The text as last reported. Once the editor is ready it is the note as Milkdown writes it (`*` bullets as `-`,
+    // for one): a note that is only opened is never reported, so never saved again
+    let last = latest.current;
+    let opened = false;
     const report = (next: string) => {
       if (next === last) return;
       last = next;
+      latest.current = next;
       emitChange(next);
     };
-    // The text as opened: until it changes, nothing is reported (Milkdown writes markdown its own way, `*` bullets as
-    // `-` for one; a note only opened must not be saved again)
-    let opened: ProseNode | null = null;
-    const changed = () =>
-      editor.status === EditorStatus.Created &&
-      opened !== null &&
-      !editor.action((ctx) => ctx.get(editorViewCtx).state.doc.eq(opened!));
     const editor = Editor.make()
       .config((ctx) => {
         ctx.set(rootCtx, root);
-        ctx.set(defaultValueCtx, opening.markdown);
+        ctx.set(defaultValueCtx, latest.current);
         ctx.set(rootAttrsCtx, { class: 'milkdown note-editor-root' });
         ctx.update(editorViewOptionsCtx, (prev) => ({
           ...prev,
@@ -760,18 +957,33 @@ export default function NoteEditor({
         ctx.update(remarkStringifyOptionsCtx, (prev) => ({ ...prev, bullet: '-' as const, rule: '-' as const }));
         ctx.get(listenerCtx).markdownUpdated((_ctx, next) => report(next));
         ctx.set(slash.plugin.key, slash.spec(ctx));
+        // A paragraph after a code block that ends the note, to click or arrow into (Enter only adds lines to the
+        // code). Only there: after a list or a quote Enter twice already leaves, and a second empty paragraph would be
+        // saved as '<br />'. The last empty paragraph itself is never saved.
+        ctx.update(trailingConfig.key, (prev) => ({
+          ...prev,
+          shouldAppend: (lastNode) => lastNode?.type.name === 'code_block',
+        }));
       })
-      .use(commonmark)
+      .use(commonmark.filter((plugin) => plugin !== insertHrInputRule))
       .use(gfm)
       .use(listener)
       .use(history)
+      .use(pasteTextAsMarkdown) // before the clipboard plugin: plain text keeps its line breaks
+      .use(clipboard) // markdown in text/plain: pasted as blocks, copied as markdown
+      .use(trailing)
       .use(taskInputRule)
+      .use(hrInputRule)
       .use(wrapInTaskListCommand)
       .use(codeFenceKeymap)
+      .use(undoEnterRuleKeymap)
+      .use(noteStartKeymap)
       .use(taskKeymap)
       .use(taskItemView(opening.taskLabel))
+      .use(imageView(opening.imageLabel))
       .use(placeholderPlugin(opening.placeholder))
       .use(slash.plugin)
+      .use(gapCursorPlugin) // a caret before or after a table or a rule at either end of the note (after the menu's keys)
       .use(picker.plugin)
       .use(linkClickGuard)
       .use(pageKeys(keys))
@@ -780,10 +992,17 @@ export default function NoteEditor({
     editor.create().then(
       () => {
         if (!alive) return;
-        opened = editor.action((ctx) => ctx.get(editorViewCtx).state.doc);
+        last = editor.action(getMarkdown());
+        opened = true;
         const focus = (at: 'end' | 'first-empty') => editor.action((ctx) => placeCaret(ctx.get(editorViewCtx), at));
         setReady({ slash, picker, focus });
-        emitReady({ markdown: () => (changed() ? editor.action(getMarkdown()) : null) });
+        emitReady({
+          markdown: () => {
+            if (editor.status !== EditorStatus.Created) return null;
+            const now = editor.action(getMarkdown());
+            return now === last ? null : now;
+          },
+        });
         if (firstFocus() > 0) focus(caret);
       },
       (error: unknown) => console.error(error),
@@ -792,7 +1011,7 @@ export default function NoteEditor({
       alive = false;
       root.hidden = true;
       // markdownUpdated waits 200 ms: what was typed in that time is reported now
-      if (changed()) report(editor.action(getMarkdown()));
+      if (opened && editor.status === EditorStatus.Created) report(editor.action(getMarkdown()));
       emitReady(null);
       // no setState here: React would keep the update queued on the unmounted component
       void editor.destroy().then(() => root.remove());
