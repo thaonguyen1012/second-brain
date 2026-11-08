@@ -9,6 +9,7 @@ import { msg, type Msg } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import {
   Menu,
+  MenuGroup,
   MenuGroupLabel,
   MenuItem,
   MenuPopup,
@@ -67,26 +68,28 @@ export default function EvidenceMenu({ newsItem }: { newsItem: number }) {
           <TooltipPopup>{t('Thêm làm bằng chứng')}</TooltipPopup>
         </Tooltip>
         <MenuPopup align="end" className="w-72">
-          <MenuGroupLabel>{t('Cơ hội đang mở')}</MenuGroupLabel>
-          {opps.error && <MenuItem disabled>{describeApiError(opps.error, t).title}</MenuItem>}
-          {!opps.error && !opps.data && <MenuItem disabled>{t('Đang tải…')}</MenuItem>}
-          {opps.data?.length === 0 && (
-            <MenuItem render={<Link href="/co-hoi/" />}>{t('Chưa có cơ hội nào, tạo ở trang Cơ hội')}</MenuItem>
-          )}
-          {opps.data?.map((o) => (
-            <MenuSub key={o.id}>
-              <MenuSubTrigger>
-                <span className="truncate">{o.title}</span>
-              </MenuSubTrigger>
-              <MenuSubPopup>
-                {stances.map((s) => (
-                  <MenuItem key={s.value} onClick={() => void attach(o.id, o.title, s.value)}>
-                    {t(s.label)}
-                  </MenuItem>
-                ))}
-              </MenuSubPopup>
-            </MenuSub>
-          ))}
+          <MenuGroup>
+            <MenuGroupLabel>{t('Cơ hội đang mở')}</MenuGroupLabel>
+            {opps.error && <MenuItem disabled>{describeApiError(opps.error, t).title}</MenuItem>}
+            {!opps.error && !opps.data && <MenuItem disabled>{t('Đang tải…')}</MenuItem>}
+            {opps.data?.length === 0 && (
+              <MenuItem render={<Link href="/co-hoi/" />}>{t('Chưa có cơ hội nào, tạo ở trang Cơ hội')}</MenuItem>
+            )}
+            {opps.data?.map((o) => (
+              <MenuSub key={o.id}>
+                <MenuSubTrigger>
+                  <span className="truncate">{o.title}</span>
+                </MenuSubTrigger>
+                <MenuSubPopup>
+                  {stances.map((s) => (
+                    <MenuItem key={s.value} onClick={() => void attach(o.id, o.title, s.value)}>
+                      {t(s.label)}
+                    </MenuItem>
+                  ))}
+                </MenuSubPopup>
+              </MenuSub>
+            ))}
+          </MenuGroup>
         </MenuPopup>
       </Menu>
     </div>

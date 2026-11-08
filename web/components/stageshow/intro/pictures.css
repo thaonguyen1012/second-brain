@@ -430,6 +430,10 @@
   color: var(--ss-icon);
 }
 
+.ssg-intro .hs-panel__head svg {
+  flex: none;
+}
+
 .ssg-intro .hs-panel__title {
   color: var(--ss-text-strong);
   font-family: var(--ss-heading);

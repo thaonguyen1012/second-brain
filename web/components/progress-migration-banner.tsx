@@ -125,7 +125,7 @@ export function ProgressMigrationBanner() {
           </p>
         )}
       </AlertDescription>
-      <AlertAction className="flex-wrap justify-end">
+      <AlertAction className="flex-wrap justify-end max-sm:col-start-2 max-sm:row-start-auto max-sm:row-end-auto max-sm:ms-0 max-sm:mt-2 max-sm:justify-start">
         <Button size="sm" onClick={run} loading={running}>
           {error ? t('Thử lại') : t('Chuyển lên server')}
         </Button>
