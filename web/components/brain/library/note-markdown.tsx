@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useMemo, type ComponentProps } from 'react';
+import { Children, isValidElement, useMemo, type ComponentProps, type ReactNode } from 'react';
 import { Square, SquareCheckBig } from 'lucide-react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -26,33 +26,72 @@ function rest<T extends { node?: unknown }>(props: T): Omit<T, 'node'> {
 }
 
 // Type sizes stay inside DESIGN.md §2: a note heading is at most 15px (the card title role), body text 14/23.
-// A note sits under the page's h1, the "Ghi chú" h2 and its own h3 title, so its headings start at h4.
-const heading = 'font-heading font-semibold tracking-tight text-foreground';
+// A note sits under the page's h1, the "Ghi chú" h2 and its own h3 title, so its headings start at h4. Each block has
+// the editor's size and spacing (note-editor.css), so nothing moves when the editor takes the note's place (the
+// pencil on the Item page, the editor's loading state).
+const heading = 'font-heading font-semibold tracking-tight text-foreground first:mt-0 last:mb-0';
+const headingLarge = cn(heading, 'mt-5 mb-2 text-[15px] leading-5');
+const headingSmall = cn(heading, 'mt-4 mb-2 text-sm');
+const headingPage = cn(heading, 'mt-5 mb-2 text-[18px] leading-7'); // a note page's first level, as its editor's
+
+/** Where the note is read: inline (the Item page) or as the note page, whose first heading level is larger (still
+ *  below the page's title), as in the editor there. */
+export type NoteLook = 'inline' | 'page';
+
+// Lists, apart from the renderers below: a done task tells the lists under it from its own text by them
+const ul = (p: Props<'ul'>) => (
+  <ul {...rest(p)} className="my-2 flex list-disc flex-col gap-1 ps-5 first:mt-0 last:mb-0" />
+);
+const ol = (p: Props<'ol'>) => (
+  <ol {...rest(p)} className="my-2 flex list-decimal flex-col gap-1 ps-5 first:mt-0 last:mb-0" />
+);
+/** A done task's own text, muted and struck through: each run of what it holds apart from the lists under it. */
+const doneText = (children: ReactNode): ReactNode[] => {
+  const out: ReactNode[] = [];
+  let run: ReactNode[] = [];
+  const flush = () => {
+    if (run.some((child) => typeof child !== 'string' || child.trim()))
+      out.push(
+        <div key={`done-${out.length}`} className="text-muted-foreground line-through">
+          {run}
+        </div>,
+      );
+    else out.push(...run);
+    run = [];
+  };
+  for (const child of Children.toArray(children)) {
+    if (isValidElement(child) && (child.type === ul || child.type === ol)) {
+      flush();
+      out.push(child);
+    } else run.push(child);
+  }
+  flush();
+  return out;
+};
 
 /** The renderers of each markdown element, with the few words they add in the UI language. */
-const makeComponents = (t: T): Components => ({
-  h1: (p: Props<'h1'>) => <h4 {...rest(p)} className={cn(heading, 'mt-5 mb-2 text-[15px] leading-5 first:mt-0')} />,
-  h2: (p: Props<'h2'>) => <h4 {...rest(p)} className={cn(heading, 'mt-5 mb-2 text-[15px] leading-5 first:mt-0')} />,
-  h3: (p: Props<'h3'>) => <h5 {...rest(p)} className={cn(heading, 'mt-4 mb-1.5 text-sm first:mt-0')} />,
-  h4: (p: Props<'h4'>) => <h6 {...rest(p)} className={cn(heading, 'mt-4 mb-1.5 text-sm first:mt-0')} />,
-  h5: (p: Props<'h5'>) => <h6 {...rest(p)} className={cn(heading, 'mt-4 mb-1.5 text-sm first:mt-0')} />,
-  h6: (p: Props<'h6'>) => <h6 {...rest(p)} className={cn(heading, 'mt-4 mb-1.5 text-sm first:mt-0')} />,
+const makeComponents = (t: T, noteLook: NoteLook): Components => ({
+  h1: (p: Props<'h1'>) => <h4 {...rest(p)} className={noteLook === 'page' ? headingPage : headingLarge} />,
+  h2: (p: Props<'h2'>) => <h4 {...rest(p)} className={headingLarge} />,
+  h3: (p: Props<'h3'>) => <h5 {...rest(p)} className={headingSmall} />,
+  h4: (p: Props<'h4'>) => <h6 {...rest(p)} className={headingSmall} />,
+  h5: (p: Props<'h5'>) => <h6 {...rest(p)} className={headingSmall} />,
+  h6: (p: Props<'h6'>) => <h6 {...rest(p)} className={headingSmall} />,
   p: (p: Props<'p'>) => <p {...rest(p)} className="my-2 first:mt-0 last:mb-0" />,
-  ul: (p: Props<'ul'>) => <ul {...rest(p)} className="my-2 flex list-disc flex-col gap-1 ps-5 first:mt-0 last:mb-0" />,
-  ol: (p: Props<'ol'>) => <ol {...rest(p)} className="my-2 flex list-decimal flex-col gap-1 ps-5 first:mt-0 last:mb-0" />,
-  // A task (- [ ] / - [x]) carries its own box at the list's edge instead of a bullet, as in the editor; the other items
-  // of the same list keep theirs. A done task reads as done (muted, struck through), as in the editor.
-  li: ({ className, node, ...p }: Props<'li'>) => {
+  ul,
+  ol,
+  // A task (- [ ] / - [x]) carries its own box at the list's edge instead of a bullet, as in the editor; the other
+  // items of the same list keep theirs. A done task reads as done (muted, struck through), as in the editor: its own
+  // text, not the open subtasks under it.
+  li: ({ className, node, children, ...p }: Props<'li'>) => {
     const task = className?.includes('task-list-item');
     return (
       <li
         {...p}
-        className={cn(
-          'ps-0.5 marker:text-muted-foreground [&>ol]:my-1 [&>ul]:my-1',
-          task && 'relative -ms-5 list-none ps-6',
-          task && taskDone(node) && 'text-muted-foreground line-through',
-        )}
-      />
+        className={cn('marker:text-muted-foreground [&>ol]:my-1 [&>ul]:my-1', task && 'relative -ms-5 list-none ps-6')}
+      >
+        {task && taskDone(node) ? doneText(children) : children}
+      </li>
     );
   },
   // A task box is drawn, not a control: the note is edited as text for now (the block editor will tick boxes). The
@@ -71,7 +110,7 @@ const makeComponents = (t: T): Components => ({
   blockquote: (p: Props<'blockquote'>) => (
     <blockquote {...rest(p)} className="my-3 border-s-2 ps-3 text-muted-foreground first:mt-0 last:mb-0" />
   ),
-  hr: () => <hr className="my-4 border-border" />,
+  hr: () => <hr className="my-4 border-border first:mt-0 last:mb-0" />,
   a: ({ href, children }: Props<'a'>) => {
     const target = markdownHref(href);
     const look = 'text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary break-words';
@@ -100,7 +139,7 @@ const makeComponents = (t: T): Components => ({
     const local = noteImageSrc(url);
     if (local)
       // eslint-disable-next-line @next/next/no-img-element -- a local file of the app; next/image adds nothing here
-      return <img src={local} alt={alt ?? ''} loading="lazy" decoding="async" className="my-2 max-h-96 max-w-full rounded-md" />;
+      return <img src={local} alt={alt ?? ''} loading="lazy" decoding="async" className="max-h-96 max-w-full rounded-md" />;
     const link = markdownHref(url);
     const label = alt ? t('Ảnh: {alt}', { alt }) : t('Ảnh');
     // never loaded from another domain: the reader opens it on purpose
@@ -184,9 +223,17 @@ function remarkEmptyLines() {
 const plugins = [remarkGfm, remarkEmptyLines];
 
 /** Renders `markdown` (GFM: tables, task lists, strikethrough, autolinks) as the note's reading text. */
-export default function NoteMarkdown({ markdown, className }: { markdown: string; className?: string }) {
+export default function NoteMarkdown({
+  markdown,
+  look = 'inline',
+  className,
+}: {
+  markdown: string;
+  look?: NoteLook;
+  className?: string;
+}) {
   const t = useT();
-  const components = useMemo(() => makeComponents(t), [t]);
+  const components = useMemo(() => makeComponents(t, look), [t, look]);
   return (
     <div className={cn('min-w-0 text-sm leading-relaxed break-words text-foreground', className)}>
       <Markdown remarkPlugins={plugins} components={components}>

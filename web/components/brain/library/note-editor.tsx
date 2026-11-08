@@ -50,12 +50,12 @@ import { InputRule } from '@milkdown/kit/prose/inputrules';
 import { liftListItem } from '@milkdown/kit/prose/schema-list';
 import { DOMParser, DOMSerializer, Fragment, Slice, type NodeType } from '@milkdown/kit/prose/model';
 import {
+  EditorState,
   Plugin,
   PluginKey,
   Selection,
   TextSelection,
   type Command,
-  type EditorState,
   type PluginSpec,
   type Transaction,
 } from '@milkdown/kit/prose/state';
@@ -67,7 +67,6 @@ import {
   $prose,
   $useKeymap,
   $view,
-  callCommand,
   getMarkdown,
   type $Command,
 } from '@milkdown/kit/utils';
@@ -75,10 +74,11 @@ import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } fro
 import { createPortal } from 'react-dom';
 import { useT } from '@/lib/i18n/client';
 import { noteImageSrc } from '@/lib/item-notes';
+import { noteStringifyOptions } from '@/lib/note-stringify';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 import { noteEditorFrame, type NoteEditorHandle, type NoteEditorProps } from './note-editor-types';
-import { LinkPicker, LinkPickerList } from './note-link-picker';
+import { LinkPicker, LinkPickerList, revealOption } from './note-link-picker';
 
 // The note editor (DECISIONS 9.8, PROMPT-item-notes step 4): Milkdown 7.23 (commonmark + gfm + listener + history),
 // markdown in and markdown out, so a note stays one markdown text (4.1, 4.7). Bullets are saved as `-`; Milkdown's
@@ -571,6 +571,25 @@ function inListLine(state: EditorState, ctx: Ctx): boolean {
 }
 
 /**
+ * The document and selection of `state` (or of a transaction on its way) in a state without plugins. What the menu
+ * tries out runs there: EditorState.apply runs every plugin's apply, and Milkdown's listener then reported a line
+ * lifted out of its list that the editor never showed, which autosave sent (and kept in the local copy).
+ */
+function bareState(from: EditorState | Transaction): EditorState {
+  return EditorState.create({ doc: from.doc, selection: from.selection });
+}
+
+/** Runs `command` on what `tr` holds now (in a bare state) and adds what it did to `tr`, which nothing has seen yet. */
+function runInto(tr: Transaction, command: Command): boolean {
+  return command(bareState(tr), (done) => {
+    for (const step of done.steps) tr.step(step);
+    if (done.selectionSet) tr.setSelection(Selection.fromJSON(tr.doc, done.selection.toJSON()));
+    if (done.storedMarksSet) tr.setStoredMarks(done.storedMarks);
+    if (done.scrolledIntoView) tr.scrollIntoView();
+  });
+}
+
+/**
  * How a block goes on the caret's line: 0 = at once, n = after lifting the line n levels out of its lists (a heading,
  * a quote or code cannot open a list item; "Văn bản" on a list line means leaving the lists), null = not here.
  */
@@ -579,7 +598,7 @@ function slashLifts(ctx: Ctx, state: EditorState, item: ShownSlashItem): number 
   if (!(item.id === 'text' && onList) && canRun(ctx, state, item)) return 0;
   if (!onList) return null;
   const listItem = listItemSchema.type(ctx);
-  let now = state;
+  let now = bareState(state);
   for (let level = 1; level <= 8; level++) {
     const from = now;
     const lifted: EditorState[] = [];
@@ -633,21 +652,30 @@ class SlashController {
 
   setIndex = (index: number) => this.#set({ index });
 
-  /** Deletes '/query' (and the space before it), then runs the block's command. */
+  /**
+   * Deletes '/query' (and the space before it), lifts a list line out of its lists when the block needs it, then runs
+   * the block's command: one transaction, so one Cmd/Ctrl+Z brings '/query' back (history starts a new event after
+   * a delete only for steps next to it, which a lift or a wrap is not).
+   */
   choose = (index = this.#snapshot.index): boolean => {
     const view = this.#view;
     const ctx = this.#ctx;
     const active = view && this.#active(view);
     const item = active?.items[index];
     if (!view || !ctx || !active || !item) return false;
-    view.dispatch(closeHistory(view.state.tr.delete(active.from, active.to))); // Cmd/Ctrl+Z brings '/query' back
-    // a list line leaves its lists first (in the same undo step)
-    const lifts = slashLifts(ctx, view.state, item) ?? 0;
-    for (let i = 0; i < lifts; i++) liftListItem(listItemSchema.type(ctx))(view.state, view.dispatch);
-    const done = item.id === 'text' && lifts > 0 ? true : callCommand(item.command.key, item.payload)(ctx);
+    const tr = view.state.tr.delete(active.from, active.to);
+    const lifts = slashLifts(ctx, bareState(tr), item) ?? 0;
+    let done = true;
+    for (let i = 0; i < lifts && done; i++) done = runInto(tr, liftListItem(listItemSchema.type(ctx)));
+    // "Văn bản" on a list line is the line out of its lists
+    if (done && !(item.id === 'text' && lifts > 0))
+      done = runInto(tr, ctx.get(commandsCtx).get(item.command.key)(item.payload));
+    if (!done) return false; // nothing changes: '/query' stays as typed
+    view.dispatch(closeHistory(tr).scrollIntoView()); // not joined to the typing before it
+    view.dispatch(closeHistory(view.state.tr)); // typing in the new block starts the next undo step
     this.#provider?.hide();
     view.focus();
-    return done;
+    return true;
   };
 
   /** The ProseMirror plugin spec for slashFactory's slice (set in Editor.config). */
@@ -775,7 +803,7 @@ function SlashMenu({ slash }: { slash: SlashController }) {
   const { open, items, index } = useSyncExternalStore(slash.subscribe, slash.getSnapshot, slash.getSnapshot);
   const active = open ? items[index] : undefined;
   useEffect(() => {
-    if (active) document.getElementById(slash.optionId(active))?.scrollIntoView({ block: 'nearest' });
+    if (active) revealOption(document.getElementById(slash.optionId(active)));
   }, [active, slash]);
   // In the page whenever there are blocks to offer (hidden until the menu shows): the menu is placed by its real
   // size, so near the bottom of the screen it opens above the caret
@@ -992,25 +1020,8 @@ export default function NoteEditor({
         // Text typed at either end of a link stays outside it (the preset's link mark is inclusive, so the next
         // character, an IME composition, or text after undo joined the link)
         ctx.update(linkSchema.key, (prev) => (c) => ({ ...prev(c), inclusive: false }));
-        // `-` bullets and `---` rules, as people type them (remark's defaults are `*` and `***`)
-        ctx.update(remarkStringifyOptionsCtx, (prev) => ({
-          ...prev,
-          bullet: '-' as const,
-          rule: '-' as const,
-          handlers: {
-            ...prev.handlers,
-            // Milkdown writes a text run that ends in a space (before a mark, a link or code) as it is, so a "`", "#",
-            // "[", "<" or "1." in it came back as code, a heading, a link, HTML or a list on reload. Escaped as remark
-            // does, except the trailing space, which remark would write as `&#x20;`.
-            text: (node, _parent, state, info) => {
-              const value: string = node.value;
-              const body = value.trimEnd();
-              const space = value.slice(body.length);
-              if (!body) return value;
-              return state.safe(body, { ...info, ...(space && { after: space[0] }), encode: [] }) + space;
-            },
-          },
-        }));
+        // `-` bullets and `---` rules, and text runs written so that they read back as typed (lib/note-stringify.ts)
+        ctx.update(remarkStringifyOptionsCtx, noteStringifyOptions);
         ctx.get(listenerCtx).markdownUpdated((_ctx, next) => report(next));
         ctx.set(slash.plugin.key, slash.spec(ctx));
         // A paragraph after a code block that ends the note, to click or arrow into (Enter only adds lines to the

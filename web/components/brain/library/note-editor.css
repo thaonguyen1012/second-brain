@@ -56,12 +56,28 @@
   display: block;
 }
 
-/* Text: the reading look of a note (note-markdown.tsx; DESIGN.md §2 body 14/23, headings at most 15px inline) */
+/* Text: the reading look of a note, block by block (note-markdown.tsx draws the same sizes and spacing, and shows the
+   note while this chunk loads, so nothing moves when the editor comes; DESIGN.md §2 body 14/23, headings at most 15px
+   inline) */
 .note-editor > * + * {
   margin-top: 0.5rem;
 }
 :where(.note-editor p) {
   margin: 0; /* no specificity: paragraphs keep the 0.5rem between blocks */
+}
+/* a paragraph after another block inside a quote or a list item, as between the note's own blocks */
+.note-editor :is(blockquote, li, .task-content) > * + p {
+  margin-top: 0.5rem;
+}
+/* the first and last block of the note, of a quote and of a list item have no outer margin, as when read (a gap
+   cursor drawn before or after a table or a rule is no block: the table does not move when it shows) */
+.note-editor > :nth-child(1 of :not(.ProseMirror-gapcursor)),
+.note-editor :is(blockquote, li, .task-content) > :nth-child(1 of :not(.ProseMirror-gapcursor)) {
+  margin-top: 0;
+}
+.note-editor > :nth-last-child(1 of :not(.ProseMirror-gapcursor)),
+.note-editor :is(blockquote, li, .task-content) > :nth-last-child(1 of :not(.ProseMirror-gapcursor)) {
+  margin-bottom: 0;
 }
 .note-editor :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--font-heading);
@@ -69,9 +85,6 @@
   letter-spacing: -0.01em;
   color: var(--foreground);
   margin: 1.25rem 0 0.5rem;
-}
-.note-editor > :is(h1, h2, h3, h4, h5, h6):first-child {
-  margin-top: 0;
 }
 .note-editor :is(h1, h2) {
   font-size: 15px;
@@ -95,16 +108,13 @@
   flex-direction: column;
   gap: 0.25rem;
 }
-.note-editor > :is(ul, ol):first-child {
-  margin-top: 0;
-}
 .note-editor ul {
   list-style: disc;
 }
 .note-editor ol {
   list-style: decimal;
 }
-.note-editor li > :is(ul, ol) {
+.note-editor :is(li, .task-content) > :is(ul, ol) {
   margin: 0.25rem 0;
 }
 .note-editor li::marker {
@@ -133,7 +143,7 @@
   font-size: 13px;
   border-radius: 4px;
   background: var(--muted);
-  padding: 0.1em 0.3em;
+  padding: 0.125rem 0.25rem;
 }
 .note-editor pre {
   margin: 0.75rem 0;
@@ -152,7 +162,9 @@
   display: block; /* a wide table scrolls inside itself, never the page (390 px) */
   max-width: 100%;
   overflow-x: auto;
+  margin: 0.75rem 0;
   font-size: 14px;
+  line-height: 20px;
 }
 /* the rows (one tbody) are the table's box: the full width, as when read, and wider when the cells need it */
 .note-editor table > tbody {
@@ -169,6 +181,7 @@
 }
 .note-editor th {
   font-size: 12px;
+  line-height: 16px;
   font-weight: 500;
   color: var(--muted-foreground);
 }
@@ -200,11 +213,12 @@
   content: none;
 }
 
-/* Tasks (node view: li > span.task-box > input, li > div.task-content) */
+/* Tasks (node view: li > span.task-box > input, li > div.task-content). The box is one line high, its top on the
+   text's (baseline alignment put the checkbox's bottom on the text's baseline: each task row 3 px taller than read) */
 .note-editor li[data-item-type='task'] {
   list-style: none;
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 0.5rem;
   margin-inline-start: -1.25rem;
 }
@@ -227,8 +241,9 @@
   flex: 1;
   min-width: 0;
 }
-/* a done task reads as done, here and when read (note-markdown.tsx) */
-.note-editor li[data-item-type='task'][data-checked='true'] > .task-content {
+/* a done task reads as done, here and when read (note-markdown.tsx): its own text, never a list under it (a line
+   through a block reaches everything inside it, open subtasks too) */
+.note-editor li[data-item-type='task'][data-checked='true'] > .task-content > :not(ul, ol) {
   color: var(--muted-foreground);
   text-decoration: line-through;
 }
@@ -242,6 +257,7 @@
   display: none;
 }
 .note-popover-list {
+  position: relative; /* the options' offsetTop counts from here (revealOption) */
   margin: 0;
   padding: 0.25rem;
   list-style: none;

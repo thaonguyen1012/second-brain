@@ -9,20 +9,21 @@ import { noteEditorFrame, type NoteEditorProps } from './note-editor-types';
 const Editor = lazy(() => import('./note-editor'));
 
 /**
- * The note editor, loaded on first use. Until its chunk arrives the note shows as it reads (NoteBody: the blocks the
- * editor draws, at its text size), in the frame the editor will take, so nothing jumps; it cannot be used meanwhile.
+ * The note editor, loaded on first use. Until its chunk arrives the note shows as it reads (NoteBody: each block at the
+ * editor's size and spacing, the editor's text size and height), in the frame the editor will take, so nothing jumps;
+ * it cannot be used meanwhile.
  */
 export function NoteEditor(props: NoteEditorProps) {
+  const page = props.variant === 'page';
   return (
     <Suspense
       fallback={
         <div aria-busy="true" inert className={cn(noteEditorFrame(props.variant), props.className)}>
           <NoteBody
             markdown={props.defaultMarkdown}
-            className={cn(
-              'text-base sm:text-sm sm:leading-[23px]',
-              props.variant === 'page' ? 'min-h-64' : 'min-h-30',
-            )}
+            look={page ? 'page' : 'inline'}
+            // the frame's text size and line height again (NoteMarkdown sets its own), the editor's least height
+            className={cn('text-base leading-relaxed sm:text-sm sm:leading-[23px]', page ? 'min-h-64' : 'min-h-30')}
           />
         </div>
       }

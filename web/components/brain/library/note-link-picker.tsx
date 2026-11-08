@@ -190,6 +190,9 @@ export class LinkPicker {
     };
     // laid out but unseen while it is measured: a hidden (display: none) element has no size or offset parent
     el.dataset.show = 'true';
+    // measured from the editor's left edge, not from where it was: grown there (the results came), the list could
+    // reach past the screen's edge until it is placed, and on a phone that widened the page and scrolled it
+    el.style.left = '0px';
     void computePosition(caret, el, {
       placement: 'bottom-start',
       middleware: [
@@ -297,6 +300,20 @@ export class LinkPicker {
   }
 }
 
+/**
+ * Scrolls the menu list that holds `option` so that the option shows whole: the list's own scrollTop only.
+ * scrollIntoView also scrolled every box around it (the page, a Sheet), and on a phone it panned the screen sideways
+ * to reach a list placed past its edge, which then stayed there.
+ */
+export function revealOption(option: HTMLElement | null): void {
+  const list = option?.closest<HTMLElement>('.note-popover-list');
+  if (!option || !list) return;
+  const top = option.offsetTop; // from the list's top: the list is positioned (note-editor.css)
+  const bottom = top + option.offsetHeight;
+  if (top < list.scrollTop) list.scrollTop = top;
+  else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+}
+
 const KIND_ORDER: LinkKind[] = ['item', 'note', 'opportunity', 'skill'];
 const KIND_LABELS: Record<LinkKind, Msg> = {
   item: msg('Item'),
@@ -353,13 +370,17 @@ export function LinkPickerList({ picker, selfNoteId }: { picker: LinkPicker; sel
   });
   useEffect(() => picker.setKeyHandler((event) => onKey(event)), [picker]);
   const activeTarget = ordered[active];
+  const activeId = activeTarget ? optionId(activeTarget) : null;
   useLayoutEffect(() => {
     if (!open) return;
     picker.updatePosition();
-    picker.setActive(activeTarget ? optionId(activeTarget) : null);
-    // the highlighted row stays in view as the arrows move it (the list scrolls past 18rem)
-    if (activeTarget) document.getElementById(optionId(activeTarget))?.scrollIntoView({ block: 'nearest' });
+    picker.setActive(activeId);
   });
+  // the highlighted row stays in view as the arrows move it (the list scrolls past 18rem); only when it changes, not
+  // at each render (results arriving, a new position)
+  useLayoutEffect(() => {
+    if (activeId) revealOption(document.getElementById(activeId));
+  }, [activeId]);
 
   if (!open) return null;
   const waiting = !found || found.query !== query || found.state === 'loading';

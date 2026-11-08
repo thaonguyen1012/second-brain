@@ -8,9 +8,17 @@ const Rendered = lazy(() => import('./note-markdown'));
 
 /**
  * A note's markdown as reading text. Until the renderer's chunk arrives the text shows as typed (same words, same
- * place), so a note never flashes empty.
+ * place), so a note never flashes empty. `look` "page" is the note page's (a larger first heading level, as its editor).
  */
-export function NoteBody({ markdown, className }: { markdown: string; className?: string }) {
+export function NoteBody({
+  markdown,
+  look,
+  className,
+}: {
+  markdown: string;
+  look?: 'inline' | 'page';
+  className?: string;
+}) {
   return (
     <Suspense
       fallback={
@@ -19,7 +27,7 @@ export function NoteBody({ markdown, className }: { markdown: string; className?
         </p>
       }
     >
-      <Rendered markdown={markdown} className={className} />
+      <Rendered markdown={markdown} look={look} className={className} />
     </Suspense>
   );
 }
