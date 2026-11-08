@@ -239,3 +239,17 @@ def test_note_search_finds_text_the_editor_escapes(client: Client) -> None:
         assert sum("library_note" in q["sql"] for q in queries.captured_queries) == 1
     [hit] = client.get("/api/notes/search", {"q": "a@b.co"}).json()["results"]
     assert hit["excerpt"] == "Hợp đồng AT&T, mail a@b.co, xem https://ex.com/a_b gấp"
+
+
+def test_note_search_reads_the_escapes_only_for_punctuation(client: Client) -> None:
+    """An escape's backslash sits right before punctuation, so a query without any matches the markdown as it
+    reads only where it matches the markdown itself: such a query runs no regex over every note."""
+    user = owner(client)
+    note = Note.objects.create(user=user, markdown="Hợp đồng AT\\&T với\\_nhau")
+    Note.objects.create(user=user, markdown="khác")
+    for query, regex in (("hợp đồng", False), ("AT", False), ("AT&T", True), ("với_nhau", True)):
+        for path in ("/api/notes", "/api/notes/search"):
+            with CaptureQueriesContext(connection) as queries:
+                found = client.get(path, {"q": query}).json()["results"]
+            assert [n["id"] for n in found] == [note.pk]
+            assert any("REGEXP_REPLACE" in q["sql"] for q in queries.captured_queries) is regex

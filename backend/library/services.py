@@ -47,6 +47,8 @@ _HTTP_URL = URLValidator(schemes=["http", "https"])
 # Item fields an API write may set (POST/PATCH /api/items; /api/projects sends a subset).
 ITEM_FIELDS = ("type", "status", "title", "tags", "source", "rating", "started_at", "finished_at")
 NOTE_FIELDS = ("title", "markdown")
+# The ASCII punctuation a backslash may escape in markdown (CommonMark), as the editor writes `AT\&T`
+_ESCAPABLE = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
 EXCERPT_CHARS = 120
 EXCERPT_BEFORE = 40
 # Note labels (title, excerpt) read the same as the web's noteTitle (web/lib/library-labels.ts): the same
@@ -343,17 +345,22 @@ def notes(user: User, query: str = "", item: int | None = None) -> QuerySet[Note
     linked Item id. One query."""
     rows = Note.objects.filter(user=user)
     if query := query.strip():
-        shown = Func(
-            F("markdown"),
-            Value(r"\\([!-/:-@\[-`{-~])"),  # a backslash before ASCII punctuation (CommonMark's escapes)
-            Value(r"\1"),
-            Value("g"),
-            function="REGEXP_REPLACE",
-            output_field=TextField(),
-        )
-        rows = rows.alias(shown=shown).filter(
-            Q(title__icontains=query) | Q(markdown__icontains=query) | Q(shown__icontains=query)
-        )
+        matches = Q(title__icontains=query) | Q(markdown__icontains=query)
+        # A removed backslash sits right before the punctuation it escapes, so a query without such a
+        # character matches the shown markdown only where it matches the markdown itself: the regex, which
+        # runs on every note, is spent only on a query it can help.
+        if not _ESCAPABLE.isdisjoint(query):
+            shown = Func(
+                F("markdown"),
+                Value(r"\\([!-/:-@\[-`{-~])"),  # a backslash before ASCII punctuation (CommonMark's escapes)
+                Value(r"\1"),
+                Value("g"),
+                function="REGEXP_REPLACE",
+                output_field=TextField(),
+            )
+            rows = rows.alias(shown=shown)
+            matches |= Q(shown__icontains=query)
+        rows = rows.filter(matches)
     if item is not None:
         rows = rows.filter(items__id=item)
     return rows

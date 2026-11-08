@@ -122,6 +122,28 @@ READING_VIEW = [
     (f"<http://example.com/`> {L} `", {"item": {7}}),
     (f"http://x.co/` {L} `", {"item": {7}}),
     (f"[^1]: note\n\n    {L}", {"item": {7}}),
+    # a www. literal after one that failed is still read (it takes the link into its url)
+    (f"_www.x_y._www.cd/{L}", {}),
+    (f"_www.a_b._www.c_d/{L}", {"item": {7}}),
+    # a footnote label reads an escape first and holds at most 999 characters
+    (f"[^^\\]:\n\n    {L}", {}),
+    ("[^" + "\\]" * 500 + f"]: x\n\n    {L}", {}),
+    # a lazy line may head a table (its delimiter row goes on with the containers); a lazy line after a table
+    # and a line indented 4 columns head none (a table row splits `[x|y]` at its pipe)
+    (f"- [x]({U}\n)||\n  -|-", {}),
+    (f"> a|b\n> -|-\nx||\n-|-\n[|]({U})", {"item": {7}}),
+    (f"a\n    b|c\n-|-\n[x|y]({U})", {"item": {7}}),
+    # a footnote right inside a footnote goes on with the outer one's indent
+    (f"[^1]:[^2]:```\n    {L}", {}),
+    (f"[^1]:[^2]:\n    #\n        {L}", {"item": {7}}),
+    # after definitions alone, a `-` or `===` line is text, not a setext underline
+    (f"[r]: /u\n-\n    {L}", {"item": {7}}),
+    (f"[r]: /u\n===\n    {L}", {"item": {7}}),
+    # `[^1]` is a footnote call where `[^1]:` defines a footnote; else a link text or a reference
+    (f"[^1]({U})\n\n[^1]: note", {}),
+    (f"[^1]({U})\n\n[^2]: note", {"item": {7}}),
+    (f"[^ 1]\n\n[^ 1]: {U}", {"item": {7}}),
+    (f"> [^1]\n>\n> [r]: /u\n    [^1]: {U}", {"item": {7}}),
 ]
 
 
@@ -162,6 +184,14 @@ def _backtick_runs(k: int) -> str:
         "| a |\n|-|\n" + "`[a](" * 39_000 + L,
         "http://x.y/" + "." * 199_000 + "a " + L,
         "[" * 900 + "]" * 900 + "[r]\n\n[r]: /u",
+        "[^" + "\\" * 100 + "\n\n" + L,
+        "- [^" + "\\" * 199_990 + "\n\n" + L,
+        "_www." * 40_000 + " " + L,
+        "www.a_a_" * 25_000 + " " + L,
+        "[^1]:" * 30_000 + "\n" + "    x\n" * 8_000 + L,
+        "[^1]: n\n\n" + "[^1]" * 49_990 + L,
+        "> a|b\n> -|-\n" + "x||\n-|-\n" * 24_990 + L,
+        "[r]: /u\n" * 20_000 + "-\n" * 10_000 + "===\n" + L,
     ],
 )
 def test_parsing_stays_linear_on_pathological_text(text: str) -> None:

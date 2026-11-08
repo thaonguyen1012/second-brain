@@ -24,14 +24,18 @@ _LANG = re.compile(r"^/(?:vi|en)(?=/)")
 # blocks and HTML blocks hold none. Containers nest: block quotes (`>`), list items (their content column)
 # and GFM footnote definitions (4 columns); a line stays in a container while it continues it, or lazily
 # while it only continues a paragraph. Tabs reach the next multiple of 4 columns. Each line is read once and
-# each container costs a character of it, so the pass is linear.
+# each container costs a character of it (footnotes that go on without one are passed in one step), so the
+# pass is linear.
 _LINE_END = re.compile(r"\r\n|\r|\n")
 _TAB = 4
 _QUOTE, _ITEM, _NOTE = range(3)  # containers: [kind, content column, began blank, blank line since]
 _PARA, _CODE, _FENCE, _HTML, _TABLE = range(1, 6)  # leaf blocks that span lines (0: none open)
-# A list marker (group 1: an ordered item's number), a footnote definition's label
+# A list marker (group 1: an ordered item's number), a footnote definition's label. As micromark reads a
+# label, a backslash before `[`, `\` or `]` escapes it, and the label is read once (possessive): `[^\]:` is no
+# label, and a run of backslashes that does not end in `]:` fails at once instead of trying every way to
+# split it.
 _MARKER = re.compile(r"[*+-]|([0-9]{1,9})[.)]")
-_FOOTNOTE = re.compile(r"\[\^(?:\\[\[\]\\]|[^ \t\[\]]){1,999}\]:")
+_FOOTNOTE = re.compile(r"\[\^(?:\\[\[\]\\]|[^ \t\[\]]){1,999}+\]:")
 _ATX = re.compile(r"#{1,6}(?:[ \t]|$)")
 _FENCE_OPEN = re.compile(r"`{3,}(?=[^`]*$)|~{3,}")
 _THEMATIC = re.compile(r"(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$")
@@ -106,8 +110,10 @@ def _cells(row: str) -> list[str]:
 
 
 # Link reference definitions (`[label]: /url "title"`) open a paragraph's text; a link may then name its
-# destination by label: `[text][label]`, `[label][]` or `[label]`.
-_LABEL = re.compile(r"\[(?!\^)((?:\\[\s\S]|[^\[\]\\]){1,999})\]")
+# destination by label: `[text][label]`, `[label][]` or `[label]`. A label may start with `^` (a `[^1]: /url`
+# line that cannot open a footnote, being indented or lazy, is a definition): only `[^1]` text with a
+# footnote definition of that label is a footnote call instead.
+_LABEL = re.compile(r"\[((?:\\[\s\S]|[^\[\]\\]){1,999})\]")
 _DEFINITION_SPACE = re.compile(r"[ \t]*+(?:\n[ \t]*+)?")
 _ANGLE_URL = re.compile(r"<((?:\\[^\n]|[^<>\n\\])*+)>")
 _DEFINITION_TITLE = re.compile(
@@ -176,6 +182,14 @@ def _definitions(text: str, found: dict[str, str]) -> str:
         found.setdefault(_identifier(label), url)
         pos = line_end.end()
     return text[pos:]
+
+
+def _only_definitions(lines: list[str]) -> bool:
+    """Whether a paragraph's lines are only link reference definitions: a `===` or `---` line after them is no
+    setext underline (micromark ends the definitions there and reads the line anew: a thematic break, or the
+    first line of a paragraph). A paragraph asks this at most twice before it closes."""
+    text = "\n".join(lines)
+    return text.startswith("[") and not _definitions(text, {})
 
 
 def _nonspace(line: str, pos: int, col: int) -> tuple[int, int]:
@@ -261,16 +275,22 @@ def _interrupts(line: str, at: int, lazy: bool) -> bool:
     )
 
 
-def _texts(markdown: str) -> tuple[list[str], dict[str, str]]:
+def _texts(markdown: str) -> tuple[list[str], dict[str, str], set[str]]:
     """The text of each paragraph, heading and table cell in `markdown`, its lines without their container
-    marks and indentation; and the destination of each link reference definition, by label."""
+    marks and indentation; the destination of each link reference definition, by label; and the labels of
+    the footnote definitions."""
     texts: list[str] = []
     definitions: dict[str, str] = {}
+    footnotes: set[str] = set()
     stack: list[list[int]] = []
     quotes: list[int] = []  # the indexes of the quotes in `stack` (a blank line ends the outermost)
+    others: list[int] = []  # the indexes of the containers in `stack` that are no footnote
     leaf = 0
     para: list[str] = []
-    lazy = False  # the paragraph's last line was lazy (it cannot head a table)
+    # Whether the paragraph's last line may head a table: micromark tries a table where a paragraph's line
+    # starts (its first, or one that might interrupt it), but not on a line indented 4 columns, nor on a lazy
+    # line after a table, which it tries as one more row of that table (refused: lazy)
+    head = False
     fence = ""
     html_end: re.Pattern[str] | None = None
 
@@ -283,6 +303,8 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str]]:
         del stack[depth:]
         while quotes and quotes[-1] >= depth:
             quotes.pop()
+        while others and others[-1] >= depth:
+            others.pop()
 
     for line in _LINE_END.split(markdown):
         pos = col = 0
@@ -310,6 +332,12 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str]]:
                 pos, col = _advance(line, pos, col, container[1])
             elif nn_col - col >= _TAB:
                 pos, col = _advance(line, pos, col, _TAB)
+            elif nn_col == col and matched and stack[matched - 1][0] == _NOTE:
+                # micromark checks the last indent read, so the footnotes right inside a footnote that this
+                # line goes on with also go on when no indent is left for them (all at once: linear)
+                next_other = bisect_left(others, matched)
+                matched = others[next_other] if next_other < len(others) else len(stack)
+                continue
             else:
                 break
             matched += 1
@@ -337,8 +365,13 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str]]:
                 new, pos, col = [_QUOTE, 0, 0, 0], nn + 1, nn_col + 1
                 if pos < len(line) and line[pos] in " \t":
                     pos, col = _advance(line, pos, col, 1)
-            elif line[nn] == "[" and (label := _FOOTNOTE.match(line, nn)):
+            elif (
+                line[nn] == "["
+                and (label := _FOOTNOTE.match(line, nn))
+                and label.end() - nn - 4 <= _LABEL_MAX  # an escape counts two characters
+            ):
                 new = [_NOTE, _TAB, 0, 0]
+                footnotes.add(_identifier(line[nn + 2 : label.end() - 2]))
                 pos, col = _nonspace(line, label.end(), nn_col + label.end() - nn)
             elif item := _list_item(line, nn, nn_col, col, interrupt, tails):
                 new, pos, col = item
@@ -349,6 +382,8 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str]]:
                 opened = True
             if new[0] == _QUOTE:
                 quotes.append(len(stack))
+            if new[0] != _NOTE:
+                others.append(len(stack))
             stack.append(new)
             matched += 1
             nn, nn_col = _nonspace(line, pos, col)
@@ -356,11 +391,12 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str]]:
         blank = nn == len(line)
         indent = nn_col - col
         left = not opened and not continued  # the line leaves containers (micromark: a lazy line)
+        after_table = left and leaf == _TABLE
         if left:
             if leaf == _PARA and not blank:
                 if indent >= _TAB or not _interrupts(line, nn, True):
                     para.append(line[nn:])  # a lazy line: it only continues the paragraph
-                    lazy = True
+                    head = indent < _TAB  # (the next line, going on with the containers, may make it a head)
                     continue
                 tag = _HTML_OPEN.match(line, nn)
                 if tag and tag.lastindex == 7:
@@ -385,20 +421,20 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str]]:
                 continue
             if indent >= _TAB:
                 para.append(line[nn:])
-                lazy = False
+                head = False
                 continue
-            if not lazy and _delimits(line, nn, para[-1]):
-                head = para.pop()
+            if head and _delimits(line, nn, para[-1]):
+                cells = _cells(para.pop())
                 close(len(stack))  # the lines before the head stay a paragraph
-                texts.extend(_cells(head))
+                texts.extend(cells)
                 leaf = _TABLE
                 continue
-            if _SETEXT.match(line, nn):
+            if _SETEXT.match(line, nn) and not _only_definitions(para):
                 close(len(stack))  # the paragraph is a heading
                 continue
             if not _interrupts(line, nn, False):
                 para.append(line[nn:])
-                lazy = False
+                head = True
                 continue
             close(len(stack))
         if blank:
@@ -414,9 +450,9 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str]]:
             html_end, start = html
             leaf = 0 if html_end and html_end.search(line, start) else _HTML
         elif not (char in "*-_" and _THEMATIC.match(line, nn)):
-            leaf, para, lazy = _PARA, [line[nn:]], False
+            leaf, para, head = _PARA, [line[nn:]], not after_table
     close(0)
-    return texts, definitions
+    return texts, definitions, footnotes
 
 
 # --- Inline: the links in a paragraph's text ----------------------------------------------------------------
@@ -425,6 +461,9 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str]]:
 # a link or image text that the next `]` closes when a destination follows. A link deactivates the `[` before
 # it (no link in a link); an image's text shows no link (the reading view keeps it as alt text).
 _INLINE = re.compile(r"[\\`<!\[\]]")
+# A footnote call (`[^1]`, GFM) is tried before a link's `[`: it is one when a footnote definition has its
+# label (read as the definition's), and then it opens no link text
+_CALL = re.compile(r"\^((?:\\[\[\]\\]|[^ \t\n\[\]]){1,999}+)\]")
 _TICKS = re.compile(r"`+")
 _PUNCTUATION = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
 # The destination of an inline link: (url) or (<url>), or none, with an optional title ("t", 't' or (t),
@@ -518,10 +557,14 @@ def _trail(text: str, at: int, known: dict[int, bool]) -> bool:
     return known[pos]
 
 
-def _literal_end(text: str, at: int, known: dict[int, bool]) -> int:
-    """The end of the autolink literal that may start at `at` (a match of _LITERAL), else 0."""
+def _literal_end(text: str, at: int, known: dict[int, bool], dead: list[int]) -> int:
+    """The end of the autolink literal that may start at `at` (a match of _LITERAL), else 0. `dead[0]` is the
+    second-to-last dot of the last www. domain that failed (an `_` in its last two segments): a www. literal
+    that starts before that dot reads the same domain to the same end, so it fails too and is not read again
+    (`_www._www._www.` stays linear)."""
     before = text[at - 1 : at]
-    if text[at] in "hH":
+    www = text[at] not in "hH"
+    if not www:
         if before.isascii() and before.isalpha():
             return 0
         pos = text.index("//", at) + 2
@@ -529,10 +572,11 @@ def _literal_end(text: str, at: int, known: dict[int, bool]) -> int:
         if not char or char in _UNICODE_SPACE or ord(char) < 32 or char == "\x7f" or _symbol(char):
             return 0
     else:
-        if (before and before not in "(*_[]~ \t\n\r") or at + 4 >= len(text):
+        if (before and before not in "(*_[]~ \t\n\r") or at + 4 >= len(text) or at < dead[0]:
             return 0
         pos = at
     seen = underscore = underscore_before = False
+    dots = [-1, -1]  # the domain's last two dots
     while pos < len(text):  # the domain
         char = text[pos]
         if char in "._":
@@ -542,12 +586,15 @@ def _literal_end(text: str, at: int, known: dict[int, bool]) -> int:
                 underscore = True
             else:  # a new segment
                 underscore_before, underscore = underscore, False
+                dots = [dots[1], pos]
         elif char in _UNICODE_SPACE or (char != "-" and _symbol(char)):
             break
         else:
             seen = True
         pos += 1
     if not seen or underscore or underscore_before:
+        if www:
+            dead[0] = dots[0]
         return 0
     opened = closed = 0
     while pos < len(text):  # the path
@@ -607,8 +654,9 @@ def _reference(
     return None
 
 
-def _destinations(text: str, definitions: dict[str, str]) -> list[str]:
-    """The destinations of the links in one paragraph's, heading's or table cell's text."""
+def _destinations(text: str, definitions: dict[str, str], footnotes: set[str]) -> list[str]:
+    """The destinations of the links in one paragraph's, heading's or table cell's text (`footnotes`: the
+    labels of the note's footnote definitions)."""
     runs: dict[int, list[int]] = defaultdict(list)
     for run in _TICKS.finditer(text):
         runs[run.end() - run.start()].append(run.start())
@@ -619,6 +667,7 @@ def _destinations(text: str, definitions: dict[str, str]) -> list[str]:
     found: list[tuple[int, str]] = []  # (position of the link's `[`, destination)
     missing: dict[str, int] = {}
     known: dict[int, bool] = {}
+    dead = [-1]
     closers: list[int] = []
     pos = next_literal = 0
     special = _INLINE.search(text)
@@ -630,7 +679,7 @@ def _destinations(text: str, definitions: dict[str, str]) -> list[str]:
         while next_literal < len(literals) and literals[next_literal] < pos:
             next_literal += 1
         if not brackets and next_literal < len(literals) and literals[next_literal] < at:
-            pos = _literal_end(text, literals[next_literal], known) or pos
+            pos = _literal_end(text, literals[next_literal], known, dead) or pos
             next_literal += 1
             continue
         char = text[at]
@@ -652,8 +701,12 @@ def _destinations(text: str, definitions: dict[str, str]) -> list[str]:
                 read += 1
                 pos += 1
         elif char == "[":
-            brackets.append((at, False, read))
-            read += 1
+            call = footnotes and text.startswith("^", pos) and _CALL.match(text, pos)
+            if call and len(call.group(1)) <= _LABEL_MAX and _identifier(call.group(1)) in footnotes:
+                pos = call.end()  # a footnote call: no link text
+            else:
+                brackets.append((at, False, read))
+                read += 1
         elif brackets:
             start, image, before = brackets.pop()
             plain = read == before + 1  # no bracket between the opener and this `]`
@@ -680,11 +733,11 @@ def parse(markdown):  # type: ignore[no-untyped-def]
     found = defaultdict(set)
     if "](" not in markdown and "]:" not in markdown:
         return found
-    texts, definitions = _texts(markdown)
+    texts, definitions, footnotes = _texts(markdown)
     for text in texts:
         if "](" not in text and not (definitions and "]" in text):
             continue
-        for destination in _destinations(text, definitions):
+        for destination in _destinations(text, definitions, footnotes):
             try:
                 url = urlsplit(destination)
             except ValueError:
