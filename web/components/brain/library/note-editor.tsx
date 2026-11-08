@@ -63,6 +63,7 @@ import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 import { noteEditorFrame, type NoteEditorHandle, type NoteEditorProps } from './note-editor-types';
+import { LinkPicker, LinkPickerList } from './note-link-picker';
 
 // The note editor (DECISIONS 9.8, PROMPT-item-notes step 4): Milkdown 7.23 (commonmark + gfm + listener + history),
 // markdown in and markdown out, so a note stays one markdown text (4.1, 4.7). Bullets are saved as `-`; Milkdown's
@@ -70,7 +71,10 @@ import { noteEditorFrame, type NoteEditorHandle, type NoteEditorProps } from './
 // back as an empty line). On top of the presets:
 // - "/" opens a block menu (headings, lists, tasks, quote, code, divider, table), labels in the UI language;
 // - `#`, `-`, `1.`, `>` and "```" turn a line into that block as they are typed (the presets), `[]` into a task;
-// - a task's box ticks with the mouse or Cmd/Ctrl+Enter; Enter after a ticked task starts an unticked one.
+// - a task's box ticks with the mouse or Cmd/Ctrl+Enter; Enter after a ticked task starts an unticked one;
+// - "[[" opens a picker over Items, notes, opportunities and skills (the ?q= searches, lib/api/search.ts); a pick
+//   writes a readable link to the record's page, `[Atomic Habits](/thu-vien/item/?id=12)` (lib/note-links.ts), which
+//   the backend reads into the note's links on save (backend/library/links.py).
 // The editor is its own chunk (note-editor-lazy.tsx) with its CSS; Hôm nay never loads it.
 
 /* -------------------------------------------------------------------------------------------------------------------
@@ -659,6 +663,7 @@ function placeCaret(view: EditorView, at: 'end' | 'first-empty') {
 
 interface Ready {
   slash: SlashController;
+  picker: LinkPicker;
   focus: (at: 'end' | 'first-empty') => void;
 }
 
@@ -683,6 +688,7 @@ export default function NoteEditor({
   onSubmit,
   onInput,
   onReady,
+  selfNoteId,
   variant = 'inline',
   className,
 }: NoteEditorProps) {
@@ -716,6 +722,7 @@ export default function NoteEditor({
     const base = `note-editor-${++editorCount}`;
     const root = host.appendChild(document.createElement('div'));
     const slash = new SlashController(opening.items, base);
+    const picker = new LinkPicker(base);
     let last = opening.markdown;
     const report = (next: string) => {
       if (next === last) return;
@@ -761,6 +768,7 @@ export default function NoteEditor({
       .use(taskItemView(opening.taskLabel))
       .use(placeholderPlugin(opening.placeholder))
       .use(slash.plugin)
+      .use(picker.plugin)
       .use(linkClickGuard)
       .use(pageKeys(keys))
       .use(inputSignal(() => emitInput()));
@@ -770,7 +778,7 @@ export default function NoteEditor({
         if (!alive) return;
         opened = editor.action((ctx) => ctx.get(editorViewCtx).state.doc);
         const focus = (at: 'end' | 'first-empty') => editor.action((ctx) => placeCaret(ctx.get(editorViewCtx), at));
-        setReady({ slash, focus });
+        setReady({ slash, picker, focus });
         emitReady({ markdown: () => (changed() ? editor.action(getMarkdown()) : null) });
         if (firstFocus() > 0) focus(caret);
       },
@@ -799,6 +807,7 @@ export default function NoteEditor({
   return (
     <div ref={hostRef} className={cn(noteEditorFrame(variant), className)}>
       {ready && createPortal(<SlashMenu slash={ready.slash} />, ready.slash.element)}
+      {ready && <LinkPickerList picker={ready.picker} selfNoteId={selfNoteId} />}
     </div>
   );
 }

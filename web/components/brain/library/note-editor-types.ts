@@ -24,6 +24,8 @@ export interface NoteEditorProps {
   onInput?: () => void;
   /** The editor once it is ready (null when it goes): reads its markdown now, without waiting for `onChange`. */
   onReady?: (handle: NoteEditorHandle | null) => void;
+  /** The note being edited, left out of the "[[" picker. */
+  selfNoteId?: number;
   /** The look: inline (a field-like box on the Item page) or page (the note page, no box). */
   variant?: 'inline' | 'page';
   className?: string;

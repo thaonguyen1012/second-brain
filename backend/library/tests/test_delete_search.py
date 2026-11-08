@@ -197,3 +197,12 @@ def test_note_search_skips_the_editors_empty_line_placeholder(client: Client) ->
     [hit] = client.get("/api/notes/search?q=chính").json()["results"]
     assert hit["title"] == "Ý chính về sự tập trung"
     assert "<br" not in hit["excerpt"]
+
+
+def test_note_titles_show_links_by_their_text(client: Client) -> None:
+    """A `[[ ]]` link reads as its text in a note's title and excerpt; a task box is no text."""
+    user = owner(client)
+    Note.objects.create(user=user, markdown="- [ ] Đọc [Atomic Habits](/thu-vien/item/?id=12) lại")
+    [hit] = client.get("/api/notes/search?q=atomic").json()["results"]
+    assert hit["title"] == "Đọc Atomic Habits lại"
+    assert "/thu-vien" not in hit["excerpt"] and "Atomic Habits" in hit["excerpt"]

@@ -23,6 +23,7 @@ from django.utils import timezone
 from core.models import Job
 from core.services import jobs, thumbnails
 from core.services.search import normalize_query
+from library.links import sync_links
 from library.models import Item, Note
 
 MAX_TAGS = 30
@@ -39,7 +40,10 @@ EXCERPT_BEFORE = 40
 _MARKS = re.compile(r"[#>*_`~\[\]]+")
 # The editor's (Milkdown's) placeholder for an empty paragraph or list item: no text
 _EMPTY_LINE = re.compile(r"<br\s*/?>", re.IGNORECASE)
-_LINE_PREFIX = re.compile(r"^\s*(#{1,6}\s+|>\s*|[-*+]\s+)")
+_LINE_PREFIX = re.compile(r"^\s*(#{1,6}\s+|>\s*|(?:[-*+]|\d+[.)])\s+)(\[[ xX]\]\s+)?")
+# A link or image shows its text (the editor's `[[ ]]` links): `[Atomic Habits](/thu-vien/item/?id=12)` ->
+# `Atomic Habits`
+_LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
 
 
 def normalize_tags(tags: Iterable[str]) -> list[str]:
@@ -301,7 +305,7 @@ def note_label(note: Note) -> str:
     if title := note.title.strip():
         return title
     for line in note.markdown.split("\n"):
-        if clean := " ".join(_LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", line)).split()):
+        if clean := " ".join(_LINK.sub(r"\1", _LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", line))).split()):
             return clean[:EXCERPT_CHARS]
     return ""
 
@@ -309,7 +313,7 @@ def note_label(note: Note) -> str:
 def note_excerpt(markdown: str, query: str) -> str:
     """About EXCERPT_CHARS characters around the first match of `query` (markdown marks dropped), else the
     start of the note."""
-    flat = " ".join(_MARKS.sub(" ", _EMPTY_LINE.sub(" ", markdown)).split())
+    flat = " ".join(_MARKS.sub(" ", _LINK.sub(r"\1", _EMPTY_LINE.sub(" ", markdown))).split())
     at = flat.lower().find(query.lower()) if query else -1
     if at < 0:
         return flat[:EXCERPT_CHARS]
@@ -335,7 +339,9 @@ def search_notes(user: User, query: str, limit: int) -> list[dict[str, Any]]:
 
 
 def save_note(note: Note, data: dict[str, Any]) -> Note:
-    """Create (unsaved `note`) or update; `items` (owner checked by the serializer) replaces the links."""
+    """Create (unsaved `note`) or update; `items` (owner checked by the serializer) replaces the links to
+    Items. The links written in the markdown are read again (library.links): its NoteLink rows, and the Items
+    it links join `items`, also after `items` replaced them (the text still links them)."""
     for field in NOTE_FIELDS:
         if field in data:
             setattr(note, field, data[field])
@@ -343,4 +349,6 @@ def save_note(note: Note, data: dict[str, Any]) -> Note:
         note.save()
         if "items" in data:
             note.items.set(data["items"])
+        if "markdown" in data or "items" in data:
+            sync_links(note)
     return note

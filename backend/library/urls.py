@@ -7,6 +7,7 @@ from library.api import (
     ItemMentionsView,
     ItemView,
     NoteListView,
+    NoteMentionsView,
     NoteSearchView,
     NoteView,
 )
@@ -20,4 +21,5 @@ urlpatterns = [
     path("api/notes", NoteListView.as_view()),
     path("api/notes/search", NoteSearchView.as_view()),
     path("api/notes/<int:pk>", NoteView.as_view()),
+    path("api/notes/<int:pk>/mentions", NoteMentionsView.as_view()),
 ]

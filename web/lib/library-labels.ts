@@ -20,7 +20,10 @@ export function itemDateLabel(item: Pick<ApiItem, 'status' | 'createdAt' | 'star
   return t('thêm {date}', { date: formatDate(item.createdAt, t) });
 }
 
-/** Title shown for a note: its title, else the first non-empty markdown line without heading/quote marks. */
+/**
+ * Title shown for a note: its title, else the first non-empty markdown line without its heading, quote, list or task
+ * mark, links shown by their text (as the backend's note_label).
+ */
 export function noteTitle(note: Pick<ApiNote, 'id' | 'title' | 'markdown'>, t: T): string {
   if (note.title.trim()) return note.title.trim();
   const line = note.markdown
@@ -29,7 +32,9 @@ export function noteTitle(note: Pick<ApiNote, 'id' | 'title' | 'markdown'>, t: T
       l
         // the editor's empty-line placeholder (`<br />`) is no text
         .replace(/<br\s*\/?>/gi, ' ')
-        .replace(/^\s*(#{1,6}\s+|>\s*|[-*+]\s+)/, '')
+        .replace(/^\s*(#{1,6}\s+|>\s*|(?:[-*+]|\d+[.)])\s+)(\[[ xX]\]\s+)?/, '')
+        // `[Atomic Habits](/thu-vien/item/?id=12)` (a `[[ ]]` link) reads as its text
+        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
         .replace(/\s+/g, ' ')
         .trim(),
     )

@@ -55,6 +55,14 @@ describe('noteTitle', () => {
     expect(noteTitle(note('  ', '> trích dẫn hay'), tVi)).toBe('trích dẫn hay');
     expect(noteTitle(note('', '- việc một\n- việc hai'), tVi)).toBe('việc một');
     expect(noteTitle(note('', '#hashtag không phải heading'), tVi)).toBe('#hashtag không phải heading');
+    expect(noteTitle(note('', '1. bước đầu'), tVi)).toBe('bước đầu');
+    expect(noteTitle(note('', '- [ ] việc chưa xong'), tVi)).toBe('việc chưa xong');
+  });
+
+  it('shows a link by its text (a `[[ ]]` link)', () => {
+    expect(noteTitle(note('', 'Xem [Atomic Habits](/thu-vien/item/?id=12) và [ý khác](/thu-vien/ghi-chu/?id=3)'), tVi)).toBe(
+      'Xem Atomic Habits và ý khác',
+    );
   });
 
   it('skips lines that are only marks and cuts long lines at 120 characters', () => {

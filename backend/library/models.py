@@ -75,3 +75,74 @@ class Note(models.Model):
 
     def __str__(self) -> str:
         return self.title or self.markdown[:60]
+
+
+class NoteLink(models.Model):
+    """A link written in a note's markdown to an Item, another note, an opportunity or a skill (DECISIONS 9.8,
+    the `[[ ]]` picker writes them as `[Title](/thu-vien/item/?id=12)`). Derived data: library.links reads
+    them out of the markdown on every save of the note and replaces the note's rows, so they are never edited
+    (nor exported) on their own. Exactly one target, the one its kind names; a deleted target takes the row
+    with it."""
+
+    class Kind(models.TextChoices):
+        ITEM = "item"
+        NOTE = "note"
+        OPPORTUNITY = "opportunity"
+        SKILL = "skill"
+
+    note = models.ForeignKey(Note, on_delete=models.CASCADE, related_name="links")
+    kind = models.CharField(max_length=12, choices=Kind.choices)
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, null=True, blank=True, related_name="note_links")
+    target_note = models.ForeignKey(
+        Note, on_delete=models.CASCADE, null=True, blank=True, related_name="backlinks"
+    )
+    opportunity = models.ForeignKey(
+        "opportunities.Opportunity",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="note_links",
+    )
+    skill = models.ForeignKey(
+        "growth.Skill", on_delete=models.CASCADE, null=True, blank=True, related_name="note_links"
+    )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        kind="item",
+                        item__isnull=False,
+                        target_note__isnull=True,
+                        opportunity__isnull=True,
+                        skill__isnull=True,
+                    )
+                    | models.Q(
+                        kind="note",
+                        item__isnull=True,
+                        target_note__isnull=False,
+                        opportunity__isnull=True,
+                        skill__isnull=True,
+                    )
+                    | models.Q(
+                        kind="opportunity",
+                        item__isnull=True,
+                        target_note__isnull=True,
+                        opportunity__isnull=False,
+                        skill__isnull=True,
+                    )
+                    | models.Q(
+                        kind="skill",
+                        item__isnull=True,
+                        target_note__isnull=True,
+                        opportunity__isnull=True,
+                        skill__isnull=False,
+                    )
+                ),
+                name="note_link_one_target",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"note {self.note_id} -> {self.kind}"

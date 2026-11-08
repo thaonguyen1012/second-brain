@@ -28,6 +28,7 @@ from library.serializers import (
     ItemImageUploadSerializer,
     ItemMentionsSerializer,
     ItemSerializer,
+    NoteMentionsSerializer,
     NoteSearchSerializer,
     NoteSerializer,
     NoteWriteSerializer,
@@ -232,6 +233,16 @@ class NoteSearchView(APIView):
             raise ValidationError({"limit": f"A number from 1 to {SEARCH_LIMIT}."})
         hits = services.search_notes(request_user(request), request.query_params.get("q", ""), int(raw))
         return Response(NoteSearchSerializer({"results": hits}).data)
+
+
+class NoteMentionsView(APIView):
+    @extend_schema(responses=NoteMentionsSerializer, operation_id="getNoteMentions")
+    def get(self, request: Request, pk: int) -> Response:
+        """The notes whose text links this note ("Được nhắc tới ở" on the note page). 404 for another owner's
+        note."""
+        user = request_user(request)
+        note = get_object_or_404(Note, pk=pk, user=user)
+        return Response(NoteMentionsSerializer(mentions.note_mentions(user, note)).data)
 
 
 class NoteView(APIView):

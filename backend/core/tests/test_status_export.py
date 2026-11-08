@@ -19,7 +19,7 @@ from core.models import Job, LlmCache, LlmCall
 from core.services import export, thumbnails
 from core.testing import image_bytes
 from inbox.models import InboxEntry
-from library.models import Item, Note
+from library.models import Item, Note, NoteLink
 from weeks.models import Objective, Week
 
 pytestmark = pytest.mark.django_db
@@ -95,7 +95,9 @@ def test_status_requires_auth(anon_client: Client) -> None:
 
 def test_every_model_with_owner_data_is_exported() -> None:
     models = {m for m in apps.get_models() if m._meta.app_label in PROJECT_APPS}
-    assert models - export.EXPORTED_MODELS == {Job, LlmCall, LlmCache}
+    # NoteLink rows are read out of the notes' markdown on every save (library.links): the markdown is
+    # exported
+    assert models - export.EXPORTED_MODELS == {Job, LlmCall, LlmCache, NoteLink}
 
 
 def test_export_writes_notes_and_json_without_secrets(client: Client, tmp_path: Path) -> None:

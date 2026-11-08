@@ -181,8 +181,24 @@ class SkillMentionSerializer(serializers.Serializer[object]):
     evidence = SkillMentionEvidenceSerializer(many=True)
 
 
+class NoteMentionSerializer(serializers.Serializer[object]):
+    """A note that links the Item or note in its text: its title, else its first line."""
+
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    updatedAt = serializers.DateTimeField()
+
+
 class ItemMentionsSerializer(serializers.Serializer[object]):
-    """GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8): newest evidence first in both."""
+    """GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8): newest evidence first in the first
+    two, the most recently changed note first."""
 
     opportunities = OpportunityMentionSerializer(many=True)
     skills = SkillMentionSerializer(many=True)
+    notes = NoteMentionSerializer(many=True)
+
+
+class NoteMentionsSerializer(serializers.Serializer[object]):
+    """GET /api/notes/{id}/mentions: the notes whose text links this note (its backlinks)."""
+
+    notes = NoteMentionSerializer(many=True)

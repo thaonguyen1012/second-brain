@@ -14,6 +14,7 @@ import { ApiErrorState, EmptyState, describeApiError } from '../api-state';
 import { ConfirmDelete } from '../confirm-delete';
 import { RowMenu } from '../row-menu';
 import { noteTemplates } from './done-output';
+import { NoteBacklinks } from './item-mentions';
 import { RecoveredDraft } from './item-notes';
 import { ItemPicker } from './item-picker';
 import { NoteEditor } from './note-editor-lazy';
@@ -212,12 +213,15 @@ function NoteEditing({
         placeholder={t('Gõ / để chèn khối, hoặc viết luôn')}
         focusRequest={(note ? 0 : 1) + editorKey}
         caret={note || editorKey > 0 ? 'end' : 'first-empty'}
+        selfNoteId={shown?.id}
         onInput={autosave.touch}
         onReady={(handle) => {
           editor.current = handle;
         }}
         onSubmit={() => void autosave.flush()}
       />
+
+      {shown && <NoteBacklinks noteId={shown.id} />}
 
       {shown && (
         <ConfirmDelete

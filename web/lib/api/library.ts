@@ -10,6 +10,7 @@ export type ApiNotePatch = Schemas['PatchedNoteWriteRequest'];
 export type ApiNoteQuery = NonNullable<operations['listNotes']['parameters']['query']>;
 export type ApiNoteSearchHit = Schemas['NoteSearchHit'];
 export type ApiItemMentions = Schemas['ItemMentions'];
+export type ApiNoteMentions = Schemas['NoteMentions'];
 
 export const notesApi = {
   /** Newest created first; `q` matches title or markdown, `item` keeps notes linked to that Item. */
@@ -25,6 +26,8 @@ export const notesApi = {
   update: (id: number, body: ApiNotePatch, init?: { keepalive?: boolean }) =>
     request<ApiNote>('PATCH', `/api/notes/${id}`, body, undefined, init),
   delete: (id: number) => request<void>('DELETE', `/api/notes/${id}`),
+  /** The notes whose text links this note (its backlinks, "Được nhắc tới ở"). */
+  mentions: (id: number) => request<ApiNoteMentions>('GET', `/api/notes/${id}/mentions`),
 };
 
 /**

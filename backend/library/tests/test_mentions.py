@@ -79,7 +79,11 @@ def test_item_mentions_are_empty_for_an_unused_item_and_ignore_unlinked_evidence
     user = owner(client)
     book = Item.objects.create(user=user, type="book", title="Unused")
     item_evidence(opportunity(user, "Old"), None, "supports", "2026-10-01")  # its Item was deleted
-    assert client.get(f"/api/items/{book.pk}/mentions").json() == {"opportunities": [], "skills": []}
+    assert client.get(f"/api/items/{book.pk}/mentions").json() == {
+        "opportunities": [],
+        "skills": [],
+        "notes": [],
+    }
 
 
 def test_item_mentions_are_owner_only(client: Client) -> None:

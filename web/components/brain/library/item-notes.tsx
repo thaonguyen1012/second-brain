@@ -181,6 +181,7 @@ function NoteInPlace({
         placeholder={t('Gõ / để chèn khối, hoặc viết luôn')}
         focusRequest={focusRequest + editorKey}
         caret={note || editorKey > 0 ? 'end' : 'first-empty'}
+        selfNoteId={autosave.note?.id}
         onInput={autosave.touch}
         onReady={(handle) => {
           editor.current = handle;

@@ -199,20 +199,20 @@ banner makes a poor logo). Handbook courses (source `/docs/...`) and sources tha
 ### Where an Item is used
 
 `GET /api/items/{id}/mentions` ("Được nhắc tới ở" on the Item page, DECISIONS 9.8): the owner's opportunities that
-hold the Item as evidence, with the stance of each such row, and the skills that do, with their freshness (from all
-their evidence, as on `/api/skills`). Both lists follow their newest evidence `date`, and so do the rows inside each.
-Read only; `404` for an unknown id or another owner's Item. A fixed number of queries whatever the number of rows.
+hold the Item as evidence, with the stance of each such row, the skills that do, with their freshness (from all
+their evidence, as on `/api/skills`), and the notes whose markdown links the Item (`[[ ]]`, see Notes below). The
+opportunities and skills follow their newest evidence `date`, and so do the rows inside each; the notes are newest
+first (`updatedAt`), `title` as in the note search below. Read only; `404` for an unknown id or another owner's Item.
+A fixed number of queries whatever the number of rows.
 
 ```json
 200 { "opportunities": [ { "id": 2, "title": "Bakery stock", "decision": "keep",
                            "evidence": [ { "id": 8, "stance": "supports", "title": "Deep Work", "note": "",
                                            "date": "2026-11-02" } ] } ],
       "skills": [ { "id": 3, "name": "Django", "freshness": "fresh",
-                    "evidence": [ { "id": 5, "title": "Pekárna eshop", "note": "", "date": "2026-10-01" } ] } ] }
+                    "evidence": [ { "id": 5, "title": "Pekárna eshop", "note": "", "date": "2026-10-01" } ] } ],
+      "notes": [ { "id": 7, "title": "Thói quen nhỏ", "updatedAt": "2026-11-07T20:14:03Z" } ] }
 ```
-
-Notes that link the Item with `[[ ]]` will join this answer once those links are read out of the markdown (DECISIONS
-9.8, order point 3).
 
 ## Notes (`/api/notes`)
 
@@ -232,6 +232,18 @@ reads one, `DELETE /api/notes/{id}` removes it (`204`); `PATCH /api/notes/{id}` 
 `items` are sorted ids; an Item that is not the owner's answers `400`. Markdown is up to 200,000 characters.
 `itemLabels` (read only) gives the id, title and type of each linked Item, so a list can label its links without
 loading every Item.
+
+Links (`[[ ]]`, DECISIONS 9.8): the editor's picker writes a readable markdown link to a record's page, such as
+`[Atomic Habits](/thu-vien/item/?id=12)`; the pages are `/thu-vien/item/` (Item), `/thu-vien/ghi-chu/` (note),
+`/co-hoi/` (opportunity) and `/phat-trien/ky-nang/` (skill), with or without `/vi` or `/en` before them. Every
+`POST`, and every `PATCH` that sends `markdown` or `items`, reads the note's links into its link table (links inside
+code are not links; an unknown id, another owner's record and the note itself are ignored). A link to an Item also
+adds that Item to `items` (a `PATCH` that replaces `items` keeps the Items the text links). The markdown stays the
+only source: the table is rebuilt from it, and an export carries only the markdown.
+
+`GET /api/notes/{id}/mentions` ("Được nhắc tới ở" on the note page): the owner's notes that link this note, newest
+first, as `{ "notes": [ { "id": 9, "title": "...", "updatedAt": "..." } ] }`; `404` for an unknown id or another
+owner's note.
 
 `GET /api/notes/search?q=focus&limit=5` (`q` required, `limit` 1-20, default 5) is the Cmd+K form of the search:
 the newest matching notes as `{ "results": [ { "id": 3, "title": "...", "excerpt": "…around the match…",

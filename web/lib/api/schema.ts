@@ -426,6 +426,26 @@ export interface paths {
         patch: operations["updateNote"];
         trace?: never;
     };
+    "/api/notes/{id}/mentions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The notes whose text links this note ("Được nhắc tới ở" on the note page). 404 for another owner's
+         *     note.
+         */
+        get: operations["getNoteMentions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notes/search": {
         parameters: {
             query?: never;
@@ -1232,10 +1252,14 @@ export interface components {
             readonly title: string;
             readonly type: components["schemas"]["TypeEnum"];
         };
-        /** @description GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8): newest evidence first in both. */
+        /**
+         * @description GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8): newest evidence first in the first
+         *     two, the most recently changed note first.
+         */
         ItemMentions: {
             opportunities: components["schemas"]["OpportunityMention"][];
             skills: components["schemas"]["SkillMention"][];
+            notes: components["schemas"]["NoteMention"][];
         };
         ItemRequest: {
             type: components["schemas"]["TypeEnum"];
@@ -1413,6 +1437,17 @@ export interface components {
             readonly createdAt: string;
             /** Format: date-time */
             readonly updatedAt: string;
+        };
+        /** @description A note that links the Item or note in its text: its title, else its first line. */
+        NoteMention: {
+            id: number;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description GET /api/notes/{id}/mentions: the notes whose text links this note (its backlinks). */
+        NoteMentions: {
+            notes: components["schemas"]["NoteMention"][];
         };
         NoteSearch: {
             results: components["schemas"]["NoteSearchHit"][];
@@ -3179,6 +3214,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Note"];
+                };
+            };
+        };
+    };
+    getNoteMentions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteMentions"];
                 };
             };
         };

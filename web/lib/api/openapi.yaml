@@ -954,6 +954,29 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/notes/{id}/mentions:
+    get:
+      operationId: getNoteMentions
+      description: |-
+        The notes whose text links this note ("Được nhắc tới ở" on the note page). 404 for another owner's
+        note.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - notes
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteMentions'
+          description: ''
   /api/notes/search:
     get:
       operationId: searchNotes
@@ -2826,8 +2849,9 @@ components:
       - type
     ItemMentions:
       type: object
-      description: 'GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8):
-        newest evidence first in both.'
+      description: |-
+        GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8): newest evidence first in the first
+        two, the most recently changed note first.
       properties:
         opportunities:
           type: array
@@ -2837,7 +2861,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SkillMention'
+        notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteMention'
       required:
+      - notes
       - opportunities
       - skills
     ItemRequest:
@@ -3324,6 +3353,33 @@ components:
       - markdown
       - title
       - updatedAt
+    NoteMention:
+      type: object
+      description: 'A note that links the Item or note in its text: its title, else
+        its first line.'
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - title
+      - updatedAt
+    NoteMentions:
+      type: object
+      description: 'GET /api/notes/{id}/mentions: the notes whose text links this
+        note (its backlinks).'
+      properties:
+        notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteMention'
+      required:
+      - notes
     NoteSearch:
       type: object
       properties:

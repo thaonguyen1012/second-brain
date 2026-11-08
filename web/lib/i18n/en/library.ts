@@ -151,8 +151,9 @@ export const library = {
   'Mở trang đầy đủ': 'Open full page',
   'Đã lưu, nhưng chưa lưu được ảnh: {error}.': 'Saved, but the picture was not saved: {error}.',
   'Được nhắc tới ở': 'Mentioned in',
-  'Chưa có cơ hội hay kỹ năng nào dùng item này làm bằng chứng.':
-    'No opportunity or skill uses this item as evidence yet.',
+  'Chưa có cơ hội, kỹ năng hay ghi chú nào nhắc tới item này.':
+    'No opportunity, skill or note mentions this item yet.',
+  'Chưa có ghi chú nào nhắc tới ghi chú này.': 'No note mentions this note yet.',
   '{freshness} · bằng chứng {dates}': '{freshness} · evidence {dates}',
   'Tiêu đề ghi chú (không bắt buộc)': 'Note title (optional)',
   'Nội dung ghi chú': 'Note text',
@@ -184,7 +185,7 @@ export const library = {
   'Chưa lưu được liên kết: {reason}': 'The links were not saved: {reason}',
   'Không tìm thấy ghi chú này': 'This note was not found',
   'Có thể ghi chú đã bị xóa hoặc link đã cũ.': 'It may have been deleted, or the link is old.',
-  // The editor's "/" menu and task boxes (note-editor.tsx)
+  // The editor's "/" menu, "[[" picker and task boxes (note-editor.tsx)
   'Văn bản': 'Text',
   'Tiêu đề 1': 'Heading 1',
   'Tiêu đề 2': 'Heading 2',
@@ -195,6 +196,10 @@ export const library = {
   'Khối mã': 'Code block',
   'Đường kẻ': 'Divider',
   'Chèn khối': 'Insert a block',
+  'Liên kết tới': 'Link to',
+  'Chưa tìm được, thử lại sau.': 'The search failed; try again later.',
+  'Không tìm thấy “{query}”': 'Nothing found for “{query}”',
+  'Gõ để tìm item, ghi chú, cơ hội, kỹ năng': 'Type to find items, notes, opportunities, skills',
   'Đã xong': 'Done',
   // The notes page's "Theo item" view (notes-page.tsx)
   'Theo item': 'By item',
