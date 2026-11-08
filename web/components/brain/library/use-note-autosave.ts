@@ -71,9 +71,7 @@ function storage(): Storage | null {
   }
 }
 
-let version = 0;
 function notify() {
-  version += 1;
   window.dispatchEvent(new Event(COPY_EVENT));
 }
 
@@ -102,12 +100,16 @@ function subscribeCopies(onChange: () => void) {
   };
 }
 
-/** What the copies under the keys `match` accepts look like now (a string, so an unchanged store renders nothing). */
+/**
+ * What the copies under the keys `match` accepts look like now, and whether each is live or ready to offer: a string,
+ * so a change elsewhere (another note's copy, a keystroke in another editor) renders nothing here.
+ */
 function snapshotOf(match: (key: string) => boolean): string {
   const s = storage();
   if (!s) return '';
-  const parts = [String(version)];
-  for (const slot of readSlots(s, match)) parts.push(slot.name, serializeCopy(slot.copy));
+  const parts: string[] = [];
+  for (const slot of readSlots(s, match))
+    parts.push(slot.name, serializeCopy(slot.copy), isLive(slot) ? 'live' : '', ready(slot) ? 'ready' : '');
   return parts.join('\u0000');
 }
 
