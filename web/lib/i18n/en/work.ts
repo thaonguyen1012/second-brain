@@ -18,7 +18,7 @@ export const work = {
   'Chưa ghi khách': 'No client yet',
   'thực tế {money}/giờ': 'effective {money}/h',
   'Đang bấm giờ.': 'Timer running.',
-  'Xem giờ': 'See time',
+  'Xem giờ': 'See time entries',
 
   // Billable bars (work/billable-bar.tsx, week-summary.tsx)
   '{label}: {total}, {billable} tính tiền, {nonBillable} không tính tiền':
@@ -33,7 +33,7 @@ export const work = {
   '0 giờ': '0 h',
   'Tuần {range}': 'Week {range}',
   'Đang tải tổng kết tuần': 'Loading the week summary',
-  'tổng trong tuần': 'in total this week',
+  'tổng trong tuần': 'in total for the week',
   'Chưa có giờ nào trong tuần này.': 'No time logged in this week yet.',
   'Theo dự án': 'By project',
   'Xem các mục giờ của {title} trong tuần này': 'See the time entries for {title} in this week',
@@ -42,7 +42,7 @@ export const work = {
   // Project dialog (work/project-dialog.tsx)
   'Cần có tên dự án.': 'The project needs a name.',
   'Giá là số không âm, tối đa 2 chữ số thập phân (ví dụ 800 hoặc 1200,50).':
-    'A price is a number of zero or more, with at most 2 decimal places (for example 800 or 1200.50).',
+    'The hourly rate or fixed price must be 0 or more, with at most 2 decimal places (for example 800 or 1200.50).',
   'Dự án theo giờ cần giá giờ.': 'An hourly project needs an hourly rate.',
   'Tiền tệ là mã 3 chữ cái, ví dụ CZK, EUR.': 'The currency is a 3-letter code, for example CZK or EUR.',
   'Tên dự án': 'Project name',
@@ -76,7 +76,7 @@ export const work = {
   'Chọn một dự án.': 'Choose a project.',
   'Chọn ngày.': 'Choose a date.',
   'Thời gian từ 1 phút đến 24 giờ, ví dụ 90, 1:30, 1h30 hoặc 1,5h.':
-    'The duration is 1 minute to 24 hours, for example 90, 1:30, 1h30 or 1.5h.',
+    'The duration must be between 1 minute and 24 hours, for example 90, 1:30, 1h30 or 1.5h.',
   'Thời gian': 'Duration',
   'Đang chạy': 'Running',
   'Dừng bộ bấm giờ trước khi sửa thời gian.': 'Stop the timer before changing the duration.',

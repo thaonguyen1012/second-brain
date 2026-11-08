@@ -197,7 +197,7 @@ export default function LibraryItemGuide({ className }: { className?: string }) 
                               {t('Sửa')}
                             </GButton>
                             <GButton size="xs" variant="ghost" icon={NotebookPen}>
-                              {t('Ghi chú')}
+                              {t('Ghi chú', null, 'nav')}
                             </GButton>
                           </span>
                         </div>

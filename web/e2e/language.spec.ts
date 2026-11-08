@@ -29,8 +29,19 @@ test('the language switch turns the app English and back, lesson pages included'
   expect((await context.cookies()).find((c) => c.name === 'lang')?.value).toBe('vi');
 });
 
-test('/en/... opens a page in English whatever the cookie says', async ({ page }) => {
+test('/en/... opens a page in English whatever the cookie says', async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: 'lang', value: 'vi', url: baseURL! }]);
   await page.goto('/en/thu-vien/');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible();
+});
+
+test('/en/... stays English when the page changes its own URL', async ({ page }) => {
+  // A remembered board is written into the URL on load (lib/use-board-view.ts): it must keep /en/, since the plain
+  // URL would come back in the cookie's language (none here, so Vietnamese).
+  await page.addInitScript(() => window.localStorage.setItem('alex-brain:library-view', 'board'));
+  await page.goto('/en/thu-vien/');
+  await expect(page).toHaveURL(/\/en\/thu-vien\/\?view=board$/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible();
 });

@@ -16,7 +16,7 @@ const eslintConfig = defineConfig([
             {
               name: 'next/navigation',
               importNames: ['usePathname'],
-              message: 'Use useAppPathname from @/lib/use-app-pathname (the path without /vi or /en).',
+              message: 'Use useAppPathname to render, useRoutePathname to navigate (@/lib/use-app-pathname).',
             },
           ],
         },

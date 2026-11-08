@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Build budget (DECISIONS 10.2, 10.3): gzip size of the scripts the home page loads, from the last `npm run build`.
 // Counts every <script src> in the prerendered home page except `noModule` ones (modern browsers skip them): the
-// larger of .next/server/app/vi.html and en.html (app/[lang]/, proxy.ts), or index.html from a build before them.
+// larger of .next/server/app/vi.html and en.html (app/[lang]/, the rewrites in next.config.mjs), or index.html from a
+// build before them.
 // Usage: node scripts/check-budget.mjs [--max-kb 220]   (kB = 1000 bytes; exits 1 above the limit)
 // Without a build it prints a note and exits 0, so `make check` still runs on a fresh clone.
 import fs from 'node:fs';

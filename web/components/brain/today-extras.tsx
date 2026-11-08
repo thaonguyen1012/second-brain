@@ -84,7 +84,7 @@ function StatusParts({ status }: { status: ApiStatus }) {
   );
   const calls =
     llm.failedCalls > 0
-      ? t('{n} lần gọi, {failed} lỗi', { n: llm.calls, failed: t.num(llm.failedCalls) })
+      ? t('{n} lần gọi, {failed} lỗi', { n: llm.calls, failed: t.count(llm.failedCalls) })
       : t('{n} lần gọi', { n: llm.calls });
 
   // Only a missed day is a warning. Before 06:30 the newest brief is yesterday's (age 1), and after it a missing
@@ -97,7 +97,7 @@ function StatusParts({ status }: { status: ApiStatus }) {
   const pending = jobs.pending.reduce((n, j) => n + j.count, 0);
   const failed = jobs.failed.reduce((n, j) => n + j.count, 0);
   const failedKinds = jobs.failed
-    .map((j) => `${jobKinds[j.kind] ? t(jobKinds[j.kind]) : j.kind} ${t.num(j.count)}`)
+    .map((j) => `${jobKinds[j.kind] ? t(jobKinds[j.kind]) : j.kind} ${t.count(j.count)}`)
     .join(', ');
 
   return (

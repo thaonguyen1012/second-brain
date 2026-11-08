@@ -12,9 +12,13 @@ and LLM output are not translated.
   also opens a page in English directly. Route handlers (`/api/search`, `/trees/`) and `public/` files are not
   rewritten.
 * **The switch** (`components/language-switch.tsx` in the top bar; Fumadocs' own switch in the lesson sidebar) sets
-  the cookie and reloads (`switchLocale` in `client.tsx`). Django reads the same cookie (`backend/core/middleware.py`).
-* **Paths:** `usePathname()` says `/en/thu-vien` on the server and `/thu-vien/` in the browser. Use
-  `useAppPathname()` (`lib/use-app-pathname.ts`) everywhere; ESLint forbids the other one.
+  the cookie and reloads (`switchLocale` in `client.tsx`). Django answers in the page's language: `lib/api/client.ts`
+  sends the page's `<html lang>` as the `X-UI-Lang` header, and the same cookie is the fallback
+  (`backend/core/middleware.py`).
+* **Paths:** `usePathname()` says `/en/thu-vien` on the server and `/thu-vien/` in the browser. Render with
+  `useAppPathname()` (`lib/use-app-pathname.ts`, the path without the language); navigate within a page
+  (`router.replace`/`push`) with `useRoutePathname()`, the browser's own path, so a page opened at `/en/...` stays
+  English. ESLint forbids `usePathname()` itself.
 * **Text:** the Vietnamese text stays in the code and is its own key (gettext style). `t('Lưu')` shows "Lưu" in
   Vietnamese and looks up "Save" in English. The English lives in `lib/i18n/en/<area>.ts`.
 * **No English in the JS bundles.** The root layout sends the page dictionary (`enPage`) inside the RSC payload of
@@ -29,7 +33,7 @@ and LLM output are not translated.
 | Server component, `generateMetadata` | `const t = await getT();` (`@/lib/i18n/server`) |
 | Data, label lists, nav rows | `label: msg('Dự định')` (`@/lib/i18n/translate`, type `Msg`), shown with `t(label)`. JSX refuses a `Msg`, so a missing `t()` is a type error |
 | A helper that builds text | takes `t: T` as a parameter: `formatMinutes(m, t)` |
-| Numbers | `t.num(4746)` -> "4.746" / "4,746"; `{n}` is grouped the same way; `Intl` gets `t.intl` ("vi-VN" / "en-GB") |
+| Numbers | `t.num(4746)` -> "4.746" / "4,746"; `{n}` is grouped in English only ("4746" / "4,746"), like `t.count(x)` for another count in the same text; a number Vietnamese showed grouped goes through `t.num` in its own placeholder; `Intl` gets `t.intl` ("vi-VN" / "en-GB") |
 | Placeholders | `t('Đã lưu {title}', { title })`. Never glue translated pieces into a sentence |
 | A count | `t('{n} ghi chú', { n })`, English `{ one: '{n} note', other: '{n} notes' }` (the count is always `n`) |
 | Markup inside a sentence | `t.rich('Bấm <k>⌘K</k> để tìm', { k: (c) => <Kbd>{c}</Kbd> })`; `{name}` takes a node too |
@@ -37,8 +41,9 @@ and LLM output are not translated.
 | Text that must stay Vietnamese | end the line with `// i18n-ignore: <why>`; a whole file: `i18n-ignore-file` |
 
 Then add the English to the area file (`common.ts` for words that several areas share, `shell.ts`, `today.ts`,
-`inbox.ts`, `library.ts`, `week.ts`, `work.ts`, `opportunities.ts`, `growth.ts`, `intro.ts`, `guides.ts`): the key is
-the Vietnamese exactly as in the code, including its punctuation. One key lives in one file.
+`inbox.ts`, `library.ts`, `week.ts`, `work.ts`, `opportunities.ts`, `growth.ts`, `about.ts` for the text of
+/gioi-thieu/, /huong-dan/ and /personal/, `intro.ts` for the intro pictures only, `guides.ts`): the key is the Vietnamese
+exactly as in the code, including its punctuation. One key lives in one file.
 
 `lib/i18n/coverage.test.ts` (part of `make check`) fails on Vietnamese shown without `t()`, a key without English, an
 unused or duplicated entry, and a `{placeholder}` or `<tag>` the English lost. It cannot see Vietnamese written
@@ -46,8 +51,9 @@ without diacritics ("Phim"): those need `t()`/`msg()` by hand.
 
 ## English style
 
-* British English (the formats are en-GB: 08/11/2026, 24-hour clock): colour, organise, programme for a study
-  programme, but "program" for software.
+* British English (en-GB formats and a 24-hour clock, but dates without leading zeros, as in Vietnamese: 8/11/2026,
+  through `unpadded()` in `lib/labels.ts`): colour, organise, programme for a study programme, but "program" for
+  software.
 * Sentence case like the Vietnamese ("Thêm item" -> "Add item"), short, plain; the same tone as the Vietnamese:
   friendly, direct, no exclamation marks, no "please" in buttons.
 * Keep names: Alex's Brain, Inbox, Coursera, F8, Cloudflare, Django, Gemini, handbook names in `lib/books.ts`

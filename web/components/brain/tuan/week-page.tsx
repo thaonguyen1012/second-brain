@@ -1,7 +1,7 @@
 'use client';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAppPathname } from '@/lib/use-app-pathname';
+import { useRoutePathname } from '@/lib/use-app-pathname';
 import { CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ApiWeek } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
@@ -124,7 +124,7 @@ function WeekLoading({ tab }: { tab: Tab }) {
 
 function relativeName(start: string, current: string, t: T): string | null {
   if (start === current) return t('Tuần này');
-  if (start === addDays(current, -7)) return t('Tuần trước');
+  if (start === addDays(current, -7)) return t('Tuần trước', null, 'relative');
   if (start === addDays(current, 7)) return t('Tuần tới');
   return null;
 }
@@ -145,7 +145,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
   const t = useT();
   const params = useSearchParams();
   const router = useRouter();
-  const pathname = useAppPathname();
+  const pathname = useRoutePathname();
   const [current] = useState(() => mondayOf(todayPrague()));
   const latest = addDays(current, 7); // planning reaches next week, not further
   const w = params.get('w');

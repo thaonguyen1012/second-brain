@@ -67,7 +67,7 @@ export function reviewChecks(
       counted: true,
       done: inbox === '0',
       question: t('Inbox về 0 chưa?'),
-      value: inbox === null ? '–' : inbox === '0' ? t('Đã về 0') : t('Còn {n}', { n: Number(inbox) }),
+      value: inbox === null ? '–' : inbox === '0' ? t('Đã về 0') : t('Còn {count}', { count: inbox }),
       action: inbox !== null && inbox !== '0' ? { label: t('Xử lý inbox'), href: '/inbox/' } : undefined,
     },
     {
@@ -103,7 +103,7 @@ export function reviewChecks(
         done: predictionsDue === 0,
         question: t('Dự đoán đến hạn?'),
         value: predictionsDue > 0 ? t('{n} cần chấm', { n: predictionsDue }) : t('Không có'),
-        action: predictionsDue > 0 ? { label: t('Chấm lại'), href: PREDICTIONS_HREF } : undefined,
+        action: predictionsDue > 0 ? { label: t('Chấm lại', null, 'due'), href: PREDICTIONS_HREF } : undefined,
       },
     );
     if (month)

@@ -26,10 +26,7 @@ export const library = {
   'Thêm sách, phim, khóa học, bài viết hoặc dự án; mục từ inbox cũng có thể thành item.':
     'Add books, films, courses, articles or projects; an inbox entry can become an item too.',
   'Đang thêm {sent}/{n} khóa học…': { one: 'Adding {sent}/{n} course…', other: 'Adding {sent}/{n} courses…' },
-  'Thêm {n} khóa học từ Sổ tay': {
-    one: 'Add {n} course from the handbooks',
-    other: 'Add {n} courses from the handbooks',
-  },
+  'Thêm {n} khóa học từ Sổ tay': { one: 'Add {n} handbook course', other: 'Add {n} handbook courses' },
   'Đã thêm "{title}", nhưng chưa lưu được ảnh: {error}.': 'Added "{title}", but the image was not saved: {error}.',
   'Đã lưu "{title}", nhưng chưa lưu được ảnh: {error}.': 'Saved "{title}", but the image was not saved: {error}.',
   'Đầu ra cho: {title}': 'Output for: {title}',
@@ -87,7 +84,7 @@ export const library = {
   'Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.': 'Only JPEG, PNG, GIF or WebP images are accepted.',
   'Ảnh lớn hơn 10 MB.': 'The image is larger than 10 MB.',
   'ảnh lớn hơn giới hạn của máy chủ': 'the image is larger than the server allows',
-  'mục này không còn nữa': 'this entry no longer exists',
+  'mục này không còn nữa': 'this item no longer exists',
   'ảnh không hợp lệ': 'invalid image',
 
   // Item rows and board cards (components/brain/library/item-parts.tsx)
@@ -108,12 +105,9 @@ export const library = {
   'Ghi chú mới': 'New note',
   'Sửa ghi chú': 'Edit note',
   'Ghi chú cần có nội dung.': 'A note needs some content.',
-  'Nội dung dài quá {n} ký tự.': {
-    one: 'The content is longer than {n} character.',
-    other: 'The content is longer than {n} characters.',
-  },
+  'Nội dung dài quá {max} ký tự.': 'The content is longer than {max} characters.',
   'Tiêu đề (không bắt buộc)': 'Title (optional)',
-  'Để trống thì lấy dòng đầu của nội dung': 'Leave empty to use the first line of the content',
+  'Để trống thì lấy dòng đầu của nội dung': 'Leave empty to use the first line',
   'Nội dung (markdown)': 'Content (markdown)',
   '# Ba ý chính\n\n- …': '# Three key ideas\n\n- …',
   'Ghi chú là riêng tư, không gửi cho AI. Hiển thị dạng văn bản thô, giữ nguyên xuống dòng.':

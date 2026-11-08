@@ -111,8 +111,8 @@ export default async function IntroPage() {
       <PageHeader
         title="Alex's Brain"
         description={t(
-          'Một nơi duy nhất cho việc học, công việc và phát triển bản thân: {books} sổ tay với {n} bài học, một inbox, kế hoạch và nhìn lại mỗi tuần, cơ hội kinh doanh có bằng chứng, kỹ năng tự mờ theo thời gian và bản tin sáng. Tự host, đăng nhập mới vào được, dữ liệu là của Alex.',
-          { books: books.length, n: lessons },
+          'Một nơi duy nhất cho việc học, công việc và phát triển bản thân: {books} sổ tay với {lessons} bài học, một inbox, kế hoạch và nhìn lại mỗi tuần, cơ hội kinh doanh có bằng chứng, kỹ năng tự mờ theo thời gian và bản tin sáng. Tự host, đăng nhập mới vào được, dữ liệu là của Alex.',
+          { books: books.length, lessons: t.num(lessons) },
         )}
       >
         <div className="intro-noprint flex flex-wrap gap-2">
@@ -347,9 +347,9 @@ export default async function IntroPage() {
           <p className={p}>{t('Những gì đang có (02/11/2026), chạy trên máy dev:')}</p>
           <ul className={list}>
             <li>
-              {t('{books} sổ tay, {n} bài học trên một site có tìm kiếm toàn văn; tiến độ học lưu qua API.', {
+              {t('{books} sổ tay, {lessons} bài học trên một site có tìm kiếm toàn văn; tiến độ học lưu qua API.', {
                 books: books.length,
-                n: lessons,
+                lessons: t.num(lessons),
               })}
             </li>
             <li>

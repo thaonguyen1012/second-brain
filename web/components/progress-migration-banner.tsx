@@ -116,7 +116,7 @@ export function ProgressMigrationBanner() {
           )}
         </p>
         <p aria-live="polite" className="mt-1 font-medium text-foreground empty:hidden">
-          {running && t('Đang chuyển {handled}/{n} bài…', { handled: t.num(phase.handled), n: phase.total })}
+          {running && t('Đang chuyển {handled}/{n} bài…', { handled: t.count(phase.handled), n: phase.total })}
         </p>
         {errorText && (
           <p role="alert" className="mt-1 text-foreground">

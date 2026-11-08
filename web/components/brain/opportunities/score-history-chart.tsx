@@ -4,6 +4,7 @@ import type { ApiScoreSnapshot } from '@/lib/api/opportunities';
 import { formatDate } from '@/lib/labels';
 import { useT } from '@/lib/i18n/client';
 import type { Msg } from '@/lib/i18n/translate';
+import { cn } from '@/lib/utils';
 import { scoreDims, type ScoreKey } from './labels';
 
 // Small multiples, one figure per score (1-10, shared scale), one data hue (--chart-data): the tile title names the series, so no
@@ -183,7 +184,7 @@ export function ScoreHistoryChart({ history }: { history: ApiScoreSnapshot[] }) 
           {snap.note && <>: {snap.note}</>}
           <span className="sr-only">{scoreDims.map((d) => `${t(d.label)} ${snap[d.key]}`).join(', ')}</span>
         </p>
-        <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+        <div className={cn('grid grid-cols-2 gap-6 lg:grid-cols-4', t.locale === 'en' && 'xl:grid-cols-2')}>
           {scoreDims.map((d) => (
             <Tile key={d.key} dim={d} points={points} xs={xs} active={active} onActive={setHover} />
           ))}

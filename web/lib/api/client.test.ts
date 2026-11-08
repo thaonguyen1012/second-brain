@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, request } from './client';
 
-// request() runs in the browser: stand in for the cookie (CSRF token), the write event and fetch.
+// request() runs in the browser: stand in for the cookie (CSRF token), the page's language, the write event and fetch.
 const calls: { url: string; init: RequestInit }[] = [];
 let answer: Response;
 
 beforeEach(() => {
   calls.length = 0;
-  vi.stubGlobal('document', { cookie: 'csrftoken=tok123' });
+  vi.stubGlobal('document', { cookie: 'csrftoken=tok123', documentElement: { lang: 'en' } });
   vi.stubGlobal('window', { dispatchEvent: () => true });
   vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
     calls.push({ url, init });
@@ -26,6 +26,7 @@ describe('request', () => {
     const headers = calls[0].init.headers as Record<string, string>;
     expect(headers['Content-Type']).toBe('application/json');
     expect(headers['X-CSRFToken']).toBe('tok123');
+    expect(headers['X-UI-Lang']).toBe('en');
     expect(calls[0].init.body).toBe('{"status":"done"}');
   });
 

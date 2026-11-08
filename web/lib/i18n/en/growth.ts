@@ -11,7 +11,7 @@ export const growth = {
   'Mỗi tháng dán vài tin tuyển dụng, xem kỹ năng nào được đòi và mình còn thiếu gì.':
     'Paste a few job ads each month to see which skills are asked for and what I am still missing.',
   'Việc đã làm được mỗi tuần kèm con số tác động, và các dự đoán chấm lại sau 6 tháng.':
-    'What got done each week, with a number for its impact, and predictions scored again after 6 months.',
+    'What got done each week, with a number for its impact, and predictions scored after 6 months.',
 
   // Period stepper (growth/shared.tsx): "{name}" is "tháng" or "tuần"
   '{name} trước': 'Previous {name}',
@@ -29,7 +29,7 @@ export const growth = {
   'Mọi độ mới': 'Any freshness',
   'Độ mới': 'Freshness',
   'Tìm kỹ năng': 'Search skills',
-  'Tìm theo tên hoặc tên khác': 'Search by name or other names',
+  'Tìm theo tên hoặc tên khác': 'Search by any name',
   'Thêm kỹ năng': 'Add skill',
   'Chưa có kỹ năng nào': 'No skills yet',
   'Thêm kỹ năng nền và kỹ năng của vai trò nhắm tới, rồi gắn bằng chứng: thứ đã ship, case study, bài viết.':
@@ -90,7 +90,7 @@ export const growth = {
     'The text is longer than {max} characters; cut some of the company introduction.',
   'Link tin (không bắt buộc)': 'Link to the ad (optional)',
   'Nội dung tin': 'Ad text',
-  '{n} / {max} ký tự': '{n} / {max} characters',
+  '{count} / {max} ký tự': '{count} / {max} characters',
   'Dán toàn bộ phần mô tả công việc và yêu cầu…': 'Paste the whole job description and requirements…',
   'Kỹ năng (sửa tay, cách nhau bằng dấu phẩy)': 'Skills (edited by hand, separated by commas)',
   'Sửa ô này thì kết quả của bạn được giữ, không phân tích lại. Đổi vị trí, công ty hay nội dung thì tin được phân tích lại.':
@@ -176,7 +176,7 @@ export const growth = {
   'Kỹ năng đã dùng': 'Skills used',
   'Không gắn dự án': 'No project',
   'Cần ghi việc đã làm.': 'Write what was done.',
-  'Ship trang thanh toán mới': 'Ship the new checkout page',
+  'Ship trang thanh toán mới': 'Shipped the new checkout page',
   'Kết quả bằng số': 'Result in numbers',
   'Con số dùng được trong CV: thời gian, tiền, người dùng, lỗi giảm…':
     'A number a CV can use: time, money, users, fewer bugs…',
@@ -203,17 +203,18 @@ export const growth = {
   'Giảm build từ 14 GB xuống 1,9 GB': 'Cut the build from 14 GB to 1.9 GB',
   'Đã ghi "{title}"': 'Logged "{title}"',
   'Tuần này chưa ghi gì': 'Nothing logged this week yet',
-  'Tuần {week} không có dòng nào': 'Nothing logged in the week {week}',
+  'Tuần {week} không có dòng nào': 'Nothing logged for {week}',
   'Nhật ký còn trống': 'The log is empty',
   'Mỗi tuần ghi những việc đã làm được, kèm kết quả bằng số. Đây là nguyên liệu cho CV và case study.':
     'Each week, log the things that got done, with a result in numbers. This is material for a CV and case studies.',
 
   // Predictions (growth/brag-page.tsx)
-  'Mọi dự đoán': 'All predictions',
-  'Đến hạn chấm lại': 'Due for scoring again',
+  'Mọi dự đoán': 'All',
+  'Đến hạn chấm lại': 'Due for scoring',
   'chấm {date}': 'scored {date}',
   'tự tin {confidence}/10': 'confidence {confidence}/10',
   Chấm: 'Score',
+  'Chấm lại': 'Score again',
   'Thao tác với dự đoán': 'Actions for the prediction',
   'Xóa dự đoán?': 'Delete this prediction?',
   '"{statement}" bị xóa, kể cả kết quả đã chấm. Không hoàn tác được.':
@@ -221,29 +222,29 @@ export const growth = {
   'Không tìm thấy dự đoán #{id}, có thể đã bị xóa.': 'Prediction #{id} was not found; it may have been deleted.',
   'Ghi dự đoán': 'Log prediction',
   '{n}{plus} dự đoán đến hạn chấm lại': {
-    one: '{n}{plus} prediction due for scoring again',
-    other: '{n}{plus} predictions due for scoring again',
+    one: '{n}{plus} prediction due for scoring',
+    other: '{n}{plus} predictions due for scoring',
   },
   'Mỗi quý xem lại danh sách dự đoán: đúng, sai, hay đúng một phần, và vì sao.':
     'Each quarter, go through the predictions: right, wrong or partly right, and why.',
   Xem: 'Show',
-  'Dự đoán, chấm lại sau 6 tháng': 'Predictions, scored again after 6 months',
+  'Dự đoán, chấm lại sau 6 tháng': 'Predictions, scored after 6 months',
   'Lọc dự đoán': 'Filter predictions',
   'Chưa có dự đoán nào. Ghi một dự đoán về AI, kinh tế hay địa chính trị kèm độ tự tin; 6 tháng sau app nhắc chấm lại.':
-    'No predictions yet. Write one about AI, the economy or geopolitics with a confidence level; 6 months later the app reminds you to score it again.',
+    'No predictions yet. Write one about AI, the economy or geopolitics with a confidence level; 6 months later the app reminds you to score it.',
   'list::Dự đoán': 'Predictions',
   'Đã xóa dự đoán': 'Prediction deleted',
-  'Đã ghi dự đoán, chấm lại ngày {date}': 'Prediction logged; score it again on {date}',
+  'Đã ghi dự đoán, chấm lại ngày {date}': 'Prediction logged; score it on {date}',
   'Đã chấm: {outcome}': 'Scored: {outcome}',
   'Đã lưu dự đoán': 'Prediction saved',
 
   // Prediction dialog (growth/prediction-dialog.tsx)
   'Ngày ghi': 'Made on',
-  'Ngày chấm lại': 'Score again on',
+  'Ngày chấm lại': 'Score on',
   'Độ tự tin': 'Confidence',
   'Cần ghi dự đoán.': 'Write the prediction.',
   'Độ tự tin là số nguyên từ 1 đến 10, hoặc để trống.': 'Confidence is a whole number from 1 to 10, or empty.',
-  'Ngày chấm lại phải sau ngày ghi.': 'The date to score again must come after the date it was made.',
+  'Ngày chấm lại phải sau ngày ghi.': 'The scoring date must come after the date it was made.',
   'Điều mình nghĩ sẽ xảy ra, viết sao cho 6 tháng sau chấm được đúng hay sai.':
     'What I think will happen, written so that in 6 months it can be scored right or wrong.',
   'Để trống: sau 6 tháng.': 'Leave empty for 6 months later.',
@@ -251,10 +252,10 @@ export const growth = {
   'Chọn kết quả trước: 1 đúng, 2 một phần, 3 sai.': 'Choose a result first: 1 right, 2 partly, 3 wrong.',
   'Chuyện gì đã xảy ra, mình học được gì': 'What happened, what I learned',
   'Lưu kết quả': 'Save result',
-  'Chấm lại dự đoán': 'Score prediction again',
+  'Chấm lại dự đoán': 'Score prediction',
   'Sửa dự đoán': 'Edit prediction',
   '{statement} (ghi {date}, tự tin {confidence}/10)': '{statement} (made {date}, confidence {confidence}/10)',
   '{statement} (ghi {date})': '{statement} (made {date})',
   'Đọc các nhà tiên tri để lấy khung tư duy, không để tin dự báo. Ghi lại, 6 tháng sau chấm lại.':
-    'Read forecasters for their ways of thinking, not to believe their forecasts. Write it down, then score it again 6 months later.',
+    'Read forecasters for their ways of thinking, not to believe their forecasts. Write it down, then score it 6 months later.',
 } satisfies Dictionary;

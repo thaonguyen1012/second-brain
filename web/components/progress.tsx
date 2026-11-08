@@ -212,8 +212,9 @@ export function ContinueReading({
               {lead} · {resumed ? book.title : start.phase}
             </span>
             <span className="line-clamp-2 font-heading text-lg font-semibold tracking-tight">
-              {/* the book's own root page is "Mở đầu sổ tay", so the book name is never said twice */}
-              {!resumed ? book.title : last?.title && last.title !== book.title ? last.title : t('Mở đầu sổ tay')}
+              {/* the book's own root page (empty pageSlug; its stored title is the untranslated book title) is
+                  "Mở đầu sổ tay", so the book name is never said twice */}
+              {!resumed ? book.title : last?.title && last.pageSlug ? last.title : t('Mở đầu sổ tay')}
             </span>
             <BookProgress book={book.slug} total={book.lessonCount} fill={book.fill} className="mt-1 max-w-md" />
           </span>

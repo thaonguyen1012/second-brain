@@ -56,7 +56,7 @@ export function OpportunityDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
         <DialogHeader>
-          <DialogTitle>{t('Bằng chứng cho cơ hội nào?')}</DialogTitle>
+          <DialogTitle className="pe-6">{t('Bằng chứng cho cơ hội nào?')}</DialogTitle>
           <DialogDescription className="line-clamp-2">{entryTitle}</DialogDescription>
         </DialogHeader>
         <DialogPanel>

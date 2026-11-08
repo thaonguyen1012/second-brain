@@ -38,13 +38,11 @@ export const inbox = {
   'thu thập': 'capture',
 
   // Notices and empty states (components/brain/inbox-page.tsx)
-  'Không thấy mục này trong {n} mục mới nhất của tab: bấm "Tải thêm" để xem tiếp.': {
-    one: 'This entry is not among the newest {n} entry in this tab: press "Load more" to see more.',
-    other: 'This entry is not among the newest {n} entries in this tab: press "Load more" to see more.',
-  },
+  'Không thấy mục này trong {max} mục mới nhất của tab: bấm "Tải thêm" để xem tiếp.':
+    'This entry is not among the newest {max} entries in this tab: press "Load more" to keep looking.',
   'Không thấy mục này: có thể đã bị xóa hoặc đổi trạng thái.':
     'Entry not found: it may have been deleted or moved to another status.',
-  'Chưa lưu được ảnh: {error}.': 'The picture was not saved: {error}.',
+  'Chưa lưu được ảnh: {error}.': 'The image was not saved: {error}.',
   'Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture} Nhấn A để lưu trữ mục.':
     'Added "{title}" to the library and linked the inbox entry.{picture} Press A to archive the entry.',
   'Đã thêm "{title}" nhưng chưa liên kết được: {reason}.{picture}':
@@ -71,14 +69,14 @@ export const inbox = {
   'Quay lại trang trước': 'Back to the previous page',
   'Mở Inbox': 'Open Inbox',
   'Trình duyệt không cho trang này tự đóng. Hãy đóng tab bằng tay.':
-    'The browser does not let this page close itself. Close the tab by hand.',
+    'The browser does not let this page close itself. Close the tab yourself.',
 
   // Bookmarklet help rail (components/capture/bookmarklet-help.tsx)
   'Sao chép mã bookmarklet': 'Copy the bookmarklet code',
   'Thu thập từ điện thoại': 'Capture from a phone',
   'Thu thập từ trình duyệt': 'Capture from the browser',
   'Kéo nút {button} lên thanh dấu trang, rồi bấm nó ở trang bất kỳ để gửi link (và đoạn đang chọn) vào inbox.':
-    'Drag {button} to the bookmarks bar, then click it on any page to send its link (and the selected text) to the inbox.',
+    "Drag {button} to the bookmarks bar, then click it on any page to send that page's link (and any selected text) to the inbox.",
   'Kéo lên thanh dấu trang': 'Drag to the bookmarks bar',
   'Lưu vào Brain': 'Save to Brain',
   'Nút này không bấm ở đây: kéo nó lên thanh dấu trang ({key}+Shift+B để hiện thanh này), hoặc sao chép mã bên dưới.':

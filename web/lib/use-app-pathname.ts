@@ -11,3 +11,12 @@ import { stripLocale } from '@/lib/i18n/config';
 export function useAppPathname(): string {
   return stripLocale(usePathname());
 }
+
+/**
+ * The browser's own path, to navigate with: router.replace/push to the same page in a callback or an effect. A page
+ * opened by its language path keeps it ("/en/thu-vien/"), while useAppPathname's "/thu-vien/" would go through the
+ * rewrites and come back in the cookie's language. Never render it: on the server it is "/en/thu-vien".
+ */
+export function useRoutePathname(): string {
+  return usePathname();
+}

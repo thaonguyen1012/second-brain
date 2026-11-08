@@ -38,12 +38,13 @@ export const guides = {
   'Kế toán của một văn phòng dịch vụ': 'Accountant at a service office',
   'Mẫu miễn phí trên một diễn đàn': 'Free template on a forum',
   'https://diendan.example/mau-hop-dong': 'https://forum.example/contract-template',
-  'Ghi một giả thuyết: ai, đau gì, trả tiền cho gì.': 'Write down a hypothesis: who, what pain, what they pay for.',
+  'Ghi một giả thuyết: ai, đau gì, trả tiền cho gì.':
+    'Write down a hypothesis: who, what hurts, what they would pay for.',
   '{n} ủng hộ': '{n} for',
   '{n} phản bác': '{n} against',
   'Cuộc nói chuyện thật hoặc một nguồn bên ngoài.': 'A real conversation or an outside source.',
   'Hình minh họa trang Cơ hội: viết một giả thuyết (ai, đau gì, trả tiền cho gì) trong hộp thoại Cơ hội mới rồi bấm Tạo cơ hội; mở cơ hội vừa tạo; thêm một cuộc nói chuyện làm bằng chứng ủng hộ và một link làm bằng chứng phản bác; nhấn S để chấm bốn điểm từ 1 đến 10: cơ hội, nỗi đau, khả thi, thời điểm.':
-    'Illustration of the Opportunities page: write a hypothesis (who, what pain, what they pay for) in the New opportunity dialog and click Create opportunity; open the new opportunity; add a conversation as evidence for it and a link as evidence against it; press S to give the four scores from 1 to 10: opportunity, pain, feasibility, timing.',
+    'Illustration of the Opportunities page: write a hypothesis (who, what hurts, what they would pay for) in the New opportunity dialog and click Create opportunity; open the new opportunity; add a conversation as evidence for it and a link as evidence against it; press S to give the four scores from 1 to 10: opportunity, pain, feasibility, timing.',
 
   // Skills (guides/skill-freshness.tsx): the matrix toolbar, the skill sheet, the time notes
   'Bài viết: generics trong dự án thật': 'Article: generics in a real project',
@@ -61,10 +62,8 @@ export const guides = {
   'Đang có 2 mục tiêu. 3–5 là vừa cho một tuần, ít hơn cũng được.':
     '2 objectives so far. 3–5 is right for a week; fewer is fine too.',
   '3 mục tiêu: vừa đủ cho một tuần.': '3 objectives: just right for a week.',
-  'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở bên trái.':
-    'Look at the chart of time for objectives and other time on the left.',
-  'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở trên.':
-    'Look at the chart of time for objectives and other time above.',
+  'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở bên trái.': 'See the chart on the left: objective time vs other time.',
+  'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở trên.': 'See the chart above: objective time vs other time.',
   'Kéo mục tiêu chưa xong sang': 'Carry over unfinished objectives',
   'Mục tiêu còn mở của tuần trước. Bỏ chọn cái không còn quan trọng.':
     "Last week's open objectives. Untick any that no longer matter.",

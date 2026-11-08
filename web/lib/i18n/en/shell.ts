@@ -72,10 +72,10 @@ export const shell = {
   '{n} đã xong': '{n} done',
   '{n} sổ tay chưa bắt đầu': { one: '{n} handbook not started', other: '{n} handbooks not started' },
   '{n} chưa bắt đầu': '{n} not started',
-  'Đã học {done}/{total} bài': 'Done {done}/{total} lessons',
+  'Đã học {done}/{total} bài': '{done}/{total} lessons done',
   'Đang học': 'In progress',
   '{n} sổ tay': { one: '{n} handbook', other: '{n} handbooks' },
-  'Gần nhất: {page}': 'Last: {page}',
+  'Gần nhất: {page}': 'Last viewed: {page}',
 
   // Handbooks page (app/[lang]/(home)/phat-trien/page.tsx)
   '{books} sổ tay từ các khóa Coursera và F8, {lessons} bài học, chia theo ba nhóm.':
@@ -89,11 +89,13 @@ export const shell = {
     'Notes as markdown and all other data as JSON, in one zip file',
   'Tải bản sao dữ liệu': 'Download a copy of my data',
 
-  // Cmd+K search (components/search-dialog.tsx)
-  'Tuyển dụng': 'Job ads',
+  // Cmd+K search (components/search-dialog.tsx); a result's kind names one record
+  'kind::Kỹ năng': 'Skill',
+  'kind::Thành tựu': 'Achievement',
+  'Tuyển dụng': 'Job ad',
   'Bản tin': 'Brief',
   'Mục #{id}': 'Entry #{id}',
-  'chấm lại {date}': 'score again {date}',
+  'chấm lại {date}': 'score on {date}',
   'ghi {date}': 'made {date}',
   'Chưa đăng nhập: chỉ tìm được trong sổ tay.': 'Not signed in: only the handbooks can be searched.',
   'Không tìm được trong bộ não thứ hai (máy chủ trả lỗi {status}).':
@@ -104,7 +106,7 @@ export const shell = {
   'Đi đến': 'Go to',
 
   // Guide frames (components/stageshow/lazy.tsx, guides/guide-frame.tsx): in the page bundle, not the guides chunk
-  'thu thập và xử lý bằng phím': 'capture, then triage with the keyboard',
+  'thu thập và xử lý bằng phím': 'capture and triage by keyboard',
   'cài và dùng bookmarklet': 'install and use the bookmarklet',
   'lên kế hoạch và nhìn lại tuần': 'plan and review the week',
   'giả thuyết, bằng chứng và điểm': 'hypothesis, evidence and scores',
@@ -164,7 +166,7 @@ export const shell = {
     'AI for everyone and for business, prompting, agents, automation with Python, Git and Power Automate.',
   'Sổ tay An ninh mạng': 'Cybersecurity handbook',
   'An ninh mạng từ nền tảng tới chuyên sâu: Google, IBM và Microsoft Cybersecurity Analyst.':
-    'Cybersecurity from the foundations to advanced: Google, IBM and Microsoft Cybersecurity Analyst.',
+    'Cybersecurity from the basics to an advanced level: Google, IBM and Microsoft Cybersecurity Analyst.',
   'Sổ tay Data Engineering & Robotics': 'Data Engineering & Robotics handbook',
   'Data engineering trên AWS và Google Cloud, cùng robotics và xe tự lái.':
     'Data engineering on AWS and Google Cloud, plus robotics and self-driving cars.',

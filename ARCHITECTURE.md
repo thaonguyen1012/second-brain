@@ -38,10 +38,13 @@ browser /thu-vien/  (cookie lang=en)
   from `next/root-params` (`getT()`), client components from a context (`useT()`). The root layout sends the
   English dictionary inside the RSC payload of English pages only, so no JS bundle carries English and Vietnamese
   pages carry no dictionary; the lazily loaded Stageshow guides and intro pictures import their own. Paths come
-  from `useAppPathname()` (the language stripped), so server and browser render the same sidebar.
+  from `useAppPathname()` (the language stripped), so server and browser render the same sidebar; a page that
+  writes its own URL (`router.replace`/`push`) uses `useRoutePathname()`, the browser's path, so `/en/...` stays
+  English.
 * The switch (top bar; Fumadocs' language select on lesson pages) sets the cookie and reloads the page.
-* Django answers in the same language: `core.middleware.LanguageMiddleware` activates `en` when the cookie says
-  so (Django's and DRF's messages), the app's own messages go through `core.i18n.tr`.
+* Django answers in the page's language: `lib/api/client.ts` sends the page's `<html lang>` as `X-UI-Lang`, and
+  `core.middleware.LanguageMiddleware` activates `en` when that header (else the cookie) says so (Django's and
+  DRF's messages); the app's own messages go through `core.i18n.tr`.
 * `lib/i18n/coverage.test.ts` (Vitest) and `core/tests/test_i18n.py` (pytest) keep both catalogues complete.
 
 ## Phase 2: Django + deployment

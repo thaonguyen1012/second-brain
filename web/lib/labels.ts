@@ -46,10 +46,22 @@ export const itemTypeLabel = (type: string): Msg => itemTypes.find((x) => x.valu
 export const itemStatusOf = (s: string | undefined) => itemStatuses.find((x) => x.value === s) ?? itemStatuses[0];
 export const inboxStatusOf = (s: string) => inboxStatuses.find((x) => x.value === s) ?? inboxStatuses[0];
 
-/** A timestamp's day in the browser: "8/11/2026" (vi) or "08/11/2026" (en-GB). */
+/** Intl output with the day and month unpadded, so en-GB matches vi-VN and lib/dates formatDay ("8/11/2026"). */
+export function unpadded(f: Intl.DateTimeFormat, date: Date | number): string {
+  if (Number.isNaN(Number(date))) return 'Invalid Date'; // as toLocaleString shows it; formatToParts would throw
+  return f
+    .formatToParts(date)
+    .map((p) => (p.type === 'day' || p.type === 'month' ? p.value.replace(/^0(?=\d)/, '') : p.value))
+    .join('');
+}
+
+/** A timestamp's day in the browser: "8/11/2026" in both languages. */
 export function formatDate(iso: string | null | undefined, t: T): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString(t.intl, { day: 'numeric', month: 'numeric', year: 'numeric' });
+  return unpadded(
+    new Intl.DateTimeFormat(t.intl, { day: 'numeric', month: 'numeric', year: 'numeric' }),
+    new Date(iso),
+  );
 }
 
 /** Host of a URL without "www.", for cards whose page has no og:site_name. */
@@ -79,8 +91,9 @@ export const opportunityHref = (id: number) => `/co-hoi/?id=${id}`;
 const defaultFieldNames: Record<string, Msg> = { non_field_errors: msg('Lỗi'), detail: msg('Lỗi') };
 
 /**
- * One DRF message in the page's language. Django answers in the language of the `lang` cookie (its own and DRF's
- * messages, and the app's, backend/core/middleware.py); in Vietnamese, DRF's catalog leaves some in English, which
+ * One DRF message in the page's language. Django answers in the page's language (the X-UI-Lang header
+ * lib/api/client.ts sends, else the `lang` cookie; its own and DRF's messages, and the app's,
+ * backend/core/middleware.py); in Vietnamese, DRF's catalog leaves some in English, which
  * lib/drf-messages-vi.ts translates. English needs nothing.
  */
 const translateMessage = (text: string, t: T) => (t.locale === 'vi' ? drfMessageVi(text) : text);

@@ -16,7 +16,7 @@ export const common = {
   Inbox: 'Inbox',
   'Đọc sau': 'Read later',
   'Lưu trữ': 'Archived',
-  'Bằng chứng cho cơ hội': 'Evidence for an opportunity',
+  'Bằng chứng cho cơ hội': 'Opportunity evidence',
   'Ghi chú': 'Note',
   'Cơ hội': 'Opportunity',
   'Chưa quyết': 'Undecided',
@@ -80,13 +80,12 @@ export const common = {
   'Phản bác': 'Against',
   'Chấm điểm': 'Score',
   'Chưa chấm điểm': 'Not scored yet',
-  'Chấm lại': 'Score again',
   'Viết ghi chú': 'Write a note',
   'Đang tải danh sách item…': 'Loading the items…',
   'Đang tải kỹ năng…': 'Loading skills…',
   'Tính tiền': 'Billable',
   'Không tính tiền': 'Not billable',
-  'Bấm giờ': 'Time it',
+  'Bấm giờ': 'Start timer',
   'chưa ghi gì': 'nothing logged',
 
   // Library rows (lib/library-labels.ts)
@@ -181,7 +180,7 @@ export const common = {
 
   // Predictions due (components/brain/due-predictions.tsx)
   'Chưa có dự đoán nào đến hạn. Mỗi dự đoán được chấm lại 6 tháng sau khi ghi.':
-    'No predictions are due. Each prediction is scored again 6 months after it was made.',
+    'No predictions are due. Each prediction is scored 6 months after it was made.',
   'Đến hạn {date}': 'Due {date}',
   'Ghi ngày {date}': 'Made {date}',
   '· tự tin {confidence}/10': '· confidence {confidence}/10',

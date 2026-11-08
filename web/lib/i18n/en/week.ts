@@ -7,7 +7,7 @@ export const week = {
   'Một việc, có số nếu được.': 'One thing, with a number if possible.',
   'Cái gì kéo thời gian khỏi ưu tiên?': 'What pulled time away from the priorities?',
   'Nhìn biểu đồ giờ cho mục tiêu và giờ khác ở phần Giờ.':
-    'Look at the chart of time for objectives and other time in the Time section.',
+    'See the chart in the Time section: objective time vs other time.',
   'Học được gì?': 'What did I learn?',
   'Có hài lòng với tuần này không?': 'Am I happy with this week?',
   'Có, không, hay một nửa, và vì sao.': 'Yes, no or half, and why.',
@@ -27,12 +27,13 @@ export const week = {
   'kế hoạch': 'plan',
   'nhìn lại': 'review',
   'chọn mục tiêu': 'select an objective',
-  'mục tiêu xong': 'objective done',
+  'mục tiêu xong': 'mark the objective done',
   'bỏ mục tiêu': 'drop the objective',
   'mở lại mục tiêu': 'reopen the objective',
   'sửa tên mục tiêu': 'rename the objective',
   'đổi thứ tự mục tiêu': 'reorder the objectives',
   'xóa mục tiêu': 'delete the objective',
+  'relative::Tuần trước': 'Last week',
   'Tuần tới': 'Next week',
   '{done}/{total} bước': '{done}/{total} steps',
   'Đã nhìn lại': 'Reviewed',
@@ -41,9 +42,9 @@ export const week = {
   'Về tuần này': 'Back to this week',
   'Nghi thức tuần': 'Weekly ritual',
   'Phím tắt của Tuần': 'Week keyboard shortcuts',
-  'Tuần này chưa được mở': 'This week was never opened',
+  'Tuần này chưa được mở': 'The week was never opened',
   'Không có kế hoạch hay nhìn lại nào cho tuần {range}.': 'There is no plan or review for the week of {range}.',
-  'Mở tuần này để ghi lại': 'Open this week to record it',
+  'Mở tuần này để ghi lại': 'Open the week to fill it in',
   // How the plan names its week inside a sentence ("Kéo 2 mục tiêu sang tuần này")
   'tuần này': 'this week',
   'tuần tới': 'next week',
@@ -60,7 +61,7 @@ export const week = {
   '{week} mình mong...': 'For {week}, I hope...',
   'Lưu kế hoạch': 'Save plan',
   'Chưa lưu': 'Not saved',
-  'Đã lên kế hoạch lúc {time}': 'Planned at {time}',
+  'Đã lên kế hoạch lúc {time}': 'Planned {time}',
   'Chưa lên kế hoạch': 'Not planned yet',
   'Mục tiêu tuần': 'Weekly objectives',
   'Chưa lưu được': 'Could not save',
@@ -91,7 +92,7 @@ export const week = {
   'Tuần này không có mục tiêu nào.': 'This week has no objectives.',
   'Inbox về 0 chưa?': 'Inbox down to 0?',
   'Đã về 0': 'Down to 0',
-  'Còn {n}': '{n} left',
+  'Còn {count}': '{count} left',
   'Xử lý inbox': 'Triage Inbox',
   'Mục tiêu xong': 'Objectives done',
   'Chưa có mục tiêu': 'No objectives yet',
@@ -114,7 +115,7 @@ export const week = {
   '{n} thành tựu': { one: '{n} achievement', other: '{n} achievements' },
   '{n} dự án xong': { one: '{n} project finished', other: '{n} projects finished' },
   '{n} dự đoán chưa chấm': { one: '{n} prediction not scored yet', other: '{n} predictions not scored yet' },
-  '3 ưu tiên tuần tới': '3 priorities for next week',
+  '3 ưu tiên tuần tới': 'Top 3 for next week',
   '{n} mục tiêu': { one: '{n} objective', other: '{n} objectives' },
 
   // Time chart (tuan/time-chart.tsx)
@@ -149,7 +150,7 @@ export const week = {
   'Không tên': 'Untitled',
   'Giờ đã ghi:': 'Time logged:',
   'Đã làm được gì, theo ngày': 'What got done, day by day',
-  'Tuần này chưa bắt đầu.': 'This week has not started yet.',
+  'Tuần này chưa bắt đầu.': 'The week has not started yet.',
   '{days}: chưa ghi gì.': '{days}: nothing logged.',
 
   // Opportunities, achievements and predictions in the review (tuan/review-extras.tsx)
@@ -161,13 +162,14 @@ export const week = {
   'Bằng chứng cuối {date}': 'Last evidence {date}',
   'Tất cả': 'All',
   'Dự đoán đến hạn chấm lại': 'Predictions due for scoring',
+  'due::Chấm lại': 'Score',
 
   // Review journal (tuan/review-journal.tsx)
   '{title}: +{supports} ủng hộ, {contradicts} phản bác': '{title}: +{supports} for, {contradicts} against',
   'Nhật ký nhìn lại': 'Review journal',
   '{answered}/{total} câu': '{answered}/{total} answered',
-  'Đã lưu lúc {time}': 'Saved at {time}',
+  'Đã lưu lúc {time}': 'Saved {time}',
   'Đã trả lời:': 'Answered:',
-  'Chèn các cơ hội có bằng chứng tuần này': 'Insert the opportunities with evidence this week',
+  'Chèn các cơ hội có bằng chứng tuần này': 'Insert opportunities with new evidence',
   'Lưu nhìn lại': 'Save review',
 } satisfies Dictionary;

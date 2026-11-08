@@ -14,22 +14,24 @@ _SKIP = ("/healthz",)
 
 
 class LanguageMiddleware:
-    """Answers in the language of the web UI: its `lang` cookie (web/lib/i18n/config.ts), Vietnamese
-    unless it says en. Django's and DRF's own messages follow it, and the app's through core.i18n.tr.
-    Not Django's LocaleMiddleware: that one follows the browser's Accept-Language, while the UI
-    language is the owner's switch.
+    """Answers in the language of the web page that asks: its `X-UI-Lang` header (web/lib/api/client.ts
+    sends the page's <html lang>, so a page opened at /en/... gets English whatever the cookie says),
+    else the `lang` cookie (web/lib/i18n/config.ts); Vietnamese unless it says en. Django's and DRF's
+    own messages follow it, and the app's through core.i18n.tr. Not Django's LocaleMiddleware: that one
+    follows the browser's Accept-Language, while the UI language is the owner's switch.
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        language = "en" if request.COOKIES.get("lang") == "en" else settings.LANGUAGE_CODE
+        asked = request.headers.get("X-UI-Lang") or request.COOKIES.get("lang")
+        language = "en" if asked == "en" else settings.LANGUAGE_CODE
         request.LANGUAGE_CODE = language
         # override, not activate: the next request on this thread (or a test) starts from the default
         with translation.override(language):
             response = self.get_response(request)
-        patch_vary_headers(response, ("Cookie",))
+        patch_vary_headers(response, ("Cookie", "X-UI-Lang"))
         response.headers.setdefault("Content-Language", language)
         return response
 

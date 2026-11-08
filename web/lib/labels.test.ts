@@ -7,6 +7,7 @@ import {
   destinations,
   fieldErrors,
   firstFieldError,
+  formatDate,
   hostOf,
   inboxStatusOf,
   inboxStatuses,
@@ -16,6 +17,7 @@ import {
   itemTypes,
   objectiveStatuses,
   opportunityHref,
+  unpadded,
 } from './labels';
 import { makeT, msg, tVi } from './i18n/translate';
 
@@ -85,6 +87,24 @@ describe('hostOf', () => {
     expect(hostOf(undefined)).toBe('');
     expect(hostOf('')).toBe('');
     expect(hostOf('/thu-vien/')).toBe('');
+  });
+});
+
+describe('unpadded dates', () => {
+  // en-GB pads numeric days and months ("08/11/2026"); the app writes them like vi-VN and lib/dates formatDay
+  const enUtc = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-GB', { ...o, timeZone: 'UTC' });
+  const at = Date.UTC(2026, 10, 8, 9, 5);
+
+  it('drops the leading zero of the day and month only', () => {
+    expect(unpadded(enUtc({ day: 'numeric', month: 'numeric', year: 'numeric' }), at)).toBe('8/11/2026');
+    expect(unpadded(enUtc({ hour: '2-digit', minute: '2-digit' }), at)).toBe('09:05');
+  });
+
+  it('formatDate writes the same day in both languages and never throws', () => {
+    const iso = '2026-03-05T12:00:00Z';
+    expect(formatDate(iso, makeT('en', null))).toBe(formatDate(iso, tVi));
+    expect(formatDate(iso, tVi)).toMatch(/^\d\/3\/2026$/);
+    expect(formatDate('not a date', makeT('en', null))).toBe('Invalid Date');
   });
 });
 

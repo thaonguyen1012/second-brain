@@ -2,7 +2,7 @@
 // the backend's timezone, so "today" and week boundaries match /api/time-entries/summary.
 import type { ApiBilling } from '@/lib/api/work';
 import { addDays } from '@/lib/dates';
-import { fieldErrors as sharedFieldErrors } from '@/lib/labels';
+import { fieldErrors as sharedFieldErrors, unpadded } from '@/lib/labels';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 
 export const billingChoices: { value: ApiBilling; label: Msg }[] = [
@@ -81,9 +81,10 @@ export { todayPrague, addDays, mondayOf } from '@/lib/dates';
 
 const utc = (day: string) => new Date(`${day}T00:00:00Z`);
 
-/** "Thứ Hai, 2/11" / "Monday 02/11" (capitalised weekday). */
+/** "Thứ Hai, 2/11" / "Monday 2/11" (capitalised weekday). */
 export function formatDay(day: string, t: T): string {
-  const s = new Intl.DateTimeFormat(t.intl, { weekday: 'long', day: 'numeric', month: 'numeric', timeZone: 'UTC' }).format(
+  const s = unpadded(
+    new Intl.DateTimeFormat(t.intl, { weekday: 'long', day: 'numeric', month: 'numeric', timeZone: 'UTC' }),
     utc(day),
   );
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -92,7 +93,7 @@ export function formatDay(day: string, t: T): string {
 /** "2/11 – 8/11" for the week starting `monday`. */
 export function formatWeekRange(monday: string, t: T): string {
   const short = new Intl.DateTimeFormat(t.intl, { day: 'numeric', month: 'numeric', timeZone: 'UTC' });
-  return `${short.format(utc(monday))} – ${short.format(utc(addDays(monday, 6)))}`;
+  return `${unpadded(short, utc(monday))} – ${unpadded(short, utc(addDays(monday, 6)))}`;
 }
 
 /** DRF 400 body `{ field: [messages] }` -> one line per field, with the field names where known. */

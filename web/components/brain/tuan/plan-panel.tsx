@@ -73,7 +73,12 @@ function CarryOver({
       </ul>
       {pending.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => void carry()} disabled={chosen.length === 0} loading={busy}>
+          <Button
+            className="h-auto min-h-9 max-w-full whitespace-normal py-1 text-start sm:h-auto sm:min-h-8"
+            onClick={() => void carry()}
+            disabled={chosen.length === 0}
+            loading={busy}
+          >
             {t('Kéo {n} mục tiêu sang {week}', { n: chosen.length, week: weekName })}
           </Button>
         </div>

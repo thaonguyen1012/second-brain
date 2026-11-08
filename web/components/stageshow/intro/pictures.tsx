@@ -338,7 +338,7 @@ export function HeroShell() {
                     icon={
                       <CalendarRange size={14} strokeWidth={2} aria-hidden style={{ color: 'var(--ss-text)' }} />
                     }
-                    title={<span className="hs-panel__title">{t('3 ưu tiên tuần')}</span>}
+                    title={<span className="hs-panel__title">{t('3 ưu tiên tuần', null, 'intro')}</span>}
                     link={wide}
                   />
                   {HERO_OBJECTIVES.map((o, i) => (
@@ -384,7 +384,7 @@ const LEGEND: { id: Exclude<InboxS['legend'], null>; key: string; label: Msg }[]
   { id: 'jk', key: 'J / K', label: msg('xuống / lên') },
   { id: 'l', key: 'L', label: msg('đọc sau') },
   { id: 'a', key: 'A', label: msg('lưu trữ') },
-  { id: 'o', key: 'O', label: msg('bằng chứng cho cơ hội') },
+  { id: 'o', key: 'O', label: msg('bằng chứng cho cơ hội', 'intro') },
 ];
 
 // L sends the top entry to Đọc sau, A archives the next; the cursor stays in place, so the tagged entry rises

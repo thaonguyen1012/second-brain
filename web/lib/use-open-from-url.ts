@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAppPathname } from '@/lib/use-app-pathname';
+import { useRoutePathname } from '@/lib/use-app-pathname';
 
 /**
  * Deep links such as `/thu-vien/?item=12` (Cmd+K results): calls `open(id, params)` once for each numeric
@@ -16,7 +16,7 @@ export function useOpenFromUrl(
 ): void {
   const params = useSearchParams();
   const router = useRouter();
-  const pathname = useAppPathname();
+  const pathname = useRoutePathname();
   const openRef = useRef(open);
   useEffect(() => {
     openRef.current = open;

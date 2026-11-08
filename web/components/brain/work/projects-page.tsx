@@ -382,7 +382,7 @@ export function ProjectsPage() {
                   onStart={() => void startFor(p)}
                 />
               )}
-              renderMedia={(p) => boardMedia(logoOf(p))}
+              renderMedia={(p) => boardMedia(logoOf(p), t)}
             />
           ) : (
             <ProjectList projects={list} runningId={runningId} onEdit={openEdit} onStart={(p) => void startFor(p)} />

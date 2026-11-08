@@ -77,12 +77,18 @@ function imagePlaceholder(node: Element, file: VFile, t: T): Element {
     'img-missing',
     [
       el('span', 'img-missing-icon', [text('🖼')], { ariaHidden: 'true' }),
-      el('span', 'img-missing-text', [
-        el('span', 'img-missing-alt', [text(alt ? t('Hình minh họa: {alt}', { alt }) : t('Hình minh họa'))]),
-        el('span', 'img-missing-note', note),
-      ]),
+      el(
+        'span',
+        'img-missing-text',
+        [
+          el('span', 'img-missing-alt', [text(alt ? t('Hình minh họa: {alt}', { alt }) : t('Hình minh họa'))]),
+          el('span', 'img-missing-note', note),
+        ],
+        { lang: t.locale },
+      ),
     ],
-    { role: 'img', ariaLabel: alt || t('Hình minh họa không có bản offline') },
+    // the lesson around it is lang="vi" (its own alt too); the placeholder's words are in the page's language
+    { role: 'img', ariaLabel: alt || t('Hình minh họa không có bản offline'), lang: alt ? 'vi' : t.locale },
   );
 }
 
@@ -90,9 +96,14 @@ function embedPlaceholder(node: Element, t: T): Element {
   const src = String(node.properties?.src ?? '');
   const host = hostOf(src);
   const label = host ? t('Nội dung nhúng từ {host} (mở ở trang gốc)', { host }) : t('Nội dung nhúng (mở ở trang gốc)');
-  return el('span', 'embed-missing', src && /^https?:/.test(src)
-    ? [el('a', 'embed-missing-link', [text(label)], { href: src, target: '_blank', rel: ['noreferrer'] })]
-    : [text(label)]);
+  return el(
+    'span',
+    'embed-missing',
+    src && /^https?:/.test(src)
+      ? [el('a', 'embed-missing-link', [text(label)], { href: src, target: '_blank', rel: ['noreferrer'] })]
+      : [text(label)],
+    { lang: t.locale },
+  );
 }
 
 function literal(node: Element, file: VFile): Text {

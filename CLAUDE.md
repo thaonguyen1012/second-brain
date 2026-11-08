@@ -53,7 +53,8 @@ web/
   lib/i18n/                      UI languages: t() / msg() (translate.ts), useT (client.tsx), getT (server.ts,
                                  next/root-params), English dictionaries per area (en/), coverage test; the switch is
                                  components/language-switch.tsx; lib/use-app-pathname.ts = the path without /vi or
-                                 /en (ESLint forbids usePathname)
+                                 /en to render, useRoutePathname (the browser's path) to navigate (ESLint forbids
+                                 usePathname)
   lib/content/                   CONTENT_DIR scan, on-demand MDX compile, MDX plugin chain
   lib/mdx/                       rehype-safe-html (placeholders, safe raw HTML), rehype-code-classes (R4)
   lib/progress/                  ProgressStore interface; localStorage store (default) or ApiProgressStore when
@@ -108,8 +109,9 @@ web/
   public/original/, lo-trinh.pdf, files/ (gitignored attachments), vendor/ (gitignored mermaid copy)
 backend/                         Django 5.2 + DRF + Postgres, managed with uv (pyproject.toml, uv.lock)
   config/                        settings (all from backend/.env, example: .env.example), urls, JSON logging
-  core/                          LanguageMiddleware (the `lang` cookie -> Django/DRF messages) + i18n.py (tr(): the
-                                 app's messages, Vietnamese key -> English), /healthz, /api/me, /api/status (services/status.py: LLM month cost vs budget, calls,
+  core/                          LanguageMiddleware (X-UI-Lang header, else the `lang` cookie -> Django/DRF messages)
+                                 + i18n.py (tr(): the app's messages, Vietnamese key -> English), /healthz, /api/me,
+                                 /api/status (services/status.py: LLM month cost vs budget, calls,
                                  last brief, pending/failed jobs by kind; no secrets), /api/counts (services/counts.py:
                                  sidebar numbers from the lists' own querysets, default filters, no Week created),
                                  /files/ (X-Accel-Redirect),

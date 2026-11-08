@@ -3,6 +3,7 @@
 // arithmetic never depends on the browser's time zone.
 import type { ApiReviewField } from '@/lib/api/weeks';
 import { addDays } from '@/lib/dates';
+import { unpadded } from '@/lib/labels';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 
 const DAY_MS = 86_400_000;
@@ -81,12 +82,10 @@ export function shortDate(iso: string): string {
 /** Clock time of a timestamp in the browser, for "đã lưu lúc". */
 export function clockTime(iso: string | null | undefined, t: T): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleString(t.intl, {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: 'numeric',
-    month: 'numeric',
-  });
+  return unpadded(
+    new Intl.DateTimeFormat(t.intl, { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric' }),
+    new Date(iso),
+  );
 }
 
 /** Compact duration for axes and labels: "45p" / "45m", "2h", "1h30". */

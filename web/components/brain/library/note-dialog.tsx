@@ -95,7 +95,7 @@ function NoteForm({
       return;
     }
     if (form.markdown.length > MAX_MARKDOWN) {
-      setError(t('Nội dung dài quá {n} ký tự.', { n: MAX_MARKDOWN }));
+      setError(t('Nội dung dài quá {max} ký tự.', { max: t.num(MAX_MARKDOWN) }));
       return;
     }
     const body = { title: form.title.trim(), markdown: form.markdown, items: form.items };

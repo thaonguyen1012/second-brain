@@ -5,7 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { rehypeSafeHtml } from '../mdx/rehype-safe-html';
 import { rehypeCodeClasses } from '../mdx/rehype-code-classes';
-import { tVi, type T } from '../i18n/translate';
+import type { T } from '../i18n/translate';
 
 /** The compile options for one UI language: only the image and embed placeholders' words depend on it. */
 export const mdxOptionsFor = (t: T): CompilerOptions => ({
@@ -34,5 +34,3 @@ export const mdxOptionsFor = (t: T): CompilerOptions => ({
     rehypeCodeClasses,
   ],
 });
-
-export const mdxOptions: CompilerOptions = mdxOptionsFor(tVi);

@@ -136,8 +136,8 @@ DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES["default"]["CONN_MAX_AGE"] = 60
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# DRF, Django and the app's validation messages reach the UI: Vietnamese by default, English when the web UI's
-# `lang` cookie says en (core.middleware.LanguageMiddleware, core.i18n).
+# DRF, Django and the app's validation messages reach the UI: Vietnamese by default, English when the web page
+# asks for it (its X-UI-Lang header, else the `lang` cookie; core.middleware.LanguageMiddleware, core.i18n).
 LANGUAGE_CODE = "vi"
 LANGUAGES = [("vi", "Tiếng Việt"), ("en", "English")]
 TIME_ZONE = "Europe/Prague"

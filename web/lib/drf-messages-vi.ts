@@ -1,5 +1,6 @@
 // Vietnamese for the DRF messages that DRF's own Vietnamese catalog leaves in English. Django answers in the page's
-// language (the `lang` cookie, backend/core/middleware.py), so this only runs on Vietnamese pages (lib/labels.ts).
+// language (the X-UI-Lang header, else the `lang` cookie; backend/core/middleware.py), so this only runs on
+// Vietnamese pages (lib/labels.ts).
 // i18n-ignore-file: this file is a translation itself (English -> Vietnamese)
 
 const drfMessages: [RegExp, (m: RegExpMatchArray) => string][] = [

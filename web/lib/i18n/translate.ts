@@ -30,7 +30,7 @@ export interface Plural {
 export type Entry = string | Plural;
 export type Dictionary = Readonly<Record<string, Entry>>;
 
-/** Values for {placeholders}; `n` is the count: it picks the plural form and is printed with digit grouping. */
+/** Values for {placeholders}; `n` is the count: it picks the plural form and is printed like t.count(). */
 export type Vars = Readonly<Record<string, string | number>>;
 
 /** Values for t.rich(): a node for {name}, a function for <tag>text</tag>. */
@@ -46,6 +46,11 @@ export interface T {
   rich(text: string | Msg, values?: RichValues | null, context?: string): ReactNode;
   /** A number with the language's digit grouping: 4746 -> "4.746" / "4,746". */
   num(n: number, options?: Intl.NumberFormatOptions): string;
+  /**
+   * A count as {n} prints it: grouped in English only, 4746 -> "4746" / "4,746" (the Vietnamese UI always showed its
+   * counts as plain digits). For another count in the same text: t('{done}/{n}', { done: t.count(done), n }).
+   */
+  count(n: number): string;
   readonly locale: Locale;
   /** BCP 47 tag for Intl: "vi-VN" or "en-GB". */
   readonly intl: string;
@@ -87,8 +92,9 @@ const TAG = /<(\w+)>([\s\S]*?)<\/\1>/g;
 export function makeT(locale: Locale, dict: Dictionary | null): T {
   const intl = intlLocale[locale];
   const num = (n: number, options?: Intl.NumberFormatOptions) => numberFormat(intl, options).format(n);
+  const count = (n: number) => (locale === 'en' ? num(n) : String(n));
   const show = (name: string, value: string | number) =>
-    name === 'n' && typeof value === 'number' ? num(value) : String(value);
+    name === 'n' && typeof value === 'number' ? count(value) : String(value);
 
   const resolve = (text: string | Msg, vars: Vars | null | undefined, context: string | undefined) =>
     typeof text === 'string' ? lookup(dict, text, context, vars) : lookup(dict, text.msgid, text.context, vars);
@@ -132,6 +138,7 @@ export function makeT(locale: Locale, dict: Dictionary | null): T {
   };
 
   t.num = num;
+  t.count = count;
   Object.defineProperty(t, 'locale', { value: locale });
   Object.defineProperty(t, 'intl', { value: intl });
   return t;

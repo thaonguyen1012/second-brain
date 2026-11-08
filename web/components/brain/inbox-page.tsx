@@ -381,8 +381,8 @@ export function InboxPage() {
     else if (!inbox.error)
       setNotice(
         nextUrl
-          ? t('Không thấy mục này trong {n} mục mới nhất của tab: bấm "Tải thêm" để xem tiếp.', {
-              n: FOCUS_MAX_PAGES * PAGE,
+          ? t('Không thấy mục này trong {max} mục mới nhất của tab: bấm "Tải thêm" để xem tiếp.', {
+              max: t.count(FOCUS_MAX_PAGES * PAGE),
             })
           : t('Không thấy mục này: có thể đã bị xóa hoặc đổi trạng thái.'),
       );

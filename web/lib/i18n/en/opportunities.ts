@@ -18,7 +18,7 @@ export const opportunities = {
   'Ủng hộ / phản bác': 'For / against',
 
   // Decide-by badges and skill fit (opportunities/bits.tsx)
-  'Quá hạn quyết định {date}': 'Decision overdue since {date}',
+  'Quá hạn quyết định {date}': 'Overdue since {date}',
   'Hạn quyết định hôm nay': 'Decision due today',
   'Quyết trước {date}': 'Decide by {date}',
   'Kỹ năng hợp với mình': 'Skills that fit me',
@@ -29,7 +29,7 @@ export const opportunities = {
 
   // List (opportunity-list.tsx)
   'Mọi quyết định': 'All decisions',
-  'Mọi tình trạng': 'All states',
+  'Mọi tình trạng': 'All evidence',
   'Cần bằng chứng mới': 'Needs new evidence',
   'Còn bằng chứng mới': 'Has recent evidence',
   'hạn {date}': 'decide by {date}',
@@ -108,8 +108,8 @@ export const opportunities = {
   'Mỗi điểm từ 1 đến 10. Lần chấm cũ được giữ làm lịch sử.': 'Each score from 1 to 10. Earlier scores are kept as history.',
   'Chưa chấm lần nào. Chấm 4 điểm để bắt đầu lịch sử.': 'Not scored yet. Enter the 4 scores to start the history.',
   'Lịch sử điểm, {n} lần chấm. Dùng phím mũi tên để xem từng lần.': {
-    one: 'Score history, scored once. Use the arrow keys to see each time.',
-    other: 'Score history, scored {n} times. Use the arrow keys to see each time.',
+    one: 'Score history, scored once. Use the arrow keys to see each scoring.',
+    other: 'Score history, scored {n} times. Use the arrow keys to see each scoring.',
   },
   'Lần chấm gần nhất': 'Latest scoring',
   'Lần chấm {i}/{total}': 'Scoring {i} of {total}',

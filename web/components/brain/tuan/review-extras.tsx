@@ -223,7 +223,7 @@ export function ReviewPredictions() {
       title={t('Dự đoán đến hạn chấm lại')}
       action={
         <Button size="xs" variant="ghost" render={<Link href={PREDICTIONS_HREF} />}>
-          {t('Chấm lại')}
+          {t('Chấm lại', null, 'due')}
           <ArrowRight aria-hidden />
         </Button>
       }

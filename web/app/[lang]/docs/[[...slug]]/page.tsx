@@ -52,11 +52,16 @@ export default async function Page(props: PageProps<'/[lang]/docs/[[...slug]]'>)
   return (
     <LazyDocsLayout tree={tree} book={book} {...baseOptions(t)}>
       {codeCss && <style>{codeCss}</style>}
-      <DocsPage toc={toc} breadcrumb={{ enabled: false }} footer={{ items: getNeighbours(page.url) }}>
+      {/* The lesson (title, headings, body) is Vietnamese whatever the UI language: lang="vi" on it */}
+      <DocsPage
+        toc={toc.map((i) => ({ ...i, title: <span lang="vi">{i.title}</span> }))}
+        breadcrumb={{ enabled: false }}
+        footer={{ items: getNeighbours(page.url) }}
+      >
         <Breadcrumb url={page.url} t={t} />
-        <DocsTitle>{data.title}</DocsTitle>
+        <DocsTitle lang="vi">{data.title}</DocsTitle>
         <p className="text-sm text-fd-muted-foreground">{t('≈ {n} phút đọc', { n: readingMinutes })}</p>
-        <DocsBody>
+        <DocsBody lang="vi">
           <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
         </DocsBody>
         <DoneCheckbox url={page.url} />

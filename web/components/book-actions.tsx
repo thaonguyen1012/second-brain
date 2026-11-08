@@ -138,8 +138,9 @@ export function StartedShelf({ books }: { books: readonly ShelfBook[] }) {
             total: book.lessonCount,
             pct: percent(done, book.lessonCount),
           });
-          // The page title, unless the last page was the book's own index (its title is the book title).
-          const page = here?.title && here.title !== book.title ? here.title : null;
+          // The page title, unless the last page was the book's own index (its title is the book title). Told by the
+          // empty pageSlug: the stored title is Vietnamese, book.title is in the page's language.
+          const page = here?.title && here.pageSlug ? here.title : null;
           return (
             <li key={book.slug}>
               <Link
@@ -166,7 +167,9 @@ export function StartedShelf({ books }: { books: readonly ShelfBook[] }) {
                 </span>
                 <span className="flex items-center gap-3 max-sm:hidden">
                   <ShelfBar done={done} total={book.lessonCount} fill={book.fill} className="w-32" />
-                  <span className="w-32 text-end text-xs text-muted-foreground tabular-nums">{count}</span>
+                  <span className="min-w-32 whitespace-nowrap text-end text-xs text-muted-foreground tabular-nums">
+                    {count}
+                  </span>
                 </span>
                 <ChevronRight aria-hidden className="size-4 text-muted-foreground" />
               </Link>

@@ -8,7 +8,7 @@ export const today = {
   'Chọn ưu tiên tuần tới': "Choose next week's priorities",
   'Chọn 3 ưu tiên': 'Choose 3 priorities',
   'Xử lý': 'Triage',
-  'Chưa đọc được inbox': 'Could not read the inbox',
+  'Chưa đọc được inbox': 'Could not load the inbox',
   'Inbox trống.': 'The Inbox is empty.',
   'Ghi nhanh': 'Quick note',
   '+ {n} mục nữa': '+ {n} more',
@@ -38,7 +38,7 @@ export const today = {
   'chỉ có việc khác': 'other work only',
   'có bài học': 'lesson done',
   'còn {n} ngày': { one: '{n} day left', other: '{n} days left' },
-  'Chưa đọc được tuần này': 'Could not read this week',
+  'Chưa đọc được tuần này': 'Could not load this week',
   'ngày học': 'study days',
   'Nhắm tới {n} ngày có bài học mỗi tuần': {
     one: 'Aim for {n} day with a lesson each week',
@@ -57,7 +57,7 @@ export const today = {
   'Mở Thư viện': 'Open Library',
   'Chọn 3 ưu tiên tuần này': "Choose this week's 3 priorities",
   'Chọn 3 ưu tiên tuần tới': "Choose next week's 3 priorities",
-  'Ba kết quả muốn có trong tuần, nhìn lại vào cuối tuần.': 'Three results to aim for this week, reviewed at the end of it.',
+  'Ba kết quả muốn có trong tuần, nhìn lại vào cuối tuần.': 'Three results to aim for in the week, reviewed at the end of it.',
   'Chọn ưu tiên': 'Choose priorities',
   'Viết ghi chú đầu tiên': 'Write the first note',
   'Kỹ năng được giữ mới bằng bằng chứng: item, ghi chú, link.': 'Skills stay fresh through evidence: items, notes, links.',
@@ -70,8 +70,8 @@ export const today = {
   'Chưa có sổ tay': 'No handbook yet',
 
   // Predictions due and the background status line (components/brain/today-extras.tsx)
-  'Dự đoán cần chấm lại': 'Predictions to score again',
-  'Chưa đọc được dự đoán': 'Could not read the predictions',
+  'Dự đoán cần chấm lại': 'Predictions due',
+  'Chưa đọc được dự đoán': 'Could not load the predictions',
   'lấy thẻ link': 'fetch link cards',
   'gắn tag inbox': 'tag the inbox',
   'tải nguồn tin': 'load news feeds',

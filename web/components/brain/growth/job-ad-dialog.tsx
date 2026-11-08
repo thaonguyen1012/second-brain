@@ -148,7 +148,7 @@ function JobAdForm({
         <FormRow
           id="ad-text"
           label={t('Nội dung tin')}
-          hint={t('{n} / {max} ký tự', { n: text.length, max: t.num(MAX_TEXT) })}
+          hint={t('{count} / {max} ký tự', { count: t.num(text.length), max: t.num(MAX_TEXT) })}
         >
           <Textarea
             id="ad-text"

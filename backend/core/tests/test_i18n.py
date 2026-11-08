@@ -74,7 +74,7 @@ def test_tr_follows_the_active_language() -> None:
     assert tr("Hãy dừng đồng hồ trước.") == "Hãy dừng đồng hồ trước."
     with translation.override("en"):
         assert tr("Hãy dừng đồng hồ trước.") == "Stop the timer first."
-        assert tr("Ảnh lớn hơn {mb} MB.", mb="10") == "The picture is larger than 10 MB."
+        assert tr("Ảnh lớn hơn {mb} MB.", mb="10") == "The image is larger than 10 MB."
     assert tr("Ảnh lớn hơn {mb} MB.", mb="10") == "Ảnh lớn hơn 10 MB."
 
 
@@ -98,3 +98,17 @@ def test_the_api_answers_in_the_language_of_the_cookie(client: Client) -> None:
     assert client.get(tuesday).json() == {"start": "Tuần bắt đầu vào thứ Hai."}
     # the override ends with the request: code after it runs in the default language again
     assert translation.get_language() == "vi"
+
+
+@pytest.mark.django_db
+def test_the_page_language_header_comes_before_the_cookie(client: Client) -> None:
+    tuesday = "/api/weeks/2026-10-27/plan"
+    # a page opened at /en/... without the cookie
+    en = client.get(tuesday, headers={"X-UI-Lang": "en"})
+    assert en.json() == {"start": "A week starts on a Monday."}
+    assert en.headers["Content-Language"] == "en" and "X-UI-Lang" in en.headers["Vary"]
+    # a page opened at /vi/... with the cookie lang=en
+    client.cookies["lang"] = "en"
+    vi = client.get(tuesday, headers={"X-UI-Lang": "vi"})
+    assert vi.json() == {"start": "Tuần bắt đầu vào thứ Hai."}
+    assert vi.headers["Content-Language"] == "vi"

@@ -1,8 +1,10 @@
 // The English dictionaries. Import this only from server code (app/[lang]/layout.tsx, lib/i18n/server.ts): the
 // layout sends `enPage` to the browser inside the page's RSC payload, so no client bundle carries English text and
 // Vietnamese pages carry none at all. intro and guides are left out of `enPage`: their components load lazily and
-// import their own dictionary (useT(intro), useT(guides)).
+// import their own dictionary (useT(intro), useT(guides)). about (the text of /gioi-thieu/, /huong-dan/ and /personal/,
+// read only by server components) is in enAll only.
 import type { Dictionary } from '../translate';
+import { about } from './about';
 import { common } from './common';
 import { growth } from './growth';
 import { guides } from './guides';
@@ -29,7 +31,20 @@ export const enPage: Dictionary = {
 };
 
 /** Everything, for server components (getT). */
-export const enAll: Dictionary = { ...enPage, ...intro, ...guides };
+export const enAll: Dictionary = { ...enPage, ...about, ...intro, ...guides };
 
 /** Each area by name, for lib/i18n/coverage.test.ts (one key may live in one file only). */
-export const enAreas = { common, shell, today, inbox, library, week, work, opportunities, growth, intro, guides };
+export const enAreas = {
+  common,
+  shell,
+  today,
+  inbox,
+  library,
+  week,
+  work,
+  opportunities,
+  growth,
+  about,
+  intro,
+  guides,
+};

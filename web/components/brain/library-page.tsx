@@ -331,7 +331,7 @@ export function LibraryPage() {
               onRate={() => openEdit(item, true)}
             />
           )}
-          renderMedia={(item) => boardMedia(itemPicture(item))}
+          renderMedia={(item) => boardMedia(itemPicture(item), t)}
         />
       ) : (
         // One container, rows on a shared subgrid so status, rating and actions line up (DESIGN.md §3 Columns)
