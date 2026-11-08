@@ -324,23 +324,30 @@ so the near pairs that remain are listed under the palette, not hidden.
   done-needs-an-output warning (DECISIONS 4.2); then "Ghi chú" (h2, its count, an outline "Viết ghi chú") and every
   note of the Item, newest first, joined like one page: no card per note, `divide-y` with 20px above and below each,
   a note's own title as a 15px heading (left out when it only repeats the Item's title), the date and the other
-  Items it is linked to as meta, a ghost pencil and a `RowMenu` (Mở ở trang Ghi chú, Xóa) at the end, then its
+  Items it is linked to as meta (`break-words`: an Item title may be one long word), a ghost pencil and a `RowMenu` (Mở ở trang Ghi chú, Xóa) at the end, then its
   markdown as reading text (`note-markdown.tsx`, lazy: headings at most 15px, body 14/23 in the foreground colour,
-  code and tables scroll inside themselves, task boxes drawn with lucide squares and read out in words, links in the
-  link blue, raw HTML shown as text, only local images; a picture from another site is a link). Writing happens in
+  code and tables scroll inside themselves (a table spans the width), task boxes drawn with lucide squares at the
+  list's edge and read out in words, a done task muted and struck through, the other items of a list with tasks keep
+  their bullets, links in the link blue, raw HTML shown as text, only local images; a picture from another site is a link). Writing happens in
   place with the block editor (below): the composer (title, optional, prefilled with the Item's title; the type's
   template, `noteTemplates` in `done-output.tsx`) shows on an Item without notes without taking the focus, and opens
   with the caret in the template's first blank line from every "Viết ghi chú"; a note's pencil turns it into the same
   form with the caret at the end. The form is an `Input` for the title, the editor in its field-like frame, then the
   save state at the start and an outline `sm` "Xong" at the end (Escape and Cmd/Ctrl+Enter do the same). There is no
   "Lưu" and no "Hủy": everything saves by itself (`use-note-autosave.ts`, AFFiNE's way): "Đang lưu…" with a spinner
-  while a change waits (0.8 s) or goes, "Đã lưu" once the server has it, and a failure in the destructive colour with
-  its reason and an outline `xs` "Thử lại"; "Xong", Escape, closing the Sheet, a link, hiding or closing the tab send
-  what is left at once (with `keepalive` when the page goes), and until the server has it a copy stays in this
-  browser, offered back on the next visit ("Có bản nháp chưa lưu trong trình duyệt này", "Khôi phục" / "Bỏ bản nháp").
-  Nothing asks before closing; only a save that failed makes the browser ask before the tab goes. An untouched
-  template is not saved; a new note is created by its first save and the composer goes on editing it (it joins the
-  list when "Xong" closes the composer). Last comes "Được nhắc tới ở" (h2, `library/item-mentions.tsx`, from
+  while a change waits (0.8 s) or goes, "Đã lưu" once the server has it, and a failure in `text-error-foreground`
+  (AA on the page) with its reason and an outline `xs` "Thử lại". "Xong" goes back to reading once the server has
+  everything: a failed save keeps the form open with its reason. Closing the Sheet, a link, hiding or closing the tab
+  send what is left at once (with `keepalive` when the page goes), and until the server has it a copy stays in this
+  browser, offered back on the next visit: an `Alert` ("Có bản nháp chưa lưu trong trình duyệt này", "Khôi phục" /
+  "Bỏ bản nháp", the buttons under the text at every width) above the form. Such a copy stays until it is restored or
+  dropped (a save never removes it), and the reading view says one is kept: a muted `text-xs` line with a History
+  icon and a link-style "Mở để khôi phục" under the note's meta, under the "Ghi chú" heading for a new note's copy,
+  and above the notes list for a note started on its own page. A note saved elsewhere since the edit began (another
+  tab or device) is never written over: the form starts again from the newer note and this text comes back as the
+  copy. Nothing asks before closing; only a save that failed makes the browser ask before the tab goes (also after
+  its form closed). An untouched template is not saved; a new note is created by its first save and the composer goes
+  on editing it (it joins the list when "Xong" closes the composer). Last comes "Được nhắc tới ở" (h2, `library/item-mentions.tsx`, from
   `GET /api/items/{id}/mentions`): under a muted `text-xs` label per kind ("Cơ hội", "Kỹ năng", "Ghi chú"), rows in one
   container each, a row's title a link to its page; an opportunity's meta says each evidence row's stance in words
   (`font-medium`) and date, its decision badge at the end; a skill starts with its freshness dot and says the
@@ -349,9 +356,11 @@ so the near pairs that remain are listed under the palette, not hidden.
 - **Note page** (`/thu-vien/ghi-chu/?id=N`, `library/note-page.tsx`, in place of the old edit dialog; DECISIONS 9.8):
   a notes row, a note's "Mở ở trang Ghi chú", a `[[ ]]` link, a backlink and the Cmd+K note results open it; the
   notes list's header is not shown. `max-w-3xl` reading width with the PageHeader's gutters; a "Ghi chú" back link and,
-  at the end of that row, the save state and a `RowMenu` (Xóa); the title as a bare 30px field (the page title role,
-  placeholder "Không có tiêu đề"; an `sr-only` h1 names the page); AFFiNE's properties as a two-column `dl` (Item: the
-  `ItemPicker`, saved at once; Ngày); the editor without a frame (headings up to 18px here); then "Được nhắc tới ở"
+  at the end of that row, the save state and a `RowMenu` (Xóa); the title as a bare 30px field that wraps like a
+  heading (a one-row textarea that grows with its lines; Enter goes on to the text; placeholder "Không có tiêu đề";
+  an `sr-only` h1 names the page); AFFiNE's properties as a two-column `dl` (Item: the `ItemPicker`, saved at once,
+  its chips shrinking to the column with the title cut by an ellipsis and a 44px touch target on the ✕; an Item the
+  text links stays linked, and a muted status line says why when it is unlinked; Ngày); the editor without a frame (headings up to 18px here); then "Được nhắc tới ở"
   with the notes that link this one. `?id=new` (with `&item=` and `&template=`, from "Ghi chú mới", the empty page's
   template buttons and `n`) is a new note with the caret in it; its first save puts its id in the address
   (`router.replace`) without reopening the editor. A quick note from an Inbox entry stays a dialog (`note-dialog.tsx`).
@@ -365,9 +374,12 @@ so the near pairs that remain are listed under the palette, not hidden.
   it); `[[` opens the link picker (Item, Ghi chú, Cơ hội, Kỹ năng, each a muted group heading) and a pick writes the
   record's title as a link. Both menus are one popover surface under the caret (`--popover`, border, Depth/Popover
   shadow, 8px radius, the highlighted row in `--accent`, 44px rows on touch), driven from the keyboard (arrows, Enter,
-  Escape closes the menu only) with the caret staying in the text (`aria-activedescendant`). Links in the editor are
-  not followed; the reading view follows them. The placeholder ("Gõ / để chèn khối, hoặc viết luôn") shows in an
-  empty note and in the empty line holding the caret.
+  Escape closes the menu only) with the caret staying in the text (`aria-activedescendant`); the highlighted row
+  scrolls into view, and a menu is never wider than the room it has (the Sheet at 390 px). On a list line `/` offers
+  every block: the line leaves its list first (one undo step with the block). Links in the editor are not followed;
+  the reading view follows them. The placeholder ("Gõ / để chèn khối, hoặc viết luôn") shows in an empty note and in
+  the empty line holding the caret. Until the editor's chunk arrives the note shows as it reads (`NoteBody`) in the
+  editor's frame and cannot be used, so nothing jumps when it comes.
 - **Tables** for numeric or time data (Giờ, thị trường): header `text-xs font-medium text-muted-foreground`,
   rows `h-10` with `divide-y`, no vertical cell borders, numbers right-aligned `tabular-nums`. Add the Space UI
   table component from the registry when first needed rather than styling `<table>` by hand.

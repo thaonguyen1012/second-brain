@@ -99,7 +99,9 @@ web/
                                  with note-editor.css, never on home: "/" block menu, markdown shortcuts, task boxes,
                                  the `[[ ]]` picker in note-link-picker.tsx), saved by use-note-autosave.ts (AFFiNE's
                                  way: after a pause, "Đã lưu" in save-status.tsx, at once when leaving with keepalive,
-                                 a copy in localStorage until the server has it; no Lưu/Hủy); the note page is
+                                 a copy in localStorage until the server has it, kept until restored or dropped and
+                                 named by UnsavedCopyHint; a new note's clientId, an edit's baseUpdatedAt (409 = saved
+                                 elsewhere: the newer note shows); no Lưu/Hủy); the note page is
                                  note-page.tsx, routed by notes-route.tsx; status-board.tsx (the shared Bảng: lanes, native drag and drop,
                                  useStatusMoves, BoardStatus; cards' parts in work/project-card.tsx and
                                  library/item-parts.tsx) + view-switch.tsx; library/item-image(-field).tsx (pictures in
@@ -142,8 +144,10 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  services.items; status moves started_at/finished_at in apply_status_dates, used by every
                                  Item write incl. /api/projects) + Note (markdown, M2M Item; never sent to an LLM) +
                                  NoteLink (the `[[ ]]` links read out of a note's markdown on every save by links.py:
-                                 note -> item|note|opportunity|skill, the owner's only; a linked Item joins the note's
-                                 Items; derived, never exported); /api/items* (?q= title/source/exact tag; DELETE:
+                                 note -> item|note|opportunity|skill, the owner's only; code left out as CommonMark
+                                 reads it, linear on any text; a linked Item joins the note's Items; derived, never
+                                 exported); services.save_note (writes only the sent fields under a row lock; clientId,
+                                 baseUpdatedAt -> NoteConflict 409); /api/items* (?q= title/source/exact tag; DELETE:
                                  links set null, 409 for a project with time entries), /api/notes* (?q= title/markdown,
                                  ?item=), /api/items/{id}/mentions (mentions.py: opportunities and skills that use the
                                  Item as evidence and the notes that link it, "Được nhắc tới ở"), /api/notes/{id}/mentions
