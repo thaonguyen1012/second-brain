@@ -381,12 +381,18 @@ so the near pairs that remain are listed under the palette, not hidden.
   it); `[[` opens the link picker (Item, Ghi chú, Cơ hội, Kỹ năng, each a muted group heading) and a pick writes the
   record's title as a link. Both menus are one popover surface under the caret (`--popover`, border, Depth/Popover
   shadow, 8px radius, the highlighted row in `--accent`, 44px rows on touch), driven from the keyboard (arrows, Enter,
-  Escape closes the menu only) with the caret staying in the text (`aria-activedescendant`); the highlighted row
-  scrolls into view, and a menu is never wider than the room it has (the Sheet at 390 px). On a list line `/` offers
-  every block: the line leaves its list first (one undo step with the block). Links in the editor are not followed;
-  the reading view follows them. The placeholder ("Gõ / để chèn khối, hoặc viết luôn") shows in an empty note and in
-  the empty line holding the caret. Until the editor's chunk arrives the note shows as it reads (`NoteBody`) in the
-  editor's frame and cannot be used, so nothing jumps when it comes.
+  Escape closes the menu only) with the caret staying in the text (`aria-activedescendant`); only the menu's own list
+  scrolls to the highlighted row (never the page, the Sheet or a phone's visual viewport), and a menu is never wider
+  than the room it has (the Sheet at 390 px; the `[[` list is placed from the editor's left edge, so a phone page never
+  widens). On a list line `/` offers every block: the line leaves its list when a block is picked (nothing is saved
+  while the menu is open), and one Cmd/Ctrl+Z gives the typed "/…" back. Links in the editor are not followed; the
+  reading view follows them. The placeholder ("Gõ / để chèn khối, hoặc viết luôn") shows in an empty note and in the
+  empty line holding the caret. Until the editor's chunk arrives the note shows as it reads (`NoteBody`, pictures
+  loaded at once) in the editor's frame and cannot be used; the reading view draws every block at the editor's size
+  and spacing (headings per variant, task rows, tables, quotes, lists nested in tight and loose items, pictures inline
+  and middle-aligned), so nothing jumps when it comes (0 px at 1280 and 390, page and Sheet). A done task mutes and
+  strikes only its own text, never the list under it. Keys typed while the editor is being made (it opens with the
+  caret, or replaces one after a version saved elsewhere) are kept and typed into it.
 - **Tables** for numeric or time data (Giờ, thị trường): header `text-xs font-medium text-muted-foreground`,
   rows `h-10` with `divide-y`, no vertical cell borders, numbers right-aligned `tabular-nums`. Add the Space UI
   table component from the registry when first needed rather than styling `<table>` by hand.

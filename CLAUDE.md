@@ -95,8 +95,11 @@ web/
                                  properties, done hint, every note in place via item-notes.tsx), shown in
                                  item-sheet.tsx (beside Thư viện) and item-page.tsx (/thu-vien/item/); notes render
                                  through note-body.tsx (lazy react-markdown + remark-gfm in note-markdown.tsx, never
-                                 on home) and are written in note-editor.tsx (Milkdown, lazy via note-editor-lazy.tsx
-                                 with note-editor.css, never on home: "/" block menu, markdown shortcuts, task boxes,
+                                 on home; drawn block by block like the editor, which is its loading state) and are
+                                 written in note-editor.tsx (Milkdown, lazy via note-editor-lazy.tsx with
+                                 note-editor.css, never on home; markdown written by lib/note-stringify.ts, tested on
+                                 Milkdown's own serializer; keys typed before it is ready are kept: "/" block menu (one
+                                 undo step), markdown shortcuts, task boxes,
                                  the `[[ ]]` picker in note-link-picker.tsx), saved by use-note-autosave.ts (AFFiNE's
                                  way: after a pause, "Đã lưu" in save-status.tsx, at once when leaving with keepalive,
                                  each editor's own copy in localStorage until the server has it (lib/note-copies.ts: one
@@ -147,12 +150,15 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  services.items; status moves started_at/finished_at in apply_status_dates, used by every
                                  Item write incl. /api/projects) + Note (markdown, M2M Item; never sent to an LLM) +
                                  NoteLink (the `[[ ]]` links read out of a note's markdown on every save by links.py:
-                                 note -> item|note|opportunity|skill, the owner's only; code left out as CommonMark
-                                 reads it, linear on any text; a linked Item joins the note's Items; derived, never
+                                 note -> item|note|opportunity|skill, the owner's only; read where the reading view shows
+                                 a link (micromark's CommonMark + GFM blocks and inline links, titles, references; never
+                                 code, HTML or images), linear on any text; migration 0005 keeps a byte-identical frozen
+                                 copy, a test compares them; a linked Item joins the note's Items; derived, never
                                  exported); services.save_note (writes only the sent fields under a row lock; clientId,
-                                 baseUpdatedAt -> NoteConflict 409); /api/items* (?q= title/source/exact tag; DELETE:
+                                 baseUpdatedAt -> NoteConflict 409); note_label/note_excerpt read text as it shows (same
+                                 as web/lib/library-labels.ts noteTitle); /api/items* (?q= title/source/exact tag; DELETE:
                                  links set null, 409 for a project with time entries), /api/notes* (?q= title/markdown,
-                                 ?item=), /api/items/{id}/mentions (mentions.py: opportunities and skills that use the
+                                 escapes shown when q has punctuation; ?item=, ?clientId=), /api/items/{id}/mentions (mentions.py: opportunities and skills that use the
                                  Item as evidence and the notes that link it, "Được nhắc tới ở"), /api/notes/{id}/mentions
                                  (the notes that link a note). Every owned row has a DELETE
                                  (204; 404 for another owner). Item image (cover; project logo): image_path (webp in

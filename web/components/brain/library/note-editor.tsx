@@ -982,6 +982,7 @@ export default function NoteEditor({
     handledFocus.current = focusRequest;
     return focusRequest;
   });
+  const wantsFocus = useEffectEvent(() => focusRequest > 0);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -1055,6 +1056,35 @@ export default function NoteEditor({
       .use(linkClickGuard)
       .use(pageKeys(keys))
       .use(inputSignal(() => emitInput()));
+    // Asked for the focus, the editor keeps what is typed before it is ready (it is made asynchronously): its frame
+    // holds the keyboard meanwhile when nothing else does (an editor that replaced the one in use after a version saved
+    // elsewhere, a new note's page), and the keys go into the text once the editor is ready.
+    let early = '';
+    const keepEarly = (e: KeyboardEvent) => {
+      if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+      early += e.key;
+      e.preventDefault();
+    };
+    const stopEarly = () => {
+      host.removeEventListener('keydown', keepEarly);
+      host.removeAttribute('tabindex');
+      host.style.removeProperty('outline');
+    };
+    if (wantsFocus()) {
+      const active = document.activeElement;
+      // the page, the Sheet itself or a place the focus waits on (tabIndex -1): never a field or a button in use
+      const free =
+        !active ||
+        active === document.body ||
+        active.getAttribute('role') === 'dialog' ||
+        (active instanceof HTMLElement && active.tabIndex === -1 && !active.isContentEditable);
+      if (free) {
+        host.tabIndex = -1;
+        host.style.outline = 'none';
+        host.addEventListener('keydown', keepEarly);
+        host.focus({ preventScroll: true });
+      }
+    }
     let alive = true;
     editor.create().then(
       () => {
@@ -1070,12 +1100,20 @@ export default function NoteEditor({
             return now === last ? null : now;
           },
         });
+        const typed = early;
+        stopEarly();
         if (firstFocus() > 0) focus(caret);
+        if (typed)
+          editor.action((ctx) => {
+            const view = ctx.get(editorViewCtx);
+            view.dispatch(view.state.tr.insertText(typed));
+          });
       },
       (error: unknown) => console.error(error),
     );
     return () => {
       alive = false;
+      stopEarly();
       root.hidden = true;
       // markdownUpdated waits 200 ms: what was typed in that time is reported now
       if (opened && editor.status === EditorStatus.Created) report(editor.action(getMarkdown()));

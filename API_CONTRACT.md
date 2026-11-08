@@ -227,7 +227,8 @@ response 201 { "id": 3, "title": "Deep Work: 3 ý chính", "markdown": "# ...", 
 ```
 
 `GET /api/notes?q=focus&item=1` lists notes (cursor pagination, newest first; the filters are optional): `q` matches
-title or markdown (case-insensitive substring), `item` keeps notes linked to that Item id, `clientId` (a UUID, `400`
+title or markdown (case-insensitive substring; a `q` with ASCII punctuation also matches the markdown with its
+backslash escapes shown, so `AT&T` finds `AT\&T` as the editor writes it), `item` keeps notes linked to that Item id, `clientId` (a UUID, `400`
 otherwise) keeps the note a create with that `clientId` made, if it arrived. `GET /api/notes/{id}`
 reads one, `DELETE /api/notes/{id}` removes it (`204`); `PATCH /api/notes/{id}` accepts `title`, `markdown` and `items` (replaces the links; `[]` removes them).
 `items` are sorted ids, up to 10,000 (as many as a note's text can link); an Item that is not the owner's answers `400`.
@@ -249,9 +250,12 @@ loading every Item.
 Links (`[[ ]]`, DECISIONS 9.8): the editor's picker writes a readable markdown link to a record's page, such as
 `[Atomic Habits](/thu-vien/item/?id=12)`; the pages are `/thu-vien/item/` (Item), `/thu-vien/ghi-chu/` (note),
 `/co-hoi/` (opportunity) and `/phat-trien/ky-nang/` (skill), with or without `/vi` or `/en` before them. Every
-`POST`, and every `PATCH` that sends `markdown` or `items`, reads the note's links into its link table (links inside
-code are not links, a code span ends with its paragraph, and a backslash-escaped backtick opens none; an unknown id,
-another owner's record and the note itself are ignored). A link to an Item also
+`POST`, and every `PATCH` that sends `markdown` or `items`, reads the note's links into its link table. A link counts
+where the reading view (CommonMark + GFM, as micromark reads it) shows one: in the text of a paragraph, heading or
+table cell, written `[text](url)` (an optional title in `""`, `''` or `()`) or as a reference (`[text][label]`,
+`[label][]`, `[label]` with a definition); never inside code (fenced or indented, in quotes and lists too), an HTML
+block or raw HTML, an autolink, an image or another link's text. An unknown id, another owner's record and the note
+itself are ignored. A link to an Item also
 adds that Item to `items` (a `PATCH` that replaces `items` keeps the Items the text links). The markdown stays the
 only source: the table is rebuilt from it, and an export carries only the markdown.
 
@@ -261,9 +265,11 @@ owner's note.
 
 `GET /api/notes/search?q=focus&limit=5` (`q` required, `limit` 1-20, default 5) is the Cmd+K form of the search:
 the newest matching notes as `{ "results": [ { "id": 3, "title": "...", "excerpt": "…around the match…",
-"updatedAt": "..." } ] }`, never the whole markdown. `title` is the note's title, else its first non-empty line
-without heading/quote/list marks, else `""`; `excerpt` is about 120 characters around the first match with markdown
-marks removed. An empty `q` answers `{ "results": [] }`.
+"updatedAt": "..." } ] }`, never the whole markdown. `title` is the note's title, else its first line with text,
+read as it shows: without heading/quote/list/task marks and inline marks, links by their text, escapes and numeric
+character references (`&#x20;`) by their character, no hard break's backslash, at most 120 characters; else `""`.
+`excerpt` is about 120 characters around the first match, read the same way. An empty `q` answers
+`{ "results": [] }`.
 
 ## Inbox (`/api/inbox`)
 
