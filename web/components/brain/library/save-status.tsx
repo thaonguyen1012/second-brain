@@ -1,25 +1,31 @@
 'use client';
+import type { ReactNode } from 'react';
 import { CircleAlert, History, Loader2 } from 'lucide-react';
 import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useUnsavedCopy, type NoteText, type SaveState } from './use-note-autosave';
+import { newNoteQuery } from '@/lib/note-copies';
+import { useNewNoteCopies, useUnsavedCopy, type NoteText, type SaveState } from './use-note-autosave';
 
 /**
  * The autosave's state beside a note being edited (AFFiNE's "Saved"): nothing until something changes, "Đang lưu…"
  * while a change waits or goes, "Đã lưu" once the server has it, and on a failure the reason with "Thử lại" (the text
  * stays in the editor and in this browser's copy meanwhile). "Đã lưu" and a failure are read out (a polite live
  * region, the focus stays in the text); "Đang lưu…" is not, or every pause in typing would be announced twice.
+ * Without `onRetry` (the text itself cannot be saved: empty, too long) there is no "Thử lại"; `action` stands beside
+ * the reason instead (the Item page: "Xóa ghi chú" for an emptied note).
  */
 export function SaveStatus({
   state,
   error,
   onRetry,
+  action,
   className,
 }: {
   state: SaveState;
   error: string | null;
-  onRetry: () => void;
+  onRetry?: () => void;
+  action?: ReactNode;
   className?: string;
 }) {
   const t = useT();
@@ -41,11 +47,12 @@ export function SaveStatus({
           </>
         )}
       </span>
-      {state === 'error' && (
+      {state === 'error' && onRetry && (
         <Button size="xs" variant="outline" onClick={onRetry}>
           {t('Thử lại')}
         </Button>
       )}
+      {state === 'error' && action}
     </span>
   );
 }
@@ -75,4 +82,26 @@ export function UnsavedCopyHint({
       </Button>
     </p>
   );
+}
+
+/**
+ * The notes list's word that this browser keeps a new note's unsaved text: one line per place it was written (the
+ * notes page, a new note of an Item), each opening that place, where the editor offers it back.
+ */
+export function NewNoteCopyHints({ onOpen }: { onOpen: (query: string) => void }) {
+  const t = useT();
+  const keys = useNewNoteCopies();
+  return keys.map((key) => {
+    const query = newNoteQuery(key);
+    if (!query) return null;
+    return (
+      <p key={key} className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+        <History className="size-3.5 shrink-0" aria-hidden />
+        {t('Có bản nháp chưa lưu trong trình duyệt này')}
+        <Button variant="link" size="xs" className="h-auto p-0 text-xs" onClick={() => onOpen(query)}>
+          {t('Mở để khôi phục')}
+        </Button>
+      </p>
+    );
+  });
 }

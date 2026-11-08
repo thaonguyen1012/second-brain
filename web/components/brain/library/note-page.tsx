@@ -61,11 +61,14 @@ function NoteEditing({
   note,
   newItem,
   template,
+  afterConflict,
   onCreated,
   onConflict,
 }: {
   /** The saved note, or null for a new one. */
   note: ApiNote | null;
+  /** This page now shows a version saved elsewhere that replaced the one being edited (it says so). */
+  afterConflict: boolean;
   /** A new note's first Item link (`&item=`). */
   newItem: number | null;
   /** A new note's starting text (`&template=`). */
@@ -197,7 +200,11 @@ function NoteEditing({
       <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1">
         <Back />
         <span className="ms-auto flex items-center gap-2">
-          <SaveStatus state={autosave.state} error={autosave.error} onRetry={() => void autosave.flush()} />
+          <SaveStatus
+            state={autosave.state}
+            error={autosave.error}
+            onRetry={autosave.invalid ? undefined : () => void autosave.flush()}
+          />
           {shown && (
             <RowMenu label={t('Thao tác cho ghi chú “{title}”', { title: pageTitle })}>
               <MenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
@@ -209,8 +216,19 @@ function NoteEditing({
         </span>
       </div>
 
-      {autosave.recovered && (
-        <RecoveredDraft copy={autosave.recovered} onRestore={restore} onDrop={autosave.dropRecovered} />
+      {autosave.recovered ? (
+        <RecoveredDraft
+          copy={autosave.recovered}
+          afterConflict={afterConflict}
+          onRestore={restore}
+          onDrop={autosave.dropRecovered}
+        />
+      ) : (
+        afterConflict && (
+          <p className="text-xs text-muted-foreground" role="status">
+            {t('Ghi chú vừa được lưu ở nơi khác: đang hiện bản đó.')}
+          </p>
+        )
       )}
 
       {/* The page's heading for screen readers; the field below is the title itself */}
@@ -273,7 +291,8 @@ function NoteEditing({
         onChange={(md) => changeText({ markdown: md })}
         label={t('Nội dung ghi chú')}
         placeholder={t('Gõ / để chèn khối, hoặc viết luôn')}
-        focusRequest={(note ? 0 : 1) + editorKey}
+        // a new note, a restored copy, and the version that replaced the one being typed in take the cursor
+        focusRequest={(note && !afterConflict ? 0 : 1) + editorKey}
         caret={note || editorKey > 0 ? 'end' : 'first-empty'}
         selfNoteId={shown?.id}
         onInput={autosave.touch}
@@ -323,6 +342,7 @@ export function NotePageView({
     if (id !== 'new') res.mutate(() => newer);
     setVersion((v) => ({ note: newer, n: (v?.n ?? 0) + 1 }));
   };
+  const afterConflict = version !== null;
 
   let body;
   if (id === 'new')
@@ -332,6 +352,7 @@ export function NotePageView({
         note={version?.note ?? null}
         newItem={newItem}
         template={template}
+        afterConflict={afterConflict}
         onCreated={onCreated}
         onConflict={onConflict}
       />
@@ -356,6 +377,7 @@ export function NotePageView({
         note={res.data}
         newItem={null}
         template=""
+        afterConflict={afterConflict}
         onCreated={onCreated}
         onConflict={onConflict}
       />

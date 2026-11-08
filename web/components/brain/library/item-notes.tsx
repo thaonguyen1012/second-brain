@@ -7,7 +7,7 @@ import { notesApi, type ApiNote } from '@/lib/api/library';
 import { loadAllPages } from '@/lib/api/pages';
 import { useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
-import { noteDateLabel, noteHeading } from '@/lib/item-notes';
+import { isBlankNote, noteDateLabel, noteHeading } from '@/lib/item-notes';
 import { formatDate } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { linkHref } from '@/lib/note-links';
@@ -55,23 +55,37 @@ function NotesSkeleton() {
   );
 }
 
-/** A copy of unsaved text from an earlier visit (this browser): put it back, or drop it. */
+/**
+ * A copy of unsaved text in this browser (an earlier visit, another tab, a save that failed): put it back, or drop
+ * it. `afterConflict`: the note was just saved elsewhere and now shows that version; the copy is what was typed here,
+ * said at once (an alert) since the text under the user's hands just changed.
+ */
 export function RecoveredDraft({
   copy,
+  afterConflict = false,
   onRestore,
   onDrop,
 }: {
   copy: NoteBackup;
+  afterConflict?: boolean;
   onRestore: () => void;
   onDrop: () => void;
 }) {
   const t = useT();
+  const date = formatDate(copy.at, t);
   return (
-    <Alert>
+    <Alert role={afterConflict ? 'alert' : undefined}>
       <History aria-hidden />
-      <AlertTitle>{t('Có bản nháp chưa lưu trong trình duyệt này')}</AlertTitle>
+      <AlertTitle>
+        {afterConflict ? t('Ghi chú vừa được lưu ở nơi khác') : t('Có bản nháp chưa lưu trong trình duyệt này')}
+      </AlertTitle>
       <AlertDescription>
-        {t('Viết lúc {date}. Khôi phục sẽ thay nội dung đang có.', { date: formatDate(copy.at, t) })}
+        {afterConflict
+          ? t(
+              'Đang hiện bản đó. Chữ gõ ở đây chưa lưu được giữ làm bản nháp (lúc {date}): Khôi phục sẽ thay nội dung đang có.',
+              { date },
+            )
+          : t('Viết lúc {date}. Khôi phục sẽ thay nội dung đang có.', { date })}
       </AlertDescription>
       {/* under the text at every width: it shows in narrow places (the Sheet, a phone) */}
       <AlertAction className="col-start-2 row-start-auto row-end-auto ms-0 mt-2 flex-wrap justify-start">
@@ -98,9 +112,11 @@ function NoteInPlace({
   note,
   template,
   focusRequest,
+  afterConflict = false,
   onSaved,
   onConflict,
   onDone,
+  onDelete,
 }: {
   idBase: string;
   /** The editable's id (`${idBase}-body` unless given). */
@@ -110,11 +126,15 @@ function NoteInPlace({
   template: string;
   /** > 0 puts the cursor in the text once the editor is ready; a new value does it again. */
   focusRequest: number;
+  /** This editor shows a version saved elsewhere that replaced the one being edited (the page says so). */
+  afterConflict?: boolean;
   onSaved: (note: ApiNote, created: boolean) => void;
   /** Show this newer version of the note instead (saved elsewhere; this text comes back as the copy). */
   onConflict: (note: ApiNote) => void;
   /** Back to reading, once everything typed is saved. */
   onDone: () => void;
+  /** Asks to delete the note (an emptied note cannot be saved: the way out besides undoing). */
+  onDelete?: () => void;
 }) {
   const t = useT();
   const editor = useRef<NoteEditorHandle | null>(null);
@@ -169,8 +189,19 @@ function NoteInPlace({
         void done();
       }}
     >
-      {autosave.recovered && (
-        <RecoveredDraft copy={autosave.recovered} onRestore={restore} onDrop={autosave.dropRecovered} />
+      {autosave.recovered ? (
+        <RecoveredDraft
+          copy={autosave.recovered}
+          afterConflict={afterConflict}
+          onRestore={restore}
+          onDrop={autosave.dropRecovered}
+        />
+      ) : (
+        afterConflict && (
+          <p className="text-xs text-muted-foreground" role="status">
+            {t('Ghi chú vừa được lưu ở nơi khác: đang hiện bản đó.')}
+          </p>
+        )
       )}
       <Input
         id={`${idBase}-title`}
@@ -212,7 +243,18 @@ function NoteInPlace({
           className="me-auto"
           state={autosave.state}
           error={autosave.error}
-          onRetry={() => void autosave.flush()}
+          onRetry={autosave.invalid ? undefined : () => void autosave.flush()}
+          action={
+            autosave.invalid &&
+            autosave.note &&
+            onDelete &&
+            isBlankNote(markdown) && (
+              <Button size="xs" variant="outline" onClick={onDelete}>
+                <Trash2 aria-hidden />
+                {t('Xóa ghi chú')}
+              </Button>
+            )
+          }
         />
         <Button type="button" variant="outline" size="sm" onClick={() => void done()}>
           <Check aria-hidden />
@@ -258,8 +300,14 @@ export function ItemNotes({
   // the note the open composer created and goes on editing: not listed twice meanwhile
   const [composed, setComposed] = useState<number | null>(null);
   const [editing, setEditing] = useState<ReadonlySet<number>>(() => new Set());
-  // a note's editor starts again with a newer version (saved elsewhere): its key changes
+  // a note's editor starts again with a newer version (saved elsewhere): its key changes, and it says why
   const [versions, setVersions] = useState<ReadonlyMap<number, number>>(() => new Map());
+  const [conflicted, setConflicted] = useState<ReadonlySet<number>>(() => new Set());
+  // the notes as listed now, for answers that arrive later (a closed editor's create)
+  const listed = useRef(list);
+  useEffect(() => {
+    listed.current = list;
+  });
   const [deleting, setDeleting] = useState<ApiNote | null>(null);
   const [announcement, setAnnouncement] = useState('');
 
@@ -303,6 +351,8 @@ export function ItemNotes({
 
   /** A save of a note shown here: the list follows; a new note is listed and counted ("Đã lưu" says the rest). */
   const saved = (note: ApiNote, created: boolean, instance?: number) => {
+    // a create sent again (a copy restored after its first create had arrived) answers a note already listed
+    const isNew = created && !listed.current.some((n) => n.id === note.id);
     notes.mutate(
       (d) =>
         d && {
@@ -319,7 +369,7 @@ export function ItemNotes({
       setComposed(note.id);
       setComposerOpen(true);
     }
-    onCountChange([item.id], 1);
+    if (isNew) onCountChange([item.id], 1);
   };
 
   const closeComposer = () => {
@@ -336,8 +386,17 @@ export function ItemNotes({
    * composer's note continues in its own row's editor.
    */
   const showVersion = (newer: ApiNote, fromComposer: boolean) => {
-    notes.mutate((d) => d && { ...d, results: d.results.map((n) => (n.id === newer.id ? newer : n)) });
+    notes.mutate(
+      (d) =>
+        d && {
+          ...d,
+          results: d.results.some((n) => n.id === newer.id)
+            ? d.results.map((n) => (n.id === newer.id ? newer : n))
+            : [newer, ...d.results],
+        },
+    );
     setVersions((m) => new Map(m).set(newer.id, (m.get(newer.id) ?? 0) + 1));
+    setConflicted((c) => new Set(c).add(newer.id));
     if (!fromComposer) return;
     composerInstance.current += 1;
     setComposerKey(composerInstance.current);
@@ -349,6 +408,13 @@ export function ItemNotes({
   const setNoteEditing = (id: number, on: boolean) => {
     // closing: the pencil comes back and takes the focus; opening: the focus waits on the heading for the editor
     focusAfter(on ? null : editButtonId(id));
+    if (!on)
+      setConflicted((c) => {
+        if (!c.has(id)) return c;
+        const next = new Set(c);
+        next.delete(id);
+        return next;
+      });
     setEditing((s) => {
       const next = new Set(s);
       if (on) next.add(id);
@@ -480,9 +546,11 @@ export function ItemNotes({
                     note={note}
                     template=""
                     focusRequest={1}
+                    afterConflict={conflicted.has(note.id)}
                     onSaved={(n) => saved(n, false)}
                     onConflict={(newer) => showVersion(newer, false)}
                     onDone={() => setNoteEditing(note.id, false)}
+                    onDelete={() => setDeleting(note)}
                   />
                 ) : (
                   <NoteBody markdown={note.markdown} />

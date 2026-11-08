@@ -192,7 +192,13 @@ export const library = {
   'Máy chủ không nhận nội dung này.': 'The server did not accept this content.',
   'Ghi chú không còn trên máy chủ.': 'The note is no longer on the server.',
   'Máy chủ trả lỗi {status}.': 'The server answered with error {status}.',
-  'Ghi chú vừa được lưu ở nơi khác.': 'The note was just saved somewhere else.',
+  'Máy chủ không trả lời.': 'The server did not answer.',
+  // A note saved elsewhere while it was being written here (item-notes.tsx, note-page.tsx)
+  'Ghi chú vừa được lưu ở nơi khác': 'The note was just saved somewhere else',
+  'Đang hiện bản đó. Chữ gõ ở đây chưa lưu được giữ làm bản nháp (lúc {date}): Khôi phục sẽ thay nội dung đang có.':
+    'That version is shown now. What you typed here and was not saved is kept as a draft ({date}): restoring replaces the current text.',
+  'Ghi chú vừa được lưu ở nơi khác: đang hiện bản đó.': 'The note was just saved somewhere else: that version is shown now.',
+  'Xóa ghi chú': 'Delete note',
   // The editor's "/" menu, "[[" picker and task boxes (note-editor.tsx)
   'Văn bản': 'Text',
   'Tiêu đề 1': 'Heading 1',

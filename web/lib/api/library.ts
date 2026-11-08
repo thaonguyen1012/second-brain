@@ -11,6 +11,8 @@ export type ApiNoteQuery = NonNullable<operations['listNotes']['parameters']['qu
 export type ApiNoteSearchHit = Schemas['NoteSearchHit'];
 export type ApiItemMentions = Schemas['ItemMentions'];
 export type ApiNoteMentions = Schemas['NoteMentions'];
+/** A note save may outlive the page (`keepalive`) or give up when no answer comes (`timeoutMs`). */
+type NoteSaveInit = { keepalive?: boolean; timeoutMs?: number };
 
 export const notesApi = {
   /** Newest created first; `q` matches title or markdown, `item` keeps notes linked to that Item. */
@@ -20,10 +22,23 @@ export const notesApi = {
   search: (q: string, limit = 5, signal?: AbortSignal) =>
     request<Schemas['NoteSearch']>('GET', withQuery('/api/notes/search', { q, limit }), undefined, signal),
   /** `keepalive`: the save may outlive the page (autosave while leaving). */
-  create: (body: ApiNoteCreate, init?: { keepalive?: boolean }) =>
-    request<ApiNote>('POST', '/api/notes', body, undefined, init),
+  create: (body: ApiNoteCreate, init?: NoteSaveInit) => request<ApiNote>('POST', '/api/notes', body, undefined, init),
+  /**
+   * A create with a `clientId`: `created` is false when an earlier create with that id had made the note (it is
+   * answered as it is now, nothing changed).
+   */
+  createOnce: async (body: ApiNoteCreate, init?: NoteSaveInit): Promise<{ note: ApiNote; created: boolean }> => {
+    let status = 0;
+    const note = await request<ApiNote>('POST', '/api/notes', body, undefined, {
+      ...init,
+      onStatus: (code) => {
+        status = code;
+      },
+    });
+    return { note, created: status === 201 };
+  },
   /** `items` replaces the links (`[]` removes them). */
-  update: (id: number, body: ApiNotePatch, init?: { keepalive?: boolean }) =>
+  update: (id: number, body: ApiNotePatch, init?: NoteSaveInit) =>
     request<ApiNote>('PATCH', `/api/notes/${id}`, body, undefined, init),
   delete: (id: number) => request<void>('DELETE', `/api/notes/${id}`),
   /** The notes whose text links this note (its backlinks, "Được nhắc tới ở"). */

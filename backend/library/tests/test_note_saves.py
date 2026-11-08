@@ -44,6 +44,25 @@ def test_client_ids_belong_to_one_owner(client: Client) -> None:
     assert mine.status_code == 201 and mine.json()["markdown"] == "của tôi"
 
 
+def test_the_list_finds_the_note_a_client_id_made(client: Client) -> None:
+    """The editor asks whether a create sent as a page closed arrived: its copy then belongs to that note."""
+    headers = csrf(client)
+    user = owner(client)
+    key = uuid.uuid4()
+    made = send(client, "post", "/api/notes", {"markdown": "Viết, đóng tab", "clientId": str(key)}, headers)
+    send(client, "post", "/api/notes", {"markdown": "Khác", "clientId": str(uuid.uuid4())}, headers)
+    found = client.get(f"/api/notes?clientId={key}").json()["results"]
+    assert [n["id"] for n in found] == [made.json()["id"]]
+    # a create that never arrived: no note; another owner's client id: no note either
+    assert client.get(f"/api/notes?clientId={uuid.uuid4()}").json()["results"] == []
+    stranger = User.objects.create(username="other@x")
+    theirs = uuid.uuid4()
+    Note.objects.create(user=stranger, markdown="của người khác", client_id=theirs)
+    assert client.get(f"/api/notes?clientId={theirs}").json()["results"] == []
+    assert client.get("/api/notes?clientId=abc").status_code == 400
+    assert Note.objects.filter(user=user).count() == 2
+
+
 def test_an_edit_started_from_an_older_version_answers_409(client: Client) -> None:
     """Another tab or device saved the note since: nothing is written, the answer carries the note now."""
     headers = csrf(client)

@@ -842,6 +842,13 @@ paths:
     get:
       operationId: listNotes
       parameters:
+      - in: query
+        name: clientId
+        schema:
+          type: string
+          format: uuid
+        description: Only the note a create with this `clientId` made (none if it
+          never arrived).
       - name: cursor
         required: false
         in: query

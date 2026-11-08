@@ -3125,6 +3125,8 @@ export interface operations {
     listNotes: {
         parameters: {
             query?: {
+                /** @description Only the note a create with this `clientId` made (none if it never arrived). */
+                clientId?: string;
                 /** @description The pagination cursor value. */
                 cursor?: string;
                 /** @description Only notes linked to this Item id. */

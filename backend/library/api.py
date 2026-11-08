@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from django.contrib.auth.models import User
@@ -5,6 +6,7 @@ from django.db import IntegrityError
 from django.db.models import QuerySet
 from django.http.response import HttpResponseBase
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
@@ -190,6 +192,11 @@ def _note(request: Request, pk: int) -> Note:
         parameters=[
             OpenApiParameter("q", str, description="Case-insensitive match in title or markdown."),
             OpenApiParameter("item", int, description="Only notes linked to this Item id."),
+            OpenApiParameter(
+                "clientId",
+                OpenApiTypes.UUID,
+                description="Only the note a create with this `clientId` made (none if it never arrived).",
+            ),
         ],
     )
 )
@@ -203,6 +210,13 @@ class NoteListView(generics.ListAPIView[Note]):
             raise ValidationError({"item": "A positive integer."})
         query = self.request.query_params.get("q", "")
         rows = services.notes(request_user(self.request), query, int(raw) if raw is not None else None)
+        # The editor asks whether a create it sent as a page closed arrived (its copy in the browser then
+        # belongs to that note, not to a new one)
+        if (client := self.request.query_params.get("clientId")) is not None:
+            try:
+                rows = rows.filter(client_id=uuid.UUID(client))
+            except ValueError:
+                raise ValidationError({"clientId": "A UUID."}) from None
         return rows.prefetch_related("items")
 
     @extend_schema(

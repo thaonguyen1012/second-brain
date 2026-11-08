@@ -99,9 +99,12 @@ web/
                                  with note-editor.css, never on home: "/" block menu, markdown shortcuts, task boxes,
                                  the `[[ ]]` picker in note-link-picker.tsx), saved by use-note-autosave.ts (AFFiNE's
                                  way: after a pause, "Đã lưu" in save-status.tsx, at once when leaving with keepalive,
-                                 a copy in localStorage until the server has it, kept until restored or dropped and
-                                 named by UnsavedCopyHint; a new note's clientId, an edit's baseUpdatedAt (409 = saved
-                                 elsewhere: the newer note shows); no Lưu/Hủy); the note page is
+                                 each editor's own copy in localStorage until the server has it (lib/note-copies.ts: one
+                                 per editor, a gone writer's copy offered back until restored or dropped, named by
+                                 UnsavedCopyHint / NewNoteCopyHints; a new note's copy looked up by ?clientId=); an
+                                 edit's baseUpdatedAt (409 = saved elsewhere: the newer note shows, "Ghi chú vừa được
+                                 lưu ở nơi khác"); the editors of one note on a page go on from their own saves; a 15 s
+                                 timeout; no Lưu/Hủy); the note page is
                                  note-page.tsx, routed by notes-route.tsx; status-board.tsx (the shared Bảng: lanes, native drag and drop,
                                  useStatusMoves, BoardStatus; cards' parts in work/project-card.tsx and
                                  library/item-parts.tsx) + view-switch.tsx; library/item-image(-field).tsx (pictures in

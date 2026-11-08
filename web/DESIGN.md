@@ -336,17 +336,22 @@ so the near pairs that remain are listed under the palette, not hidden.
   save state at the start and an outline `sm` "Xong" at the end (Escape and Cmd/Ctrl+Enter do the same). There is no
   "Lưu" and no "Hủy": everything saves by itself (`use-note-autosave.ts`, AFFiNE's way): "Đang lưu…" with a spinner
   while a change waits (0.8 s) or goes, "Đã lưu" once the server has it, and a failure in `text-error-foreground`
-  (AA on the page) with its reason and an outline `xs` "Thử lại". "Xong" goes back to reading once the server has
+  (AA on the page) with its reason and an outline `xs` "Thử lại" (none when the text itself cannot be saved; an
+  emptied note gets an outline `xs` "Xóa ghi chú" there instead, which opens `ConfirmDelete`). A save with no answer
+  in 15 s fails the same way ("Máy chủ không trả lời."). "Xong" goes back to reading once the server has
   everything: a failed save keeps the form open with its reason. Closing the Sheet, a link, hiding or closing the tab
-  send what is left at once (with `keepalive` when the page goes), and until the server has it a copy stays in this
-  browser, offered back on the next visit: an `Alert` ("Có bản nháp chưa lưu trong trình duyệt này", "Khôi phục" /
-  "Bỏ bản nháp", the buttons under the text at every width) above the form. Such a copy stays until it is restored or
-  dropped (a save never removes it), and the reading view says one is kept: a muted `text-xs` line with a History
-  icon and a link-style "Mở để khôi phục" under the note's meta, under the "Ghi chú" heading for a new note's copy,
-  and above the notes list for a note started on its own page. A note saved elsewhere since the edit began (another
-  tab or device) is never written over: the form starts again from the newer note and this text comes back as the
-  copy. Nothing asks before closing; only a save that failed makes the browser ask before the tab goes (also after
-  its form closed). An untouched template is not saved; a new note is created by its first save and the composer goes
+  send what is left at once (with `keepalive` when the page goes), and until the server has it each editor keeps its
+  own copy in this browser (`lib/note-copies.ts`; never written over by another editor, another tab or a save).
+  A copy whose writer is gone is offered back: an `Alert` ("Có bản nháp chưa lưu trong trình duyệt này", "Khôi phục"
+  / "Bỏ bản nháp", the buttons under the text at every width) above the form. Such a copy stays until it is restored
+  or dropped, and the reading view says one is kept: a muted `text-xs` line with a History icon and a link-style "Mở
+  để khôi phục" under the note's meta, under the "Ghi chú" heading for a new note's copy, and above the notes list
+  for each new note started on its own page or for an Item (a new note's copy whose create may have arrived is first
+  looked up, and then belongs to that note). A note saved elsewhere since the edit began (another tab or device) is
+  never written over: the form starts again from the newer note with the caret in it, and the `Alert` says so
+  (role `alert`: "Ghi chú vừa được lưu ở nơi khác", this text kept as the copy to restore; with nothing unsaved, a
+  muted status line). Nothing asks before closing; only a copy whose save failed makes the browser ask before the
+  tab goes (also after its form closed), until it is saved, restored or dropped. An untouched template is not saved; a new note is created by its first save and the composer goes
   on editing it (it joins the list when "Xong" closes the composer). Last comes "Được nhắc tới ở" (h2, `library/item-mentions.tsx`, from
   `GET /api/items/{id}/mentions`): under a muted `text-xs` label per kind ("Cơ hội", "Kỹ năng", "Ghi chú"), rows in one
   container each, a row's title a link to its page; an opportunity's meta says each evidence row's stance in words
@@ -363,7 +368,9 @@ so the near pairs that remain are listed under the palette, not hidden.
   text links stays linked, and a muted status line says why when it is unlinked; Ngày); the editor without a frame (headings up to 18px here); then "Được nhắc tới ở"
   with the notes that link this one. `?id=new` (with `&item=` and `&template=`, from "Ghi chú mới", the empty page's
   template buttons and `n`) is a new note with the caret in it; its first save puts its id in the address
-  (`router.replace`) without reopening the editor. A quick note from an Inbox entry stays a dialog (`note-dialog.tsx`).
+  (`router.replace`) without reopening the editor, only while that page still shows (a create that answers after the
+  user left navigates nowhere). A version saved elsewhere replaces the page's editor as on the Item page (the `Alert`
+  or the status line, the caret back in the text). A quick note from an Inbox entry stays a dialog (`note-dialog.tsx`).
 - **Note editor** (`library/note-editor.tsx`, Milkdown 7: commonmark + gfm, owner's choice 08/11/2026; lazy with its
   CSS, `note-editor-lazy.tsx`, never on Hôm nay): blocks as they will read (`note-editor.css` follows
   `note-markdown.tsx`: body 14/23, 16px on phones so iOS does not zoom, headings 15px inline), saved as markdown.

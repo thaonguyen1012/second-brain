@@ -226,8 +226,9 @@ response 201 { "id": 3, "title": "Deep Work: 3 ý chính", "markdown": "# ...", 
                "createdAt": "...", "updatedAt": "..." }
 ```
 
-`GET /api/notes?q=focus&item=1` lists notes (cursor pagination, newest first; both filters optional): `q` matches
-title or markdown (case-insensitive substring), `item` keeps notes linked to that Item id. `GET /api/notes/{id}`
+`GET /api/notes?q=focus&item=1` lists notes (cursor pagination, newest first; the filters are optional): `q` matches
+title or markdown (case-insensitive substring), `item` keeps notes linked to that Item id, `clientId` (a UUID, `400`
+otherwise) keeps the note a create with that `clientId` made, if it arrived. `GET /api/notes/{id}`
 reads one, `DELETE /api/notes/{id}` removes it (`204`); `PATCH /api/notes/{id}` accepts `title`, `markdown` and `items` (replaces the links; `[]` removes them).
 `items` are sorted ids, up to 10,000 (as many as a note's text can link); an Item that is not the owner's answers `400`.
 Markdown is up to 200,000 characters.
@@ -235,7 +236,10 @@ Markdown is up to 200,000 characters.
 Saving from the editor (it saves by itself, DECISIONS 9.8): a `POST` may carry `clientId`, a UUID the editor gives
 the new note before its first save. A `POST` with a `clientId` the owner already used answers `200` with that note
 and changes nothing (a create sent again, as the page closed or from a restored copy, never makes a second note); the
-editor then sends its newer text with a `PATCH`. A `PATCH` may carry `baseUpdatedAt`, the `updatedAt` the edit
+editor then sends its newer text with a `PATCH`, unless that note was edited since it was made (`updatedAt` after
+`createdAt`) and holds other text: then it shows that note and keeps its own text as a copy to restore. A copy of a new
+note left by a page that closed while creating it is first looked up with `GET /api/notes?clientId=`: if its create
+arrived, the copy belongs to that note. A `PATCH` may carry `baseUpdatedAt`, the `updatedAt` the edit
 started from: when the note was saved since then (another tab or device), nothing is written and the answer is
 `409 { "detail": "...", "note": { ...the note as it is now } }`. A `PATCH` writes only the fields it sends, so a
 save of the Items never puts back older text.
