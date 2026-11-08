@@ -60,8 +60,8 @@
 .note-editor > * + * {
   margin-top: 0.5rem;
 }
-.note-editor p {
-  margin: 0;
+:where(.note-editor p) {
+  margin: 0; /* no specificity: paragraphs keep the 0.5rem between blocks */
 }
 .note-editor :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--font-heading);
@@ -148,15 +148,17 @@
   background: transparent;
   padding: 0;
 }
-.note-editor .tableWrapper,
-.note-editor table {
-  max-width: 100%;
-}
 .note-editor table {
   display: block; /* a wide table scrolls inside itself, never the page (390 px) */
+  max-width: 100%;
   overflow-x: auto;
-  border-collapse: collapse;
   font-size: 14px;
+}
+/* the rows (one tbody) are the table's box: the full width, as when read, and wider when the cells need it */
+.note-editor table > tbody {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
 }
 .note-editor :is(th, td) {
   border-bottom: 1px solid var(--border);
@@ -188,6 +190,7 @@
 /* Placeholder: the whole note empty, or the empty top-level paragraph holding the caret while the editor has focus */
 .note-editor p.is-empty::before {
   content: attr(data-placeholder);
+  content: attr(data-placeholder) / ''; /* no text of the note for a screen reader (aria-placeholder says it) */
   float: inline-start;
   height: 0;
   pointer-events: none;
@@ -224,6 +227,7 @@
   flex: 1;
   min-width: 0;
 }
+/* a done task reads as done, here and when read (note-markdown.tsx) */
 .note-editor li[data-item-type='task'][data-checked='true'] > .task-content {
   color: var(--muted-foreground);
   text-decoration: line-through;

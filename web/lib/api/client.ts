@@ -74,8 +74,12 @@ export const API_WRITE_EVENT = 'brain:api-write';
  * ApiError on failure, undefined for 204; a successful write fires API_WRITE_EVENT. An aborted `signal` rejects
  * with the fetch AbortError (not an ApiError), so callers can tell "cancelled" from "offline" (isAbort).
  */
-/** The largest JSON body sent with `keepalive` (browsers refuse more than 64 KiB in flight per page). */
-const KEEPALIVE_MAX = 60_000;
+/**
+ * Browsers refuse a `keepalive` request once the bodies of all keepalive requests in flight from the page pass 64 KiB
+ * (UTF-8 bytes): a body that would pass it goes as a normal request.
+ */
+const KEEPALIVE_BUDGET = 64 * 1024;
+let keepaliveInFlight = 0;
 
 export async function request<T>(
   method: Method,
@@ -83,8 +87,8 @@ export async function request<T>(
   body?: unknown,
   signal?: AbortSignal,
   /**
-   * `keepalive`: the request may outlive the page (a note saved while the tab closes); dropped for a body too big to
-   * be kept alive, which then goes as a normal request.
+   * `keepalive`: the request may outlive the page (a note saved while the tab closes); dropped when its body would
+   * pass the page's keepalive budget, and it then goes as a normal request.
    */
   init?: { keepalive?: boolean },
 ): Promise<T> {
@@ -98,7 +102,9 @@ export async function request<T>(
   const form = body instanceof FormData;
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
   const payload = body === undefined ? undefined : form ? body : JSON.stringify(body);
-  const keepalive = !!init?.keepalive && typeof payload === 'string' && payload.length <= KEEPALIVE_MAX;
+  const size = init?.keepalive && typeof payload === 'string' ? new TextEncoder().encode(payload).length : Infinity;
+  const keepalive = keepaliveInFlight + size <= KEEPALIVE_BUDGET;
+  if (keepalive) keepaliveInFlight += size;
   let res: Response;
   try {
     res = await fetch(path, {
@@ -108,6 +114,8 @@ export async function request<T>(
       body: payload,
       signal,
       ...(keepalive && { keepalive: true }),
+    }).finally(() => {
+      if (keepalive) keepaliveInFlight -= size;
     });
   } catch (err) {
     if (signal?.aborted) throw err;

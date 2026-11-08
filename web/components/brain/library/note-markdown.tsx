@@ -38,26 +38,23 @@ const makeComponents = (t: T): Components => ({
   h5: (p: Props<'h5'>) => <h6 {...rest(p)} className={cn(heading, 'mt-4 mb-1.5 text-sm first:mt-0')} />,
   h6: (p: Props<'h6'>) => <h6 {...rest(p)} className={cn(heading, 'mt-4 mb-1.5 text-sm first:mt-0')} />,
   p: (p: Props<'p'>) => <p {...rest(p)} className="my-2 first:mt-0 last:mb-0" />,
-  ul: ({ className, ...p }: Props<'ul'>) => (
-    <ul
-      {...rest(p)}
-      className={cn(
-        'my-2 flex flex-col gap-1 first:mt-0 last:mb-0',
-        // GFM task lists (- [ ] / - [x]) carry their own box instead of a bullet
-        className?.includes('contains-task-list') ? 'list-none ps-0' : 'list-disc ps-5',
-      )}
-    />
-  ),
+  ul: (p: Props<'ul'>) => <ul {...rest(p)} className="my-2 flex list-disc flex-col gap-1 ps-5 first:mt-0 last:mb-0" />,
   ol: (p: Props<'ol'>) => <ol {...rest(p)} className="my-2 flex list-decimal flex-col gap-1 ps-5 first:mt-0 last:mb-0" />,
-  li: ({ className, ...p }: Props<'li'>) => (
-    <li
-      {...rest(p)}
-      className={cn(
-        'ps-0.5 marker:text-muted-foreground [&>ol]:my-1 [&>ul]:my-1',
-        className?.includes('task-list-item') && 'relative ps-6',
-      )}
-    />
-  ),
+  // A task (- [ ] / - [x]) carries its own box at the list's edge instead of a bullet, as in the editor; the other items
+  // of the same list keep theirs. A done task reads as done (muted, struck through), as in the editor.
+  li: ({ className, node, ...p }: Props<'li'>) => {
+    const task = className?.includes('task-list-item');
+    return (
+      <li
+        {...p}
+        className={cn(
+          'ps-0.5 marker:text-muted-foreground [&>ol]:my-1 [&>ul]:my-1',
+          task && 'relative -ms-5 list-none ps-6',
+          task && taskDone(node) && 'text-muted-foreground line-through',
+        )}
+      />
+    );
+  },
   // A task box is drawn, not a control: the note is edited as text for now (the block editor will tick boxes). The
   // state is read out in words before the task's text.
   input: ({ type, checked }: Props<'input'>) =>
@@ -140,6 +137,23 @@ const makeComponents = (t: T): Components => ({
   ),
   td: (p: Props<'td'>) => <td {...rest(p)} className="border-b px-2 py-1.5 align-top" />,
 });
+
+interface HastNode {
+  type?: string;
+  tagName?: string;
+  properties?: { checked?: unknown };
+  children?: HastNode[];
+}
+
+/** Whether a task item's box is ticked: its checkbox, first in the item or in the item's first paragraph (loose). */
+function taskDone(node: unknown): boolean {
+  for (const child of (node as HastNode | undefined)?.children ?? []) {
+    if (child.type !== 'element') continue;
+    if (child.tagName === 'input') return Boolean(child.properties?.checked);
+    return child.tagName === 'p' && taskDone(child);
+  }
+  return false;
+}
 
 interface MdNode {
   type: string;

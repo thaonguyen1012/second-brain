@@ -877,6 +877,9 @@ paths:
           description: ''
     post:
       operationId: createNote
+      description: |-
+        201 with the new note; 200 with the note an earlier POST with the same `clientId` made (nothing
+        changes then).
       tags:
       - notes
       requestBody:
@@ -889,6 +892,12 @@ paths:
       - sessionAuth: []
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+          description: ''
+        '200':
           content:
             application/json:
               schema:
@@ -916,6 +925,9 @@ paths:
           description: ''
     patch:
       operationId: updateNote
+      description: |-
+        With `baseUpdatedAt` (the version the edit started from): 409 and the note as it is now when it was
+        saved since then, and nothing is written.
       parameters:
       - in: path
         name: id
@@ -937,6 +949,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Note'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteConflict'
           description: ''
     delete:
       operationId: deleteNote
@@ -3353,6 +3371,18 @@ components:
       - markdown
       - title
       - updatedAt
+    NoteConflict:
+      type: object
+      description: '409 on PATCH /api/notes/{id}: the note was saved elsewhere since
+        `baseUpdatedAt`; `note` is it now.'
+      properties:
+        detail:
+          type: string
+        note:
+          $ref: '#/components/schemas/Note'
+      required:
+      - detail
+      - note
     NoteMention:
       type: object
       description: 'A note that links the Item or note in its text: its title, else
@@ -3425,7 +3455,13 @@ components:
           type: array
           items:
             type: integer
-          maxItems: 50
+          maxItems: 10000
+        clientId:
+          type: string
+          format: uuid
+        baseUpdatedAt:
+          type: string
+          format: date-time
       required:
       - markdown
     NullEnum:
@@ -4126,7 +4162,13 @@ components:
           type: array
           items:
             type: integer
-          maxItems: 50
+          maxItems: 10000
+        clientId:
+          type: string
+          format: uuid
+        baseUpdatedAt:
+          type: string
+          format: date-time
     PatchedObjectiveUpdateRequest:
       type: object
       properties:

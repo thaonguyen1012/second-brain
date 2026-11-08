@@ -47,6 +47,7 @@ import { customInputRulesKey, isTextOnlySlice } from '@milkdown/kit/prose';
 import { lift } from '@milkdown/kit/prose/commands';
 import { closeHistory } from '@milkdown/kit/prose/history';
 import { InputRule } from '@milkdown/kit/prose/inputrules';
+import { liftListItem } from '@milkdown/kit/prose/schema-list';
 import { DOMParser, DOMSerializer, Fragment, Slice, type NodeType } from '@milkdown/kit/prose/model';
 import {
   Plugin,
@@ -73,6 +74,7 @@ import {
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useT } from '@/lib/i18n/client';
+import { noteImageSrc } from '@/lib/item-notes';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 import { noteEditorFrame, type NoteEditorHandle, type NoteEditorProps } from './note-editor-types';
@@ -333,15 +335,15 @@ const pasteTextAsMarkdown = $prose(
     }),
 );
 
-/** Images: only the app's own files load (as in note-markdown.tsx); any other image (pasted from a web page, or
- *  ![](https://...)) shows as text, so the editor never asks another site for anything. The markdown is unchanged. */
-const isLocalSrc = (src: string) => (src.startsWith('/') && !src.startsWith('//')) || /^(data|blob):/i.test(src);
+/** Images: only the ones the reading view shows load (the app's own files, noteImageSrc); any other image (pasted
+ *  from a web page, ![](https://...), an /api/ address) shows as text, so the editor never asks another site or the
+ *  API for anything. The markdown is unchanged. */
 function imageView(fallbackAlt: string) {
   return $view(
     imageSchema.node,
     (): NodeViewConstructor => (node) => {
       const src = String(node.attrs.src);
-      if (isLocalSrc(src)) return { dom: DOMSerializer.renderSpec(document, node.type.spec.toDOM!(node)).dom };
+      if (noteImageSrc(src)) return { dom: DOMSerializer.renderSpec(document, node.type.spec.toDOM!(node)).dom };
       const dom = document.createElement('span');
       dom.className = 'note-image-external';
       dom.textContent = `[${String(node.attrs.alt) || fallbackAlt}: ${src}]`;
@@ -557,6 +559,37 @@ function canRun(ctx: Ctx, state: EditorState, item: ShownSlashItem): boolean {
   }
 }
 
+/** The caret's line opens a list item (its first paragraph): only a task can take its place there. */
+function inListLine(state: EditorState, ctx: Ctx): boolean {
+  const { $from } = state.selection;
+  return (
+    $from.depth >= 2 &&
+    $from.parent.type.name === 'paragraph' &&
+    $from.node(-1).type === listItemSchema.type(ctx) &&
+    $from.index(-1) === 0
+  );
+}
+
+/**
+ * How a block goes on the caret's line: 0 = at once, n = after lifting the line n levels out of its lists (a heading,
+ * a quote or code cannot open a list item; "Văn bản" on a list line means leaving the lists), null = not here.
+ */
+function slashLifts(ctx: Ctx, state: EditorState, item: ShownSlashItem): number | null {
+  const onList = inListLine(state, ctx);
+  if (!(item.id === 'text' && onList) && canRun(ctx, state, item)) return 0;
+  if (!onList) return null;
+  const listItem = listItemSchema.type(ctx);
+  let now = state;
+  for (let level = 1; level <= 8; level++) {
+    const from = now;
+    const lifted: EditorState[] = [];
+    if (!liftListItem(listItem)(from, (tr) => void lifted.push(from.apply(tr))) || lifted.length === 0) return null;
+    now = lifted[0];
+    if (item.id === 'text' ? !inListLine(now, ctx) : canRun(ctx, now, item)) return level;
+  }
+  return null;
+}
+
 interface SlashSnapshot {
   readonly open: boolean;
   readonly query: string;
@@ -608,7 +641,10 @@ class SlashController {
     const item = active?.items[index];
     if (!view || !ctx || !active || !item) return false;
     view.dispatch(closeHistory(view.state.tr.delete(active.from, active.to))); // Cmd/Ctrl+Z brings '/query' back
-    const done = callCommand(item.command.key, item.payload)(ctx);
+    // a list line leaves its lists first (in the same undo step)
+    const lifts = slashLifts(ctx, view.state, item) ?? 0;
+    for (let i = 0; i < lifts; i++) liftListItem(listItemSchema.type(ctx))(view.state, view.dispatch);
+    const done = item.id === 'text' && lifts > 0 ? true : callCommand(item.command.key, item.payload)(ctx);
     this.#provider?.hide();
     view.focus();
     return done;
@@ -686,7 +722,7 @@ class SlashController {
     if (!match || this.#dismissed.getState(view.state) === match.at) return null;
     const query = fold(match.query);
     const items = this.#items.filter(
-      (item) => fold(`${item.label} ${item.keywords}`).includes(query) && canRun(ctx, view.state, item),
+      (item) => fold(`${item.label} ${item.keywords}`).includes(query) && slashLifts(ctx, view.state, item) !== null,
     );
     return items.length > 0 ? { ...match, items } : null;
   }
@@ -741,7 +777,9 @@ function SlashMenu({ slash }: { slash: SlashController }) {
   useEffect(() => {
     if (active) document.getElementById(slash.optionId(active))?.scrollIntoView({ block: 'nearest' });
   }, [active, slash]);
-  if (!open) return null;
+  // In the page whenever there are blocks to offer (hidden until the menu shows): the menu is placed by its real
+  // size, so near the bottom of the screen it opens above the caret
+  if (items.length === 0) return null;
   return (
     // a press anywhere on the list (padding, scrollbar too) keeps the focus in the editor and the menu open
     <ul
@@ -947,6 +985,7 @@ export default function NoteEditor({
             'data-variant': variant,
             'aria-label': opening.label,
             'aria-multiline': 'true',
+            ...(opening.placeholder && { 'aria-placeholder': opening.placeholder }),
             spellcheck: 'true',
           },
         }));
@@ -954,7 +993,24 @@ export default function NoteEditor({
         // character, an IME composition, or text after undo joined the link)
         ctx.update(linkSchema.key, (prev) => (c) => ({ ...prev(c), inclusive: false }));
         // `-` bullets and `---` rules, as people type them (remark's defaults are `*` and `***`)
-        ctx.update(remarkStringifyOptionsCtx, (prev) => ({ ...prev, bullet: '-' as const, rule: '-' as const }));
+        ctx.update(remarkStringifyOptionsCtx, (prev) => ({
+          ...prev,
+          bullet: '-' as const,
+          rule: '-' as const,
+          handlers: {
+            ...prev.handlers,
+            // Milkdown writes a text run that ends in a space (before a mark, a link or code) as it is, so a "`", "#",
+            // "[", "<" or "1." in it came back as code, a heading, a link, HTML or a list on reload. Escaped as remark
+            // does, except the trailing space, which remark would write as `&#x20;`.
+            text: (node, _parent, state, info) => {
+              const value: string = node.value;
+              const body = value.trimEnd();
+              const space = value.slice(body.length);
+              if (!body) return value;
+              return state.safe(body, { ...info, ...(space && { after: space[0] }), encode: [] }) + space;
+            },
+          },
+        }));
         ctx.get(listenerCtx).markdownUpdated((_ctx, next) => report(next));
         ctx.set(slash.plugin.key, slash.spec(ctx));
         // A paragraph after a code block that ends the note, to click or arrow into (Enter only adds lines to the

@@ -37,13 +37,21 @@ ITEM_FIELDS = ("type", "status", "title", "tags", "source", "rating", "started_a
 NOTE_FIELDS = ("title", "markdown")
 EXCERPT_CHARS = 120
 EXCERPT_BEFORE = 40
-_MARKS = re.compile(r"[#>*_`~\[\]]+")
+# A line's heading, quote, list and task marks (`## `, `> `, `- `, `1. `, `- [ ] `), nested ones too
+_LINE_PREFIX = re.compile(
+    r"^[ \t]*(?:(?:>|(?:[-*+]|\d{1,9}[.)]|#{1,6})(?=[ \t]))[ \t]*)*(?:\[[ xX]\][ \t]+)?", re.MULTILINE
+)
+# A link or image shows its text (the editor's `[[ ]]` links): `[Atomic Habits](/thu-vien/item/?id=12)` ->
+# `Atomic Habits`. The text may hold escaped brackets (`[\[RC\] Book](...)`, as the editor writes them); no
+# bracket, parenthesis or line break otherwise, so every match attempt stops at the next one (linear).
+_LINK = re.compile(r"!?\[((?:\\.|[^\\\[\]\n])*)\]\([^()\n]*\)")
+# A backslash escape shows its character (CommonMark escapes ASCII punctuation: `\[`, `\*`, `\_`)
+_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
+# Inline marks an excerpt leaves out, escapes shown by their character; `_` inside a word (file_name) is
+# no mark
+_MARKS = re.compile(r"\\([!-/:-@\[-`{-~])|[*`~]+|(?<!_)(?<![^\W_])_+|(?<=[^\W_])_+(?!_)(?![^\W_])")
 # The editor's (Milkdown's) placeholder for an empty paragraph or list item: no text
 _EMPTY_LINE = re.compile(r"<br\s*/?>", re.IGNORECASE)
-_LINE_PREFIX = re.compile(r"^\s*(#{1,6}\s+|>\s*|(?:[-*+]|\d+[.)])\s+)(\[[ xX]\]\s+)?")
-# A link or image shows its text (the editor's `[[ ]]` links): `[Atomic Habits](/thu-vien/item/?id=12)` ->
-# `Atomic Habits`
-_LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
 
 
 def normalize_tags(tags: Iterable[str]) -> list[str]:
@@ -300,12 +308,13 @@ def notes(user: User, query: str = "", item: int | None = None) -> QuerySet[Note
 
 
 def note_label(note: Note) -> str:
-    """The title, else the first non-empty markdown line without its heading/quote/list mark (as the web's
-    noteTitle), else ""."""
+    """The title, else the first non-empty markdown line without its heading/quote/list mark, links shown by
+    their text and escapes by their character (as the web's noteTitle), else ""."""
     if title := note.title.strip():
         return title
     for line in note.markdown.split("\n"):
-        if clean := " ".join(_LINK.sub(r"\1", _LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", line))).split()):
+        text = _LINK.sub(r"\1", _LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", line)))
+        if clean := " ".join(_ESCAPE.sub(r"\1", text).split()):
             return clean[:EXCERPT_CHARS]
     return ""
 
@@ -313,7 +322,8 @@ def note_label(note: Note) -> str:
 def note_excerpt(markdown: str, query: str) -> str:
     """About EXCERPT_CHARS characters around the first match of `query` (markdown marks dropped), else the
     start of the note."""
-    flat = " ".join(_MARKS.sub(" ", _LINK.sub(r"\1", _EMPTY_LINE.sub(" ", markdown))).split())
+    text = _LINK.sub(r"\1", _LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", markdown)))
+    flat = " ".join(_MARKS.sub(lambda mark: mark.group(1) or " ", text).split())
     at = flat.lower().find(query.lower()) if query else -1
     if at < 0:
         return flat[:EXCERPT_CHARS]
@@ -338,15 +348,33 @@ def search_notes(user: User, query: str, limit: int) -> list[dict[str, Any]]:
     ]
 
 
-def save_note(note: Note, data: dict[str, Any]) -> Note:
-    """Create (unsaved `note`) or update; `items` (owner checked by the serializer) replaces the links to
+class NoteConflict(Exception):
+    """The note was saved again since the version an edit started from (another tab or device)."""
+
+    def __init__(self, note: Note) -> None:
+        super().__init__(note.pk)
+        self.note = note
+
+
+def save_note(note: Note, data: dict[str, Any], base_updated_at: dt.datetime | None = None) -> Note:
+    """Create (unsaved `note`) or update. An update writes only the fields in `data`, on the row read again
+    under a lock, so two saves that cross (the text and the Items of one note) never put back each other's
+    older fields; with `base_updated_at` (the version the edit started from) a note saved since then raises
+    NoteConflict and nothing is written. `items` (owner checked by the serializer) replaces the links to
     Items. The links written in the markdown are read again (library.links): its NoteLink rows, and the Items
     it links join `items`, also after `items` replaced them (the text still links them)."""
-    for field in NOTE_FIELDS:
-        if field in data:
-            setattr(note, field, data[field])
+    fields = [field for field in NOTE_FIELDS if field in data]
     with transaction.atomic():
-        note.save()
+        if note.pk is not None:
+            note = Note.objects.select_for_update().get(pk=note.pk)
+            if base_updated_at is not None and note.updated_at != base_updated_at:
+                raise NoteConflict(note)
+        for field in fields:
+            setattr(note, field, data[field])
+        if note.pk is None:
+            note.save()
+        else:
+            note.save(update_fields=[*fields, "updated_at"])
         if "items" in data:
             note.items.set(data["items"])
         if "markdown" in data or "items" in data:

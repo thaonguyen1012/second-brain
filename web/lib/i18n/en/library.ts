@@ -46,7 +46,7 @@ export const library = {
 
   // A done Item needs an output (components/brain/library/done-output.tsx); "rating" = an Item's 1-10 rating
   '## Highlights\n\n- \n\n## 3 ý chính\n\n1. \n2. \n3. \n': '## Highlights\n\n- \n\n## 3 key ideas\n\n1. \n2. \n3. \n',
-  'Nhận xét: ': 'Review: ',
+  '## Nhận xét\n\n- ': '## Review\n\n- ',
   '## Học được gì\n\n- \n\n## Sẽ áp dụng vào đâu\n\n- \n': '## What I learned\n\n- \n\n## Where I will use it\n\n- \n',
   '## Ý chính\n\n- \n\n## Vì sao đáng nhớ\n\n': '## Key ideas\n\n- \n\n## Why it is worth remembering\n\n',
   '## Kết quả (kèm con số)\n\n- \n\n## Bài học rút ra\n\n- \n': '## Results (with numbers)\n\n- \n\n## Lessons learned\n\n- \n',
@@ -180,11 +180,19 @@ export const library = {
   'Có bản nháp chưa lưu trong trình duyệt này': 'There is an unsaved draft in this browser',
   'Viết lúc {date}. Khôi phục sẽ thay nội dung đang có.': 'Written {date}. Restoring replaces the current text.',
   'Khôi phục': 'Restore',
+  'Mở để khôi phục': 'Open to restore',
+  '{items} vẫn gắn với ghi chú vì nội dung có liên kết tới nó; bỏ liên kết trong nội dung trước.':
+    '{items} stays linked because the note’s text links to it; remove that link from the text first.',
   'Bỏ bản nháp': 'Discard draft',
   'Không có tiêu đề': 'Untitled',
   'Chưa lưu được liên kết: {reason}': 'The links were not saved: {reason}',
   'Không tìm thấy ghi chú này': 'This note was not found',
   'Có thể ghi chú đã bị xóa hoặc link đã cũ.': 'It may have been deleted, or the link is old.',
+  // Why a save failed (use-note-autosave.ts)
+  'Máy chủ không nhận nội dung này.': 'The server did not accept this content.',
+  'Ghi chú không còn trên máy chủ.': 'The note is no longer on the server.',
+  'Máy chủ trả lỗi {status}.': 'The server answered with error {status}.',
+  'Ghi chú vừa được lưu ở nơi khác.': 'The note was just saved somewhere else.',
   // The editor's "/" menu, "[[" picker and task boxes (note-editor.tsx)
   'Văn bản': 'Text',
   'Tiêu đề 1': 'Heading 1',

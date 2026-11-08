@@ -24,8 +24,8 @@ import { noteTemplateFor } from './done-output';
 import { NoteBody } from './note-body';
 import { NoteEditor } from './note-editor-lazy';
 import type { NoteEditorHandle } from './note-editor-types';
-import { SaveStatus } from './save-status';
-import { useNoteAutosave, type NoteBackup } from './use-note-autosave';
+import { SaveStatus, UnsavedCopyHint } from './save-status';
+import { noteKey, useNoteAutosave, type NoteBackup } from './use-note-autosave';
 
 // Every note of one Item on its page (DECISIONS 9.8 point 2): newest first, joined like one page (no card per note),
 // each shown as rendered markdown and written in place with the block editor (NoteEditor); a new note starts from the
@@ -73,7 +73,8 @@ export function RecoveredDraft({
       <AlertDescription>
         {t('Viết lúc {date}. Khôi phục sẽ thay nội dung đang có.', { date: formatDate(copy.at, t) })}
       </AlertDescription>
-      <AlertAction>
+      {/* under the text at every width: it shows in narrow places (the Sheet, a phone) */}
+      <AlertAction className="col-start-2 row-start-auto row-end-auto ms-0 mt-2 flex-wrap justify-start">
         <Button size="sm" variant="outline" onClick={onRestore}>
           {t('Khôi phục')}
         </Button>
@@ -98,6 +99,7 @@ function NoteInPlace({
   template,
   focusRequest,
   onSaved,
+  onConflict,
   onDone,
 }: {
   idBase: string;
@@ -109,25 +111,30 @@ function NoteInPlace({
   /** > 0 puts the cursor in the text once the editor is ready; a new value does it again. */
   focusRequest: number;
   onSaved: (note: ApiNote, created: boolean) => void;
-  /** Back to reading; what is left unsaved is sent first. */
+  /** Show this newer version of the note instead (saved elsewhere; this text comes back as the copy). */
+  onConflict: (note: ApiNote) => void;
+  /** Back to reading, once everything typed is saved. */
   onDone: () => void;
 }) {
   const t = useT();
-  // a new note is named after its Item (noteHeading hides that name under the Item's own title)
-  const [title, setTitle] = useState(note?.title ?? item.title.slice(0, 300));
-  const [markdown, setMarkdown] = useState(note?.markdown ?? template);
-  // the editor opens with this text; a restored copy remounts it with that copy (`editorKey`)
-  const [opening, setOpening] = useState(markdown);
-  const [editorKey, setEditorKey] = useState(0);
   const editor = useRef<NoteEditorHandle | null>(null);
   const autosave = useNoteAutosave({
     note,
     template,
+    // a new note is named after its Item (noteHeading hides that name under the Item's own title)
+    initialTitle: item.title.slice(0, 300),
     items: () => [item.id],
     draftKey: `new-item-${item.id}`,
     onSaved,
+    onConflict,
+    fresh: note,
     pull: () => editor.current?.markdown() ?? null,
   });
+  const [title, setTitle] = useState(autosave.opening.title);
+  const [markdown, setMarkdown] = useState(autosave.opening.markdown);
+  // the editor opens with this text; a restored copy remounts it with that copy (`editorKey`)
+  const [opening, setOpening] = useState(markdown);
+  const [editorKey, setEditorKey] = useState(0);
 
   const change = (next: { title?: string; markdown?: string }) => {
     const text = { title: next.title ?? title, markdown: next.markdown ?? markdown };
@@ -135,9 +142,10 @@ function NoteInPlace({
     if (next.markdown !== undefined) setMarkdown(next.markdown);
     autosave.change(text);
   };
-  const done = () => {
-    void autosave.flush();
-    onDone();
+  // Back to reading only once the server has everything: a failed save keeps the editor open with its reason and
+  // "Thử lại" (closing the Sheet still sends it, and the tab asks before it goes while it fails)
+  const done = async () => {
+    if (await autosave.flush()) onDone();
   };
   const restore = () => {
     const copy = autosave.takeRecovered();
@@ -149,8 +157,18 @@ function NoteInPlace({
   };
 
   return (
-    // data-note-editing: an Escape inside ends this edit; the Sheet around the page leaves it alone (item-sheet.tsx)
-    <div className="flex flex-col gap-2" data-note-editing="">
+    // data-note-editing: an Escape inside ends this edit (on any of its controls: the editor and the title handle
+    // theirs and stop it), and the Sheet around the page leaves it alone (item-sheet.tsx)
+    <div
+      className="flex flex-col gap-2"
+      data-note-editing=""
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || e.nativeEvent.isComposing || e.defaultPrevented) return;
+        e.preventDefault();
+        e.stopPropagation();
+        void done();
+      }}
+    >
       {autosave.recovered && (
         <RecoveredDraft copy={autosave.recovered} onRestore={restore} onDrop={autosave.dropRecovered} />
       )}
@@ -165,7 +183,7 @@ function NoteInPlace({
             e.preventDefault();
             // the edit ends here: the Sheet around the page must not close too (see the editor's Escape)
             e.stopPropagation();
-            done();
+            void done();
           }
         }}
         aria-label={t('Tiêu đề ghi chú (không bắt buộc)')}
@@ -186,8 +204,8 @@ function NoteInPlace({
         onReady={(handle) => {
           editor.current = handle;
         }}
-        onEscape={done}
-        onSubmit={done}
+        onEscape={() => void done()}
+        onSubmit={() => void done()}
       />
       <div className="flex flex-wrap items-center justify-end gap-2">
         <SaveStatus
@@ -196,7 +214,7 @@ function NoteInPlace({
           error={autosave.error}
           onRetry={() => void autosave.flush()}
         />
-        <Button type="button" variant="outline" size="sm" onClick={done}>
+        <Button type="button" variant="outline" size="sm" onClick={() => void done()}>
           <Check aria-hidden />
           {t('Xong')}
         </Button>
@@ -240,6 +258,8 @@ export function ItemNotes({
   // the note the open composer created and goes on editing: not listed twice meanwhile
   const [composed, setComposed] = useState<number | null>(null);
   const [editing, setEditing] = useState<ReadonlySet<number>>(() => new Set());
+  // a note's editor starts again with a newer version (saved elsewhere): its key changes
+  const [versions, setVersions] = useState<ReadonlyMap<number, number>>(() => new Map());
   const [deleting, setDeleting] = useState<ApiNote | null>(null);
   const [announcement, setAnnouncement] = useState('');
 
@@ -263,6 +283,9 @@ export function ItemNotes({
   const showComposer = composerOpen ?? (loaded && list.length === 0);
 
   const openComposer = () => {
+    // the button goes away: the focus waits on the heading (inside the Sheet, which would otherwise take it back to
+    // its own start just after the editor took it), and the editor takes it when it is ready
+    focusAfter(null);
     setComposerOpen(true);
     setComposerFocus((n) => n + 1);
   };
@@ -307,8 +330,25 @@ export function ItemNotes({
     setComposed(null);
   };
 
+  /**
+   * A newer version of a note this page edits (saved in another tab or on another device): it replaces the list's
+   * row and its editor starts again from it; text typed here and not saved comes back as the copy to restore. The
+   * composer's note continues in its own row's editor.
+   */
+  const showVersion = (newer: ApiNote, fromComposer: boolean) => {
+    notes.mutate((d) => d && { ...d, results: d.results.map((n) => (n.id === newer.id ? newer : n)) });
+    setVersions((m) => new Map(m).set(newer.id, (m.get(newer.id) ?? 0) + 1));
+    if (!fromComposer) return;
+    composerInstance.current += 1;
+    setComposerKey(composerInstance.current);
+    setComposerOpen(false);
+    setComposed(null);
+    setEditing((e) => new Set(e).add(newer.id));
+  };
+
   const setNoteEditing = (id: number, on: boolean) => {
-    if (!on) focusAfter(editButtonId(id));
+    // closing: the pencil comes back and takes the focus; opening: the focus waits on the heading for the editor
+    focusAfter(on ? null : editButtonId(id));
     setEditing((s) => {
       const next = new Set(s);
       if (on) next.add(id);
@@ -334,6 +374,7 @@ export function ItemNotes({
           </Button>
         )}
       </div>
+      {!showComposer && <UnsavedCopyHint copyKey={`new-item-${item.id}`} text={null} onOpen={openComposer} />}
 
       {showComposer && (
         <NoteInPlace
@@ -345,6 +386,7 @@ export function ItemNotes({
           template={template}
           focusRequest={composerFocus}
           onSaved={(note, created) => saved(note, created, composerKey)}
+          onConflict={(newer) => showVersion(newer, true)}
           onDone={closeComposer}
         />
       )}
@@ -372,7 +414,8 @@ export function ItemNotes({
                     {heading && !isEditing && (
                       <h3 className="font-heading text-[15px] leading-5 font-semibold break-words">{heading}</h3>
                     )}
-                    <p className="text-xs text-muted-foreground">
+                    {/* break-words: an Item title may be one long word (a link) */}
+                    <p className="text-xs break-words text-muted-foreground">
                       {noteDateLabel(note, t)}
                       {others.length > 0 &&
                         t.rich(' · cũng gắn với {items}', {
@@ -389,6 +432,13 @@ export function ItemNotes({
                           )),
                         })}
                     </p>
+                    {!isEditing && (
+                      <UnsavedCopyHint
+                        copyKey={noteKey(note.id)}
+                        text={note}
+                        onOpen={() => setNoteEditing(note.id, true)}
+                      />
+                    )}
                   </div>
                   {!isEditing && (
                     <div className="-me-1.5 -mt-1 flex shrink-0 items-center">
@@ -424,12 +474,14 @@ export function ItemNotes({
                 </div>
                 {isEditing ? (
                   <NoteInPlace
+                    key={versions.get(note.id) ?? 0}
                     idBase={`${base}-edit-${note.id}`}
                     item={item}
                     note={note}
                     template=""
                     focusRequest={1}
                     onSaved={(n) => saved(n, false)}
+                    onConflict={(newer) => showVersion(newer, false)}
                     onDone={() => setNoteEditing(note.id, false)}
                   />
                 ) : (

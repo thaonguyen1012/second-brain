@@ -71,13 +71,16 @@ export function ItemPicker({
             const item = byId.get(itemId);
             const title = item?.title ?? `Item #${itemId}`;
             return (
-              <li key={itemId}>
-                <Badge variant="outline" size="lg" className="gap-1 pe-0.5">
-                  {item && <span className="text-muted-foreground">{t(itemTypeLabel(item.type))} ·</span>}
-                  <span className="max-w-60 truncate">{title}</span>
+              // the chip shrinks to its column and cuts a long title (390 px: no sideways scroll)
+              <li key={itemId} className="min-w-0 max-w-full">
+                <Badge variant="outline" size="lg" className="max-w-full shrink gap-1 pe-0.5">
+                  {item && (
+                    <span className="shrink-0 text-muted-foreground">{t(itemTypeLabel(item.type))} ·</span>
+                  )}
+                  <span className="min-w-0 truncate sm:max-w-60">{title}</span>
                   <button
                     type="button"
-                    className="inline-flex size-5 items-center justify-center rounded-sm hover:bg-accent"
+                    className="relative inline-flex size-5 shrink-0 items-center justify-center rounded-sm hover:bg-accent pointer-coarse:after:absolute pointer-coarse:after:-inset-3"
                     aria-label={t('Bỏ liên kết {title}', { title })}
                     onClick={() => onChange(value.filter((v) => v !== itemId))}
                   >

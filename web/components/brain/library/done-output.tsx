@@ -24,7 +24,7 @@ export function missingOutput(item: Pick<ApiItem, 'status' | 'type' | 'rating' |
  */
 export const noteTemplates: Record<ApiItemType, Msg> = {
   book: msg('## Highlights\n\n- \n\n## 3 ý chính\n\n1. \n2. \n3. \n'),
-  film: msg('Nhận xét: '),
+  film: msg('## Nhận xét\n\n- '),
   course: msg('## Học được gì\n\n- \n\n## Sẽ áp dụng vào đâu\n\n- \n'),
   article: msg('## Ý chính\n\n- \n\n## Vì sao đáng nhớ\n\n'),
   project: msg('## Kết quả (kèm con số)\n\n- \n\n## Bài học rút ra\n\n- \n'),

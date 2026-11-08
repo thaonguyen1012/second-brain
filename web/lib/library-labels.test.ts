@@ -59,6 +59,18 @@ describe('noteTitle', () => {
     expect(noteTitle(note('', '- [ ] việc chưa xong'), tVi)).toBe('việc chưa xong');
   });
 
+  it('shows escaped characters as themselves, as the editor writes them', () => {
+    expect(noteTitle(note('', String.raw`\[RD] mở ngoặc vuông, file_name và 2\*3 = 6`), tVi)).toBe(
+      '[RD] mở ngoặc vuông, file_name và 2*3 = 6',
+    );
+    expect(noteTitle(note('', String.raw`Xem [\[RC\] Book C](/thu-vien/item/?id=22) nhé`), tVi)).toBe('Xem [RC] Book C nhé');
+    expect(noteTitle(note('', String.raw`\# không phải heading, 1\. không phải danh sách`), tVi)).toBe(
+      '# không phải heading, 1. không phải danh sách',
+    );
+    expect(noteTitle(note('', '> - [ ] việc trong trích dẫn'), tVi)).toBe('việc trong trích dẫn');
+    expect(noteTitle(note('', '-5 độ'), tVi)).toBe('-5 độ');
+  });
+
   it('shows a link by its text (a `[[ ]]` link)', () => {
     expect(noteTitle(note('', 'Xem [Atomic Habits](/thu-vien/item/?id=12) và [ý khác](/thu-vien/ghi-chu/?id=3)'), tVi)).toBe(
       'Xem Atomic Habits và ý khác',

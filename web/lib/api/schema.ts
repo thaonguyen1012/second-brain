@@ -402,6 +402,10 @@ export interface paths {
         };
         get: operations["listNotes"];
         put?: never;
+        /**
+         * @description 201 with the new note; 200 with the note an earlier POST with the same `clientId` made (nothing
+         *     changes then).
+         */
         post: operations["createNote"];
         delete?: never;
         options?: never;
@@ -423,6 +427,10 @@ export interface paths {
         delete: operations["deleteNote"];
         options?: never;
         head?: never;
+        /**
+         * @description With `baseUpdatedAt` (the version the edit started from): 409 and the note as it is now when it was
+         *     saved since then, and nothing is written.
+         */
         patch: operations["updateNote"];
         trace?: never;
     };
@@ -1438,6 +1446,11 @@ export interface components {
             /** Format: date-time */
             readonly updatedAt: string;
         };
+        /** @description 409 on PATCH /api/notes/{id}: the note was saved elsewhere since `baseUpdatedAt`; `note` is it now. */
+        NoteConflict: {
+            detail: string;
+            note: components["schemas"]["Note"];
+        };
         /** @description A note that links the Item or note in its text: its title, else its first line. */
         NoteMention: {
             id: number;
@@ -1468,6 +1481,10 @@ export interface components {
             title?: string;
             markdown: string;
             items?: number[];
+            /** Format: uuid */
+            clientId?: string;
+            /** Format: date-time */
+            baseUpdatedAt?: string;
         };
         /** @enum {unknown} */
         NullEnum: null;
@@ -1809,6 +1826,10 @@ export interface components {
             title?: string;
             markdown?: string;
             items?: number[];
+            /** Format: uuid */
+            clientId?: string;
+            /** Format: date-time */
+            baseUpdatedAt?: string;
         };
         PatchedObjectiveUpdateRequest: {
             title?: string;
@@ -3142,6 +3163,14 @@ export interface operations {
             };
         };
         responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
+                };
+            };
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -3214,6 +3243,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Note"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteConflict"];
                 };
             };
         };

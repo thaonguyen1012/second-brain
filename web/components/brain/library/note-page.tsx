@@ -1,16 +1,16 @@
 'use client';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, SearchX, Trash2 } from 'lucide-react';
 import { notesApi, type ApiNote } from '@/lib/api/library';
-import { toApiError, useApi } from '@/lib/api/use-api';
+import { useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
 import { noteDateLabel } from '@/lib/item-notes';
 import { noteTitle } from '@/lib/library-labels';
 import { MenuItem } from '@/components/ui/menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ApiErrorState, EmptyState, describeApiError } from '../api-state';
+import { ApiErrorState, EmptyState } from '../api-state';
 import { ConfirmDelete } from '../confirm-delete';
 import { RowMenu } from '../row-menu';
 import { noteTemplates } from './done-output';
@@ -21,7 +21,7 @@ import { NoteEditor } from './note-editor-lazy';
 import type { NoteEditorHandle } from './note-editor-types';
 import { SaveStatus } from './save-status';
 import { useItemIndex } from './use-item-index';
-import { useNoteAutosave } from './use-note-autosave';
+import { saveErrorText, useNoteAutosave } from './use-note-autosave';
 
 // /thu-vien/ghi-chu/?id=N: one note as a page (DECISIONS 9.8, PROMPT-item-notes step 4), in place of the edit dialog:
 // the title, the Items it is linked to (AFFiNE's properties), the block editor, and later "Được nhắc tới ở". Everything
@@ -62,6 +62,7 @@ function NoteEditing({
   newItem,
   template,
   onCreated,
+  onConflict,
 }: {
   /** The saved note, or null for a new one. */
   note: ApiNote | null;
@@ -70,17 +71,20 @@ function NoteEditing({
   /** A new note's starting text (`&template=`). */
   template: string;
   onCreated: (note: ApiNote) => void;
+  /** Show this newer version instead (saved elsewhere; this page's unsaved text comes back as the copy). */
+  onConflict: (note: ApiNote) => void;
 }) {
   const t = useT();
   const router = useRouter();
   const base = useId();
-  const [title, setTitle] = useState(note?.title ?? '');
-  const [markdown, setMarkdown] = useState(note?.markdown ?? template);
-  // the editor opens with this text; a restored copy remounts it with that text (`editorKey`)
-  const [opening, setOpening] = useState(note?.markdown ?? template);
-  const [editorKey, setEditorKey] = useState(0);
   const [items, setItems] = useState<number[]>(note?.items ?? (newItem ? [newItem] : []));
+  // the Items as last picked, for a create on its way (an Item picked meanwhile is saved right after it)
+  const picked = useRef(items);
+  const picking = useRef(0);
   const [linkError, setLinkError] = useState<string | null>(null);
+  // An Item the user unlinked that the note's text still links: it stays, and the page says why
+  const [linkNotice, setLinkNotice] = useState<string | null>(null);
+  const titleField = useRef<HTMLTextAreaElement>(null);
   const [current, setCurrent] = useState<ApiNote | null>(note);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const index = useItemIndex(true);
@@ -89,16 +93,26 @@ function NoteEditing({
   const autosave = useNoteAutosave({
     note,
     template,
-    items: () => items,
+    items: () => picked.current,
     draftKey: `new${newItem ? `-item-${newItem}` : ''}`,
     onSaved: (saved, created) => {
       setCurrent(saved);
-      // a `[[ ]]` link to an Item links the note to it (the server says so in `items`)
-      setItems(saved.items);
       if (created) onCreated(saved);
+      // a `[[ ]]` link to an Item links the note to it (the server says so in `items`), unless a pick is on its way
+      if (picking.current === 0) {
+        setItems(saved.items);
+        picked.current = saved.items;
+      }
     },
+    onConflict,
+    fresh: note,
     pull: () => editor.current?.markdown() ?? null,
   });
+  const [title, setTitle] = useState(autosave.opening.title);
+  const [markdown, setMarkdown] = useState(autosave.opening.markdown);
+  // the editor opens with this text; a restored copy remounts it with that text (`editorKey`)
+  const [opening, setOpening] = useState(autosave.opening.markdown);
+  const [editorKey, setEditorKey] = useState(0);
 
   const labels = useMemo(() => {
     const m = new Map<number, { title: string; type: string }>();
@@ -114,22 +128,41 @@ function NoteEditing({
     autosave.change(text);
   };
 
-  /** Item links save at once (a separate PATCH); a new note keeps them for its first save. */
-  const changeItems = async (next: number[]) => {
-    const before = items;
+  /**
+   * Item links save at once, after any save of this note on its way (one request at a time): a pick made while the
+   * note is being created is saved right after it; before any create, the create sends them.
+   */
+  async function changeItems(next: number[]) {
+    const before = picked.current;
     setItems(next);
+    picked.current = next;
     setLinkError(null);
-    const saved = autosave.note;
-    if (!saved) return;
+    setLinkNotice(null);
+    picking.current += 1;
     try {
-      const answer = await notesApi.update(saved.id, { items: next });
-      setCurrent(answer);
-      setItems(answer.items);
+      const answer = await autosave.saveItems(next);
+      if (answer) {
+        setCurrent(answer);
+        if (picking.current === 1) {
+          setItems(answer.items);
+          picked.current = answer.items;
+        }
+        const kept = before.filter((id) => !next.includes(id) && answer.items.includes(id));
+        if (kept.length > 0)
+          setLinkNotice(
+            t('{items} vẫn gắn với ghi chú vì nội dung có liên kết tới nó; bỏ liên kết trong nội dung trước.', {
+              items: kept.map((id) => labels.get(id)?.title ?? `Item #${id}`).join(', '),
+            }),
+          );
+      }
     } catch (err) {
       setItems(before);
-      setLinkError(describeApiError(toApiError(err), t).title);
+      picked.current = before;
+      setLinkError(saveErrorText(err, t));
+    } finally {
+      picking.current -= 1;
     }
-  };
+  }
 
   const restore = () => {
     const copy = autosave.takeRecovered();
@@ -139,6 +172,19 @@ function NoteEditing({
     setOpening(copy.markdown);
     setEditorKey((k) => k + 1);
   };
+
+  // The title wraps like a heading: the field grows with its lines
+  useLayoutEffect(() => {
+    const el = titleField.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [title]);
 
   const shown = current ?? autosave.note;
   const pageTitle = shown ? noteTitle({ ...shown, title, markdown }, t) : title.trim() || t('Ghi chú mới');
@@ -169,14 +215,23 @@ function NoteEditing({
 
       {/* The page's heading for screen readers; the field below is the title itself */}
       <h1 className="sr-only">{pageTitle}</h1>
-      <input
+      {/* one line of text that wraps (a long title is read whole); Enter goes on to the text */}
+      <textarea
+        ref={titleField}
         id={`${base}-title`}
+        rows={1}
         value={title}
         maxLength={300}
-        onChange={(e) => changeText({ title: e.target.value })}
+        onChange={(e) => changeText({ title: e.target.value.replace(/\s*\n\s*/g, ' ') })}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+          e.preventDefault();
+          if (!e.metaKey && !e.ctrlKey) document.getElementById(`${base}-body`)?.focus();
+          else void autosave.flush();
+        }}
         aria-label={t('Tiêu đề ghi chú (không bắt buộc)')}
         placeholder={t('Không có tiêu đề')}
-        className="w-full rounded-md bg-transparent font-heading text-3xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring"
+        className="w-full resize-none overflow-hidden rounded-md bg-transparent font-heading text-3xl font-semibold tracking-tight break-words outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring"
       />
 
       {/* AFFiNE's properties: the Items the note belongs to, and when it was written */}
@@ -194,10 +249,13 @@ function NoteEditing({
             status={index.loading && index.items.length === 0 ? t('Đang tải danh sách item…') : undefined}
           />
           {linkError && (
-            <p className="mt-1 text-xs text-destructive-foreground" role="alert">
+            <p className="mt-1 text-xs text-error-foreground" role="alert">
               {t('Chưa lưu được liên kết: {reason}', { reason: linkError })}
             </p>
           )}
+          <p className="mt-1 text-xs text-muted-foreground empty:hidden" role="status">
+            {linkNotice}
+          </p>
         </dd>
         {shown && (
           <>
@@ -258,9 +316,26 @@ export function NotePageView({
   const t = useT();
   const res = useApi<ApiNote>(id === 'new' ? null : `note:${id}`, () => notesApi.get(id as number));
   const template = templateType && templateType in noteTemplates ? t(noteTemplates[templateType as keyof typeof noteTemplates]) : '';
+  // A newer version of the note (saved in another tab or on another device): the editor starts again from it, and
+  // what this page had not saved comes back as the copy to restore
+  const [version, setVersion] = useState<{ note: ApiNote; n: number } | null>(null);
+  const onConflict = (newer: ApiNote) => {
+    if (id !== 'new') res.mutate(() => newer);
+    setVersion((v) => ({ note: newer, n: (v?.n ?? 0) + 1 }));
+  };
 
   let body;
-  if (id === 'new') body = <NoteEditing note={null} newItem={newItem} template={template} onCreated={onCreated} />;
+  if (id === 'new')
+    body = (
+      <NoteEditing
+        key={version?.n ?? 0}
+        note={version?.note ?? null}
+        newItem={newItem}
+        template={template}
+        onCreated={onCreated}
+        onConflict={onConflict}
+      />
+    );
   else if (res.error && !res.data)
     body =
       res.error.status === 404 && res.error.reachable ? (
@@ -273,8 +348,18 @@ export function NotePageView({
         <ApiErrorState error={res.error} onRetry={res.reload} />
       );
   else if (!res.data) body = <NoteSkeleton />;
-  // keyed by the loaded note: a reload of the same note (tab focus) never resets what is being typed
-  else body = <NoteEditing key={res.data.id} note={res.data} newItem={null} template="" onCreated={onCreated} />;
+  // keyed by the loaded note and its version: a reload of the same version (tab focus) never resets what is typed
+  else
+    body = (
+      <NoteEditing
+        key={`${res.data.id}:${version?.n ?? 0}`}
+        note={res.data}
+        newItem={null}
+        template=""
+        onCreated={onCreated}
+        onConflict={onConflict}
+      />
+    );
 
   return (
     // Same gutters and top padding as PageHeader; a reading width (DESIGN.md §3)

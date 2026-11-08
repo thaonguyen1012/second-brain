@@ -28,6 +28,7 @@ import { KeyLegend } from '../key-legend';
 import { PAGE_WIDTH } from '../layout';
 import { RowMenu } from '../row-menu';
 import { RowPicture } from './item-image';
+import { UnsavedCopyHint } from './save-status';
 import type { ItemLabel } from './item-picker';
 import { FilteredEmpty, RowsSkeleton, onRowClick } from './list-rows';
 import { useItemIndex } from './use-item-index';
@@ -489,6 +490,11 @@ export function NotesPage() {
             </Button>
           </div>
         </div>
+      )}
+
+      {/* a new note's text that never reached the server (written at ?id=new): its page offers it back */}
+      {toolbar !== 'hide' && (
+        <UnsavedCopyHint copyKey="new" text={null} onOpen={() => router.push(notePath('id=new'))} />
       )}
 
       {notice && (

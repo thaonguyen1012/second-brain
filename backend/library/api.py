@@ -1,6 +1,7 @@
 from typing import Any
 
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from django.db.models import QuerySet
 from django.http.response import HttpResponseBase
 from django.shortcuts import get_object_or_404
@@ -28,6 +29,7 @@ from library.serializers import (
     ItemImageUploadSerializer,
     ItemMentionsSerializer,
     ItemSerializer,
+    NoteConflictSerializer,
     NoteMentionsSerializer,
     NoteSearchSerializer,
     NoteSerializer,
@@ -203,12 +205,32 @@ class NoteListView(generics.ListAPIView[Note]):
         rows = services.notes(request_user(self.request), query, int(raw) if raw is not None else None)
         return rows.prefetch_related("items")
 
-    @extend_schema(request=NoteWriteSerializer, responses={201: NoteSerializer}, operation_id="createNote")
+    @extend_schema(
+        request=NoteWriteSerializer,
+        responses={201: NoteSerializer, 200: NoteSerializer},
+        operation_id="createNote",
+    )
     def post(self, request: Request) -> Response:
+        """201 with the new note; 200 with the note an earlier POST with the same `clientId` made (nothing
+        changes then)."""
         user = request_user(request)
         body = NoteWriteSerializer(data=request.data, context={"user": user})
         body.is_valid(raise_exception=True)
-        note = services.save_note(Note(user=user), dict(body.validated_data))
+        data = dict(body.validated_data)
+        data.pop("baseUpdatedAt", None)
+        client_id = data.pop("clientId", None)
+        if client_id is not None:
+            made = Note.objects.filter(user=user, client_id=client_id).first()
+            if made is not None:
+                return Response(NoteSerializer(_note(request, made.pk)).data)
+        try:
+            note = services.save_note(Note(user=user, client_id=client_id), data)
+        except IntegrityError:
+            # a POST with the same client id crossed this one and made the note first
+            made = Note.objects.filter(user=user, client_id=client_id).first()
+            if made is None:
+                raise
+            return Response(NoteSerializer(_note(request, made.pk)).data)
         return Response(NoteSerializer(_note(request, note.pk)).data, status=status.HTTP_201_CREATED)
 
 
@@ -250,12 +272,25 @@ class NoteView(APIView):
     def get(self, request: Request, pk: int) -> Response:
         return Response(NoteSerializer(_note(request, pk)).data)
 
-    @extend_schema(request=NoteWriteSerializer, responses=NoteSerializer, operation_id="updateNote")
+    @extend_schema(
+        request=NoteWriteSerializer,
+        responses={200: NoteSerializer, 409: NoteConflictSerializer},
+        operation_id="updateNote",
+    )
     def patch(self, request: Request, pk: int) -> Response:
+        """With `baseUpdatedAt` (the version the edit started from): 409 and the note as it is now when it was
+        saved since then, and nothing is written."""
         note = get_object_or_404(Note, pk=pk, user=request_user(request))
         body = NoteWriteSerializer(data=request.data, partial=True, context={"user": request_user(request)})
         body.is_valid(raise_exception=True)
-        services.save_note(note, dict(body.validated_data))
+        data = dict(body.validated_data)
+        data.pop("clientId", None)
+        base = data.pop("baseUpdatedAt", None)
+        try:
+            services.save_note(note, data, base)
+        except services.NoteConflict:
+            conflict = {"detail": tr("Ghi chú vừa được lưu ở nơi khác."), "note": _note(request, pk)}
+            return Response(NoteConflictSerializer(conflict).data, status=status.HTTP_409_CONFLICT)
         return Response(NoteSerializer(_note(request, pk)).data)
 
     @extend_schema(responses={204: None}, operation_id="deleteNote")

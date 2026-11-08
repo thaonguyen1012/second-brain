@@ -1,4 +1,5 @@
 import importlib
+import time
 
 import pytest
 from django.apps import apps
@@ -11,6 +12,7 @@ from core.testing import csrf, send
 from growth.models import Skill
 from library.links import parse_links
 from library.models import Item, Note, NoteLink
+from library.services import note_excerpt, note_label
 from opportunities.models import Opportunity
 
 pytestmark = pytest.mark.django_db
@@ -48,6 +50,52 @@ def test_an_escaped_bracket_in_a_links_text_is_no_link() -> None:
     assert parse_links(escaped) == {"item": {115}}
     # an escaped backslash right before the bracket does end the text
     assert parse_links(r"[C:\\](/thu-vien/item/?id=7)") == {"item": {7}}
+
+
+def test_code_spans_are_read_as_commonmark_does() -> None:
+    """An escaped backtick opens no code span, a span ends with its paragraph, and a backslash is plain
+    inside one."""
+    link = "[A](/thu-vien/item/?id=7)"
+    assert parse_links(f"Phím \\` mở console.\n\nXem {link} và `npm run dev` nhé") == {"item": {7}}
+    assert parse_links(f"Phím ` mở.\n\nXem {link} và `x` nhé") == {"item": {7}}
+    assert parse_links(f"[Don\\`t]({link[4:-1]}) và `npm run dev`") == {"item": {7}}
+    assert parse_links(f"- a `x\n- {link} b` c") == {"item": {7}}
+    assert parse_links(f"`C:\\` {link} `y`") == {"item": {7}}
+    assert parse_links(f"`a {link} b`") == {}
+    # a closing fence may be longer than the opening one
+    assert parse_links(f"````\n[f](/thu-vien/item/?id=4)\n`````\n{link}") == {"item": {7}}
+
+
+def test_odd_link_destinations_are_ignored() -> None:
+    """Superscript digits, a huge id or a bracket in the host never fail a save; `?x=1&id=8` is read."""
+    huge = "9" * 5000
+    odd = f"[1](/thu-vien/item/?id=²) [a](http://[x) [b](https://[a-z]+) [c](/thu-vien/item/?id={huge})"
+    assert parse_links(odd + " [d](/thu-vien/item/?x=1&id=8)") == {"item": {8}}
+
+
+@pytest.mark.parametrize(
+    "text", ["](" * 100_000, "[a](b " * 33_000, "`" * 200_000, "` `` ``` " * 20_000, "[" * 200_000]
+)
+def test_parsing_stays_linear_on_pathological_text(text: str) -> None:
+    started = time.monotonic()
+    parse_links(text)
+    note_excerpt(text, "x")
+    note_label(Note(title="", markdown=text))
+    assert time.monotonic() - started < 2
+
+
+def test_a_note_may_link_more_than_fifty_items(client: Client) -> None:
+    """The Item field sends the whole list: it keeps working when the text links many Items."""
+    headers = csrf(client)
+    user = owner(client)
+    books = Item.objects.bulk_create(Item(user=user, type="book", title=f"B{i}") for i in range(55))
+    text = " ".join(f"[B](/thu-vien/item/?id={b.pk})" for b in books)
+    note = send(client, "post", "/api/notes", {"markdown": text}, headers).json()
+    assert len(note["items"]) == 55
+    project = Item.objects.create(user=user, type="project", title="P")
+    more = {"items": [*note["items"], project.pk]}
+    answer = send(client, "patch", f"/api/notes/{note['id']}", more, headers)
+    assert answer.status_code == 200 and len(answer.json()["items"]) == 56
 
 
 def test_saving_a_note_reads_its_links_and_links_the_items(client: Client) -> None:

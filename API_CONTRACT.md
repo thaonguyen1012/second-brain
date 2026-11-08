@@ -229,7 +229,16 @@ response 201 { "id": 3, "title": "Deep Work: 3 ý chính", "markdown": "# ...", 
 `GET /api/notes?q=focus&item=1` lists notes (cursor pagination, newest first; both filters optional): `q` matches
 title or markdown (case-insensitive substring), `item` keeps notes linked to that Item id. `GET /api/notes/{id}`
 reads one, `DELETE /api/notes/{id}` removes it (`204`); `PATCH /api/notes/{id}` accepts `title`, `markdown` and `items` (replaces the links; `[]` removes them).
-`items` are sorted ids; an Item that is not the owner's answers `400`. Markdown is up to 200,000 characters.
+`items` are sorted ids, up to 10,000 (as many as a note's text can link); an Item that is not the owner's answers `400`.
+Markdown is up to 200,000 characters.
+
+Saving from the editor (it saves by itself, DECISIONS 9.8): a `POST` may carry `clientId`, a UUID the editor gives
+the new note before its first save. A `POST` with a `clientId` the owner already used answers `200` with that note
+and changes nothing (a create sent again, as the page closed or from a restored copy, never makes a second note); the
+editor then sends its newer text with a `PATCH`. A `PATCH` may carry `baseUpdatedAt`, the `updatedAt` the edit
+started from: when the note was saved since then (another tab or device), nothing is written and the answer is
+`409 { "detail": "...", "note": { ...the note as it is now } }`. A `PATCH` writes only the fields it sends, so a
+save of the Items never puts back older text.
 `itemLabels` (read only) gives the id, title and type of each linked Item, so a list can label its links without
 loading every Item.
 
@@ -237,7 +246,8 @@ Links (`[[ ]]`, DECISIONS 9.8): the editor's picker writes a readable markdown l
 `[Atomic Habits](/thu-vien/item/?id=12)`; the pages are `/thu-vien/item/` (Item), `/thu-vien/ghi-chu/` (note),
 `/co-hoi/` (opportunity) and `/phat-trien/ky-nang/` (skill), with or without `/vi` or `/en` before them. Every
 `POST`, and every `PATCH` that sends `markdown` or `items`, reads the note's links into its link table (links inside
-code are not links; an unknown id, another owner's record and the note itself are ignored). A link to an Item also
+code are not links, a code span ends with its paragraph, and a backslash-escaped backtick opens none; an unknown id,
+another owner's record and the note itself are ignored). A link to an Item also
 adds that Item to `items` (a `PATCH` that replaces `items` keeps the Items the text links). The markdown stays the
 only source: the table is rebuilt from it, and an export carries only the markdown.
 

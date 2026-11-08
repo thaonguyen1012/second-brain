@@ -67,11 +67,21 @@ class Note(models.Model):
     title = models.CharField(max_length=300, blank=True)
     markdown = models.TextField()
     items = models.ManyToManyField(Item, related_name="notes", blank=True)
+    # The id the web editor gives a new note before its first save (POST /api/notes `clientId`): a create sent
+    # again (a save that left with the page, a restored copy) answers the note it made, never a second one.
+    client_id = models.UUIDField(null=True, blank=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [models.Index(fields=["created_at"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "client_id"],
+                condition=models.Q(client_id__isnull=False),
+                name="note_client_id_unique",
+            )
+        ]
 
     def __str__(self) -> str:
         return self.title or self.markdown[:60]

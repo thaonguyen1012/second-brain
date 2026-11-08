@@ -35,6 +35,8 @@ export function NotesRoute() {
   // A new note's first save gives it an id: the page that made it stays mounted, with what it was opened with
   const [adopted, setAdopted] = useState<{ id: number; item: number | null; template: string | null } | null>(null);
 
+  // Away from the note it made (the list, another note), the page lets go of it: the next visit loads it like any note
+  if (adopted !== null && id !== 'new' && id !== adopted.id) setAdopted(null);
   if (id === null) return <NotesPage />;
   const mine = adopted !== null && id === adopted.id;
   return (

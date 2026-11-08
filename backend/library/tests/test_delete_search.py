@@ -206,3 +206,17 @@ def test_note_titles_show_links_by_their_text(client: Client) -> None:
     [hit] = client.get("/api/notes/search?q=atomic").json()["results"]
     assert hit["title"] == "Đọc Atomic Habits lại"
     assert "/thu-vien" not in hit["excerpt"] and "Atomic Habits" in hit["excerpt"]
+
+
+def test_note_titles_show_escaped_characters_as_themselves(client: Client) -> None:
+    """The editor writes `\\[`, `\\*` and a link text's brackets escaped: titles and excerpts show the
+    characters."""
+    user = owner(client)
+    Note.objects.create(user=user, markdown=r"\[RD] mở ngoặc, file_name và 2\*3 = 6")
+    Note.objects.create(user=user, markdown="> - [ ] Xem [\\[RC\\] Book C](/thu-vien/item/?id=22) nhé")
+    found = [client.get(f"/api/notes/search?q={q}").json()["results"] for q in ("RC", "RD")]
+    hits = {h["title"]: h["excerpt"] for results in found for h in results}
+    assert hits == {
+        "Xem [RC] Book C nhé": "Xem [RC] Book C nhé",
+        "[RD] mở ngoặc, file_name và 2*3 = 6": "[RD] mở ngoặc, file_name và 2*3 = 6",
+    }

@@ -10,6 +10,8 @@ from library.services import image_url, normalize_tags
 from opportunities.models import Evidence, Opportunity
 
 MAX_MARKDOWN = 200_000
+# The most Items a note may have: the shortest link (`[a](/thu-vien/item/?id=1)`) is 24 characters
+MAX_NOTE_ITEMS = 10_000
 # Translated when shown, in the language of the request (core.i18n)
 IMAGE_UNREADABLE = tr_lazy("Không đọc được ảnh. Chỉ nhận JPEG, PNG, GIF hoặc WebP.")
 NO_HTTP_LINK = tr_lazy("Item chưa có link http(s).")
@@ -121,7 +123,12 @@ class NoteWriteSerializer(serializers.Serializer[object]):
 
     title = serializers.CharField(max_length=300, required=False, allow_blank=True)
     markdown = serializers.CharField(max_length=MAX_MARKDOWN, trim_whitespace=False)
-    items = serializers.ListField(child=serializers.IntegerField(), max_length=50, required=False)
+    # As many as a note's text can link (200,000 characters of links), so the Item field always saves
+    items = serializers.ListField(child=serializers.IntegerField(), max_length=MAX_NOTE_ITEMS, required=False)
+    # Create only: the editor's id for a new note; the same id again answers the note it made (200).
+    clientId = serializers.UUIDField(required=False)
+    # Update only: the `updatedAt` the edit started from; a note saved since then answers 409 with it.
+    baseUpdatedAt = serializers.DateTimeField(required=False)
 
     def validate_items(self, value: list[int]) -> list[Item]:
         user: User = self.context["user"]
@@ -129,6 +136,13 @@ class NoteWriteSerializer(serializers.Serializer[object]):
         if len(items) != len(set(value)):
             raise serializers.ValidationError(tr("Không phải item của bạn."))
         return items
+
+
+class NoteConflictSerializer(serializers.Serializer[object]):
+    """409 on PATCH /api/notes/{id}: the note was saved elsewhere since `baseUpdatedAt`; `note` is it now."""
+
+    detail = serializers.CharField()
+    note = NoteSerializer()
 
 
 class NoteSearchHitSerializer(serializers.Serializer[object]):

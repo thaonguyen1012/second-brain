@@ -1,6 +1,7 @@
 'use client';
 import { lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
+import { NoteBody } from './note-body';
 import { noteEditorFrame, type NoteEditorProps } from './note-editor-types';
 
 // The block editor (Milkdown) is its own chunk with its CSS, fetched when a note is first written; Hôm nay never imports
@@ -8,22 +9,21 @@ import { noteEditorFrame, type NoteEditorProps } from './note-editor-types';
 const Editor = lazy(() => import('./note-editor'));
 
 /**
- * The note editor, loaded on first use. Until its chunk arrives the note's text shows as written, in the frame and
- * size the editor will take, so nothing jumps.
+ * The note editor, loaded on first use. Until its chunk arrives the note shows as it reads (NoteBody: the blocks the
+ * editor draws, at its text size), in the frame the editor will take, so nothing jumps; it cannot be used meanwhile.
  */
 export function NoteEditor(props: NoteEditorProps) {
   return (
     <Suspense
       fallback={
-        <div aria-busy="true" className={cn(noteEditorFrame(props.variant), props.className)}>
-          <div
+        <div aria-busy="true" inert className={cn(noteEditorFrame(props.variant), props.className)}>
+          <NoteBody
+            markdown={props.defaultMarkdown}
             className={cn(
-              'break-words whitespace-pre-wrap text-muted-foreground',
+              'text-base sm:text-sm sm:leading-[23px]',
               props.variant === 'page' ? 'min-h-64' : 'min-h-30',
             )}
-          >
-            {props.defaultMarkdown}
-          </div>
+          />
         </div>
       }
     >

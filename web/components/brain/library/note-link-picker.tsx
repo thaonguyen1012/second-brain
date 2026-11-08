@@ -1,5 +1,5 @@
 'use client';
-import { computePosition, flip, offset, shift } from '@floating-ui/dom';
+import { computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { SchemaReady, prosePluginsCtx } from '@milkdown/kit/core';
 import type { MilkdownPlugin } from '@milkdown/kit/ctx';
 import { closeHistory } from '@milkdown/kit/prose/history';
@@ -68,6 +68,7 @@ function hasBrackets(state: EditorState, pos: number): boolean {
 function nextPickerState(tr: Transaction, prev: PickerState, state: EditorState): PickerState {
   const dismiss = tr.getMeta(linkPickerKey) === 'dismiss';
   if (!tr.docChanged && !tr.selectionSet && !dismiss) return prev;
+  // only typing opens it: a caret put after a "[[" already in the note (opening the editor, a click) does not
   let dismissed = prev.dismissed;
   if (tr.docChanged && dismissed.length) {
     dismissed = dismissed.flatMap((pos) => {
@@ -77,7 +78,8 @@ function nextPickerState(tr: Transaction, prev: PickerState, state: EditorState)
   }
   const found = findLinkQuery(state);
   if (dismiss && found && !dismissed.includes(found.from)) dismissed = [...dismissed, found.from];
-  return { match: found && !dismissed.includes(found.from) ? found : null, dismissed };
+  const open = found && !dismissed.includes(found.from) && (tr.docChanged || prev.match !== null) ? found : null;
+  return { match: open, dismissed };
 }
 
 const sameQuery = (a: LinkQuery | null, b: LinkQuery | null) =>
@@ -130,11 +132,16 @@ export class LinkPicker {
     };
   };
 
-  /** The active option, for the editor's aria-activedescendant. */
+  /** The active option, for the editor's aria-activedescendant (the "/" menu sets it too: only ours is removed). */
   setActive = (id: string | null) => {
     if (id && this.open) this.view?.dom.setAttribute('aria-activedescendant', id);
-    else this.view?.dom.removeAttribute('aria-activedescendant');
+    else this.dropActive();
   };
+
+  private dropActive() {
+    const dom = this.view?.dom;
+    if (dom?.getAttribute('aria-activedescendant')?.startsWith(this.listId)) dom.removeAttribute('aria-activedescendant');
+  }
 
   /** Replaces "[[query" with `label` linked to `href`, as its own undo step. */
   choose = (label: string, href: string): boolean => {
@@ -181,9 +188,22 @@ export class LinkPicker {
         };
       },
     };
+    // laid out but unseen while it is measured: a hidden (display: none) element has no size or offset parent
+    el.dataset.show = 'true';
     void computePosition(caret, el, {
       placement: 'bottom-start',
-      middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 })],
+      middleware: [
+        offset(6),
+        flip({ padding: 8 }),
+        shift({ padding: 8 }),
+        // never wider than the room it has (the Sheet on a phone is narrower than the list's 22rem)
+        size({
+          padding: 8,
+          apply: ({ availableWidth }) => {
+            el.style.maxWidth = `${Math.max(0, Math.floor(availableWidth))}px`;
+          },
+        }),
+      ],
     }).then(({ x, y }) => {
       if (this.open !== open) return; // a newer position is on its way, or the picker closed
       Object.assign(el.style, { left: `${x}px`, top: `${y}px`, visibility: 'visible' });
@@ -195,7 +215,7 @@ export class LinkPicker {
     return new Plugin<PickerState>({
       key: linkPickerKey,
       state: {
-        init: (_config, state) => ({ match: findLinkQuery(state), dismissed: [] }),
+        init: () => ({ match: null, dismissed: [] }),
         apply: (tr, prev, _old, state) => nextPickerState(tr, prev, state),
       },
       view: (view) => {
@@ -254,7 +274,7 @@ export class LinkPicker {
     if (!next) {
       this.element.dataset.show = 'false';
       this.element.style.visibility = 'hidden';
-      this.view?.dom.removeAttribute('aria-activedescendant');
+      this.dropActive();
     }
     if (sameQuery(this.open, next)) return;
     if (!this.open !== !next) this.follow(!!next);
@@ -334,25 +354,22 @@ export function LinkPickerList({ picker, selfNoteId }: { picker: LinkPicker; sel
   useEffect(() => picker.setKeyHandler((event) => onKey(event)), [picker]);
   const activeTarget = ordered[active];
   useLayoutEffect(() => {
-    if (open) picker.updatePosition();
-    picker.setActive(open && activeTarget ? optionId(activeTarget) : null);
+    if (!open) return;
+    picker.updatePosition();
+    picker.setActive(activeTarget ? optionId(activeTarget) : null);
+    // the highlighted row stays in view as the arrows move it (the list scrolls past 18rem)
+    if (activeTarget) document.getElementById(optionId(activeTarget))?.scrollIntoView({ block: 'nearest' });
   });
 
   if (!open) return null;
   const waiting = !found || found.query !== query || found.state === 'loading';
   const failed = found?.query === query && found.state === 'error';
   return createPortal(
-    <div
-      role="listbox"
-      id={picker.listId}
-      aria-label={t('Liên kết tới')}
-      aria-busy={waiting || undefined}
-      className="note-popover-list"
-      // the caret stays in the editor: a press on the list must not move the focus
-      onMouseDown={(event) => event.preventDefault()}
-    >
+    // the caret stays in the editor: a press on the list must not move the focus
+    <div className="note-popover-list" onMouseDown={(event) => event.preventDefault()}>
       {ordered.length === 0 ? (
-        <div className="note-popover-empty" role="presentation">
+        // no option yet: a status, read out, not an empty listbox
+        <div className="note-popover-empty" role="status" aria-live="polite">
           {waiting
             ? t('Đang tìm…')
             : failed
@@ -362,36 +379,38 @@ export function LinkPickerList({ picker, selfNoteId }: { picker: LinkPicker; sel
                 : t('Gõ để tìm item, ghi chú, cơ hội, kỹ năng')}
         </div>
       ) : (
-        KIND_ORDER.map((kind) => {
-          const rows = ordered.filter((target) => target.kind === kind);
-          if (rows.length === 0) return null;
-          const headingId = `${picker.listId}-${kind}`;
-          return (
-            <div key={kind} role="group" aria-labelledby={headingId} className="note-popover-group">
-              <div id={headingId} role="presentation" className="note-popover-heading">
-                {t(KIND_LABELS[kind])}
+        <div role="listbox" id={picker.listId} aria-label={t('Liên kết tới')}>
+          {KIND_ORDER.map((kind) => {
+            const rows = ordered.filter((target) => target.kind === kind);
+            if (rows.length === 0) return null;
+            const headingId = `${picker.listId}-${kind}`;
+            return (
+              <div key={kind} role="group" aria-labelledby={headingId} className="note-popover-group">
+                <div id={headingId} role="presentation" className="note-popover-heading">
+                  {t(KIND_LABELS[kind])}
+                </div>
+                {rows.map((target) => {
+                  const index = ordered.indexOf(target);
+                  return (
+                    <div
+                      key={`${target.kind}-${target.id}`}
+                      id={optionId(target)}
+                      role="option"
+                      aria-selected={index === active}
+                      className="note-popover-option"
+                      onMouseMove={() => {
+                        if (index !== active) setHighlight({ key, index });
+                      }}
+                      onClick={() => picker.choose(titleOf(target), linkHref(target.kind, target.id))}
+                    >
+                      <span>{titleOf(target)}</span>
+                    </div>
+                  );
+                })}
               </div>
-              {rows.map((target) => {
-                const index = ordered.indexOf(target);
-                return (
-                  <div
-                    key={`${target.kind}-${target.id}`}
-                    id={optionId(target)}
-                    role="option"
-                    aria-selected={index === active}
-                    className="note-popover-option"
-                    onMouseMove={() => {
-                      if (index !== active) setHighlight({ key, index });
-                    }}
-                    onClick={() => picker.choose(titleOf(target), linkHref(target.kind, target.id))}
-                  >
-                    <span>{titleOf(target)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })
+            );
+          })}
+        </div>
       )}
     </div>,
     picker.element,
