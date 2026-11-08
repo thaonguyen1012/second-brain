@@ -1,11 +1,13 @@
 'use client';
 import Link from 'next/link';
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
+import { useT } from '@/lib/i18n/client';
+import { msg } from '@/lib/i18n/translate';
 import { useNavCounts } from '../nav-counts';
 
 const tabs = [
-  { key: 'items', href: '/thu-vien/', label: 'Item' },
-  { key: 'notes', href: '/thu-vien/ghi-chu/', label: 'Ghi chú' },
+  { key: 'items', href: '/thu-vien/', label: msg('Item', 'nav') },
+  { key: 'notes', href: '/thu-vien/ghi-chu/', label: msg('Ghi chú', 'nav') },
 ] as const;
 
 /**
@@ -14,10 +16,11 @@ const tabs = [
  * the sidebar's numbers; 0 included, nothing while unknown).
  */
 export function LibraryTabs({ current }: { current: (typeof tabs)[number]['key'] }) {
+  const t = useT();
   const counts = useNavCounts();
   return (
     <Tabs value={current}>
-      <TabsList aria-label="Thư viện">
+      <TabsList aria-label={t('Thư viện')}>
         {tabs.map(({ key, href, label }) => (
           <TabsTab
             key={key}
@@ -25,7 +28,7 @@ export function LibraryTabs({ current }: { current: (typeof tabs)[number]['key']
             nativeButton={false}
             render={<Link href={href} aria-current={current === key ? 'page' : undefined} />}
           >
-            {label}
+            {t(label)}
             {counts && (
               <span className="ms-1.5 text-xs font-normal text-muted-foreground tabular-nums">{counts[key]}</span>
             )}

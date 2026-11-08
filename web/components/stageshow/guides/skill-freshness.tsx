@@ -1,7 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ExternalLink, Pencil, Plus, X } from 'lucide-react';
 import { formatDay, todayPrague } from '@/lib/dates';
+import { useT } from '@/lib/i18n/client';
+import { guides } from '@/lib/i18n/en/guides';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { Stage } from '../kit/stage';
 import type { Act } from '../kit/act';
 import { Bar } from '../kit/window';
@@ -39,15 +42,15 @@ type S = {
 };
 
 const initial: S = { fresh: 'faded', sheet: false, form: false, title: '', typing: false, evidence: false, note: '' };
-const EV_TITLE = 'Bài viết: generics trong dự án thật';
-const POSTER: S = { ...initial, fresh: 'fresh', sheet: true, title: EV_TITLE, evidence: true };
+const EV_TITLE = msg('Bài viết: generics trong dự án thật');
+const posterOf = (t: T): S => ({ ...initial, fresh: 'fresh', sheet: true, title: t(EV_TITLE), evidence: true });
 const REST = { wide: { x: 300, y: 425 }, compact: { x: 40, y: 445 } };
 
 /** freshness (growth/labels.ts): label, hint and badge tone, word for word */
-const FRESH: Record<Fresh, { label: string; hint: string; tone: Tone }> = {
-  fresh: { label: 'Còn mới', hint: 'có bằng chứng trong 3 tháng', tone: 'success' },
-  aging: { label: 'Đang cũ dần', hint: 'bằng chứng mới nhất 3 đến 6 tháng trước', tone: 'warning' },
-  faded: { label: 'Đã mờ', hint: '6 tháng không có bằng chứng mới, hoặc chưa có', tone: 'outline' },
+const FRESH: Record<Fresh, { label: Msg; hint: Msg; tone: Tone }> = {
+  fresh: { label: msg('Còn mới'), hint: msg('có bằng chứng trong 3 tháng'), tone: 'success' },
+  aging: { label: msg('Đang cũ dần'), hint: msg('bằng chứng mới nhất 3 đến 6 tháng trước'), tone: 'warning' },
+  faded: { label: msg('Đã mờ'), hint: msg('6 tháng không có bằng chứng mới, hoặc chưa có'), tone: 'outline' },
 };
 
 // The other tiles of the matrix: placeholder skills in a spread of states (name widths vary)
@@ -69,7 +72,7 @@ const FILLER: { fresh: Fresh; w: number }[] = [
   { fresh: 'aging', w: 72 },
 ];
 
-async function script(a: Act<S>) {
+async function script(a: Act<S>, t: T) {
   await a.wait(600);
 
   // 1. The faded skill opens in its sheet
@@ -83,7 +86,7 @@ async function script(a: Act<S>) {
   await a.click('add');
   await a.set({ form: true, typing: true });
   await a.wait(300);
-  await a.type('title', EV_TITLE, { interval: 22 });
+  await a.type('title', t(EV_TITLE), { interval: 22 });
   await a.wait(200);
   await a.click('save');
   await a.set({ form: false, typing: false, evidence: true });
@@ -114,17 +117,19 @@ function Tile({ fresh, children, name }: { fresh: Fresh; children: React.ReactNo
 }
 
 function TileFoot({ fresh }: { fresh: Fresh }) {
+  const t = useT(guides);
   return (
     <span className="sk-tile__foot">
       <span className="sk-dot" data-fresh={fresh} />
       <Swap id={fresh} className="sk-tile__state">
-        {FRESH[fresh].label}
+        {t(FRESH[fresh].label)}
       </Swap>
     </span>
   );
 }
 
 function Sheet({ s, today }: { s: S; today: string }) {
+  const t = useT(guides);
   const f = FRESH[s.fresh];
   return (
     <div className="sk-sheet" data-open={s.sheet || undefined}>
@@ -139,46 +144,47 @@ function Sheet({ s, today }: { s: S; today: string }) {
         <span className="sk-sheet__state">
           <Swap id={s.fresh} className="sk-sheet__swap">
             <span className="sk-sheet__statebox">
-              <GBadge tone={f.tone}>{f.label}</GBadge>
-              <span className="g-desc">{f.hint}</span>
+              <GBadge tone={f.tone}>{t(f.label)}</GBadge>
+              <span className="g-desc">{t(f.hint)}</span>
             </span>
           </Swap>
         </span>
         <span className="sk-sheet__aliases">
-          <span className="g-desc">Tên khác:</span>
+          <span className="g-desc">{t('Tên khác:')}</span>
           <GBadge tone="outline">TS</GBadge>
         </span>
       </div>
       <div className="sk-sheet__body">
         <span className="g-actions sk-sheet__actions">
           <GButton size="sm" variant="outline" icon={Pencil}>
-            Sửa tên, tên khác, ghi chú
+            {t('Sửa tên, tên khác, ghi chú')}
           </GButton>
           <GButton size="sm" icon={Plus} name="add">
-            Thêm bằng chứng
+            {t('Thêm bằng chứng')}
           </GButton>
         </span>
         <Collapse open={s.form}>
           <div className="sk-form">
-            <GRow label="Loại bằng chứng">
-              <GSelect value="Link (bài viết, repo, case study)" />
+            <GRow label={t('Loại bằng chứng')}>
+              <GSelect value={t('Link (bài viết, repo, case study)')} />
             </GRow>
-            <Field className="g-field" label="Tiêu đề" value={s.title} focused={s.typing} />
+            <Field className="g-field" label={t('Tiêu đề')} value={s.title} focused={s.typing} />
             <div className="g-dialog__foot">
               <GButton size="sm" variant="ghost">
-                Hủy
+                {t('Hủy')}
               </GButton>
               <GButton size="sm" name="save">
-                Thêm bằng chứng
+                {t('Thêm bằng chứng')}
               </GButton>
             </div>
           </div>
         </Collapse>
-        <span className="sk-sheet__title">Bằng chứng</span>
+        <span className="sk-sheet__title">{t('Bằng chứng')}</span>
         <Collapse open={!s.evidence}>
           <span className="g-desc sk-sheet__none">
-            Chưa có bằng chứng: thứ đã ship, case study, bài viết công khai. Không có bằng chứng thì kỹ năng ở trạng
-            thái mờ.
+            {t(
+              'Chưa có bằng chứng: thứ đã ship, case study, bài viết công khai. Không có bằng chứng thì kỹ năng ở trạng thái mờ.',
+            )}
           </span>
         </Collapse>
         <Collapse open={s.evidence} reveal="drop">
@@ -188,7 +194,7 @@ function Sheet({ s, today }: { s: S; today: string }) {
               <span className="g-desc">{today}</span>
             </span>
             <span className="sk-ev__title">
-              {EV_TITLE}
+              {t(EV_TITLE)}
               <ExternalLink size={13} strokeWidth={2} aria-hidden />
             </span>
           </div>
@@ -198,22 +204,26 @@ function Sheet({ s, today }: { s: S; today: string }) {
   );
 }
 
-const LABEL =
-  'Hình minh họa trang Kỹ năng: mở một kỹ năng đã mờ, bấm Thêm bằng chứng và thêm một link; kỹ năng chuyển sang Còn mới. ' +
-  'Nếu không có bằng chứng mới, ô kỹ năng tự đổi màu theo thời gian: sau 3 tháng là Đang cũ dần, sau 6 tháng là Đã mờ.';
+const LABEL = msg(
+  'Hình minh họa trang Kỹ năng: mở một kỹ năng đã mờ, bấm Thêm bằng chứng và thêm một link; kỹ năng chuyển sang Còn mới. Nếu không có bằng chứng mới, ô kỹ năng tự đổi màu theo thời gian: sau 3 tháng là Đang cũ dần, sau 6 tháng là Đã mờ.',
+);
 
 export default function SkillFreshnessGuide({ className }: { className?: string }) {
   const look = useBrainLook();
+  const t = useT(guides);
   const [today] = useState(() => formatDay(todayPrague()));
+  // Typed text and poster in the page's language, kept stable (a new script would restart the scene)
+  const run = useCallback((a: Act<S>) => script(a, t), [t]);
+  const poster = useMemo(() => posterOf(t), [t]);
   return (
-    <div role="img" aria-label={LABEL} className={className}>
+    <div role="img" aria-label={t(LABEL)} className={className}>
       <Stage
         width={GUIDE_SIZE.width}
         height={GUIDE_SIZE.height}
         compact={GUIDE_SIZE.compact}
         initial={initial}
-        poster={POSTER}
-        script={script}
+        poster={poster}
+        script={run}
         play="once"
         keys="bottom"
         cursor={{ at: REST, style: 'arrow' }}
@@ -226,17 +236,17 @@ export default function SkillFreshnessGuide({ className }: { className?: string 
             <>
               <div className="g-col sk-col">
                 <div className="sk-toolbar">
-                  <GSelect value="Mọi độ mới" className="sk-filter" />
-                  {!compact && <span className="g-box sk-search">Tìm theo tên hoặc tên khác</span>}
+                  <GSelect value={t('Mọi độ mới')} className="sk-filter" />
+                  {!compact && <span className="g-box sk-search">{t('Tìm theo tên hoặc tên khác')}</span>}
                   <GButton icon={Plus} kbd={compact ? undefined : 'N'} className="sk-new">
-                    Thêm kỹ năng
+                    {t('Thêm kỹ năng')}
                   </GButton>
                 </div>
                 <div className="sk-legend">
                   {(['fresh', 'aging', 'faded'] as const).map((k) => (
                     <span key={k} className="sk-legend__item">
                       <span className="sk-swatch" data-fresh={k} />
-                      {FRESH[k].label}
+                      {t(FRESH[k].label)}
                     </span>
                   ))}
                 </div>
@@ -246,11 +256,11 @@ export default function SkillFreshnessGuide({ className }: { className?: string 
                     <span className="sk-tile__alias">TS</span>
                     <TileFoot fresh={s.fresh} />
                   </Tile>
-                  {FILLER.map((t, i) => (
-                    <Tile key={i} fresh={t.fresh}>
-                      <Bar w={t.w} h={8} r={3} tone={4} className="sk-tile__bar" />
+                  {FILLER.map((f, i) => (
+                    <Tile key={i} fresh={f.fresh}>
+                      <Bar w={f.w} h={8} r={3} tone={4} className="sk-tile__bar" />
                       <span className="sk-tile__foot">
-                        <span className="sk-dot" data-fresh={t.fresh} />
+                        <span className="sk-dot" data-fresh={f.fresh} />
                         <Bar w={40} h={6} r={3} tone={3} />
                       </span>
                     </Tile>
@@ -258,7 +268,7 @@ export default function SkillFreshnessGuide({ className }: { className?: string 
                 </div>
               </div>
               <span className="g-note sk-note" data-show={s.note !== '' || undefined}>
-                <Swap id={s.note || 'none'}>{s.note === '6' ? '6 tháng sau' : '3 tháng sau'}</Swap>
+                <Swap id={s.note || 'none'}>{t(s.note === '6' ? '6 tháng sau' : '3 tháng sau')}</Swap>
               </span>
               <Sheet s={s} today={today} />
             </>

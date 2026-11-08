@@ -4,16 +4,21 @@ import { PAGE_WIDTH } from '@/components/brain/layout';
 import { PageHeader } from '@/components/brain/page-header';
 import { ProjectsPage } from '@/components/brain/work/projects-page';
 import { RowsSkeleton } from '@/components/brain/work/rows-skeleton';
+import { getT } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: 'Dự án' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t('Dự án', null, 'nav') };
+}
 
-export default function Page() {
+export default async function Page() {
+  const t = await getT();
   return (
     <div className="flex w-full flex-col">
       <PageHeader
-        title="Dự án"
+        title={t('Dự án', null, 'nav')}
         nav="/cong-viec/"
-        description="Dự án freelance: khách, cách tính tiền và giá."
+        description={t('Dự án freelance: khách, cách tính tiền và giá.')}
       />
       {/* ProjectsPage reads ?view= (useSearchParams), which needs a Suspense boundary on a static page. The
           fallback keeps the toolbar row's place above loading rows, the page's geometry before its data. */}

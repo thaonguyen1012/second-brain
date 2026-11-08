@@ -1,6 +1,6 @@
 # DESIGN.md: rubric for the real app UI
 
-Binding for every page in the app shell (`app/(home)/*`, `components/brain/*`, `components/app-shell.tsx`, dialogs,
+Binding for every page in the app shell (`app/[lang]/(home)/*`, `components/brain/*`, `components/app-shell.tsx`, dialogs,
 Cmd+K). Not for Stageshow guides and intro pictures (they follow `.claude/skills/stageshow/`) or lesson prose
 (Fumadocs, `#nd-page .prose`). Target: a screen that could sit next to Linear, Raycast or Notion and not look
 generated. Space UI (`components/ui`, `components/spaceui`, tokens in `app/global.css`) is the source of truth; a
@@ -265,7 +265,8 @@ so the near pairs that remain are listed under the palette, not hidden.
   toolbar, row and icon actions; `link` = inline navigation, blue (`text-primary`, set once in the variant;
   a deliberately quiet jump-link row may override it with `text-muted-foreground`); `destructive-outline`/`DeleteButton` = delete
   entry point; filled `destructive` only as the confirm button inside `confirm-delete.tsx`. Sizes: `default` in
-  page toolbars, `sm` in cards and dialogs, `xs` / `icon-sm` in rows. Label = Vietnamese verb + object.
+  page toolbars, `sm` in cards and dialogs, `xs` / `icon-sm` in rows. Label = verb + object (Vietnamese; the
+  English through `t()`, `lib/i18n/README.md`).
 - **Row actions:** at most 3 visible (primary verb first); the rest go in a `Menu` behind a ghost `icon-sm`
   `MoreHorizontal` with `MenuShortcut` for keys. Hover-revealed actions must also show on focus and on touch.
 - **Badges:** status via `StatusBadge` + `lib/labels.ts`; tags as `outline` badges or plain muted `#tag` text,
@@ -328,7 +329,10 @@ so the near pairs that remain are listed under the palette, not hidden.
   number the page lists with its default filters, except Tuần (open objectives of this week); refreshed on every
   navigation, on tab focus and after every API write. Giờ ends in the `bw-red` "now" dot while a timer runs. The top
   bar's menu trigger shows only while the sidebar is hidden (and on phones). Inbox and search stay in the top bar
-  (DECISIONS 9.3).
+  (DECISIONS 9.3). The top bar ends with the language switch (a ghost button: the Languages glyph and the other
+  language's code, "EN" or "VI", named and tooltipped in that language; DECISIONS 9.9) and the theme toggle.
+  English UI copy is sentence case like the Vietnamese and must fit the same boxes: check the 390 px layouts in
+  both languages (English runs about 10% shorter, some labels longer).
 
 ## 7. Density and empty states
 

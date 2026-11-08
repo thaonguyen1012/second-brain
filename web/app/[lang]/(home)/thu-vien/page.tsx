@@ -4,16 +4,21 @@ import { PageHeader } from '@/components/brain/page-header';
 import { LibraryPage } from '@/components/brain/library-page';
 import { RowsSkeleton } from '@/components/brain/library/list-rows';
 import { LibraryTabs } from '@/components/brain/library/library-tabs';
+import { getT } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: 'Thư viện' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t('Thư viện') };
+}
 
-export default function Page() {
+export default async function Page() {
+  const t = await getT();
   return (
     <div className="flex w-full flex-col">
       <PageHeader
-        title="Thư viện"
+        title={t('Thư viện')}
         nav="/thu-vien/"
-        description="Sách, phim, khóa học, bài viết và dự án."
+        description={t('Sách, phim, khóa học, bài viết và dự án.')}
       >
         <LibraryTabs current="items" />
       </PageHeader>

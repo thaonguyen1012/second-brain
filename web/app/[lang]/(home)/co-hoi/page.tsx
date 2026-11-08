@@ -2,8 +2,12 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { RowsSkeleton } from '@/components/brain/opportunities/bits';
 import { OpportunitiesView } from '@/components/brain/opportunities/opportunities-view';
+import { getT } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: 'Cơ hội' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t('Cơ hội', null, 'nav') };
+}
 
 export default function Page() {
   return (

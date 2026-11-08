@@ -11,8 +11,12 @@ import { ProgressSummary, StartedShelf, type ShelfBook } from '@/components/book
 import { PageHeader } from '@/components/brain/page-header';
 import { PAGE_WIDTH, SectionHeader } from '@/components/brain/layout';
 import { EXPORT_URL } from '@/lib/api/client';
+import { getT } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: 'Sổ tay' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t('Sổ tay') };
+}
 
 /** Content column: capped and left-aligned with the header (D30), the page gutters inside it. */
 const column = cn(PAGE_WIDTH, 'px-4 sm:px-8');
@@ -20,13 +24,14 @@ const footerLink =
   'rounded-sm font-medium whitespace-nowrap text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring';
 
 /** "Phát triển › Sổ tay": every handbook by track (was the phase 1 home page). */
-export default function HandbooksPage() {
+export default async function HandbooksPage() {
+  const t = await getT();
   const lessons = books.reduce((n, b) => n + b.lessonCount, 0);
   // Plain props for the client parts, class strings resolved here (the colour maps stay on the server).
-  const shelf: ShelfBook[] = tracks.flatMap((t) =>
-    booksByTrack(t.slug).map((b) => ({
+  const shelf: ShelfBook[] = tracks.flatMap((track) =>
+    booksByTrack(track.slug).map((b) => ({
       slug: b.slug,
-      title: b.title,
+      title: t(b.title),
       href: bookUrl(b),
       lessonCount: b.lessonCount,
       fill: trackFill[b.track],
@@ -35,14 +40,17 @@ export default function HandbooksPage() {
   return (
     <div className="flex w-full flex-col">
       <PageHeader
-        title="Sổ tay"
+        title={t('Sổ tay')}
         nav="/phat-trien/"
-        description={`${books.length} sổ tay từ các khóa Coursera và F8, ${lessons.toLocaleString('vi-VN')} bài học, chia theo ba nhóm.`}
+        description={t('{books} sổ tay từ các khóa Coursera và F8, {lessons} bài học, chia theo ba nhóm.', {
+          books: books.length,
+          lessons: t.num(lessons),
+        })}
       >
         <ProgressSummary books={shelf.map(({ slug, lessonCount }) => ({ slug, lessonCount }))} />
         <div>
           <Button variant="outline" render={<Link href="/lo-trinh/" />}>
-            Xem lộ trình học
+            {t('Xem lộ trình học')}
           </Button>
         </div>
       </PageHeader>
@@ -53,24 +61,24 @@ export default function HandbooksPage() {
           Button's padding less the -mx-0.5 it gives every icon, so the first mark starts on the column edge, in line
           with the group marks of the section titles below. */}
       <nav
-        aria-label="Nhóm sổ tay"
+        aria-label={t('Nhóm sổ tay')}
         data-sticky-groups
         className="sticky top-16 z-10 -mt-6 mb-6 border-b bg-background/95 py-2"
       >
         <div className={cn(column, 'flex flex-wrap items-center gap-x-1')}>
-          {tracks.map((t, i) => (
+          {tracks.map((track, i) => (
             <Button
-              key={t.slug}
+              key={track.slug}
               variant="ghost"
               size="sm"
               className={cn(i === 0 && '-ms-2')}
-              render={<a href={`#track-${t.slug}`} />}
+              render={<a href={`#track-${track.slug}`} />}
             >
-              <GroupMark track={t.slug} className="size-4.5 opacity-100" />
-              {t.title}
+              <GroupMark track={track.slug} className="size-4.5 opacity-100" />
+              {t(track.title)}
               <span className="font-normal text-muted-foreground tabular-nums">
-                {booksByTrack(t.slug).length}
-                <span className="sr-only"> sổ tay</span>
+                <span aria-hidden>{booksByTrack(track.slug).length}</span>
+                <span className="sr-only">{t('{n} sổ tay', { n: booksByTrack(track.slug).length })}</span>
               </span>
             </Button>
           ))}
@@ -93,15 +101,15 @@ export default function HandbooksPage() {
               <div className="flex flex-col gap-1">
                 <SectionHeader
                   id={`track-${track.slug}-title`}
-                  title={track.title}
+                  title={t(track.title)}
                   mark={<GroupMark track={track.slug} className="size-5" />}
-                  meta={`${group.length} sổ tay · ${groupLessons.toLocaleString('vi-VN')} bài`}
+                  meta={t('{books} sổ tay · {lessons} bài', { books: group.length, lessons: t.num(groupLessons) })}
                 />
-                <p className="text-sm text-muted-foreground max-sm:hidden">{track.description}</p>
+                <p className="text-sm text-muted-foreground max-sm:hidden">{t(track.description)}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {group.map((book) => (
-                  <BookCard key={book.slug} book={book} />
+                  <BookCard key={book.slug} book={book} t={t} />
                 ))}
               </div>
             </section>
@@ -113,20 +121,20 @@ export default function HandbooksPage() {
           page stays under 2,200 px), the question joins them from sm. */}
       <footer className="mt-6 border-t py-3 text-sm text-muted-foreground sm:mt-12 sm:py-6">
         <p className={column}>
-          <span className="max-sm:hidden">Alex&apos;s Brain là gì và được xây thế nào? </span>
+          <span className="max-sm:hidden">{t("Alex's Brain là gì và được xây thế nào?")} </span>
           <Link href="/gioi-thieu/" className={footerLink}>
-            Giới thiệu và case study
+            {t('Giới thiệu và case study')}
           </Link>
           <span aria-hidden> · </span>
           {/* DECISIONS 4.7: the data is Alex's, downloadable at any time (GET /api/export). */}
           <a
             href={EXPORT_URL}
             download
-            title="Ghi chú dạng markdown và mọi dữ liệu khác dạng JSON, trong một tệp zip"
+            title={t('Ghi chú dạng markdown và mọi dữ liệu khác dạng JSON, trong một tệp zip')}
             className={footerLink}
           >
             <Download aria-hidden className="me-1 inline size-3.5 align-text-bottom" />
-            Tải bản sao dữ liệu
+            {t('Tải bản sao dữ liệu')}
           </a>
         </p>
       </footer>

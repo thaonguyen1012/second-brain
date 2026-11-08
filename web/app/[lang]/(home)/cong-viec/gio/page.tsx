@@ -4,16 +4,21 @@ import { PAGE_WIDTH } from '@/components/brain/layout';
 import { PageHeader } from '@/components/brain/page-header';
 import { RowsSkeleton } from '@/components/brain/work/rows-skeleton';
 import { TimePage } from '@/components/brain/work/time-page';
+import { getT } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: 'Giờ' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t('Giờ', null, 'nav') };
+}
 
-export default function Page() {
+export default async function Page() {
+  const t = await getT();
   return (
     <div className="flex w-full flex-col">
       <PageHeader
-        title="Giờ"
+        title={t('Giờ', null, 'nav')}
         nav="/cong-viec/gio/"
-        description="Bấm giờ hoặc nhập tay giờ đã làm cho từng dự án."
+        description={t('Bấm giờ hoặc nhập tay giờ đã làm cho từng dự án.')}
       />
       {/* TimePage reads ?project= (useSearchParams), which needs a Suspense boundary on a static page. */}
       <Suspense

@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/components/brain/layout';
 import { BookCover } from './book-cover';
 import { bookState, bookVerb, coverLinkFocus, doneIn, percent, type BookState } from './progress';
+import { useT } from '@/lib/i18n/client';
+import { msg } from '@/lib/i18n/translate';
 
 // The progress-aware parts of the Sổ tay page (DESIGN.md §9a). The server page passes plain props, class strings
 // already resolved, so the registry and the colour maps stay out of this chunk.
@@ -51,40 +53,44 @@ function ShelfBar({ done, total, fill, className }: { done: number; total: numbe
  * wrong verb or link shows meanwhile.
  */
 export function BookAction({ slug, href, title, total }: { slug: string; href: string; title: string; total: number }) {
+  const t = useT();
   const progress = useProgress();
   if (progress.loaded === false) return <Skeleton className="h-8 w-20 rounded-lg sm:h-7" />;
   const state = bookState(progress.done, slug, total);
+  const verb = t(bookVerb[state]);
   return (
     <Button
       size="sm"
-      aria-label={`${bookVerb[state]}: ${title}`}
+      aria-label={`${verb}: ${title}`}
       render={<Link href={state === 'started' ? continueHref(href, lastIn(slug, progress.lastVisited)) : href} />}
     >
-      {bookVerb[state]}
+      {verb}
     </Button>
   );
 }
 
 /** "Đã học 1/4.746 bài · 1 sổ tay đang học · 14 chưa bắt đầu" under the page description. */
 export function ProgressSummary({ books }: { books: readonly Pick<ShelfBook, 'slug' | 'lessonCount'>[] }) {
+  const t = useT();
   const progress = useProgress();
   if (progress.loaded === false) return <Skeleton className="my-0.5 h-4 w-72 max-w-full" />;
   const total = books.reduce((n, b) => n + b.lessonCount, 0);
   const done = books.reduce((n, b) => n + Math.min(doneIn(progress.done, b.slug), b.lessonCount), 0);
   const count = (s: BookState) => books.filter((b) => bookState(progress.done, b.slug, b.lessonCount) === s).length;
+  // The first part names the books ("1 sổ tay đang học"), the others only the state ("14 chưa bắt đầu")
   const parts = (
     [
-      [count('started'), 'đang học'],
-      [count('finished'), 'đã xong'],
-      [count('new'), 'chưa bắt đầu'],
+      [count('started'), msg('{n} sổ tay đang học'), msg('{n} đang học')],
+      [count('finished'), msg('{n} sổ tay đã xong'), msg('{n} đã xong')],
+      [count('new'), msg('{n} sổ tay chưa bắt đầu'), msg('{n} chưa bắt đầu')],
     ] as const
   )
     .filter(([n]) => n > 0)
-    .map(([n, label], i) => `${n} ${i === 0 ? 'sổ tay ' : ''}${label}`);
+    .map(([n, first, rest], i) => t(i === 0 ? first : rest, { n }));
   return (
     <p className="text-sm text-muted-foreground tabular-nums">
       <span className="font-medium text-foreground">
-        Đã học {done.toLocaleString('vi-VN')}/{total.toLocaleString('vi-VN')} bài
+        {t('Đã học {done}/{total} bài', { done: t.num(done), total: t.num(total) })}
       </span>
       {parts.length > 0 && ` · ${parts[0]}`}
       {/* Below sm the line keeps to one row: the rest is what the cards below say. */}
@@ -100,6 +106,7 @@ export function ProgressSummary({ books }: { books: readonly Pick<ShelfBook, 'sl
  * Nothing renders while no book is in progress.
  */
 export function StartedShelf({ books }: { books: readonly ShelfBook[] }) {
+  const t = useT();
   const progress = useProgress();
   const last = progress.lastVisited;
   // Until the store has answered, a one-row placeholder of the shelf's height, so the groups do not jump down.
@@ -121,12 +128,16 @@ export function StartedShelf({ books }: { books: readonly ShelfBook[] }) {
   if (started.length === 0) return null;
   return (
     <section aria-labelledby="dang-hoc" className="flex flex-col gap-3">
-      <SectionHeader id="dang-hoc" title="Đang học" meta={`${started.length} sổ tay`} />
+      <SectionHeader id="dang-hoc" title={t('Đang học')} meta={t('{n} sổ tay', { n: started.length })} />
       <ul className="divide-y overflow-hidden rounded-xl border bg-card">
         {started.map((book) => {
           const here = lastIn(book.slug, last);
           const done = doneIn(progress.done, book.slug);
-          const count = `${done}/${book.lessonCount} bài · ${percent(done, book.lessonCount)}`;
+          const count = t('{done}/{total} bài · {pct}', {
+            done,
+            total: book.lessonCount,
+            pct: percent(done, book.lessonCount),
+          });
           // The page title, unless the last page was the book's own index (its title is the book title).
           const page = here?.title && here.title !== book.title ? here.title : null;
           return (
@@ -147,7 +158,11 @@ export function StartedShelf({ books }: { books: readonly ShelfBook[] }) {
                     <ShelfBar done={done} total={book.lessonCount} fill={book.fill} className="w-16" />
                     <span className="truncate text-xs text-muted-foreground tabular-nums">{count}</span>
                   </span>
-                  {page && <span className="truncate text-xs text-muted-foreground max-sm:hidden">Gần nhất: {page}</span>}
+                  {page && (
+                    <span className="truncate text-xs text-muted-foreground max-sm:hidden">
+                      {t('Gần nhất: {page}', { page })}
+                    </span>
+                  )}
                 </span>
                 <span className="flex items-center gap-3 max-sm:hidden">
                   <ShelfBar done={done} total={book.lessonCount} fill={book.fill} className="w-32" />

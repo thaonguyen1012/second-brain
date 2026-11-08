@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CircleAlert, CloudCheck, CloudUpload, PlugZap } from 'lucide-react';
 import { api, type ApiError } from '@/lib/api/client';
 import { toApiError, useApi } from '@/lib/api/use-api';
+import { useT } from '@/lib/i18n/client';
 import { refreshProgress } from '@/lib/progress';
 import {
   dismissMigration,
@@ -26,6 +27,7 @@ const TITLE_ID = 'progress-migration-title';
 
 /** One-time offer to PUT the old localStorage "Đã học xong" pages to the progress API (lib/progress/migration.ts). */
 export function ProgressMigrationBanner() {
+  const t = useT();
   const [legacy] = useState(readLegacyProgress);
   const server = useApi('progress-migration', api.getProgress);
   const [phase, setPhase] = useState<Phase>({ kind: 'offer' });
@@ -72,15 +74,15 @@ export function ProgressMigrationBanner() {
     return (
       <Alert variant="success" role="status" className="mt-4 max-w-4xl">
         <CloudCheck aria-hidden />
-        <AlertTitle>Đã chuyển tiến độ học lên server</AlertTitle>
+        <AlertTitle>{t('Đã chuyển tiến độ học lên server')}</AlertTitle>
         <AlertDescription>
-          {moved} bài đã lên server.
-          {skipped > 0 && ` ${skipped} bài thuộc sổ tay không còn trên server nên được bỏ qua.`} Bản trên trình duyệt
-          này vẫn được giữ.
+          {t('{n} bài đã lên server.', { n: moved })}
+          {skipped > 0 && ` ${t('{n} bài thuộc sổ tay không còn trên server nên được bỏ qua.', { n: skipped })}`}{' '}
+          {t('Bản trên trình duyệt này vẫn được giữ.')}
         </AlertDescription>
         <AlertAction>
           <Button size="sm" variant="outline" onClick={() => setPhase({ kind: 'closed' })}>
-            Đóng
+            {t('Đóng')}
           </Button>
         </AlertAction>
       </Alert>
@@ -93,7 +95,7 @@ export function ProgressMigrationBanner() {
 
   const running = phase.kind === 'running';
   const error = phase.kind === 'offer' ? phase.error : undefined;
-  const errorText = error && describeApiError(error);
+  const errorText = error && describeApiError(error, t);
   const Icon = error ? (error.reachable ? CircleAlert : PlugZap) : CloudUpload;
 
   return (
@@ -105,29 +107,30 @@ export function ProgressMigrationBanner() {
       className="mt-4 max-w-4xl"
     >
       <Icon aria-hidden />
-      <AlertTitle id={TITLE_ID}>Chuyển tiến độ học cũ lên server</AlertTitle>
+      <AlertTitle id={TITLE_ID}>{t('Chuyển tiến độ học cũ lên server')}</AlertTitle>
       <AlertDescription>
         <p>
-          Trình duyệt này còn {pending} bài đã đánh dấu &quot;Đã học xong&quot; từ trước khi có server. Chuyển lên để
-          mọi thiết bị đều thấy. Bản trên trình duyệt vẫn được giữ; trong tổng kết tuần, các bài này được tính là học
-          xong hôm nay.
+          {t(
+            'Trình duyệt này còn {n} bài đã đánh dấu "Đã học xong" từ trước khi có server. Chuyển lên để mọi thiết bị đều thấy. Bản trên trình duyệt vẫn được giữ; trong tổng kết tuần, các bài này được tính là học xong hôm nay.',
+            { n: pending },
+          )}
         </p>
         <p aria-live="polite" className="mt-1 font-medium text-foreground empty:hidden">
-          {running && `Đang chuyển ${phase.handled}/${phase.total} bài…`}
+          {running && t('Đang chuyển {handled}/{n} bài…', { handled: t.num(phase.handled), n: phase.total })}
         </p>
         {errorText && (
           <p role="alert" className="mt-1 text-foreground">
-            {errorText.title}. {errorText.text} Các bài đã chuyển được giữ trên server; bấm lại để chuyển phần còn
-            lại.
+            {errorText.title}. {errorText.text}{' '}
+            {t('Các bài đã chuyển được giữ trên server; bấm lại để chuyển phần còn lại.')}
           </p>
         )}
       </AlertDescription>
       <AlertAction className="flex-wrap justify-end">
         <Button size="sm" onClick={run} loading={running}>
-          {error ? 'Thử lại' : 'Chuyển lên server'}
+          {error ? t('Thử lại') : t('Chuyển lên server')}
         </Button>
-        <Button size="sm" variant="ghost" onClick={dismiss} disabled={running} aria-label="Bỏ qua, không hỏi lại">
-          Bỏ qua
+        <Button size="sm" variant="ghost" onClick={dismiss} disabled={running} aria-label={t('Bỏ qua, không hỏi lại')}>
+          {t('Bỏ qua')}
         </Button>
       </AlertAction>
     </Alert>

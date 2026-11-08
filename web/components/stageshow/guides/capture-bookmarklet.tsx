@@ -1,5 +1,9 @@
 'use client';
+import { useCallback, useMemo } from 'react';
 import { BookmarkPlus, CheckCircle2, ChevronUp, Globe } from 'lucide-react';
+import { useT } from '@/lib/i18n/client';
+import { guides } from '@/lib/i18n/en/guides';
+import { msg, type T } from '@/lib/i18n/translate';
 import { Stage } from '../kit/stage';
 import type { Act } from '../kit/act';
 import type { Point } from '../kit/measure';
@@ -48,8 +52,8 @@ type S = {
 };
 
 const BRAIN_URL = 'localhost:3000/inbox';
-const ARTICLE_URL = 'tintuc.example/gia-vang';
-const HEADLINE = 'Giá vàng hôm nay tăng mạnh';
+const ARTICLE_URL = msg('tintuc.example/gia-vang');
+const HEADLINE = msg('Giá vàng hôm nay tăng mạnh');
 const REST = { wide: { x: 470, y: 412 }, compact: { x: 300, y: 322 } };
 const REST_END = { wide: { x: 168, y: 336 }, compact: { x: 200, y: 312 } };
 
@@ -72,9 +76,17 @@ const initial: S = {
   done: false,
 };
 
-const POSTER: S = { ...initial, bar: true, saved: true, url: ARTICLE_URL, page: 'article', popup: true, done: true };
+const posterOf = (t: T): S => ({
+  ...initial,
+  bar: true,
+  saved: true,
+  url: t(ARTICLE_URL),
+  page: 'article',
+  popup: true,
+  done: true,
+});
 
-async function script(a: Act<S>) {
+async function script(a: Act<S>, t: T) {
   await a.wait(600);
 
   // 1. Cmd+Shift+B shows the bookmarks bar; the page moves down under it
@@ -112,7 +124,7 @@ async function script(a: Act<S>) {
   await a.set({ editing: true, selected: true });
   await a.wait(300);
   await a.set({ selected: false });
-  await a.type('url', ARTICLE_URL, { interval: 26 });
+  await a.type('url', t(ARTICLE_URL), { interval: 26 });
   await a.wait(200);
   await a.key('enter');
   await a.set({ editing: false, page: 'article' });
@@ -146,15 +158,17 @@ function FillerMark({ w }: { w: number }) {
 
 /** The "Lưu vào Brain" link of the Inbox help (bookmarklet-help.tsx): drawn for the page and for the dragged copy. */
 function LinkChip(props: { className?: string; style?: React.CSSProperties } & Record<`data-${string}`, unknown>) {
+  const t = useT(guides);
   return (
     <span {...props} className={`bm-chip${props.className ? ` ${props.className}` : ''}`}>
       <BookmarkPlus size={13} strokeWidth={2} aria-hidden />
-      Lưu vào Brain
+      {t('Lưu vào Brain')}
     </span>
   );
 }
 
 function BrainPage({ show, compact }: { show: boolean; compact: boolean }) {
+  const t = useT(guides);
   return (
     <div className="bm-page" data-show={show || undefined}>
       <div className="bm-h1">Inbox</div>
@@ -163,16 +177,16 @@ function BrainPage({ show, compact }: { show: boolean; compact: boolean }) {
         <Bar w={compact ? 180 : 250} h={7} tone={2} />
       </div>
       <div className="bm-toggle">
-        Thu thập từ trình duyệt
+        {t('Thu thập từ trình duyệt')}
         <ChevronUp size={14} strokeWidth={2} aria-hidden />
       </div>
       <div className="bm-help">
         <span className="bm-help__part">
           <span className="bm-help__lead">Bookmarklet:</span>
-          <span>kéo nút</span>
+          <span>{t('kéo nút')}</span>
           <LinkChip data-target="bm-source" data-cursor="open" />
         </span>
-        <span>lên thanh dấu trang</span>
+        <span>{t('lên thanh dấu trang')}</span>
       </div>
       {/* "Thu thập nhanh", the tabs and the first entry below the help, as placeholders, off the bottom */}
       <div className="bm-card" aria-hidden>
@@ -193,13 +207,14 @@ function BrainPage({ show, compact }: { show: boolean; compact: boolean }) {
 }
 
 function ArticlePage({ show, compact }: { show: boolean; compact: boolean }) {
+  const t = useT(guides);
   return (
     <div className="bm-page" data-show={show || undefined}>
       <div className="bm-site" aria-hidden>
         <Bar w={64} h={8} tone={4} />
         <Bar w={40} h={6} tone={2} />
       </div>
-      <div className="bm-h1 bm-headline">{HEADLINE}</div>
+      <div className="bm-h1 bm-headline">{t(HEADLINE)}</div>
       <div className="bm-lines" aria-hidden>
         <Bar w={compact ? 290 : 480} h={7} tone={2} />
         <Bar w={compact ? 268 : 452} h={7} tone={2} />
@@ -214,22 +229,25 @@ function ArticlePage({ show, compact }: { show: boolean; compact: boolean }) {
   );
 }
 
-const LABEL =
-  'Hình minh họa cách cài và dùng bookmarklet: nhấn Cmd+Shift+B để hiện thanh dấu trang, kéo nút Lưu vào Brain ' +
-  'ở trang Inbox lên thanh đó. Sau đó, ở một trang bất kỳ, bấm Lưu vào Brain trên thanh dấu trang: một cửa sổ nhỏ ' +
-  'mở ra với link và tiêu đề đã điền sẵn; nhấn Enter để lưu vào inbox.';
+const LABEL = msg(
+  'Hình minh họa cách cài và dùng bookmarklet: nhấn Cmd+Shift+B để hiện thanh dấu trang, kéo nút Lưu vào Brain ở trang Inbox lên thanh đó. Sau đó, ở một trang bất kỳ, bấm Lưu vào Brain trên thanh dấu trang: một cửa sổ nhỏ mở ra với link và tiêu đề đã điền sẵn; nhấn Enter để lưu vào inbox.',
+);
 
 export default function CaptureBookmarkletGuide({ className }: { className?: string }) {
   const look = useBrainLook();
+  const t = useT(guides);
+  // Typed text and poster in the page's language, kept stable (a new script would restart the scene)
+  const run = useCallback((a: Act<S>) => script(a, t), [t]);
+  const poster = useMemo(() => posterOf(t), [t]);
   return (
-    <div role="img" aria-label={LABEL} className={className}>
+    <div role="img" aria-label={t(LABEL)} className={className}>
       <Stage
         width={GUIDE_SIZE.width}
         height={GUIDE_SIZE.height}
         compact={COMPACT}
         initial={initial}
-        poster={POSTER}
-        script={script}
+        poster={poster}
+        script={run}
         play="once"
         keys={{ wide: 'bottom-left', compact: 'top' }}
         cursor={{ at: REST, style: 'arrow' }}
@@ -270,7 +288,7 @@ export default function CaptureBookmarkletGuide({ className }: { className?: str
                       data-show={s.saved || undefined}
                     >
                       <Globe size={12} strokeWidth={2} aria-hidden />
-                      Lưu vào Brain
+                      {t('Lưu vào Brain')}
                     </span>
                   </div>
                 </Collapse>
@@ -294,20 +312,20 @@ export default function CaptureBookmarkletGuide({ className }: { className?: str
 
               <Window url="localhost:3000/inbox/them/?url=…" className="bm-popup" data-show={s.popup || undefined}>
                 <div className="bm-form">
-                  <div className="bm-form__title">Thêm vào Inbox</div>
+                  <div className="bm-form__title">{t('Thêm vào Inbox')}</div>
                   <Collapse open={!s.done}>
                     <div className="bm-form__fields">
                       {/* Filled from the bookmarklet's ?url=&title= (lib/capture.ts draftFromParams) */}
-                      <Field className="g-field bm-field" label="Link" value={`https://${ARTICLE_URL}`} />
-                      <Field className="g-field bm-field" label="Ghi chú kèm theo" value={HEADLINE} />
+                      <Field className="g-field bm-field" label="Link" value={`https://${t(ARTICLE_URL)}`} />
+                      <Field className="g-field bm-field" label={t('Ghi chú kèm theo')} value={t(HEADLINE)} />
                       <div className="bm-form__foot">
-                        <span className="bm-form__hint">⌘↵ để lưu</span>
+                        <span className="bm-form__hint">⌘↵ {t('để lưu')}</span>
                         <span
                           className="g-button bm-save"
                           data-focus={!s.done || undefined}
                           data-pressed={s.pressed || undefined}
                         >
-                          Lưu vào inbox
+                          {t('Lưu vào inbox')}
                         </span>
                       </div>
                     </div>
@@ -316,13 +334,13 @@ export default function CaptureBookmarkletGuide({ className }: { className?: str
                     <div className="bm-saved">
                       <span className="bm-saved__title">
                         <CheckCircle2 size={16} strokeWidth={2} aria-hidden />
-                        Đã lưu vào inbox
+                        {t('Đã lưu vào inbox')}
                       </span>
-                      <span className="bm-saved__url">https://{ARTICLE_URL}</span>
+                      <span className="bm-saved__url">https://{t(ARTICLE_URL)}</span>
                       <span className="g-actions bm-saved__actions">
-                        <GButton size="sm">Đóng</GButton>
+                        <GButton size="sm">{t('Đóng')}</GButton>
                         <GButton size="sm" variant="outline">
-                          Mở Inbox
+                          {t('Mở Inbox')}
                         </GButton>
                       </span>
                     </div>

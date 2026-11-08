@@ -9,6 +9,7 @@ import { useApi } from '@/lib/api/use-api';
 import { navRow } from '@/lib/app-nav';
 import { addDays, formatDay, mondayOf, todayPrague } from '@/lib/dates';
 import { formatDate, hostOf, objectiveStatuses } from '@/lib/labels';
+import { useT } from '@/lib/i18n/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -75,11 +76,12 @@ export function Panel({
 
 /** One line for a tile whose data did not load: what went wrong and "Thử lại" (no alert box in a small tile). */
 export function TileError({ error, onRetry, text }: { error?: ApiError; onRetry: () => void; text?: string }) {
+  const t = useT();
   return (
     <p className="text-sm text-muted-foreground">
-      {text ?? (error ? describeApiError(error).title : 'Không tải được dữ liệu')}.{' '}
+      {text ?? (error ? describeApiError(error, t).title : t('Không tải được dữ liệu'))}.{' '}
       <button type="button" onClick={onRetry} className="rounded-sm underline underline-offset-2 hover:text-foreground">
-        Thử lại
+        {t('Thử lại')}
       </button>
     </p>
   );
@@ -93,28 +95,29 @@ const rowLine = 'flex h-8 min-w-0 items-center gap-2 text-sm';
  * to the review and to next week's plan instead, like the Tuần page's own default tab.
  */
 export function TodayWeek() {
+  const t = useT();
   const week = useApi('week', api.getCurrentWeek);
   const objectives = week.data?.objectives ?? [];
   const today = todayPrague();
   return (
-    <Panel title="3 ưu tiên tuần" href="/tuan/" linkLabel="Tuần">
+    <Panel title={t('3 ưu tiên tuần')} href="/tuan/" linkLabel={t('Tuần')}>
       {week.error && !week.data ? (
         <TileError error={week.error} onRetry={week.reload} />
       ) : !week.data ? (
         <Skeleton className="h-24 rounded-md" />
       ) : objectives.length === 0 && weekdayIndex(today) >= 4 ? (
         <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-muted-foreground">Cuối tuần: nhìn lại 15 phút.</p>
+          <p className="text-sm text-muted-foreground">{t('Cuối tuần: nhìn lại 15 phút.')}</p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <Button variant="outline" size="sm" render={<Link href="/tuan/?tab=nhin-lai" />}>
-              Nhìn lại
+              {t('Nhìn lại')}
             </Button>
             <Button
               variant="link"
               size="sm"
               render={<Link href={`/tuan/?w=${addDays(mondayOf(today), 7)}&tab=ke-hoach`} />}
             >
-              Chọn ưu tiên tuần tới
+              {t('Chọn ưu tiên tuần tới')}
             </Button>
           </div>
         </div>
@@ -128,17 +131,17 @@ export function TodayWeek() {
                 <span className={cn('min-w-0 flex-1 truncate', o.status === 'dropped' && 'line-through opacity-70')}>
                   {o.title}
                 </span>
-                {o.status !== 'open' && <StatusBadge tone={s.tone}>{s.label}</StatusBadge>}
+                {o.status !== 'open' && <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>}
               </li>
             );
           })}
           {[0, 1, 2].slice(objectives.length).map((i) => (
             <li key={`empty-${i}`} className={rowLine}>
               <span className="w-4 shrink-0 text-muted-foreground tabular-nums">{i + 1}.</span>
-              <span className="flex-1 text-muted-foreground">Chưa chọn</span>
+              <span className="flex-1 text-muted-foreground">{t('Chưa chọn')}</span>
               {i === objectives.length && (
                 <Button variant="outline" size="sm" render={<Link href="/tuan/?tab=ke-hoach" />}>
-                  Chọn 3 ưu tiên
+                  {t('Chọn 3 ưu tiên')}
                 </Button>
               )}
             </li>
@@ -156,18 +159,19 @@ const entryTitle = (e: ApiInboxEntry) => e.ogTitle || e.text?.split('\n')[0] || 
 
 /** The newest entries waiting in the inbox, with the same count as the top bar button. */
 export function TodayInbox() {
+  const t = useT();
   const n = useInboxCount();
   const list = useApi('today-inbox', () => api.listInbox({ status: 'inbox', limit: INBOX_ROWS }));
   const rows = list.data?.results ?? [];
   const more = n === null ? 0 : Number(n) - rows.length;
   return (
-    <Panel title={n === null ? 'Inbox' : `Inbox · ${n}`} icon={Inbox} href="/inbox/" linkLabel="Xử lý">
+    <Panel title={n === null ? 'Inbox' : `Inbox · ${n}`} icon={Inbox} href="/inbox/" linkLabel={t('Xử lý')}>
       {list.error && !list.data ? (
-        <TileError text="Chưa đọc được inbox" onRetry={list.reload} />
+        <TileError text={t('Chưa đọc được inbox')} onRetry={list.reload} />
       ) : !list.data ? (
         <Skeleton className="h-20 rounded-md" />
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Inbox trống.</p>
+        <p className="text-sm text-muted-foreground">{t('Inbox trống.')}</p>
       ) : (
         <ul className="-mx-2 flex flex-col">
           {rows.map((e) => (
@@ -178,12 +182,14 @@ export function TodayInbox() {
               >
                 <span className="truncate text-sm leading-5">{entryTitle(e)}</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {e.ogSiteName || hostOf(e.url) || 'Ghi nhanh'}
+                  {e.ogSiteName || hostOf(e.url) || t('Ghi nhanh')}
                 </span>
               </Link>
             </li>
           ))}
-          {more > 0 && <li className="px-2 pt-1 text-xs text-muted-foreground tabular-nums">+ {more} mục nữa</li>}
+          {more > 0 && (
+            <li className="px-2 pt-1 text-xs text-muted-foreground tabular-nums">{t('+ {n} mục nữa', { n: more })}</li>
+          )}
         </ul>
       )}
     </Panel>
@@ -195,6 +201,7 @@ export function TodayInbox() {
  * never ran or ran on an earlier day, so the empty line tells what to do rather than "come back later".
  */
 export function TodayBrief({ className }: { className?: string }) {
+  const t = useT();
   const brief = useApi('brief-today', api.getTodayBrief);
   const empty = brief.data === null || brief.data?.items.length === 0;
   const status = useApi(empty ? 'brief-status' : null, api.getStatus);
@@ -207,8 +214,11 @@ export function TodayBrief({ className }: { className?: string }) {
     <section className={cn('flex min-w-0 flex-col gap-3', className)} aria-labelledby="today-brief">
       <SectionHeader
         id="today-brief"
-        title="Bản tin hôm nay"
-        meta={items.length > 0 && `${items.length} tin${tools ? ` · ${tools} công cụ mới` : ''}`}
+        title={t('Bản tin hôm nay')}
+        meta={
+          items.length > 0 &&
+          [t('{n} tin', { n: items.length }), tools ? t('{n} công cụ mới', { n: tools }) : ''].filter(Boolean).join(' · ')
+        }
       />
       {brief.error && brief.data === undefined ? (
         <ApiErrorState error={brief.error} onRetry={brief.reload} />
@@ -218,13 +228,11 @@ export function TodayBrief({ className }: { className?: string }) {
         // Sized to its content (DESIGN.md D26): one line, no empty box
         <p className="text-sm text-muted-foreground">
           {/* no link: no guide on /huong-dan/ covers the brief, and the sentence already says what to run */}
-          {status.data && !last ? (
-            'Bản tin chưa chạy lần nào. Tác vụ nền (make jobs) lấy tin lúc 6:30.'
-          ) : last && last !== todayPrague() ? (
-            `Chưa có bản tin hôm nay (bản gần nhất ${formatDay(last)}).`
-          ) : (
-            'Chưa có bản tin hôm nay.'
-          )}
+          {status.data && !last
+            ? t('Bản tin chưa chạy lần nào. Tác vụ nền (make jobs) lấy tin lúc 6:30.')
+            : last && last !== todayPrague()
+              ? t('Chưa có bản tin hôm nay (bản gần nhất {date}).', { date: formatDay(last) })
+              : t('Chưa có bản tin hôm nay.')}
         </p>
       ) : (
         <>
@@ -232,7 +240,7 @@ export function TodayBrief({ className }: { className?: string }) {
             // The intro is written by the LLM (brief_intro): say so in words (DESIGN.md §4, D18)
             <div className="flex max-w-3xl flex-col gap-1">
               <p className="text-sm leading-relaxed">{brief.data.intro}</p>
-              <span className="text-xs text-muted-foreground">tự động</span>
+              <span className="text-xs text-muted-foreground">{t('tự động')}</span>
             </div>
           )}
           <div className="grid gap-3 lg:grid-cols-2">
@@ -243,13 +251,13 @@ export function TodayBrief({ className }: { className?: string }) {
                   // "Công cụ mới" and the tags come from the LLM (news_tag): outline badges + one "tự động" label
                   (n.newTool || n.tags.length > 0) && (
                     <>
-                      {n.newTool && <Badge variant="outline">Công cụ mới</Badge>}
-                      {n.tags.slice(0, 2).map((t) => (
-                        <Badge key={t} variant="outline">
-                          #{t}
+                      {n.newTool && <Badge variant="outline">{t('Công cụ mới')}</Badge>}
+                      {n.tags.slice(0, 2).map((tag) => (
+                        <Badge key={tag} variant="outline">
+                          #{tag}
                         </Badge>
                       ))}
-                      <span className="text-xs text-muted-foreground">tự động</span>
+                      <span className="text-xs text-muted-foreground">{t('tự động')}</span>
                     </>
                   )
                 }
@@ -258,7 +266,7 @@ export function TodayBrief({ className }: { className?: string }) {
                     {n.title}
                   </a>
                 }
-                meta={[n.source.name, hostOf(n.url), formatDate(n.published)].filter(Boolean).join(' · ')}
+                meta={[n.source.name, hostOf(n.url), formatDate(n.published, t)].filter(Boolean).join(' · ')}
                 actions={
                   <>
                     <BriefActions item={n} onRated={onRated} />
@@ -268,7 +276,7 @@ export function TodayBrief({ className }: { className?: string }) {
               >
                 {(n.summary || n.excerpt) && (
                   <p className="line-clamp-4 text-[13px] leading-relaxed text-muted-foreground">
-                    {n.summary ? `Tóm tắt tự động: ${n.summary}` : n.excerpt}
+                    {n.summary ? t('Tóm tắt tự động: {summary}', { summary: n.summary }) : n.excerpt}
                   </p>
                 )}
               </BrainCard>

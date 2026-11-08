@@ -18,6 +18,8 @@ import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards } from '../api-state';
 import { useInboxCount } from '../inbox-count';
@@ -33,20 +35,20 @@ import { addDays, isMonday, isoWeek, mondayOf, todayPrague, weekdayIndex, weekRa
 type Tab = 'plan' | 'review';
 
 /** Every key of the page in one legend behind "Phím tắt" (DESIGN.md §6, D24): week keys and objective row keys. */
-const keyHelp: [string, string][] = [
-  ['[', 'tuần trước'],
-  [']', 'tuần sau'],
-  ['T', 'về tuần này'],
-  ['P', 'kế hoạch'],
-  ['R', 'nhìn lại'],
-  ['↑ / ↓', 'chọn mục tiêu'],
-  ['D', 'mục tiêu xong'],
-  ['X', 'bỏ mục tiêu'],
-  ['O', 'mở lại mục tiêu'],
-  ['Enter', 'sửa tên mục tiêu'],
-  ['Alt+↑ / ↓', 'đổi thứ tự mục tiêu'],
-  ['Del', 'xóa mục tiêu'],
-  ['?', 'bảng phím tắt này'],
+const keyHelp: [string, Msg][] = [
+  ['[', msg('tuần trước')],
+  [']', msg('tuần sau')],
+  ['T', msg('về tuần này')],
+  ['P', msg('kế hoạch')],
+  ['R', msg('nhìn lại')],
+  ['↑ / ↓', msg('chọn mục tiêu')],
+  ['D', msg('mục tiêu xong')],
+  ['X', msg('bỏ mục tiêu')],
+  ['O', msg('mở lại mục tiêu')],
+  ['Enter', msg('sửa tên mục tiêu')],
+  ['Alt+↑ / ↓', msg('đổi thứ tự mục tiêu')],
+  ['Del', msg('xóa mục tiêu')],
+  ['?', msg('bảng phím tắt này')],
 ];
 
 /** Icon-only week arrow with its tooltip; the key shows only there (DESIGN.md D21, D24). */
@@ -120,10 +122,10 @@ function WeekLoading({ tab }: { tab: Tab }) {
   );
 }
 
-function relativeName(start: string, current: string): string | null {
-  if (start === current) return 'Tuần này';
-  if (start === addDays(current, -7)) return 'Tuần trước';
-  if (start === addDays(current, 7)) return 'Tuần tới';
+function relativeName(start: string, current: string, t: T): string | null {
+  if (start === current) return t('Tuần này');
+  if (start === addDays(current, -7)) return t('Tuần trước');
+  if (start === addDays(current, 7)) return t('Tuần tới');
   return null;
 }
 
@@ -140,6 +142,7 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 export function WeekPage({ books }: { books: BookIndex }) {
+  const t = useT();
   const params = useSearchParams();
   const router = useRouter();
   const pathname = useAppPathname();
@@ -147,8 +150,9 @@ export function WeekPage({ books }: { books: BookIndex }) {
   const latest = addDays(current, 7); // planning reaches next week, not further
   const w = params.get('w');
   const start = isMonday(w) && w <= latest ? w : current;
-  const t = params.get('tab');
-  const tab: Tab = t === tabParam.review ? 'review' : t === tabParam.plan ? 'plan' : defaultTab(start, current);
+  const tabArg = params.get('tab');
+  const tab: Tab =
+    tabArg === tabParam.review ? 'review' : tabArg === tabParam.plan ? 'plan' : defaultTab(start, current);
 
   const [opened, setOpened] = useState<string | null>(null);
   const create = start >= current || opened === start;
@@ -248,25 +252,29 @@ export function WeekPage({ books }: { books: BookIndex }) {
   const inbox = useInboxCount();
   const checks =
     data?.plan && data.review
-      ? reviewChecks({
-          inbox,
-          objectives: data.plan.week.objectives,
-          // The brag lines added in this review count at once (the server counts the same rows).
-          rhythm: data.review.rhythm && { ...data.review.rhythm, achievements: data.review.achievements.length },
-          nextWeek: nextCount,
-          onNextWeek: start < latest ? () => go(next, 'plan') : undefined,
-        })
+      ? reviewChecks(
+          {
+            inbox,
+            objectives: data.plan.week.objectives,
+            // The brag lines added in this review count at once (the server counts the same rows).
+            rhythm: data.review.rhythm && { ...data.review.rhythm, achievements: data.review.achievements.length },
+            nextWeek: nextCount,
+            onNextWeek: start < latest ? () => go(next, 'plan') : undefined,
+          },
+          t,
+        )
       : null;
   const progress = checks && checkProgress(checks);
 
-  const name = relativeName(start, current);
+  const name = relativeName(start, current, t);
   const wk = data?.plan?.week;
   // One status (DESIGN.md D25, D31): from review time (past weeks, Friday on, or a journal already saved) the
   // neutral step count, the success badge once every check is done; before that, a planned week's badge.
   const reviewTime = start < current || (start === current && weekdayIndex(todayPrague()) >= 4) || !!wk?.reviewedAt;
   const reviewed = reviewTime && !!progress && progress.total > 0 && progress.done === progress.total;
-  const steps = !reviewed && progress && reviewTime ? `${progress.done}/${progress.total} bước` : null;
-  const badge = reviewed ? 'Đã nhìn lại' : !steps && wk?.plannedAt ? 'Đã lên kế hoạch' : null;
+  const steps =
+    !reviewed && progress && reviewTime ? t('{done}/{total} bước', { done: progress.done, total: progress.total }) : null;
+  const badge = reviewed ? t('Đã nhìn lại') : !steps && wk?.plannedAt ? t('Đã lên kế hoạch') : null;
 
   return (
     <div className={cn(PAGE_WIDTH, 'px-4 pb-12 sm:px-8')}>
@@ -275,18 +283,23 @@ export function WeekPage({ books }: { books: BookIndex }) {
         {/* One row: the week (arrows, number, range, status) and, at its end, the ritual tabs and the key legend;
             min-h-9 keeps its height while the tabs wait for data */}
         <div className="flex min-h-9 flex-wrap items-center gap-x-4 gap-y-3">
-          <nav aria-label="Chọn tuần" className="flex min-w-0 flex-1 basis-72 items-center gap-2">
-            <WeekArrow label="Tuần trước" shortcut="[" onClick={() => go(addDays(start, -7))}>
+          <nav aria-label={t('Chọn tuần')} className="flex min-w-0 flex-1 basis-72 items-center gap-2">
+            <WeekArrow label={t('Tuần trước')} shortcut="[" onClick={() => go(addDays(start, -7))}>
               <ChevronLeft aria-hidden />
             </WeekArrow>
-            <WeekArrow label="Tuần sau" shortcut="]" disabled={start >= latest} onClick={() => go(addDays(start, 7))}>
+            <WeekArrow
+              label={t('Tuần sau')}
+              shortcut="]"
+              disabled={start >= latest}
+              onClick={() => go(addDays(start, 7))}
+            >
               <ChevronRight aria-hidden />
             </WeekArrow>
             <h2
               className="flex min-w-0 flex-wrap items-baseline gap-x-2 font-heading text-lg font-semibold tracking-tight"
               aria-live="polite"
             >
-              <span>Tuần {isoWeek(start)}</span>
+              <span>{t('Tuần {week}', { week: isoWeek(start) })}</span>
               <span className="text-sm font-normal text-muted-foreground tabular-nums">
                 {/* Lines break only after a "·", never inside "Tuần này" or "1/6 bước" */}
                 {[weekRange(start), name, steps]
@@ -306,16 +319,19 @@ export function WeekPage({ books }: { books: BookIndex }) {
           <div className="flex items-center gap-2">
             {start !== current && (
               <Button size="sm" variant="ghost" onClick={() => go(current)}>
-                Về tuần này
+                {t('Về tuần này')}
               </Button>
             )}
             {data?.plan && (
-              <TabsList aria-label="Nghi thức tuần">
-                <TabsTab value="plan">Kế hoạch</TabsTab>
-                <TabsTab value="review">Nhìn lại</TabsTab>
+              <TabsList aria-label={t('Nghi thức tuần')}>
+                <TabsTab value="plan">{t('Kế hoạch')}</TabsTab>
+                <TabsTab value="review">{t('Nhìn lại')}</TabsTab>
               </TabsList>
             )}
-            <KeyLegend keys={keyHelp} title="Phím tắt của Tuần" />
+            <KeyLegend
+              keys={keyHelp.map(([k, label]): [string, string] => [k, t(label)])}
+              title={t('Phím tắt của Tuần')}
+            />
           </div>
         </div>
 
@@ -327,11 +343,11 @@ export function WeekPage({ books }: { books: BookIndex }) {
         ) : !data.plan ? (
           <EmptyState
             icon={<CalendarPlus aria-hidden />}
-            title="Tuần này chưa được mở"
-            description={`Không có kế hoạch hay nhìn lại nào cho tuần ${weekRange(start)}.`}
+            title={t('Tuần này chưa được mở')}
+            description={t('Không có kế hoạch hay nhìn lại nào cho tuần {range}.', { range: weekRange(start) })}
           >
             <Button variant="outline" onClick={() => setOpened(start)}>
-              Mở tuần này để ghi lại
+              {t('Mở tuần này để ghi lại')}
             </Button>
           </EmptyState>
         ) : (
@@ -340,7 +356,13 @@ export function WeekPage({ books }: { books: BookIndex }) {
               <PlanPanel
                 key={start}
                 start={start}
-                weekName={start === current ? 'tuần này' : start === latest ? 'tuần tới' : `tuần ${weekRange(start)}`}
+                weekName={
+                  start === current
+                    ? t('tuần này')
+                    : start === latest
+                      ? t('tuần tới')
+                      : t('tuần {range}', { range: weekRange(start) })
+                }
                 week={data.plan.week}
                 carryCandidates={data.plan.carryCandidates}
                 onWeek={onWeek}

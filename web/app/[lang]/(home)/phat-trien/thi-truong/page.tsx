@@ -4,16 +4,21 @@ import { LoadingCards } from '@/components/brain/api-state';
 import { PAGE_WIDTH } from '@/components/brain/layout';
 import { PageHeader } from '@/components/brain/page-header';
 import { MarketPage } from '@/components/brain/growth/market-page';
+import { getT } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: 'Thị trường' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t('Thị trường') };
+}
 
-export default function Page() {
+export default async function Page() {
+  const t = await getT();
   return (
     <div className="flex w-full flex-col">
       <PageHeader
-        title="Thị trường"
+        title={t('Thị trường')}
         nav="/phat-trien/thi-truong/"
-        description="Mỗi tháng dán vài tin tuyển dụng, xem kỹ năng nào được đòi và mình còn thiếu gì."
+        description={t('Mỗi tháng dán vài tin tuyển dụng, xem kỹ năng nào được đòi và mình còn thiếu gì.')}
       />
       {/* useSearchParams (?jobAd=, Cmd+K results) needs a Suspense boundary for the static shell */}
       <Suspense

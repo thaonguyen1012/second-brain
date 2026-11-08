@@ -2,6 +2,8 @@
 import { useRef, useState } from 'react';
 import type { ApiScoreSnapshot } from '@/lib/api/opportunities';
 import { formatDate } from '@/lib/labels';
+import { useT } from '@/lib/i18n/client';
+import type { Msg } from '@/lib/i18n/translate';
 import { scoreDims, type ScoreKey } from './labels';
 
 // Small multiples, one figure per score (1-10, shared scale), one data hue (--chart-data): the tile title names the series, so no
@@ -30,12 +32,13 @@ function Tile({
   active,
   onActive,
 }: {
-  dim: { key: ScoreKey; label: string };
+  dim: { key: ScoreKey; label: Msg };
   points: ApiScoreSnapshot[];
   xs: number[];
   active: number;
   onActive: (i: number | null) => void;
 }) {
+  const t = useT();
   const svgRef = useRef<SVGSVGElement>(null);
   const values = points.map((p) => p[dim.key]);
   const current = values[active];
@@ -56,7 +59,7 @@ function Tile({
   return (
     <figure className="flex min-w-0 flex-col gap-1">
       <figcaption className="flex items-baseline justify-between gap-2">
-        <span className="text-sm font-medium">{dim.label}</span>
+        <span className="text-sm font-medium">{t(dim.label)}</span>
         <span className="text-sm tabular-nums">
           <span className="font-semibold">{current}</span>
           <span className="text-muted-foreground">/10</span>
@@ -77,18 +80,25 @@ function Tile({
         onPointerDown={(e) => nearest(e.clientX)}
         onPointerLeave={() => onActive(null)}
       >
-        {Y_TICKS.map((t) => (
-          <g key={t}>
-            <line x1={PAD.left} x2={W - PAD.right} y1={yOf(t)} y2={yOf(t)} className="stroke-border" strokeWidth={1} />
+        {Y_TICKS.map((tick) => (
+          <g key={tick}>
+            <line
+              x1={PAD.left}
+              x2={W - PAD.right}
+              y1={yOf(tick)}
+              y2={yOf(tick)}
+              className="stroke-border"
+              strokeWidth={1}
+            />
             <text
               x={PAD.left - 5}
-              y={yOf(t)}
+              y={yOf(tick)}
               dy="0.32em"
               textAnchor="end"
               fontSize={9}
               className="fill-muted-foreground"
             >
-              {t}
+              {tick}
             </text>
           </g>
         ))}
@@ -132,23 +142,26 @@ function Tile({
 
 /** Score history of one opportunity (scoreHistory, newest first from the API). */
 export function ScoreHistoryChart({ history }: { history: ApiScoreSnapshot[] }) {
+  const t = useT();
   const points = [...history].reverse();
   const [hover, setHover] = useState<number | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
   if (points.length === 0)
-    return <p className="text-sm text-muted-foreground">Chưa chấm lần nào. Chấm 4 điểm để bắt đầu lịch sử.</p>;
+    return <p className="text-sm text-muted-foreground">{t('Chưa chấm lần nào. Chấm 4 điểm để bắt đầu lịch sử.')}</p>;
 
   const last = points.length - 1;
   const active = Math.min(hover ?? cursor ?? last, last);
   const snap = points[active];
   const xs = xPositions(points);
+  const snapLabel =
+    active === last ? t('Lần chấm gần nhất') : t('Lần chấm {i}/{total}', { i: active + 1, total: points.length });
 
   return (
     <div className="flex flex-col gap-3">
       <div
         tabIndex={0}
         role="group"
-        aria-label={`Lịch sử điểm, ${points.length} lần chấm. Dùng phím mũi tên để xem từng lần.`}
+        aria-label={t('Lịch sử điểm, {n} lần chấm. Dùng phím mũi tên để xem từng lần.', { n: points.length })}
         className="flex flex-col gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onKeyDown={(e) => {
           const step = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
@@ -164,11 +177,11 @@ export function ScoreHistoryChart({ history }: { history: ApiScoreSnapshot[] }) 
       >
         <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
           <span className="font-medium text-foreground">
-            {active === last ? 'Lần chấm gần nhất' : `Lần chấm ${active + 1}/${points.length}`},{' '}
-            {formatDate(snap.createdAt)}
+            {snapLabel},{' '}
+            {formatDate(snap.createdAt, t)}
           </span>
           {snap.note && <>: {snap.note}</>}
-          <span className="sr-only">{scoreDims.map((d) => `${d.label} ${snap[d.key]}`).join(', ')}</span>
+          <span className="sr-only">{scoreDims.map((d) => `${t(d.label)} ${snap[d.key]}`).join(', ')}</span>
         </p>
         <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
           {scoreDims.map((d) => (
@@ -177,24 +190,24 @@ export function ScoreHistoryChart({ history }: { history: ApiScoreSnapshot[] }) 
         </div>
       </div>
       <details className="text-sm">
-        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Xem dạng bảng</summary>
+        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{t('Xem dạng bảng')}</summary>
         <div className="mt-2 overflow-x-auto">
           <table className="w-full text-left tabular-nums">
             <thead className="text-xs text-muted-foreground">
               <tr>
-                <th className="py-1 pe-3 font-medium">Ngày</th>
+                <th className="py-1 pe-3 font-medium">{t('Ngày')}</th>
                 {scoreDims.map((d) => (
                   <th key={d.key} className="py-1 pe-3 font-medium">
-                    {d.label}
+                    {t(d.label)}
                   </th>
                 ))}
-                <th className="py-1 font-medium">Ghi chú</th>
+                <th className="py-1 font-medium">{t('Ghi chú')}</th>
               </tr>
             </thead>
             <tbody>
               {history.map((s) => (
                 <tr key={s.id} className="border-t">
-                  <td className="py-1 pe-3 whitespace-nowrap">{formatDate(s.createdAt)}</td>
+                  <td className="py-1 pe-3 whitespace-nowrap">{formatDate(s.createdAt, t)}</td>
                   {scoreDims.map((d) => (
                     <td key={d.key} className="py-1 pe-3">
                       {s[d.key]}

@@ -1,6 +1,7 @@
 'use client';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
+import { useT } from '@/lib/i18n/client';
 import { formatHours, formatMinutes } from './format';
 
 // Two series, fixed order and colour (tokens --chart-billable / --chart-nonbillable in app/global.css: the data blue
@@ -20,15 +21,16 @@ export function Swatch({ kind }: { kind: 'billable' | 'nonbillable' }) {
 }
 
 export function BillableLegend({ className }: { className?: string }) {
+  const t = useT();
   return (
     <p className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground', className)}>
       <span className="inline-flex items-center gap-1.5">
         <Swatch kind="billable" />
-        Tính tiền
+        {t('Tính tiền')}
       </span>
       <span className="inline-flex items-center gap-1.5">
         <Swatch kind="nonbillable" />
-        Không tính tiền
+        {t('Không tính tiền')}
       </span>
     </p>
   );
@@ -55,9 +57,15 @@ export function BillableBar({
   showTotal?: boolean;
   className?: string;
 }) {
+  const t = useT();
   const total = billable + nonBillable;
   const width = scale > 0 ? Math.max((total / scale) * 100, total > 0 ? 1 : 0) : 0;
-  const summary = `${label}: ${formatMinutes(total)}, ${formatMinutes(billable)} tính tiền, ${formatMinutes(nonBillable)} không tính tiền`;
+  const summary = t('{label}: {total}, {billable} tính tiền, {nonBillable} không tính tiền', {
+    label,
+    total: formatMinutes(total, t),
+    billable: formatMinutes(billable, t),
+    nonBillable: formatMinutes(nonBillable, t),
+  });
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <div className="flex items-center gap-2">
@@ -85,30 +93,30 @@ export function BillableBar({
               <span className="font-medium">{label}</span>
               <span className="inline-flex items-center gap-1.5">
                 <Swatch kind="billable" />
-                Tính tiền: {formatMinutes(billable)}
+                {t('Tính tiền: {time}', { time: formatMinutes(billable, t) })}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Swatch kind="nonbillable" />
-                Không tính tiền: {formatMinutes(nonBillable)}
+                {t('Không tính tiền: {time}', { time: formatMinutes(nonBillable, t) })}
               </span>
             </div>
           </TooltipPopup>
         </Tooltip>
         {showTotal && (
-          <span className="w-20 shrink-0 text-end text-sm font-medium tabular-nums">{formatHours(total)}</span>
+          <span className="w-20 shrink-0 text-end text-sm font-medium tabular-nums">{formatHours(total, t)}</span>
         )}
       </div>
       <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground tabular-nums">
         {billable > 0 && (
           <span className="inline-flex items-center gap-1.5">
             <Swatch kind="billable" />
-            {formatHours(billable)} tính tiền
+            {t('{time} tính tiền', { time: formatHours(billable, t) })}
           </span>
         )}
         {nonBillable > 0 && (
           <span className="inline-flex items-center gap-1.5">
             <Swatch kind="nonbillable" />
-            {formatHours(nonBillable)} không tính tiền
+            {t('{time} không tính tiền', { time: formatHours(nonBillable, t) })}
           </span>
         )}
       </p>
@@ -121,12 +129,16 @@ export function BillableBar({
  * text carries the hours; the exact split is in the accessible label.
  */
 export function MiniBillableBar({ billable, nonBillable }: { billable: number; nonBillable: number }) {
+  const t = useT();
   const total = billable + nonBillable;
   if (total <= 0) return null;
   return (
     <span
       role="img"
-      aria-label={`${formatMinutes(billable)} tính tiền, ${formatMinutes(nonBillable)} không tính tiền`}
+      aria-label={t('{billable} tính tiền, {nonBillable} không tính tiền', {
+        billable: formatMinutes(billable, t),
+        nonBillable: formatMinutes(nonBillable, t),
+      })}
       className="flex h-1 w-full gap-0.5"
     >
       {billable > 0 && (

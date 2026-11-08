@@ -21,6 +21,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { BrandMark } from '@/components/brand-mark';
+import { useT } from '@/lib/i18n/client';
+import { intro } from '@/lib/i18n/en/intro';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { Stage, type LookTokens } from '../kit/stage';
 import type { Act } from '../kit/act';
 import { Bar, Text, Window } from '../kit/window';
@@ -121,39 +124,39 @@ function Picture<S extends object>({
  * The window runs off the bottom of the slot but no row may be cut by it: every group keeps its first row (the
  * page its area opens), and the other rows join by `rank` while they still fit whole above the crop (fitSide).
  */
-type SideRow = { title: string; icon: LucideIcon; count?: number; rank: number };
-type SideGroup = { label?: string; rows: SideRow[] };
+type SideRow = { title: Msg; icon: LucideIcon; count?: number; rank: number; current?: boolean };
+type SideGroup = { label?: Msg; rows: SideRow[] };
 
 const SIDE_NAV: SideGroup[] = [
   {
     rows: [
-      { title: 'Hôm nay', icon: Sun, rank: 0 },
-      { title: 'Tuần', icon: CalendarRange, count: 2, rank: 0 },
+      { title: msg('Hôm nay'), icon: Sun, rank: 0, current: true },
+      { title: msg('Tuần'), icon: CalendarRange, count: 2, rank: 0 },
     ],
   },
   {
-    label: 'Phát triển',
+    label: msg('Phát triển'),
     rows: [
-      { title: 'Sổ tay', icon: BookOpen, rank: 0 },
-      { title: 'Lộ trình', icon: Route, rank: 5 },
-      { title: 'Kỹ năng', icon: Dumbbell, count: 14, rank: 1 },
-      { title: 'Thị trường', icon: TrendingUp, count: 6, rank: 4 },
-      { title: 'Nhật ký thành tựu', icon: Trophy, count: 1, rank: 6 },
+      { title: msg('Sổ tay'), icon: BookOpen, rank: 0 },
+      { title: msg('Lộ trình'), icon: Route, rank: 5 },
+      { title: msg('Kỹ năng'), icon: Dumbbell, count: 14, rank: 1 },
+      { title: msg('Thị trường'), icon: TrendingUp, count: 6, rank: 4 },
+      { title: msg('Nhật ký thành tựu'), icon: Trophy, count: 1, rank: 6 },
     ],
   },
   {
-    label: 'Thư viện',
+    label: msg('Thư viện'),
     rows: [
-      { title: 'Item', icon: Library, count: 48, rank: 0 },
-      { title: 'Ghi chú', icon: NotebookPen, count: 23, rank: 2 },
+      { title: msg('Item', 'nav'), icon: Library, count: 48, rank: 0 },
+      { title: msg('Ghi chú', 'nav'), icon: NotebookPen, count: 23, rank: 2 },
     ],
   },
-  { label: 'Cơ hội', rows: [{ title: 'Cơ hội', icon: Lightbulb, count: 3, rank: 0 }] },
+  { label: msg('Cơ hội', 'nav'), rows: [{ title: msg('Cơ hội', 'nav'), icon: Lightbulb, count: 3, rank: 0 }] },
   {
-    label: 'Công việc',
+    label: msg('Công việc'),
     rows: [
-      { title: 'Dự án', icon: Briefcase, count: 2, rank: 0 },
-      { title: 'Giờ', icon: Clock, rank: 3 },
+      { title: msg('Dự án', 'nav'), icon: Briefcase, count: 2, rank: 0 },
+      { title: msg('Giờ', 'nav'), icon: Clock, rank: 3 },
     ],
   },
 ];
@@ -205,6 +208,7 @@ function fitSide(room: number): SideGroup[] {
 }
 
 function ShellSidebar({ room }: { room: number }) {
+  const t = useT(intro);
   const vars = {
     '--hs-pad': `${SIDE.pad}px`,
     '--hs-brand': `${SIDE.brand}px`,
@@ -224,14 +228,14 @@ function ShellSidebar({ room }: { room: number }) {
         <PanelLeftClose size={14} strokeWidth={2} aria-hidden className="hs-brand__hide" />
       </span>
       {groups.map((group, i) => (
-        <span key={group.rows[0].title} className="hs-group">
+        <span key={group.rows[0].title.msgid} className="hs-group">
           {i === 1 && <span className="hs-tier" aria-hidden />}
-          {group.label && <span className="hs-label">{group.label}</span>}
+          {group.label && <span className="hs-label">{t(group.label)}</span>}
           <span className="hs-rows">
-            {group.rows.map(({ title, icon: Icon, count }) => (
-              <span key={title} className="hs-nav" data-active={title === 'Hôm nay' || undefined}>
+            {group.rows.map(({ title, icon: Icon, count, current }) => (
+              <span key={title.msgid} className="hs-nav" data-active={current || undefined}>
                 <Icon size={16} strokeWidth={2} aria-hidden />
-                <span className="hs-nav__title">{title}</span>
+                <span className="hs-nav__title">{t(title)}</span>
                 {count !== undefined && <span className="hs-nav__count">{count}</span>}
               </span>
             ))}
@@ -253,17 +257,17 @@ function PanelHead({ icon, title, link }: { icon: ReactNode; title: ReactNode; l
 }
 
 /** Example objectives (the same three as the week guide) and their status badges (lib/labels.ts objectiveStatuses) */
-const HERO_OBJECTIVES: { title: string; status: string; tone: 'info' | 'success' }[] = [
-  { title: 'Viết case study', status: 'Xong', tone: 'success' },
-  { title: 'Ôn lại React hooks', status: 'Đang làm', tone: 'info' },
-  { title: 'Gửi 2 báo giá', status: 'Đang làm', tone: 'info' },
+// The 'intro' context keeps these keys apart from the week guide's (its own lazy dictionary, guides.ts): one key
+// lives in one file, and neither chunk can reach the other's.
+const HERO_OBJECTIVES: { title: Msg; status: Msg; tone: 'info' | 'success' }[] = [
+  { title: msg('Viết case study', 'intro'), status: msg('Xong'), tone: 'success' },
+  { title: msg('Ôn lại React hooks', 'intro'), status: msg('Đang làm'), tone: 'info' },
+  { title: msg('Gửi 2 báo giá', 'intro'), status: msg('Đang làm'), tone: 'info' },
 ];
 
-const HERO_LABEL =
-  "Màn hình Hôm nay của Alex's Brain: thanh bên chia theo nhóm như trong app, Hôm nay (đang mở) và Tuần ở trên, " +
-  'rồi các nhóm Phát triển, Thư viện, Cơ hội và Công việc với trang của từng nhóm, biểu tượng cùng một màu xanh và ' +
-  'số đếm ở cuối dòng; thanh trên có ô Tìm mọi thứ với phím tắt Cmd K và nút Inbox có số đếm; nội dung gồm Tiếp tục ' +
-  'học (Nhánh và merge trong Git), 3 ưu tiên tuần (Viết case study, Ôn lại React hooks, Gửi 2 báo giá) và Inbox.';
+const HERO_LABEL = msg(
+  "Màn hình Hôm nay của Alex's Brain: thanh bên chia theo nhóm như trong app, Hôm nay (đang mở) và Tuần ở trên, rồi các nhóm Phát triển, Thư viện, Cơ hội và Công việc với trang của từng nhóm, biểu tượng cùng một màu xanh và số đếm ở cuối dòng; thanh trên có ô Tìm mọi thứ với phím tắt Cmd K và nút Inbox có số đếm; nội dung gồm Tiếp tục học (Nhánh và merge trong Git), 3 ưu tiên tuần (Viết case study, Ôn lại React hooks, Gửi 2 báo giá) và Inbox.",
+);
 
 /** The narrow window's top edge, in px from the slot's top. */
 const NARROW_TOP = 20;
@@ -272,8 +276,9 @@ const NARROW_TOP = 20;
 // top and both sides and runs off the bottom (framing rule 14). Narrow tiles keep a desktop-width window that
 // runs off the right and the bottom instead. The sidebar gets the height left above the crop (fitSide).
 export function HeroShell() {
+  const t = useT(intro);
   return (
-    <Picture name="hero" label={HERO_LABEL} initial={{}}>
+    <Picture name="hero" label={t(HERO_LABEL)} initial={{}}>
       {(_, { w, h }) => {
         const wide = w >= 600;
         const inset = Math.round(w * 0.08);
@@ -291,7 +296,7 @@ export function HeroShell() {
             lead={
               <span className="hs-search">
                 <Search size={14} strokeWidth={2} aria-hidden />
-                <span>Tìm mọi thứ...</span>
+                <span>{t('Tìm mọi thứ...')}</span>
                 {wide && <span className="hs-kbd">⌘ K</span>}
               </span>
             }
@@ -313,19 +318,19 @@ export function HeroShell() {
                 <span className="hs-tile" aria-hidden>
                   <Sun size={16} strokeWidth={2} />
                 </span>
-                <span className="hs-title">Hôm nay</span>
+                <span className="hs-title">{t('Hôm nay')}</span>
               </span>
-              <span className="hs-desc">Học tiếp, giữ 3 ưu tiên của tuần, dọn inbox và đọc bản tin sáng.</span>
+              <span className="hs-desc">{t('Học tiếp, giữ 3 ưu tiên của tuần, dọn inbox và đọc bản tin sáng.')}</span>
               <span className="hs-continue">
                 <span className="hs-continue__tag">
                   <span className="hs-dot" aria-hidden />
-                  Tiếp tục học
+                  {t('Tiếp tục học')}
                 </span>
                 <span className="hs-continue__text">
-                  <span className="hs-continue__title">Nhánh và merge trong Git</span>
+                  <span className="hs-continue__title">{t('Nhánh và merge trong Git')}</span>
                   <Bar w={wide ? 132 : 90} h={6} tone={3} />
                 </span>
-                {wide && <span className="hs-primary">Học tiếp →</span>}
+                {wide && <span className="hs-primary">{t('Học tiếp')} →</span>}
               </span>
               <span className="hs-panels">
                 <span className="hs-panel">
@@ -333,15 +338,15 @@ export function HeroShell() {
                     icon={
                       <CalendarRange size={14} strokeWidth={2} aria-hidden style={{ color: 'var(--ss-text)' }} />
                     }
-                    title={<span className="hs-panel__title">3 ưu tiên tuần</span>}
+                    title={<span className="hs-panel__title">{t('3 ưu tiên tuần')}</span>}
                     link={wide}
                   />
                   {HERO_OBJECTIVES.map((o, i) => (
-                    <span key={o.title} className="hs-objective">
+                    <span key={o.title.msgid} className="hs-objective">
                       <span className="hs-objective__n">{i + 1}.</span>
-                      <span className="hs-objective__title">{o.title}</span>
+                      <span className="hs-objective__title">{t(o.title)}</span>
                       <span className="ip-badge hs-objective__badge" data-tone={o.tone}>
-                        {o.status}
+                        {t(o.status)}
                       </span>
                     </span>
                   ))}
@@ -375,11 +380,11 @@ type InboxS = { a: boolean; c: boolean; sel: 'a' | 'c' | 'b'; legend: 'jk' | 'l'
 const INBOX_START: InboxS = { a: true, c: true, sel: 'a', legend: null };
 const INBOX_END: InboxS = { a: false, c: false, sel: 'b', legend: null };
 
-const LEGEND: { id: Exclude<InboxS['legend'], null>; key: string; label: string }[] = [
-  { id: 'jk', key: 'J / K', label: 'xuống / lên' },
-  { id: 'l', key: 'L', label: 'đọc sau' },
-  { id: 'a', key: 'A', label: 'lưu trữ' },
-  { id: 'o', key: 'O', label: 'bằng chứng cho cơ hội' },
+const LEGEND: { id: Exclude<InboxS['legend'], null>; key: string; label: Msg }[] = [
+  { id: 'jk', key: 'J / K', label: msg('xuống / lên') },
+  { id: 'l', key: 'L', label: msg('đọc sau') },
+  { id: 'a', key: 'A', label: msg('lưu trữ') },
+  { id: 'o', key: 'O', label: msg('bằng chứng cho cơ hội') },
 ];
 
 // L sends the top entry to Đọc sau, A archives the next; the cursor stays in place, so the tagged entry rises
@@ -426,31 +431,36 @@ function FillerCard({ selected, title, meta }: { selected?: boolean; title: numb
   );
 }
 
-const INBOX_LABEL =
-  'Inbox xử lý bằng phím: hàng phím tắt J/K xuống lên, L đọc sau, A lưu trữ, O bằng chứng cho cơ hội. ' +
-  'Nhấn L (CSS Grid: hướng dẫn đầy đủ) rồi A (Mẹo tập trung khi làm việc), hai mục rời danh sách; mục đã được gắn tag #postgres #tim-kiem và gợi ý Đọc sau lên đầu, đang được chọn.';
+const INBOX_LABEL = msg(
+  'Inbox xử lý bằng phím: hàng phím tắt J/K xuống lên, L đọc sau, A lưu trữ, O bằng chứng cho cơ hội. Nhấn L (CSS Grid: hướng dẫn đầy đủ) rồi A (Mẹo tập trung khi làm việc), hai mục rời danh sách; mục đã được gắn tag #postgres #tim-kiem và gợi ý Đọc sau lên đầu, đang được chọn.',
+);
 
 export function InboxTile() {
+  const t = useT(intro);
   return (
-    <Picture name="inbox" label={INBOX_LABEL} initial={INBOX_START} poster={INBOX_END} script={inboxScript}>
+    <Picture name="inbox" label={t(INBOX_LABEL)} initial={INBOX_START} poster={INBOX_END} script={inboxScript}>
       {(s, { w }) => (
         <div className="ip-col" data-narrow={w < 520 || undefined}>
           <span className="ip-legend">
             {LEGEND.map((h) => (
               <span key={h.id} className="ip-legend__item" data-on={s.legend === h.id || undefined}>
                 <span className="ip-kbd">{h.key}</span>
-                <span>{h.label}</span>
+                <span>{t(h.label)}</span>
               </span>
             ))}
           </span>
           <Collapse open={s.a} reveal="drop">
             <span className="ip-gap">
-              <EntryCard selected={s.sel === 'a'} title="CSS Grid: hướng dẫn đầy đủ" meta="developer.mozilla.org" />
+              <EntryCard
+                selected={s.sel === 'a'}
+                title={t('CSS Grid: hướng dẫn đầy đủ', null, 'intro')}
+                meta="developer.mozilla.org"
+              />
             </span>
           </Collapse>
           <Collapse open={s.c} reveal="drop">
             <span className="ip-gap">
-              <EntryCard selected={s.sel === 'c'} title="Mẹo tập trung khi làm việc" meta="dev.to" />
+              <EntryCard selected={s.sel === 'c'} title={t('Mẹo tập trung khi làm việc', null, 'intro')} meta="dev.to" />
             </span>
           </Collapse>
           <span className="ip-gap">
@@ -466,7 +476,7 @@ export function InboxTile() {
                       Inbox
                     </span>
                     <span className="ip-badge" data-tone="outline">
-                      → Đọc sau
+                      → {t('Đọc sau')}
                     </span>
                   </span>
                   <span className="ip-title">Text search in Postgres</span>
@@ -478,7 +488,7 @@ export function InboxTile() {
                   #postgres
                 </span>
                 <span className="ip-badge" data-tone="outline">
-                  #tim-kiem
+                  {t('#tim-kiem')}
                 </span>
               </span>
             </span>
@@ -504,8 +514,9 @@ export function InboxTile() {
 /* ------------------------------------------------------------------ ⌘K: two keycaps */
 
 export function SearchTile() {
+  const t = useT(intro);
   return (
-    <Picture name="search" label="Hai phím Command và K: phím tắt mở ô tìm kiếm chung." initial={{}}>
+    <Picture name="search" label={t('Hai phím Command và K: phím tắt mở ô tìm kiếm chung.')} initial={{}}>
       {() => (
         <div className="sk-keys">
           <span className="sk-cap">⌘</span>
@@ -519,21 +530,22 @@ export function SearchTile() {
 /* ------------------------------------------------------------------ Tuần: hours for objectives vs other */
 
 // Shares of the tallest day, not hours: the picture has no axis and no values (no numbers about the owner).
-const DAYS: { day: string; f: number; o: number }[] = [
-  { day: 'T2', f: 0.52, o: 0.22 },
-  { day: 'T3', f: 0.66, o: 0.14 },
-  { day: 'T4', f: 0.3, o: 0.42 },
-  { day: 'T5', f: 0.6, o: 0.24 },
-  { day: 'T6', f: 0.44, o: 0.3 },
-  { day: 'T7', f: 0.14, o: 0.18 },
-  { day: 'CN', f: 0, o: 0.08 },
+const DAYS: { day: Msg; f: number; o: number }[] = [
+  { day: msg('T2', 'weekday'), f: 0.52, o: 0.22 },
+  { day: msg('T3', 'weekday'), f: 0.66, o: 0.14 },
+  { day: msg('T4', 'weekday'), f: 0.3, o: 0.42 },
+  { day: msg('T5', 'weekday'), f: 0.6, o: 0.24 },
+  { day: msg('T6', 'weekday'), f: 0.44, o: 0.3 },
+  { day: msg('T7', 'weekday'), f: 0.14, o: 0.18 },
+  { day: msg('CN', 'weekday'), f: 0, o: 0.08 },
 ];
 
 export function WeekTile() {
+  const t = useT(intro);
   return (
     <Picture
       name="week"
-      label="Biểu đồ cột theo ngày từ thứ Hai tới Chủ nhật: phần giờ cho mục tiêu của tuần ở dưới, giờ khác ở trên."
+      label={t('Biểu đồ cột theo ngày từ thứ Hai tới Chủ nhật: phần giờ cho mục tiêu của tuần ở dưới, giờ khác ở trên.')}
       initial={{}}
     >
       {() => (
@@ -541,11 +553,11 @@ export function WeekTile() {
           <span className="wk-legend">
             <span>
               <span className="wk-swatch" data-series="for" aria-hidden />
-              Giờ cho mục tiêu
+              {t('Giờ cho mục tiêu')}
             </span>
             <span>
               <span className="wk-swatch" data-series="other" aria-hidden />
-              Giờ khác
+              {t('Giờ khác')}
             </span>
           </span>
           <span className="wk-plot">
@@ -555,7 +567,7 @@ export function WeekTile() {
               <span />
             </span>
             {DAYS.map((d) => (
-              <span key={d.day} className="wk-day">
+              <span key={d.day.msgid} className="wk-day">
                 <span className="wk-stack" style={{ height: `${(d.f + d.o) * 100}%` }}>
                   {d.o > 0 && <span className="wk-seg" data-series="other" data-top style={{ flexGrow: d.o }} />}
                   {d.f > 0 && <span className="wk-seg" data-series="for" style={{ flexGrow: d.f }} />}
@@ -565,7 +577,7 @@ export function WeekTile() {
           </span>
           <span className="wk-days">
             {DAYS.map((d) => (
-              <span key={d.day}>{d.day}</span>
+              <span key={d.day.msgid}>{t(d.day)}</span>
             ))}
           </span>
         </div>
@@ -577,17 +589,20 @@ export function WeekTile() {
 /* ------------------------------------------------------------------ Cơ hội: a hypothesis and its evidence */
 
 const SCORES = [
-  { label: 'Cơ hội', v: 7 },
-  { label: 'Nỗi đau', v: 8 },
-  { label: 'Khả thi', v: 6 },
-  { label: 'Thời điểm', v: 7 },
+  { label: msg('Cơ hội'), v: 7 },
+  { label: msg('Nỗi đau'), v: 8 },
+  { label: msg('Khả thi'), v: 6 },
+  { label: msg('Thời điểm'), v: 7 },
 ];
 
 export function OpportunityTile() {
+  const t = useT(intro);
   return (
     <Picture
       name="opp"
-      label="Một cơ hội ví dụ, Đặt lịch online cho tiệm nail: bốn điểm tự chấm Cơ hội, Nỗi đau, Khả thi, Thời điểm, và hai bằng chứng: ủng hộ, nói chuyện với 3 tiệm nail; phản bác, đã có app đặt lịch miễn phí."
+      label={t(
+        'Một cơ hội ví dụ, Đặt lịch online cho tiệm nail: bốn điểm tự chấm Cơ hội, Nỗi đau, Khả thi, Thời điểm, và hai bằng chứng: ủng hộ, nói chuyện với 3 tiệm nail; phản bác, đã có app đặt lịch miễn phí.',
+      )}
       initial={{}}
     >
       {() => (
@@ -595,14 +610,14 @@ export function OpportunityTile() {
           <span className="op-panel">
             <span className="ip-badges">
               <span className="ip-badge" data-tone="secondary">
-                Chưa quyết
+                {t('Chưa quyết')}
               </span>
             </span>
-            <span className="op-title">Đặt lịch online cho tiệm nail</span>
+            <span className="op-title">{t('Đặt lịch online cho tiệm nail')}</span>
             <span className="op-scores">
               {SCORES.map((x) => (
-                <span key={x.label}>
-                  <span className="op-scores__k">{x.label}</span>
+                <span key={x.label.msgid}>
+                  <span className="op-scores__k">{t(x.label)}</span>
                   <span className="op-scores__v">{x.v}</span>
                 </span>
               ))}
@@ -611,15 +626,15 @@ export function OpportunityTile() {
           <span className="op-evidence">
             <span className="op-row">
               <span className="ip-badge" data-tone="success">
-                Ủng hộ
+                {t('Ủng hộ')}
               </span>
-              <span className="op-row__text">Nói chuyện với 3 tiệm nail</span>
+              <span className="op-row__text">{t('Nói chuyện với 3 tiệm nail')}</span>
             </span>
             <span className="op-row">
               <span className="ip-badge" data-tone="error">
-                Phản bác
+                {t('Phản bác')}
               </span>
-              <span className="op-row__text">Đã có app đặt lịch miễn phí</span>
+              <span className="op-row__text">{t('Đã có app đặt lịch miễn phí')}</span>
             </span>
           </span>
         </div>
@@ -631,7 +646,7 @@ export function OpportunityTile() {
 /* ------------------------------------------------------------------ Kỹ năng: tiles that fade */
 
 type Fresh = 'fresh' | 'aging' | 'faded';
-const FRESH_WORD: Record<Fresh, string> = { fresh: 'Còn mới', aging: 'Đang cũ dần', faded: 'Đã mờ' };
+const FRESH_WORD: Record<Fresh, Msg> = { fresh: msg('Còn mới'), aging: msg('Đang cũ dần'), faded: msg('Đã mờ') };
 
 // Three named tiles, one per state; the rest are the same tiles in placeholder lines, bleeding off the tile.
 const SKILLS: { name?: string; f: Fresh; w?: number }[] = [
@@ -650,10 +665,13 @@ const SKILLS: { name?: string; f: Fresh; w?: number }[] = [
 ];
 
 export function SkillsTile() {
+  const t = useT(intro);
   return (
     <Picture
       name="skills"
-      label="Ma trận kỹ năng: Django còn mới, Docker đang cũ dần, Figma đã mờ. Kỹ năng không có bằng chứng mới thì nhạt màu dần."
+      label={t(
+        'Ma trận kỹ năng: Django còn mới, Docker đang cũ dần, Figma đã mờ. Kỹ năng không có bằng chứng mới thì nhạt màu dần.',
+      )}
       initial={{}}
     >
       {() => (
@@ -665,7 +683,7 @@ export function SkillsTile() {
                   <span className="sm-name">{x.name}</span>
                   <span className="sm-state">
                     <span className="sm-dot" aria-hidden />
-                    {FRESH_WORD[x.f]}
+                    {t(FRESH_WORD[x.f])}
                   </span>
                 </>
               ) : (
@@ -688,10 +706,13 @@ export function SkillsTile() {
 /* ------------------------------------------------------------------ Bản tin sáng: one story, two taps */
 
 export function BriefTile() {
+  const t = useT(intro);
   return (
     <Picture
       name="brief"
-      label="Một tin trong bản tin sáng, Trợ lý viết code chạy offline ra mắt, có tag Công cụ mới và #ai, với các nút Đưa vào Inbox, hữu ích hoặc không, và Bằng chứng cho cơ hội."
+      label={t(
+        'Một tin trong bản tin sáng, Trợ lý viết code chạy offline ra mắt, có tag Công cụ mới và #ai, với các nút Đưa vào Inbox, hữu ích hoặc không, và Bằng chứng cho cơ hội.',
+      )}
       initial={{}}
     >
       {(_, { w }) => (
@@ -702,23 +723,23 @@ export function BriefTile() {
                 Hacker News
               </span>
               <span className="ip-badge" data-tone="info">
-                Công cụ mới
+                {t('Công cụ mới')}
               </span>
               <span className="ip-badge" data-tone="outline">
                 #ai
               </span>
             </span>
-            <span className="bf-title">Trợ lý viết code chạy offline ra mắt</span>
+            <span className="bf-title">{t('Trợ lý viết code chạy offline ra mắt')}</span>
             <Bar w={96} h={6} r={3} tone={3} />
           </span>
           <span className="bf-body">
             <Text filler w={220} className="bf-summary">
-              Tóm tắt hai câu, vì sao đáng quan tâm.
+              {t('Tóm tắt hai câu, vì sao đáng quan tâm.')}
             </Text>
             <span className="bf-actions">
               <span className="bf-btn">
                 <Inbox size={14} strokeWidth={2} aria-hidden />
-                Đưa vào Inbox
+                {t('Đưa vào Inbox')}
               </span>
               {/* The thumbs only where the four actions fit on one row */}
               {w >= 440 && (
@@ -731,7 +752,7 @@ export function BriefTile() {
                   </span>
                 </>
               )}
-              <span className="bf-btn">Bằng chứng cho cơ hội…</span>
+              <span className="bf-btn">{t('Bằng chứng cho cơ hội…')}</span>
             </span>
           </span>
         </div>

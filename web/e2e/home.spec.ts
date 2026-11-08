@@ -10,10 +10,11 @@ test('home page renders "Hôm nay" inside the app shell', async ({ page }) => {
   await expect(page).toHaveTitle(/Alex's Brain/);
   await expect(page.getByRole('heading', { level: 1, name: 'Hôm nay' })).toBeVisible();
 
-  // Every sidebar row of lib/app-nav.ts is a link to its page; a row with a count says it after a comma.
+  // Every sidebar row of lib/app-nav.ts is a link to its page; a row with a count says it after a comma. The
+  // context starts without the language cookie, so the titles are the Vietnamese texts (msgid).
   const sidebar = page.getByRole('navigation', { name: 'Menu' });
   for (const link of [...navRows, ...otherNav.links]) {
-    await expect(sidebar.getByRole('link', { name: new RegExp(`^${link.title}(,|$)`) })).toHaveAttribute(
+    await expect(sidebar.getByRole('link', { name: new RegExp(`^${link.title.msgid}(,|$)`) })).toHaveAttribute(
       'href',
       link.href,
     );

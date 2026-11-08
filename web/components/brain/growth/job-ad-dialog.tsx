@@ -16,13 +16,22 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { describeApiError } from '../api-state';
 import { fieldErrors, splitList } from './labels';
 import { FormError, FormRow } from './shared';
 import { SaveKeys } from '../save-keys';
 
 const MAX_TEXT = 20_000;
-const fieldNames = { title: 'Vị trí', company: 'Công ty', url: 'Link', text: 'Nội dung', month: 'Tháng', skills: 'Kỹ năng' };
+const fieldNames: Record<string, Msg> = {
+  title: msg('Vị trí'),
+  company: msg('Công ty'),
+  url: msg('Link'),
+  text: msg('Nội dung'),
+  month: msg('Tháng'),
+  skills: msg('Kỹ năng'),
+};
 
 function JobAdForm({
   ad,
@@ -33,6 +42,7 @@ function JobAdForm({
   month: string;
   onSaved: (ad: ApiJobAd, created: boolean) => void;
 }) {
+  const t = useT();
   const [title, setTitle] = useState(ad?.title ?? '');
   const [company, setCompany] = useState(ad?.company ?? '');
   const [url, setUrl] = useState(ad?.url ?? '');
@@ -48,15 +58,15 @@ function JobAdForm({
   const submit = async () => {
     if (inFlight.current) return;
     if (!title.trim() || !text.trim()) {
-      setError('Cần có tên vị trí và nội dung tin.');
+      setError(t('Cần có tên vị trí và nội dung tin.'));
       return;
     }
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(adMonth)) {
-      setError('Tháng có dạng YYYY-MM, ví dụ 2026-11.');
+      setError(t('Tháng có dạng YYYY-MM, ví dụ 2026-11.'));
       return;
     }
     if (text.length > MAX_TEXT) {
-      setError(`Nội dung dài quá ${MAX_TEXT.toLocaleString('vi-VN')} ký tự, hãy bỏ bớt phần giới thiệu công ty.`);
+      setError(t('Nội dung dài quá {max} ký tự, hãy bỏ bớt phần giới thiệu công ty.', { max: t.num(MAX_TEXT) }));
       return;
     }
     const body: ApiJobAdWrite = {
@@ -79,7 +89,7 @@ function JobAdForm({
       onSaved(saved, !ad);
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body, fieldNames)) || describeApiError(e).title);
+      setError((e.status === 400 && fieldErrors(e.body, t, fieldNames)) || describeApiError(e, t).title);
       inFlight.current = false;
       setBusy(false);
     }
@@ -101,7 +111,7 @@ function JobAdForm({
     >
       <DialogPanel className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormRow id="ad-title" label="Vị trí">
+          <FormRow id="ad-title" label={t('Vị trí')}>
             <Input
               id="ad-title"
               value={title}
@@ -110,12 +120,12 @@ function JobAdForm({
               autoFocus
             />
           </FormRow>
-          <FormRow id="ad-company" label="Công ty">
+          <FormRow id="ad-company" label={t('Công ty')}>
             <Input id="ad-company" value={company} onChange={(e) => setCompany(e.target.value)} />
           </FormRow>
         </div>
         <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
-          <FormRow id="ad-url" label="Link tin (không bắt buộc)">
+          <FormRow id="ad-url" label={t('Link tin (không bắt buộc)')}>
             <Input
               id="ad-url"
               type="url"
@@ -125,7 +135,7 @@ function JobAdForm({
               onChange={(e) => setUrl(e.target.value)}
             />
           </FormRow>
-          <FormRow id="ad-month" label="Tháng">
+          <FormRow id="ad-month" label={t('Tháng')}>
             <Input
               id="ad-month"
               type="month"
@@ -137,8 +147,8 @@ function JobAdForm({
         </div>
         <FormRow
           id="ad-text"
-          label="Nội dung tin"
-          hint={`${text.length.toLocaleString('vi-VN')} / ${MAX_TEXT.toLocaleString('vi-VN')} ký tự`}
+          label={t('Nội dung tin')}
+          hint={t('{n} / {max} ký tự', { n: text.length, max: t.num(MAX_TEXT) })}
         >
           <Textarea
             id="ad-text"
@@ -146,14 +156,16 @@ function JobAdForm({
             onChange={(e) => setText(e.target.value)}
             rows={8}
             className="max-h-[45vh] overflow-y-auto"
-            placeholder="Dán toàn bộ phần mô tả công việc và yêu cầu…"
+            placeholder={t('Dán toàn bộ phần mô tả công việc và yêu cầu…')}
           />
         </FormRow>
         {ad && (
           <FormRow
             id="ad-skills"
-            label="Kỹ năng (sửa tay, cách nhau bằng dấu phẩy)"
-            hint="Sửa ô này thì kết quả của bạn được giữ, không phân tích lại. Đổi vị trí, công ty hay nội dung thì tin được phân tích lại."
+            label={t('Kỹ năng (sửa tay, cách nhau bằng dấu phẩy)')}
+            hint={t(
+              'Sửa ô này thì kết quả của bạn được giữ, không phân tích lại. Đổi vị trí, công ty hay nội dung thì tin được phân tích lại.',
+            )}
           >
             <Input id="ad-skills" value={skills} onChange={(e) => setSkills(e.target.value)} />
           </FormRow>
@@ -162,12 +174,12 @@ function JobAdForm({
       </DialogPanel>
       <DialogFooter>
         <span className="me-auto self-center text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
-          <SaveKeys /> để lưu
+          <SaveKeys /> {t('để lưu')}
         </span>
-        <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
+        <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          {ad ? 'Lưu' : 'Lưu và phân tích'}
+          {ad ? t('Lưu') : t('Lưu và phân tích')}
         </Button>
       </DialogFooter>
     </form>
@@ -189,13 +201,14 @@ export function JobAdDialog({
   onOpenChange: (open: boolean) => void;
   onSaved: (ad: ApiJobAd, created: boolean) => void;
 }) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }} className="sm:max-w-2xl">
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{ad ? 'Sửa tin tuyển dụng' : 'Dán tin tuyển dụng'}</DialogTitle>
+          <DialogTitle>{ad ? t('Sửa tin tuyển dụng') : t('Dán tin tuyển dụng')}</DialogTitle>
           <DialogDescription>
-            Mỗi tháng 5 đến 10 tin của vai trò nhắm tới. Kỹ năng và cấp bậc được rút ra trong nền, vài phút sau sẽ có.
+            {t('Mỗi tháng 5 đến 10 tin của vai trò nhắm tới. Kỹ năng và cấp bậc được rút ra trong nền, vài phút sau sẽ có.')}
           </DialogDescription>
         </DialogHeader>
         {open && <JobAdForm key={ad?.id ?? 'new'} ad={ad} month={month} onSaved={onSaved} />}

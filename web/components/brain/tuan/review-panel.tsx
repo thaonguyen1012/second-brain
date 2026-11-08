@@ -1,6 +1,7 @@
 'use client';
 import type { ApiWeek } from '@/lib/api/client';
 import type { ApiAchievement, ApiOpportunityDecision, ApiReviewView } from '@/lib/api/weeks';
+import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress';
@@ -18,19 +19,20 @@ import { WeekSection } from './week-section';
  * filled button (D2); finished rows are muted.
  */
 function ReviewChecklist({ checks, className }: { checks: ReviewCheck[]; className?: string }) {
+  const t = useT();
   const { done, total } = checkProgress(checks);
   const primary = checks.find((c) => !c.done && c.action)?.key;
   return (
     <section aria-labelledby="week-checks" className={cn('min-w-0 rounded-xl border bg-card', className)}>
       <div className="flex min-h-12 items-center gap-3 border-b px-4 py-2 sm:px-6">
         <h2 id="week-checks" className="font-heading text-[15px] font-semibold tracking-tight">
-          Kiểm tra cuối tuần
+          {t('Kiểm tra cuối tuần')}
         </h2>
         <Progress
           value={done}
           max={total}
-          aria-label="Tiến độ kiểm tra cuối tuần"
-          getAriaValueText={() => `${done}/${total} bước`}
+          aria-label={t('Tiến độ kiểm tra cuối tuần')}
+          getAriaValueText={() => t('{done}/{total} bước', { done, total })}
           className="ms-auto w-20 sm:w-32"
         >
           <ProgressTrack>
@@ -50,7 +52,7 @@ function ReviewChecklist({ checks, className }: { checks: ReviewCheck[]; classNa
           check gets no divider of its own just above the surface's border. */}
       <div className="flex border-t px-1.5 py-1 sm:px-3.5 xl:hidden">
         <Button variant="link" size="sm" render={<a href="#week-review-journal" />}>
-          Trả lời 6 câu
+          {t('Trả lời 6 câu')}
         </Button>
       </div>
     </section>
@@ -87,6 +89,7 @@ export function ReviewPanel({
   /** Switches to the Kế hoạch tab */
   onPlan: () => void;
 }) {
+  const t = useT();
   const minutes = new Map(review.time.byObjective.map((o) => [o.id, o.minutes]));
   const { withEvidence, stale } = review.opportunities;
   // Only when the server counts some due by Sunday; the section itself hides while none is due today.
@@ -98,17 +101,17 @@ export function ReviewPanel({
       <div className="flex min-w-0 flex-col divide-y rounded-xl border bg-card xl:col-start-2 xl:row-span-2 xl:row-start-1">
         <WeekSection
           id="week-review-objectives"
-          title="Tiến độ mục tiêu"
+          title={t('Tiến độ mục tiêu')}
           action={
             week.objectives.length === 0 && (
               <Button size="xs" variant="ghost" onClick={onPlan}>
-                Đặt mục tiêu
+                {t('Đặt mục tiêu')}
               </Button>
             )
           }
         >
           {week.objectives.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Tuần này không có mục tiêu nào.</p>
+            <p className="text-sm text-muted-foreground">{t('Tuần này không có mục tiêu nào.')}</p>
           ) : (
             <ObjectivesEditor
               start={start}

@@ -45,9 +45,9 @@ export default async function Page(props: PageProps<'/[lang]/docs/[[...slug]]'>)
   if (!page) notFound();
 
   const data = page.data as unknown as DocPageData;
-  const { body: MDX, toc, codeCss, readingMinutes } = await loadPage(data.absolutePath);
-  const { tree, book } = getShellTree(page.url);
   const t = await getT();
+  const { body: MDX, toc, codeCss, readingMinutes } = await loadPage(data.absolutePath, t);
+  const { tree, book } = getShellTree(page.url);
 
   return (
     <LazyDocsLayout tree={tree} book={book} {...baseOptions(t)}>

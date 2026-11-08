@@ -1,5 +1,5 @@
 'use client';
-import { useState, type ComponentProps } from 'react';
+import { useMemo, useState, type ComponentProps } from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import { api, type ApiItem, type ApiItemRequest, type ApiItemStatus, type ApiItemType } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useT } from '@/lib/i18n/client';
 import { describeApiError } from './api-state';
 import { ChoiceSelect } from './choice-select';
 import { ConfirmDelete } from './confirm-delete';
@@ -60,6 +61,9 @@ function ItemForm({
   onWriteNote?: (item: ApiItem) => void;
   focusRating?: boolean;
 }) {
+  const t = useT();
+  const typeOptions = useMemo(() => itemTypes.map((c) => ({ value: c.value, label: t(c.label) })), [t]);
+  const statusOptions = useMemo(() => itemStatuses.map((c) => ({ value: c.value, label: t(c.label) })), [t]);
   const [form, setForm] = useState<Form>(() => fromItem(item, draft));
   const [image, setImage] = useState<ImageChange>(KEEP_IMAGE);
   const [busy, setBusy] = useState(false);
@@ -94,12 +98,12 @@ function ItemForm({
    */
   const submit = async (): Promise<{ saved: ApiItem; imageError?: string } | null> => {
     if (!form.title.trim()) {
-      setError('Cần có tiêu đề.');
+      setError(t('Cần có tiêu đề.'));
       return null;
     }
     const rating = form.rating.trim() ? Number(form.rating) : null;
     if (rating !== null && !(Number.isInteger(rating) && rating >= 1 && rating <= 10)) {
-      setError('Điểm là số nguyên từ 1 đến 10, hoặc để trống.');
+      setError(t('Điểm là số nguyên từ 1 đến 10, hoặc để trống.'));
       return null;
     }
     const body = {
@@ -108,7 +112,7 @@ function ItemForm({
       status: form.status,
       tags: form.tags
         .split(',')
-        .map((t) => t.trim())
+        .map((tag) => tag.trim())
         .filter(Boolean),
       source: form.source.trim(),
       rating,
@@ -125,13 +129,13 @@ function ItemForm({
         const picture = await applyImageChange(saved.id, change);
         if (picture) final = { ...saved, ...picture };
       } catch (err) {
-        imageError = imageErrorText(toApiError(err));
+        imageError = imageErrorText(toApiError(err), t);
       }
       onSaved(final, !item, imageError);
       return { saved: final, imageError };
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
+      setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
       setBusy(false);
       return null;
     }
@@ -158,7 +162,7 @@ function ItemForm({
     >
       <DialogPanel className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="item-title">Tiêu đề</Label>
+          <Label htmlFor="item-title">{t('Tiêu đề')}</Label>
           <Input
             id="item-title"
             value={form.title} onChange={(e) => set('title', e.target.value)}
@@ -167,28 +171,28 @@ function ItemForm({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="item-type">Loại</Label>
+            <Label htmlFor="item-type">{t('Loại')}</Label>
             <ChoiceSelect
               id="item-type"
-              label="Loại"
+              label={t('Loại')}
               value={form.type}
               onChange={(v) => set('type', v)}
-              choices={itemTypes}
+              choices={typeOptions}
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="item-status">Trạng thái</Label>
+            <Label htmlFor="item-status">{t('Trạng thái')}</Label>
             <ChoiceSelect
               id="item-status"
-              label="Trạng thái"
+              label={t('Trạng thái')}
               value={form.status}
               onChange={(v) => set('status', v)}
-              choices={itemStatuses}
+              choices={statusOptions}
             />
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="item-source">Nguồn (tác giả, nền tảng, link)</Label>
+          <Label htmlFor="item-source">{t('Nguồn (tác giả, nền tảng, link)')}</Label>
           <Input id="item-source" value={form.source} onChange={(e) => set('source', e.target.value)} />
         </div>
         {(!handbook || hasOwnImage) && (
@@ -205,11 +209,11 @@ function ItemForm({
         )}
         <div className="grid gap-4 sm:grid-cols-[1fr_7rem]">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="item-tags">Tag (cách nhau bằng dấu phẩy)</Label>
+            <Label htmlFor="item-tags">{t('Tag (cách nhau bằng dấu phẩy)')}</Label>
             <Input id="item-tags" value={form.tags} onChange={(e) => set('tags', e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="item-rating">Điểm 1–10</Label>
+            <Label htmlFor="item-rating">{t('Điểm 1–10')}</Label>
             <Input
               id="item-rating"
               inputMode="numeric"
@@ -236,26 +240,32 @@ function ItemForm({
       <DialogFooter>
         {item && onDeleted && (
           <ConfirmDelete
-            title="Xóa item?"
+            title={t('Xóa item?')}
             description={
               item.type === 'project'
-                ? `"${item.title}" bị xóa hẳn. Dự án còn giờ làm thì phải xóa các giờ đó trước. Ghi chú liên kết vẫn giữ, chỉ mất liên kết. Không hoàn tác được.`
-                : `"${item.title}" bị xóa hẳn. Ghi chú liên kết vẫn giữ, chỉ mất liên kết; bằng chứng cho cơ hội giữ lại tiêu đề. Không hoàn tác được.`
+                ? t(
+                    '"{title}" bị xóa hẳn. Dự án còn giờ làm thì phải xóa các giờ đó trước. Ghi chú liên kết vẫn giữ, chỉ mất liên kết. Không hoàn tác được.',
+                    { title: item.title },
+                  )
+                : t(
+                    '"{title}" bị xóa hẳn. Ghi chú liên kết vẫn giữ, chỉ mất liên kết; bằng chứng cho cơ hội giữ lại tiêu đề. Không hoàn tác được.',
+                    { title: item.title },
+                  )
             }
             action={() => api.deleteItem(item.id)}
             onDeleted={() => onDeleted(item)}
             trigger={
               <Button variant="destructive-outline" type="button" className="sm:me-auto" disabled={busy}>
                 <Trash2 aria-hidden />
-                Xóa
+                {t('Xóa')}
               </Button>
             }
           />
         )}
-        <DialogClose render={<Button variant="ghost" type="button" />}>Hủy</DialogClose>
+        <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          {item ? 'Lưu' : 'Thêm vào thư viện'}
+          {item ? t('Lưu') : t('Thêm vào thư viện')}
         </Button>
       </DialogFooter>
     </form>
@@ -292,11 +302,12 @@ export function ItemDialog({
   /** Start in the rating field ("Chấm điểm" of the done-needs-an-output hint) instead of the title. */
   focusRating?: boolean;
 }) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': 'Đóng' }} finalFocus={finalFocus}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} finalFocus={finalFocus}>
         <DialogHeader>
-          <DialogTitle>{item ? 'Sửa item' : 'Thêm item'}</DialogTitle>
+          <DialogTitle>{item ? t('Sửa item') : t('Thêm item')}</DialogTitle>
         </DialogHeader>
         {/* keyed so the form resets for each item */}
         {open && (

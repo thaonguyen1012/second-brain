@@ -15,34 +15,36 @@ import { itemTypeLabel } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { evidenceKinds, fieldErrors, today } from './labels';
 import { FormError, FormRow } from './shared';
 
-const fieldNames = {
-  kind: 'Loại',
-  title: 'Tiêu đề',
-  url: 'Link',
-  note: 'Ghi chú',
-  date: 'Ngày',
-  item: 'Item',
-  libraryNote: 'Ghi chú thư viện',
+const fieldNames: Record<string, Msg> = {
+  kind: msg('Loại'),
+  title: msg('Tiêu đề'),
+  url: msg('Link'),
+  note: msg('Ghi chú'),
+  date: msg('Ngày'),
+  item: msg('Item'),
+  libraryNote: msg('Ghi chú thư viện'),
 };
 
 type Choice = { value: string; label: string };
 
-const loadItems = () =>
+const loadItems = (t: T) =>
   listAll(api.listItems({ limit: 200 }), 400).then((rows) =>
-    rows.map((i): Choice => ({ value: String(i.id), label: `${itemTypeLabel(i.type)} · ${i.title}` })),
+    rows.map((i): Choice => ({ value: String(i.id), label: `${t(itemTypeLabel(i.type))} · ${i.title}` })),
   );
 
 /** Notes carry their whole markdown: never load them all, search with ?q= and show at most this many. */
 const NOTE_RESULTS = 20;
-const noteChoice = (n: ApiNote): Choice => ({
+const noteChoice = (n: ApiNote, t: T): Choice => ({
   value: String(n.id),
-  label: n.title || n.markdown.slice(0, 60).replace(/\s+/g, ' ') || `Ghi chú #${n.id}`,
+  label: n.title || n.markdown.slice(0, 60).replace(/\s+/g, ' ') || t('Ghi chú #{id}', { id: n.id }),
 });
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -55,49 +57,54 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 function ItemPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const rows = useApi('evidence-picker:item', loadItems);
-  if (rows.error && !rows.data) return <p className="text-sm text-destructive-foreground">{describeApiError(rows.error).title}</p>;
-  if (!rows.data) return <p className="text-sm text-muted-foreground">Đang tải danh sách item…</p>;
+  const t = useT();
+  const rows = useApi('evidence-picker:item', () => loadItems(t));
+  if (rows.error && !rows.data)
+    return <p className="text-sm text-destructive-foreground">{describeApiError(rows.error, t).title}</p>;
+  if (!rows.data) return <p className="text-sm text-muted-foreground">{t('Đang tải danh sách item…')}</p>;
   if (rows.data.length === 0)
-    return <p className="text-sm text-muted-foreground">Thư viện chưa có item nào. Thêm ở trang Thư viện trước.</p>;
-  const choices = [{ value: '', label: 'Chọn item…' }, ...rows.data];
-  return <ChoiceSelect id="evidence-ref" label="Chọn item" value={value} onChange={onChange} choices={choices} />;
+    return <p className="text-sm text-muted-foreground">{t('Thư viện chưa có item nào. Thêm ở trang Thư viện trước.')}</p>;
+  const choices = [{ value: '', label: t('Chọn item…') }, ...rows.data];
+  return <ChoiceSelect id="evidence-ref" label={t('Chọn item')} value={value} onChange={onChange} choices={choices} />;
 }
 
 /** Search-as-you-type over GET /api/notes?q= (newest notes while the box is empty). */
 function NotePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const q = useDebounced(query.trim(), 250);
   const [picked, setPicked] = useState<Choice | null>(null);
   const rows = useApi(`evidence-picker:note:${q}`, () =>
-    growthApi.listNotes({ limit: NOTE_RESULTS, ...(q && { q }) }).then((page) => page.results.map(noteChoice)),
+    growthApi
+      .listNotes({ limit: NOTE_RESULTS, ...(q && { q }) })
+      .then((page) => page.results.map((n) => noteChoice(n, t))),
   );
   const found = rows.loading ? [] : (rows.data ?? []);
   const keep = picked && picked.value === value && !found.some((c) => c.value === value) ? [picked] : [];
-  const choices = [{ value: '', label: 'Chọn ghi chú…' }, ...keep, ...found];
+  const choices = [{ value: '', label: t('Chọn ghi chú…') }, ...keep, ...found];
   const status = rows.error
-    ? describeApiError(rows.error).title
+    ? describeApiError(rows.error, t).title
     : rows.loading
-      ? 'Đang tìm…'
+      ? t('Đang tìm…')
       : found.length === 0
         ? q
-          ? 'Không có ghi chú nào khớp.'
-          : 'Thư viện chưa có ghi chú nào. Thêm ở trang Ghi chú trước.'
+          ? t('Không có ghi chú nào khớp.')
+          : t('Thư viện chưa có ghi chú nào. Thêm ở trang Ghi chú trước.')
         : found.length === NOTE_RESULTS
-          ? `${NOTE_RESULTS} ghi chú mới nhất khớp; gõ thêm để thu hẹp.`
+          ? t('{n} ghi chú mới nhất khớp; gõ thêm để thu hẹp.', { n: NOTE_RESULTS })
           : null;
   return (
     <div className="flex flex-col gap-2">
       <Input
         type="search"
-        aria-label="Tìm ghi chú"
-        placeholder="Gõ để tìm trong tiêu đề và nội dung…"
+        aria-label={t('Tìm ghi chú')}
+        placeholder={t('Gõ để tìm trong tiêu đề và nội dung…')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
       <ChoiceSelect
         id="evidence-ref"
-        label="Chọn ghi chú"
+        label={t('Chọn ghi chú')}
         value={value}
         onChange={(v) => {
           setPicked(choices.find((c) => c.value === v) ?? null);
@@ -132,6 +139,7 @@ export function EvidenceForm({
   /** Container classes; default a bordered box (the add form), a row inside a bordered list passes padding only. */
   className?: string;
 }) {
+  const t = useT();
   const [kind, setKind] = useState<ApiEvidenceKind>(evidence?.kind ?? 'link');
   const [ref, setRef] = useState('');
   const [title, setTitle] = useState(evidence?.title ?? '');
@@ -144,11 +152,11 @@ export function EvidenceForm({
 
   const submit = async () => {
     if (kind === 'link' && (!title.trim() || !url.trim())) {
-      setError('Link cần có tiêu đề và địa chỉ.');
+      setError(t('Link cần có tiêu đề và địa chỉ.'));
       return;
     }
     if (!evidence && kind !== 'link' && !ref) {
-      setError(kind === 'item' ? 'Chọn một item.' : 'Chọn một ghi chú.');
+      setError(kind === 'item' ? t('Chọn một item.') : t('Chọn một ghi chú.'));
       return;
     }
     setBusy(true);
@@ -176,7 +184,7 @@ export function EvidenceForm({
       }
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body, fieldNames)) || describeApiError(e).title);
+      setError((e.status === 400 && fieldErrors(e.body, t, fieldNames)) || describeApiError(e, t).title);
       setBusy(false);
     }
   };
@@ -184,7 +192,7 @@ export function EvidenceForm({
   return (
     <form
       className={cn('flex flex-col gap-3', className ?? 'rounded-xl border p-3')}
-      aria-label={evidence ? 'Sửa bằng chứng' : 'Thêm bằng chứng'}
+      aria-label={evidence ? t('Sửa bằng chứng') : t('Thêm bằng chứng')}
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
@@ -197,21 +205,21 @@ export function EvidenceForm({
       }}
     >
       {!evidence && (
-        <FormRow id={`${prefix}-kind`} label="Loại bằng chứng">
+        <FormRow id={`${prefix}-kind`} label={t('Loại bằng chứng')}>
           <ChoiceSelect
             id={`${prefix}-kind`}
-            label="Loại bằng chứng"
+            label={t('Loại bằng chứng')}
             value={kind}
             onChange={(v) => {
               setKind(v);
               setRef('');
             }}
-            choices={evidenceKinds}
+            choices={evidenceKinds.map((k) => ({ value: k.value, label: t(k.label) }))}
           />
         </FormRow>
       )}
       {!evidence && kind !== 'link' && (
-        <FormRow id="evidence-ref" label={kind === 'item' ? 'Item' : 'Ghi chú'}>
+        <FormRow id="evidence-ref" label={kind === 'item' ? t('Item') : t('Ghi chú')}>
           {kind === 'item' ? (
             <ItemPicker value={ref} onChange={setRef} />
           ) : (
@@ -221,12 +229,12 @@ export function EvidenceForm({
       )}
       <FormRow
         id={`${prefix}-title`}
-        label={kind === 'link' ? 'Tiêu đề' : 'Tiêu đề (để trống thì lấy theo item hoặc ghi chú)'}
+        label={kind === 'link' ? t('Tiêu đề') : t('Tiêu đề (để trống thì lấy theo item hoặc ghi chú)')}
       >
         <Input id={`${prefix}-title`} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
       </FormRow>
       {kind === 'link' && (
-        <FormRow id={`${prefix}-url`} label="Link">
+        <FormRow id={`${prefix}-url`} label={t('Link')}>
           <Input
             id={`${prefix}-url`}
             type="url"
@@ -238,21 +246,21 @@ export function EvidenceForm({
         </FormRow>
       )}
       <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
-        <FormRow id={`${prefix}-date`} label="Ngày ship hoặc viết">
+        <FormRow id={`${prefix}-date`} label={t('Ngày ship hoặc viết')}>
           <Input id={`${prefix}-date`} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </FormRow>
-        <FormRow id={`${prefix}-note`} label="Ghi chú">
+        <FormRow id={`${prefix}-note`} label={t('Ghi chú')}>
           <Textarea id={`${prefix}-note`} value={note} onChange={(e) => setNote(e.target.value)} rows={1} />
         </FormRow>
       </div>
       <FormError error={error} />
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          Hủy
+          {t('Hủy')}
         </Button>
         <Button type="submit" size="sm" disabled={busy}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          {evidence ? 'Lưu bằng chứng' : 'Thêm bằng chứng'}
+          {evidence ? t('Lưu bằng chứng') : t('Thêm bằng chứng')}
         </Button>
       </div>
     </form>

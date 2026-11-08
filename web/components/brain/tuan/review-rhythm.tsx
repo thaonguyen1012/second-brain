@@ -4,14 +4,21 @@ import Link from 'next/link';
 import { ArrowRight, CalendarRange, Circle, CircleCheck } from 'lucide-react';
 import type { ApiObjective } from '@/lib/api/client';
 import type { ApiRhythm } from '@/lib/api/weeks';
+import { useT } from '@/lib/i18n/client';
+import type { T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PREDICTIONS_HREF } from '../due-predictions';
 
-/** "2026-10" -> "tháng 10/2026". */
-function monthLabel(month: string): string {
-  const [year, m] = month.split('-');
-  return `tháng ${Number(m)}/${year}`;
+/** "2026-10" -> "tháng 10/2026" / "October 2026". */
+function monthLabel(month: string, t: T): string {
+  const [year, m] = month.split('-').map(Number);
+  if (t.locale === 'en') {
+    return new Intl.DateTimeFormat(t.intl, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+      Date.UTC(year, m - 1, 1),
+    );
+  }
+  return t('tháng {m}/{y}', { m, y: year });
 }
 
 /** What the button at the end of an open check does: a link, or a callback (go to next week's plan). */
@@ -36,19 +43,22 @@ export interface ReviewCheck {
  * week's objectives (null = never opened, undefined = still loading), `onNextWeek` absent when there is no next
  * week to plan. Pure, so the week header and the checklist count the same thing.
  */
-export function reviewChecks({
-  inbox,
-  objectives,
-  rhythm,
-  nextWeek,
-  onNextWeek,
-}: {
-  inbox: string | null;
-  objectives: ApiObjective[];
-  rhythm: ApiRhythm | null;
-  nextWeek?: number | null;
-  onNextWeek?: () => void;
-}): ReviewCheck[] {
+export function reviewChecks(
+  {
+    inbox,
+    objectives,
+    rhythm,
+    nextWeek,
+    onNextWeek,
+  }: {
+    inbox: string | null;
+    objectives: ApiObjective[];
+    rhythm: ApiRhythm | null;
+    nextWeek?: number | null;
+    onNextWeek?: () => void;
+  },
+  t: T,
+): ReviewCheck[] {
   const counted = objectives.filter((o) => o.status !== 'dropped');
   const done = counted.filter((o) => o.status === 'done').length;
   const checks: ReviewCheck[] = [
@@ -56,16 +66,16 @@ export function reviewChecks({
       key: 'inbox',
       counted: true,
       done: inbox === '0',
-      question: 'Inbox về 0 chưa?',
-      value: inbox === null ? '–' : inbox === '0' ? 'Đã về 0' : `Còn ${inbox}`,
-      action: inbox !== null && inbox !== '0' ? { label: 'Xử lý inbox', href: '/inbox/' } : undefined,
+      question: t('Inbox về 0 chưa?'),
+      value: inbox === null ? '–' : inbox === '0' ? t('Đã về 0') : t('Còn {n}', { n: Number(inbox) }),
+      action: inbox !== null && inbox !== '0' ? { label: t('Xử lý inbox'), href: '/inbox/' } : undefined,
     },
     {
       key: 'objectives',
       counted: true,
       done: counted.length > 0 && done === counted.length,
-      question: 'Mục tiêu xong',
-      value: counted.length ? `${done}/${counted.length}` : 'Chưa có mục tiêu',
+      question: t('Mục tiêu xong'),
+      value: counted.length ? `${done}/${counted.length}` : t('Chưa có mục tiêu'),
     },
   ];
   if (rhythm) {
@@ -75,25 +85,25 @@ export function reviewChecks({
         key: 'notes',
         counted: true,
         done: notes > 0,
-        question: 'Có ghi chú mới tuần này?',
-        value: notes > 0 ? `${notes} ghi chú` : 'Chưa có',
-        action: notes === 0 ? { label: 'Viết ghi chú', href: '/thu-vien/ghi-chu/' } : undefined,
+        question: t('Có ghi chú mới tuần này?'),
+        value: notes > 0 ? t('{n} ghi chú', { n: notes }) : t('Chưa có'),
+        action: notes === 0 ? { label: t('Viết ghi chú'), href: '/thu-vien/ghi-chu/' } : undefined,
       },
       {
         key: 'achievements',
         counted: true,
         done: achievements > 0,
-        question: 'Có cập nhật thành tựu?',
-        value: achievements > 0 ? `${achievements} dòng` : 'Chưa có',
-        action: achievements === 0 ? { label: 'Thêm dòng', href: '#week-achievements' } : undefined,
+        question: t('Có cập nhật thành tựu?'),
+        value: achievements > 0 ? t('{n} dòng', { n: achievements }) : t('Chưa có'),
+        action: achievements === 0 ? { label: t('Thêm dòng'), href: '#week-achievements' } : undefined,
       },
       {
         key: 'predictions',
         counted: true,
         done: predictionsDue === 0,
-        question: 'Dự đoán đến hạn?',
-        value: predictionsDue > 0 ? `${predictionsDue} cần chấm` : 'Không có',
-        action: predictionsDue > 0 ? { label: 'Chấm lại', href: PREDICTIONS_HREF } : undefined,
+        question: t('Dự đoán đến hạn?'),
+        value: predictionsDue > 0 ? t('{n} cần chấm', { n: predictionsDue }) : t('Không có'),
+        action: predictionsDue > 0 ? { label: t('Chấm lại'), href: PREDICTIONS_HREF } : undefined,
       },
     );
     if (month)
@@ -101,22 +111,32 @@ export function reviewChecks({
         key: 'month',
         counted: false,
         done: false,
-        question: 'Đầu tháng: nhìn lại tháng trước',
-        detail:
-          `Trong ${monthLabel(month.month)}: ${month.booksFinished} cuốn sách đọc xong, ${month.notes} ghi chú. ` +
-          'Nhịp tháng: một cuốn sách, một cuộc trò chuyện cà phê với người trong hoặc ngoài ngành.',
+        question: t('Đầu tháng: nhìn lại tháng trước'),
+        detail: t(
+          'Trong {month}: {books}, {notes}. Nhịp tháng: một cuốn sách, một cuộc trò chuyện cà phê với người trong hoặc ngoài ngành.',
+          {
+            month: monthLabel(month.month, t),
+            books: t('{n} cuốn sách đọc xong', { n: month.booksFinished }),
+            notes: t('{n} ghi chú', { n: month.notes }),
+          },
+        ),
       });
     if (quarter)
       checks.push({
         key: 'quarter',
         counted: false,
         done: false,
-        question: 'Đầu quý: nhìn lại quý trước',
-        detail:
-          `Quý ${quarter.quarter}/${quarter.year}: ${quarter.achievements} thành tựu, ` +
-          `${quarter.projectsFinished} dự án xong, ${quarter.predictionsOpen} dự đoán chưa chấm. ` +
-          'Nhịp quý: ship một thứ hoàn chỉnh có người dùng thật, viết case study, nâng một kỹ năng nền, cập nhật CV ' +
-          'theo kết quả, xem lại danh sách dự đoán.',
+        question: t('Đầu quý: nhìn lại quý trước'),
+        detail: t(
+          'Quý {q}/{y}: {achievements}, {projects}, {predictions}. Nhịp quý: ship một thứ hoàn chỉnh có người dùng thật, viết case study, nâng một kỹ năng nền, cập nhật CV theo kết quả, xem lại danh sách dự đoán.',
+          {
+            q: quarter.quarter,
+            y: quarter.year,
+            achievements: t('{n} thành tựu', { n: quarter.achievements }),
+            projects: t('{n} dự án xong', { n: quarter.projectsFinished }),
+            predictions: t('{n} dự đoán chưa chấm', { n: quarter.predictionsOpen }),
+          },
+        ),
       });
   }
   if (onNextWeek) {
@@ -125,9 +145,9 @@ export function reviewChecks({
       key: 'next-week',
       counted: true,
       done: planned,
-      question: '3 ưu tiên tuần tới',
-      value: planned ? `${nextWeek} mục tiêu` : nextWeek === undefined ? '–' : 'Chưa chọn',
-      action: planned ? undefined : { label: 'Tuần tới', onClick: onNextWeek },
+      question: t('3 ưu tiên tuần tới'),
+      value: planned ? t('{n} mục tiêu', { n: nextWeek ?? 0 }) : nextWeek === undefined ? '–' : t('Chưa chọn'),
+      action: planned ? undefined : { label: t('Tuần tới'), onClick: onNextWeek },
     });
   }
   return checks;
@@ -169,6 +189,7 @@ function CheckButton({ action, primary }: { action: CheckAction; primary: boolea
  * a calendar mark instead of an open circle, since nothing ticks it.
  */
 export function CheckRow({ check, primary }: { check: ReviewCheck; primary: boolean }) {
+  const t = useT();
   const { done, question, value, detail, action, counted } = check;
   const Icon = !counted ? CalendarRange : done ? CircleCheck : Circle;
   return (
@@ -186,7 +207,7 @@ export function CheckRow({ check, primary }: { check: ReviewCheck; primary: bool
       <div className={cn('flex min-w-0 flex-col gap-0.5', !value && !action && 'sm:col-span-3')}>
         <span className={cn('text-sm', done ? 'text-muted-foreground' : 'font-medium')}>
           {question}
-          {done && <span className="sr-only"> (xong)</span>}
+          {done && <span className="sr-only"> {t('(xong)')}</span>}
         </span>
         {detail && <span className="text-xs leading-relaxed text-muted-foreground">{detail}</span>}
       </div>

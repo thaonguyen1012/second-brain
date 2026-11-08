@@ -16,29 +16,38 @@ import {
   TodayWeek,
 } from '@/components/brain/today';
 import type { RoadmapStep } from '@/components/brain/today-learning';
+import { getT } from '@/lib/i18n/server';
+import type { T } from '@/lib/i18n/translate';
 
-// Resolved here on the server, so the client blocks get plain strings and no registry or colour map ships to them.
-const homeBooks: HeroBook[] = books.map((b) => ({
-  slug: b.slug,
-  title: b.title,
-  track: b.track,
-  lessonCount: b.lessonCount,
-  fill: trackFill[b.track],
-}));
-const groups = tracks.map(({ slug, title }) => ({ slug, title, fill: trackFill[slug] }));
-
-/** "Giai đoạn 1, nền (tháng 0 đến 5)" -> "Giai đoạn 1, nền · tháng 0–5". */
-const phaseLabel = (title: string) => title.replace(/ \(tháng (\d+) đến (\d+)\)$/, ' · tháng $1–$2');
-const business: RoadmapStep[] = businessPhases.map((p) => ({
-  label: phaseLabel(p.title),
-  rows: p.items.map(({ text, books }) => ({ text, books })),
-}));
-const it: RoadmapStep[] = itStages.map((s) => {
-  const months = s.months.replace(/^(\d+) đến (\d+)$/, 'tháng $1–$2');
-  return { label: `Lộ trình IT · ${months.toLowerCase()}`, rows: [{ text: s.study, books: s.books, meta: months }] };
-});
-// The hero's first-run suggestion: the first book of roadmap phase 1, named by that phase ("Giai đoạn 1").
-const start = { slug: businessPhases[0].items[0].books[0], phase: businessPhases[0].title.split(',')[0] };
+/**
+ * Resolved here on the server, in the page's language, so the client blocks get plain strings and no registry,
+ * roadmap or colour map ships to them.
+ */
+function homeData(t: T) {
+  const homeBooks: HeroBook[] = books.map((b) => ({
+    slug: b.slug,
+    title: t(b.title),
+    track: b.track,
+    lessonCount: b.lessonCount,
+    fill: trackFill[b.track],
+  }));
+  const groups = tracks.map(({ slug, title }) => ({ slug, title: t(title), fill: trackFill[slug] }));
+  // "Giai đoạn 1, nền · tháng 0–5"
+  const business: RoadmapStep[] = businessPhases.map((p) => ({
+    label: t('{phase} · tháng {from}–{to}', { phase: t(p.name), from: p.months[0], to: p.months[1] }),
+    rows: p.items.map(({ text, books }) => ({ text: t(text), books })),
+  }));
+  const it: RoadmapStep[] = itStages.map((s) => {
+    const months = s.months ? t('tháng {from}–{to}', { from: s.months[0], to: s.months[1] }) : t('Song song');
+    return {
+      label: t('Lộ trình IT · {months}', { months: months.toLowerCase() }),
+      rows: [{ text: t(s.study), books: s.books, meta: months }],
+    };
+  });
+  // The hero's first-run suggestion: the first book of roadmap phase 1, named by that phase ("Giai đoạn 1").
+  const start = { slug: businessPhases[0].items[0].books[0], phase: t(businessPhases[0].name).split(',')[0] };
+  return { homeBooks, groups, business, it, start };
+}
 
 /**
  * "Hôm nay" (DECISIONS 4.4, 9.3; DESIGN.md §9a): the resume hero, then from xl a 20rem rail of status tiles (week
@@ -49,10 +58,12 @@ const start = { slug: businessPhases[0].items[0].books[0], phase: businessPhases
  * the main column keeps no gaps. Between lg and xl the rail is two columns; below lg one (beside the 224px sidebar
  * at md, a half-width tile cannot hold the week strip).
  */
-export default function HomePage() {
+export default async function HomePage() {
+  const t = await getT();
+  const { homeBooks, groups, business, it, start } = homeData(t);
   return (
     <div className="flex w-full flex-col">
-      <PageHeader title="Hôm nay" nav="/">
+      <PageHeader title={t('Hôm nay')} nav="/">
         <ProgressMigrationOffer />
       </PageHeader>
 
@@ -60,7 +71,7 @@ export default function HomePage() {
         <ContinueReading books={homeBooks} start={start} className="xl:col-start-1" />
         <TodaySetup className="xl:col-start-1" />
         <aside
-          aria-label="Tuần, inbox và sổ tay"
+          aria-label={t('Tuần, inbox và sổ tay')}
           className="grid gap-4 lg:grid-cols-2 xl:col-start-2 xl:row-span-5 xl:row-start-1 xl:grid-cols-1"
         >
           <TodayRhythm />

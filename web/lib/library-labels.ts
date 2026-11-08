@@ -3,30 +3,31 @@
 import type { ApiInboxEntry, ApiItem, ApiItemRequest, ApiItemType } from '@/lib/api/client';
 import type { ApiNote } from '@/lib/api/library';
 import { formatDate, hostOf } from '@/lib/labels';
+import type { T } from '@/lib/i18n/translate';
 
 /** An Item's source as a row or card shows it: "Sổ tay" for a handbook, the host for a link, else the text itself. */
-export function itemSourceLabel(source: string | null | undefined): string {
+export function itemSourceLabel(source: string | null | undefined, t: T): string {
   const s = (source ?? '').trim();
   if (!s) return '';
-  if (s.startsWith('/docs/')) return 'Sổ tay';
+  if (s.startsWith('/docs/')) return t('Sổ tay');
   return /^https?:\/\//i.test(s) ? hostOf(s) || s : s;
 }
 
 /** The one date a board card names: finished in Xong, started in Đang làm, else when it was added. */
-export function itemDateLabel(item: Pick<ApiItem, 'status' | 'createdAt' | 'startedAt' | 'finishedAt'>): string {
-  if (item.status === 'done' && item.finishedAt) return `xong ${formatDate(item.finishedAt)}`;
-  if (item.status === 'active' && item.startedAt) return `bắt đầu ${formatDate(item.startedAt)}`;
-  return `thêm ${formatDate(item.createdAt)}`;
+export function itemDateLabel(item: Pick<ApiItem, 'status' | 'createdAt' | 'startedAt' | 'finishedAt'>, t: T): string {
+  if (item.status === 'done' && item.finishedAt) return t('xong {date}', { date: formatDate(item.finishedAt, t) });
+  if (item.status === 'active' && item.startedAt) return t('bắt đầu {date}', { date: formatDate(item.startedAt, t) });
+  return t('thêm {date}', { date: formatDate(item.createdAt, t) });
 }
 
 /** Title shown for a note: its title, else the first non-empty markdown line without heading/quote marks. */
-export function noteTitle(note: Pick<ApiNote, 'id' | 'title' | 'markdown'>): string {
+export function noteTitle(note: Pick<ApiNote, 'id' | 'title' | 'markdown'>, t: T): string {
   if (note.title.trim()) return note.title.trim();
   const line = note.markdown
     .split('\n')
     .map((l) => l.replace(/^\s*(#{1,6}\s+|>\s*|[-*+]\s+)/, '').trim())
     .find(Boolean);
-  return line ? line.slice(0, 120) : `Ghi chú #${note.id}`;
+  return line ? line.slice(0, 120) : t('Ghi chú #{id}', { id: note.id });
 }
 
 /** Hosts whose links are clearly one Item type; everything else falls back to the suggested destination. */

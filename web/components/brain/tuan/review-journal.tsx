@@ -5,6 +5,7 @@ import type { ApiWeek } from '@/lib/api/client';
 import { type ApiReviewField, type ApiReviewPatch, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { useT } from '@/lib/i18n/client';
 import { WeekSection, WriteError } from './week-section';
 import { clockTime, reviewQuestions } from './week-utils';
 import { SaveKeys } from '../save-keys';
@@ -30,6 +31,7 @@ export function ReviewJournal({
   opportunities: ApiWeekOpportunities;
   onSaved: (week: ApiWeek) => void;
 }) {
+  const t = useT();
   const [answers, setAnswers] = useState<Answers>(() => answersOf(week));
   const [saved, setSaved] = useState<Answers>(() => answersOf(week));
   const [state, setState] = useState<'idle' | 'saving' | 'error'>('idle');
@@ -82,31 +84,37 @@ export function ReviewJournal({
   }
 
   const suggestion = opportunities.withEvidence
-    .map((o) => `${o.title}: +${o.supports} ủng hộ, ${o.contradicts} phản bác`)
+    .map((o) =>
+      t('{title}: +{supports} ủng hộ, {contradicts} phản bác', {
+        title: o.title,
+        supports: o.supports,
+        contradicts: o.contradicts,
+      }),
+    )
     .join('\n');
 
   return (
     // The column around it carries id="week-review-journal" (the "Trả lời 6 câu" anchor), so the heading's id differs.
     <WeekSection
       id="week-review-journal-title"
-      title="Nhật ký nhìn lại"
+      title={t('Nhật ký nhìn lại')}
       action={
         // Answers saved and the save state in one meta line; the save button shows below only while needed
         <span className="text-xs text-muted-foreground tabular-nums" aria-live="polite">
-          {answered}/{reviewQuestions.length} câu
+          {t('{answered}/{total} câu', { answered, total: reviewQuestions.length })}
           {state === 'saving' ? (
-            ' · Đang lưu…'
+            ` · ${t('Đang lưu…')}`
           ) : dirty ? (
             <>
-              {' · Chưa lưu'}
+              {` · ${t('Chưa lưu')}`}
               {/* Key hint only where a keyboard is likely (DESIGN.md D24) */}
               <span className="max-sm:hidden pointer-coarse:hidden">
                 {' · '}
-                <SaveKeys /> để lưu
+                <SaveKeys /> {t('để lưu')}
               </span>
             </>
           ) : reviewedAt ? (
-            ` · Đã lưu lúc ${clockTime(reviewedAt)}`
+            ` · ${t('Đã lưu lúc {time}', { time: clockTime(reviewedAt, t) })}`
           ) : null}
         </span>
       }
@@ -123,24 +131,24 @@ export function ReviewJournal({
                   {done ? (
                     <>
                       <CheckCircle2 className="size-4 text-success-foreground" aria-hidden />
-                      <span className="sr-only">Đã trả lời: </span>
+                      <span className="sr-only">{t('Đã trả lời:')} </span>
                     </>
                   ) : (
                     `${i + 1}.`
                   )}
                 </span>
-                {q.label}
+                {t(q.label)}
               </label>
               {/* The hint is the placeholder; screen readers get it as the description too */}
               {q.hint && (
                 <p id={`${id}-hint`} className="sr-only">
-                  {q.hint}
+                  {t(q.hint)}
                 </p>
               )}
               <Textarea
                 id={id}
                 aria-describedby={q.hint ? `${id}-hint` : undefined}
-                placeholder={q.hint || undefined}
+                placeholder={q.hint ? t(q.hint) : undefined}
                 className="[&_textarea]:min-h-8.5"
                 value={answers[q.field]}
                 onChange={(e) => setAnswers((a) => ({ ...a, [q.field]: e.target.value }))}
@@ -160,7 +168,7 @@ export function ReviewJournal({
                   className="self-start"
                   onClick={() => setAnswers((a) => ({ ...a, [q.field]: suggestion }))}
                 >
-                  Chèn các cơ hội có bằng chứng tuần này
+                  {t('Chèn các cơ hội có bằng chứng tuần này')}
                 </Button>
               )}
             </div>
@@ -172,7 +180,7 @@ export function ReviewJournal({
       {(dirty || state === 'saving') && (
         <div className="flex">
           <Button variant="outline" size="sm" onClick={() => void save(dirtyFields)} loading={state === 'saving'}>
-            Lưu nhìn lại
+            {t('Lưu nhìn lại')}
           </Button>
         </div>
       )}

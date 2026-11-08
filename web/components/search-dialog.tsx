@@ -41,6 +41,8 @@ import { searchBrain, type BrainSearchResults } from '@/lib/api/search';
 import { toApiError } from '@/lib/api/use-api';
 import { decisionOf, hostOf, inboxStatusOf, itemStatusOf, itemTypeLabel, opportunityHref } from '@/lib/labels';
 import { formatDay, freshness, monthLabel, outcomeOf } from '@/components/brain/growth/labels';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 
 /** Shorter queries match too much of everything; the handbook search still runs for them. */
 const MIN_QUERY = 2;
@@ -53,16 +55,16 @@ let offlineUntil = 0;
 
 type Kind = 'item' | 'note' | 'inbox' | 'opportunity' | 'skill' | 'achievement' | 'prediction' | 'jobAd' | 'news';
 
-const kinds: Record<Kind, { label: string; icon: LucideIcon }> = {
-  item: { label: 'Thư viện', icon: Library },
-  note: { label: 'Ghi chú', icon: NotebookPen },
-  inbox: { label: 'Inbox', icon: Inbox },
-  opportunity: { label: 'Cơ hội', icon: Lightbulb },
-  skill: { label: 'Kỹ năng', icon: Sprout },
-  achievement: { label: 'Thành tựu', icon: Trophy },
-  prediction: { label: 'Dự đoán', icon: Scale },
-  jobAd: { label: 'Tuyển dụng', icon: BriefcaseBusiness },
-  news: { label: 'Bản tin', icon: Newspaper },
+const kinds: Record<Kind, { label: Msg; icon: LucideIcon }> = {
+  item: { label: msg('Thư viện'), icon: Library },
+  note: { label: msg('Ghi chú'), icon: NotebookPen },
+  inbox: { label: msg('Inbox'), icon: Inbox },
+  opportunity: { label: msg('Cơ hội'), icon: Lightbulb },
+  skill: { label: msg('Kỹ năng'), icon: Sprout },
+  achievement: { label: msg('Thành tựu'), icon: Trophy },
+  prediction: { label: msg('Dự đoán'), icon: Scale },
+  jobAd: { label: msg('Tuyển dụng'), icon: BriefcaseBusiness },
+  news: { label: msg('Bản tin'), icon: Newspaper },
 };
 
 interface BrainHit {
@@ -116,42 +118,42 @@ function clipToMatch(text: string, query: string, lead = 24): string {
   return `…${chars.slice(start).join('').replace(/^…/, '')}`;
 }
 
-function toHits(r: BrainSearchResults, q: string): BrainHit[] {
+function toHits(r: BrainSearchResults, q: string, t: T): BrainHit[] {
   return [
     ...r.items.map((it) => ({
       id: `brain-item-${it.id}`,
       kind: 'item' as const,
       title: it.title,
-      detail: join(itemTypeLabel(it.type), itemStatusOf(it.status).label, it.source),
+      detail: join(t(itemTypeLabel(it.type)), t(itemStatusOf(it.status).label), it.source),
       href: `/thu-vien/?item=${it.id}`,
     })),
     ...r.notes.map((n) => ({
       // the server sends title (or first line) and an excerpt around the match, never the body
       id: `brain-note-${n.id}`,
       kind: 'note' as const,
-      title: n.title || `Ghi chú #${n.id}`,
+      title: n.title || t('Ghi chú #{id}', { id: n.id }),
       detail: n.excerpt,
       href: `/thu-vien/ghi-chu/?id=${n.id}`,
     })),
     ...r.inbox.map((e) => ({
       id: `brain-inbox-${e.id}`,
       kind: 'inbox' as const,
-      title: oneLine(e.ogTitle || e.text || e.url || `Mục #${e.id}`).slice(0, 160),
-      detail: join(inboxStatusOf(e.status).label, e.ogSiteName || hostOf(e.url)),
+      title: oneLine(e.ogTitle || e.text || e.url || t('Mục #{id}', { id: e.id })).slice(0, 160),
+      detail: join(t(inboxStatusOf(e.status).label), e.ogSiteName || hostOf(e.url)),
       href: `/inbox/?status=${e.status}&id=${e.id}`,
     })),
     ...r.opportunities.map((o) => ({
       id: `brain-opportunity-${o.id}`,
       kind: 'opportunity' as const,
       title: o.title,
-      detail: join(decisionOf(o.decision).label, excerpt(o.hypothesis, q)),
+      detail: join(t(decisionOf(o.decision).label), excerpt(o.hypothesis, q)),
       href: opportunityHref(o.id),
     })),
     ...r.skills.map((s) => ({
       id: `brain-skill-${s.id}`,
       kind: 'skill' as const,
       title: s.name,
-      detail: join(freshness[s.freshness].label, s.aliases.join(', ')),
+      detail: join(t(freshness[s.freshness].label), s.aliases.join(', ')),
       href: `/phat-trien/ky-nang/?id=${s.id}`,
     })),
     ...r.achievements.map((a) => ({
@@ -166,8 +168,10 @@ function toHits(r: BrainSearchResults, q: string): BrainHit[] {
       kind: 'prediction' as const,
       title: oneLine(p.statement).slice(0, 160),
       detail: join(
-        outcomeOf(p.outcome).label,
-        p.outcome === 'open' ? `chấm lại ${formatDay(p.checkOn)}` : `ghi ${formatDay(p.madeOn)}`,
+        t(outcomeOf(p.outcome).label),
+        p.outcome === 'open'
+          ? t('chấm lại {date}', { date: formatDay(p.checkOn) })
+          : t('ghi {date}', { date: formatDay(p.madeOn) }),
       ),
       href: `/phat-trien/thanh-tuu/?prediction=${p.id}`,
     })),
@@ -175,7 +179,7 @@ function toHits(r: BrainSearchResults, q: string): BrainHit[] {
       id: `brain-jobad-${ad.id}`,
       kind: 'jobAd' as const,
       title: ad.title,
-      detail: join(ad.company, monthLabel(ad.month)),
+      detail: join(ad.company, monthLabel(ad.month, t)),
       href: `/phat-trien/thi-truong/?jobAd=${ad.id}`,
     })),
     ...r.news
@@ -204,7 +208,7 @@ interface BrainState {
  * Debounced second-brain search for `query` (empty = off). Hits of an earlier query stay shown while the next
  * one loads, as long as one query extends the other (typing on), never those of an unrelated old query.
  */
-function useBrainSearch(query: string) {
+function useBrainSearch(query: string, t: T) {
   const q = query.trim().slice(0, MAX_QUERY);
   const active = q.length >= MIN_QUERY;
   const [state, setState] = useState<BrainState>({ q: '' });
@@ -221,7 +225,7 @@ function useBrainSearch(query: string) {
           ? Promise.reject(new ApiError(0, 'offline', false))
           : searchBrain(q, 5, controller.signal);
       search.then(
-        (r) => alive && setState({ q, hits: toHits(r, q) }),
+        (r) => alive && setState({ q, hits: toHits(r, q, t) }),
         (err: unknown) => {
           if (isAbort(err) || controller.signal.aborted) return; // superseded, not offline
           const error = toApiError(err);
@@ -235,7 +239,7 @@ function useBrainSearch(query: string) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [q, active]);
+  }, [q, active, t]);
 
   if (!active) return { hits: NO_HITS, loading: false, error: undefined };
   const related = state.q !== '' && (q.startsWith(state.q) || state.q.startsWith(q));
@@ -260,10 +264,11 @@ interface HandbookHit {
 
 const NO_HANDBOOK = new Map<string, HandbookHit>();
 
-/** "/docs/<track>/<book>/..." -> the book's title from lib/books.ts. */
-function bookTitle(url: string): string | undefined {
+/** "/docs/<track>/<book>/..." -> the book's title from lib/books.ts, in the page's language. */
+function bookTitle(url: string, t: T): string | undefined {
   const slug = url.replace(/^\/docs\//, '').split('/')[1];
-  return slug ? getBook(slug)?.title : undefined;
+  const title = slug ? getBook(slug)?.title : undefined;
+  return title && t(title);
 }
 
 /**
@@ -273,7 +278,7 @@ function bookTitle(url: string): string | undefined {
  * row"): the page title, its book and best heading as meta, one line of text. The row opens the best hit's
  * anchor when there is one. Tables (none from this index today) pass through to Fumadocs' own renderer.
  */
-function collapseHandbook(items: SearchResultItem[]): { list: ListItems; byId: Map<string, HandbookHit> } {
+function collapseHandbook(items: SearchResultItem[], t: T): { list: ListItems; byId: Map<string, HandbookHit> } {
   const pages = new Map<string, { url: string; title: string; heading?: string; text?: string }>();
   const order: (string | SearchResultItem)[] = [];
   for (const item of items) {
@@ -313,7 +318,7 @@ function collapseHandbook(items: SearchResultItem[]): { list: ListItems; byId: M
     byId.set(id, {
       id,
       title,
-      meta: join(bookTitle(entry), heading),
+      meta: join(bookTitle(entry, t), heading),
       excerpt: excerpt === title ? '' : excerpt,
     });
     seen.add(id);
@@ -417,10 +422,11 @@ export default function AppSearchDialog({
   onOpenChange,
   ...props
 }: SharedProps & { links?: SearchLink[] }) {
+  const t = useT();
   const { locale } = useI18n();
   const router = useRouter();
   const search = useFetchSearch({ locale });
-  const brain = useBrainSearch(open ? search.search : '');
+  const brain = useBrainSearch(open ? search.search : '', t);
   const { onSearchChange } = search;
   // Every opening starts empty (the destinations list), never with the results of the last query.
   const onOpen = (next: boolean) => {
@@ -451,7 +457,7 @@ export default function AppSearchDialog({
   );
   const byId = useMemo(() => new Map(brain.hits.map((h) => [h.id, h])), [brain.hits]);
 
-  const collapsed = useMemo(() => (search.data ? collapseHandbook(search.data.items) : null), [search.data]);
+  const collapsed = useMemo(() => (search.data ? collapseHandbook(search.data.items, t) : null), [search.data, t]);
   const handbookById = collapsed?.byId ?? NO_HANDBOOK;
 
   // Second-brain rows first: they are few (at most 5 per kind), the handbook list runs to 20 pages.
@@ -469,8 +475,8 @@ export default function AppSearchDialog({
   const brainNote = !brain.error?.reachable
     ? null
     : [401, 403].includes(brain.error.status)
-      ? 'Chưa đăng nhập: chỉ tìm được trong sổ tay.'
-      : `Không tìm được trong bộ não thứ hai (máy chủ trả lỗi ${brain.error.status}).`;
+      ? t('Chưa đăng nhập: chỉ tìm được trong sổ tay.')
+      : t('Không tìm được trong bộ não thứ hai (máy chủ trả lỗi {status}).', { status: brain.error.status });
 
   return (
     <SearchDialog
@@ -484,7 +490,7 @@ export default function AppSearchDialog({
       <SearchDialogContent>
         <SearchDialogHeader>
           <SearchDialogIcon />
-          <SearchDialogInput aria-label="Tìm mọi thứ" placeholder="Tìm sổ tay, ghi chú, inbox…" />
+          <SearchDialogInput aria-label={t('Tìm mọi thứ')} placeholder={t('Tìm sổ tay, ghi chú, inbox…')} />
           <SearchDialogClose className="max-sm:hidden pointer-coarse:hidden" />
         </SearchDialogHeader>
         <ActiveBefore items={items} handbook={handbook} memoryRef={activeMemory} />
@@ -494,7 +500,7 @@ export default function AppSearchDialog({
           className="[&_::highlight(fd-search)]:bg-muted-foreground/15 [&_::highlight(fd-search)]:text-foreground [&_::highlight(fd-search)]:no-underline"
           Empty={() => (
             <div role="status" className="py-12 text-center text-sm text-muted-foreground">
-              {brain.loading ? 'Đang tìm…' : 'Không tìm thấy kết quả'}
+              {brain.loading ? t('Đang tìm…') : t('Không tìm thấy kết quả')}
             </div>
           )}
           Item={({ item, table, onClick }) => {
@@ -503,11 +509,11 @@ export default function AppSearchDialog({
             const page = table || hit ? undefined : handbookById.get(item.id);
             const label =
               hit && hit.id === firstBrain
-                ? 'Bộ não thứ hai'
+                ? t('Bộ não thứ hai')
                 : !table && item.id === firstHandbook
-                  ? 'Sổ tay'
+                  ? t('Sổ tay')
                   : !table && item.id === firstLink
-                    ? 'Đi đến'
+                    ? t('Đi đến')
                     : null;
             return (
               <>
@@ -518,7 +524,7 @@ export default function AppSearchDialog({
                     onClick={onClick}
                     icon={kinds[hit.kind].icon}
                     title={hit.title}
-                    meta={join(kinds[hit.kind].label, hit.detail)}
+                    meta={join(t(kinds[hit.kind].label), hit.detail)}
                   />
                 ) : page ? (
                   <ResultRow

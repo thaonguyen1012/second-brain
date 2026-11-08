@@ -78,7 +78,10 @@ product (a time-lapse, "3 tháng sau") are `.g-note` pills, never app UI.
 * **Real screens only.** Show what the app does (components/brain/ is the reference): its real labels, its real
   lucide icons, its keys. Never an invented feature, never made-up numbers about the owner's results. Example
   content (a link, an opportunity title) is neutral and obviously an example.
-* **Vietnamese on screen,** English in code and comments (CLAUDE.md).
+* **The page's language on screen** (Vietnamese or English, DECISIONS 9.9), English in code and comments. A guide
+  loads lazily, so it brings its own English: `const t = useT(guides)` with `guides` from `lib/i18n/en/guides.ts`
+  (lib/i18n/README.md); its labels are the app's real ones, so most keys already exist in the page dictionary.
+  The frame around it (`lazy.tsx`, `guides/guide-frame.tsx`) is in the page bundle and uses `useT()` alone.
 * **Off the home first load.** Pages import guides only through `lazy.tsx`; never import `kit/` or a guide
   from a server component or from anything the home page loads (make check's 220 kB budget).
 * **No runtime requests.** No images or fonts from other domains; thumbnails are drawn in CSS, fonts are the
@@ -89,7 +92,7 @@ product (a time-lapse, "3 tháng sau") are `.g-note` pills, never app UI.
 * **Every guide has a poster** (`poster` prop): the frame that tells the story on its own. It is what reduced
   motion shows (the kit's `reduced-motion.ts`) and what most people see.
 * **Compact design.** Every guide ships a `compact` layout for a 358 px column (a redesign, not a squeeze).
-* **Accessible.** Wrap the stage in `role="img"` with a Vietnamese `aria-label` that says what the loop shows.
+* **Accessible.** Wrap the stage in `role="img"` with an `aria-label` (through `t()`) that says what the loop shows.
 * **The look comes from `brain-look.ts`.** Tokens point at the app's CSS variables, so a change in
   `app/global.css` reaches the guides. Use `--ss-*` tokens in guide CSS, not raw colors (a drawn thumbnail is
   the exception).

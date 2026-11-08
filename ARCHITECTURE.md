@@ -21,6 +21,29 @@ browser ──> Next.js (standalone, Node)          web/
 * No runtime request leaves the origin: fonts self-hosted by next/font, Mermaid served from `/vendor/`,
   KaTeX CSS bundled, images from expired Coursera URLs replaced by server-rendered placeholders.
 
+## UI languages (Vietnamese, English; DECISIONS 9.9)
+
+```
+browser /thu-vien/  (cookie lang=en)
+   └─ next.config.mjs rewrites (afterFiles) ─> /en/thu-vien/  app/[lang]/(home)/thu-vien/page.tsx, prerendered
+      (no cookie or another value ─> /vi/...; /en/... and /vi/... open directly; /api/, /trees/, /files/ and
+       public/ files are not rewritten)
+```
+
+* Every page lives under `web/app/[lang]/` (the root layout is `app/[lang]/layout.tsx`, `<html lang>`); both
+  languages are prerendered, lesson pages render on request once per language (the MDX compile cache is keyed by
+  language, only the image and embed placeholders differ). Not a `proxy.ts`: with `HOSTNAME=127.0.0.1` Next 16
+  takes a proxy's rewrite for an external URL.
+* `web/lib/i18n/`: the Vietnamese text in the code is its own key, `t('Lưu')`; server components read the language
+  from `next/root-params` (`getT()`), client components from a context (`useT()`). The root layout sends the
+  English dictionary inside the RSC payload of English pages only, so no JS bundle carries English and Vietnamese
+  pages carry no dictionary; the lazily loaded Stageshow guides and intro pictures import their own. Paths come
+  from `useAppPathname()` (the language stripped), so server and browser render the same sidebar.
+* The switch (top bar; Fumadocs' language select on lesson pages) sets the cookie and reloads the page.
+* Django answers in the same language: `core.middleware.LanguageMiddleware` activates `en` when the cookie says
+  so (Django's and DRF's messages), the app's own messages go through `core.i18n.tr`.
+* `lib/i18n/coverage.test.ts` (Vitest) and `core/tests/test_i18n.py` (pytest) keep both catalogues complete.
+
 ## Phase 2: Django + deployment
 
 Status: `backend/` scaffolded (Django 5.2, DRF, drf-spectacular, psycopg 3, django-environ; uv). Dev: Postgres 16
@@ -155,7 +178,7 @@ Detail views use query parameters, not dynamic segments, so every route stays st
 work, growth, library), all going through the one exported `request()` of `client.ts`. Shared helpers:
 `lib/dates.ts` (Europe/Prague day, Monday, day arithmetic), `lib/labels.ts` (status tones, opportunity decisions,
 DRF `fieldErrors`). The pages are static shells; data loads in the browser through `web/lib/api/` (`useApi` in
-`lib/api/use-api.ts`), so `next build` never calls Django. A missing backend (network error, proxy 5xx, non-JSON answer) and 401/403 show Vietnamese states
+`lib/api/use-api.ts`), so `next build` never calls Django. A missing backend (network error, proxy 5xx, non-JSON answer) and 401/403 show states in the UI language
 (`components/brain/api-state.tsx`). Cards and status colours are shared: `components/brain/brain-card.tsx`,
 `lib/labels.ts`.
 
@@ -230,7 +253,7 @@ Local end to end: `make dev` (deploy/README.md, "Laptop: daily use without Docke
 the jobs loop (`make jobs`); it never touches :3000. `deploy/launchd/com.example.brain.jobs.plist` (not installed)
 runs `run_jobs` every 300 s as a launchd user agent.
 
-Capture from outside the app (DECISIONS 4.3): `/inbox/them/?url=&title=&text=` (`app/(home)/inbox/them/`,
+Capture from outside the app (DECISIONS 4.3): `/inbox/them/?url=&title=&text=` (`app/[lang]/(home)/inbox/them/`,
 `components/capture/capture-form.tsx`) shows a confirm form (link + note prefilled with the title and the shared
 text; only http/https links, checked in `lib/capture.ts` and again by the API) and saves with `POST /api/inbox`
 through `lib/api/client.ts`, then offers "Đóng" (`window.close()`, works for the bookmarklet's popup; otherwise a

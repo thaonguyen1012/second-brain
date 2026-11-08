@@ -1,8 +1,11 @@
 'use client';
 import { useState, type CSSProperties } from 'react';
 import { Check, ChevronLeft, ChevronRight, Play, Square, Timer } from 'lucide-react';
-import { formatWeekRange } from '@/components/brain/work/format';
+import { formatHours, formatWeekRange } from '@/components/brain/work/format';
 import { mondayOf, todayPrague } from '@/lib/dates';
+import { useT } from '@/lib/i18n/client';
+import { guides } from '@/lib/i18n/en/guides';
+import { msg, type T } from '@/lib/i18n/translate';
 import { Stage } from '../kit/stage';
 import type { Act } from '../kit/act';
 import { Bar } from '../kit/window';
@@ -40,8 +43,8 @@ type S = {
 const initial: S = { running: false, clock: 0, lapse: false, logged: false };
 const POSTER: S = { running: false, clock: 0, lapse: false, logged: true };
 
-const PROJECT = 'Website cho tiệm bánh';
-const CLIENT = 'Tiệm bánh Hoa Mai';
+const PROJECT = msg('Website cho tiệm bánh');
+const CLIENT = msg('Tiệm bánh Hoa Mai');
 const SESSION = 90;
 const REST = { wide: { x: 580, y: 420 }, compact: { x: 330, y: 445 } };
 
@@ -67,16 +70,8 @@ const BASE = {
 const clockText = (s: number) =>
   `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-/** formatHours (work/format.ts): "45 phút", "1 giờ 30" */
-function hoursText(m: number) {
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  if (h === 0) return `${r} phút`;
-  return r ? `${h} giờ ${String(r).padStart(2, '0')}` : `${h} giờ`;
-}
-
 /** share (week-summary.tsx) */
-const share = (part: number, total: number) => `${Math.round((part / total) * 100)}% tổng giờ`;
+const share = (part: number, total: number, t: T) => t('{pct}% tổng giờ', { pct: Math.round((part / total) * 100) });
 
 async function script(a: Act<S>) {
   await a.wait(600);
@@ -108,6 +103,7 @@ async function script(a: Act<S>) {
 }
 
 function TimerCard({ s, compact }: { s: S; compact: boolean }) {
+  const t = useT(guides);
   return (
     <div className="g-card wt-timer">
       <Swap id={s.running ? 'run' : 'idle'} className="wt-swap">
@@ -118,30 +114,30 @@ function TimerCard({ s, compact }: { s: S; compact: boolean }) {
             </span>
             <Count value={s.clock} format={clockText} duration={600} className="wt-clock" />
             <span className="wt-run__text">
-              <span className="wt-run__title">{PROJECT}</span>
-              <span className="g-desc">bắt đầu lúc 09:00</span>
+              <span className="wt-run__title">{t(PROJECT)}</span>
+              <span className="g-desc">{t('bắt đầu lúc {time}', { time: '09:00' })}</span>
             </span>
             <GButton variant="destructive" icon={Square} kbd="T" name="stop">
-              Dừng
+              {t('Dừng')}
             </GButton>
           </div>
         ) : (
           <div className="wt-idle">
             <span className="wt-idle__head">
               <Timer size={14} strokeWidth={2} aria-hidden />
-              Bấm giờ
+              {t('Bấm giờ', null, 'timer')}
             </span>
             <div className="wt-form">
-              <GSelect value={PROJECT} className="wt-project" />
-              <span className="g-box wt-note">Đang làm gì? (không bắt buộc)</span>
+              <GSelect value={t(PROJECT)} className="wt-project" />
+              <span className="g-box wt-note">{t('Đang làm gì? (không bắt buộc)')}</span>
               <span className="wt-bill">
                 <span className="wt-check" aria-hidden>
                   <Check size={11} strokeWidth={3} />
                 </span>
-                Tính tiền
+                {t('Tính tiền')}
               </span>
               <GButton icon={Play} kbd={compact ? undefined : 'T'} name="start" className="wt-start">
-                Bắt đầu
+                {t('Bắt đầu')}
               </GButton>
             </div>
           </div>
@@ -149,13 +145,14 @@ function TimerCard({ s, compact }: { s: S; compact: boolean }) {
       </Swap>
       {/* The time-lapse note: on the card's top edge in wide, inside the running card's margin in compact */}
       <span className="g-note wt-lapse" data-show={s.lapse || undefined}>
-        1 giờ 30 phút sau
+        {t('1 giờ 30 phút sau')}
       </span>
     </div>
   );
 }
 
 function SummaryCard({ s, compact, range }: { s: S; compact: boolean; range: string }) {
+  const t = useT(guides);
   const billable = BASE.billable + (s.logged ? SESSION : 0);
   const total = billable + BASE.nonbillable;
   // Bars are scaled to the longest row (BillableBar), so the new, longer row rescales the others
@@ -163,14 +160,14 @@ function SummaryCard({ s, compact, range }: { s: S; compact: boolean; range: str
   return (
     <div className="g-card wt-summary">
       <div className="wt-summary__head">
-        <span className="g-card__title wt-summary__title">Tuần {range}</span>
+        <span className="g-card__title wt-summary__title">{t('Tuần {range}', { range })}</span>
         <span className="wt-stepper">
           <span className="g-button" data-variant="outline" data-size="xs" aria-hidden>
             <ChevronLeft size={12} strokeWidth={2} />
           </span>
           {!compact && (
             <GButton size="xs" variant="outline" off>
-              Tuần này
+              {t('Tuần này')}
             </GButton>
           )}
           <span className="g-button" data-variant="outline" data-size="xs" aria-hidden>
@@ -180,37 +177,37 @@ function SummaryCard({ s, compact, range }: { s: S; compact: boolean; range: str
       </div>
       <div className="wt-tiles">
         <span className="wt-tile">
-          <span className="wt-tile__label">Tổng giờ</span>
-          <Roll className="wt-tile__value">{hoursText(total)}</Roll>
+          <span className="wt-tile__label">{t('Tổng giờ')}</span>
+          <Roll className="wt-tile__value">{formatHours(total, t)}</Roll>
         </span>
         <span className="wt-tile">
-          <span className="wt-tile__label">Tính tiền</span>
+          <span className="wt-tile__label">{t('Tính tiền')}</span>
           <Roll className="wt-tile__value" delay={120}>
-            {hoursText(billable)}
+            {formatHours(billable, t)}
           </Roll>
           <Roll className="wt-tile__hint" delay={240}>
-            {share(billable, total)}
+            {share(billable, total, t)}
           </Roll>
         </span>
         <span className="wt-tile">
-          <span className="wt-tile__label">Không tính tiền</span>
-          <span className="wt-tile__value">{hoursText(BASE.nonbillable)}</span>
+          <span className="wt-tile__label">{t('Không tính tiền')}</span>
+          <span className="wt-tile__value">{formatHours(BASE.nonbillable, t)}</span>
           <Roll className="wt-tile__hint" delay={240}>
-            {share(BASE.nonbillable, total)}
+            {share(BASE.nonbillable, total, t)}
           </Roll>
         </span>
       </div>
       <div className="wt-by">
         <div className="wt-by__head">
-          <span className="wt-by__title">Theo dự án</span>
+          <span className="wt-by__title">{t('Theo dự án')}</span>
           <span className="wt-legend">
             <span>
               <i data-kind="billable" />
-              Tính tiền
+              {t('Tính tiền')}
             </span>
             <span>
               <i data-kind="nonbillable" />
-              Không tính tiền
+              {t('Không tính tiền')}
             </span>
           </span>
         </div>
@@ -218,8 +215,8 @@ function SummaryCard({ s, compact, range }: { s: S; compact: boolean; range: str
           <Collapse open={s.logged} reveal="drop">
             <div className="wt-row wt-row--new">
               <span className="wt-row__name">
-                {PROJECT}
-                {!compact && <span className="wt-row__client">{CLIENT}</span>}
+                {t(PROJECT)}
+                {!compact && <span className="wt-row__client">{t(CLIENT)}</span>}
               </span>
               <span className="wt-row__track">
                 <span
@@ -228,7 +225,7 @@ function SummaryCard({ s, compact, range }: { s: S; compact: boolean; range: str
                   data-on={s.logged || undefined}
                   style={{ '--w': SESSION / scale } as CSSProperties}
                 />
-                <span className="wt-row__total">{hoursText(SESSION)}</span>
+                <span className="wt-row__total">{formatHours(SESSION, t)}</span>
               </span>
             </div>
           </Collapse>
@@ -255,15 +252,16 @@ function SummaryCard({ s, compact, range }: { s: S; compact: boolean; range: str
   );
 }
 
-const LABEL =
-  'Hình minh họa trang Công việc, phần Giờ: chọn dự án rồi bấm Bắt đầu để bấm giờ; đồng hồ chạy, rồi nhấn T để dừng. ' +
-  'Phiên vừa ghi được cộng ngay vào tổng kết tuần: tổng giờ và giờ tính tiền tăng, và dự án có một thanh mới ở đầu phần Theo dự án.';
+const LABEL = msg(
+  'Hình minh họa trang Công việc, phần Giờ: chọn dự án rồi bấm Bắt đầu để bấm giờ; đồng hồ chạy, rồi nhấn T để dừng. Phiên vừa ghi được cộng ngay vào tổng kết tuần: tổng giờ và giờ tính tiền tăng, và dự án có một thanh mới ở đầu phần Theo dự án.',
+);
 
 export default function WorkTimerGuide({ className }: { className?: string }) {
   const look = useBrainLook();
-  const [range] = useState(() => formatWeekRange(mondayOf(todayPrague())));
+  const t = useT(guides);
+  const [range] = useState(() => formatWeekRange(mondayOf(todayPrague()), t));
   return (
-    <div role="img" aria-label={LABEL} className={className}>
+    <div role="img" aria-label={t(LABEL)} className={className}>
       <Stage
         width={GUIDE_SIZE.width}
         height={GUIDE_SIZE.height}

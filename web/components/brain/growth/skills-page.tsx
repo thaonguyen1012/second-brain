@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
@@ -26,13 +28,21 @@ const loadSkills = () => listAll(growthApi.listSkills({ limit: 200 }));
 const matrixGrid = 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6';
 
 /** First-run quick adds: skills the handbooks teach (Sổ tay 1-5, An ninh mạng, PM); one click creates one. */
-const suggestedSkills = ['Excel', 'SQL', 'Python', 'Business English', 'An ninh mạng', 'Quản lý dự án'];
+const suggestedSkills: readonly Msg[] = [
+  msg('Excel'),
+  msg('SQL'),
+  msg('Python'),
+  msg('Business English'),
+  msg('An ninh mạng'),
+  msg('Quản lý dự án'),
+];
 
 /**
  * A matrix tile (DECISIONS 9.1: a matrix, staleness by colour, no number): one bordered container, the freshness dot
  * beside the name, the word as a StatusBadge; a faded skill's name goes muted.
  */
 function SkillTile({ skill, onOpen }: { skill: ApiSkill; onOpen: () => void }) {
+  const t = useT();
   const f = freshness[skill.freshness];
   return (
     <li>
@@ -53,7 +63,7 @@ function SkillTile({ skill, onOpen }: { skill: ApiSkill; onOpen: () => void }) {
           </span>
         </span>
         <span className="mt-auto flex w-full min-w-0 items-center gap-2">
-          <StatusBadge tone={f.tone}>{f.label}</StatusBadge>
+          <StatusBadge tone={f.tone}>{t(f.label)}</StatusBadge>
           {skill.aliases.length > 0 && (
             <span className="truncate text-xs text-muted-foreground">{skill.aliases.join(', ')}</span>
           )}
@@ -65,6 +75,7 @@ function SkillTile({ skill, onOpen }: { skill: ApiSkill; onOpen: () => void }) {
 
 /** Kỹ năng: the portable skills matrix (DECISIONS 6.5, 9.2). */
 export function SkillsPage() {
+  const t = useT();
   const skills = useApi('skills:all', loadSkills);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
@@ -86,13 +97,13 @@ export function SkillsPage() {
   }, [all]);
   const filterChoices = useMemo(
     (): { value: Filter; label: string }[] => [
-      { value: 'all', label: skills.data ? `Mọi độ mới · ${all.length}` : 'Mọi độ mới' },
+      { value: 'all', label: skills.data ? `${t('Mọi độ mới')} · ${all.length}` : t('Mọi độ mới') },
       ...freshnessOrder.map((f) => ({
         value: f,
-        label: skills.data ? `${freshness[f].label} · ${counts[f]}` : freshness[f].label,
+        label: skills.data ? `${t(freshness[f].label)} · ${counts[f]}` : t(freshness[f].label),
       })),
     ],
-    [skills.data, all.length, counts],
+    [skills.data, all.length, counts, t],
   );
   const q = query.trim().toLowerCase();
   const shown = all.filter(
@@ -128,12 +139,12 @@ export function SkillsPage() {
     setNotice(null);
     try {
       const saved = await growthApi.createSkill({ name });
-      setNotice(`Đã thêm "${saved.name}"`);
+      setNotice(t('Đã thêm "{title}"', { title: saved.name }));
       skills.reload();
       setOpenId(saved.id);
     } catch (err) {
       const e = toApiError(err);
-      setNotice((e.status === 400 && fieldErrors(e.body, { name: 'Tên' })) || describeApiError(e).title);
+      setNotice((e.status === 400 && fieldErrors(e.body, t, { name: msg('Tên') })) || describeApiError(e, t).title);
     } finally {
       setAdding(null);
     }
@@ -145,7 +156,13 @@ export function SkillsPage() {
           the matrix is empty: the first-run panel carries the one add (D26). */}
       {toolbar !== 'hide' && (
         <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
-          <ChoiceSelect label="Độ mới" value={filter} onChange={setFilter} choices={filterChoices} className="w-auto" />
+          <ChoiceSelect
+            label={t('Độ mới')}
+            value={filter}
+            onChange={setFilter}
+            choices={filterChoices}
+            className="w-auto"
+          />
           <div className="relative order-last w-full sm:order-none sm:w-64">
             <Search
               className="pointer-events-none absolute start-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
@@ -155,8 +172,8 @@ export function SkillsPage() {
               ref={searchRef}
               data-local-search
               type="search"
-              aria-label="Tìm kỹ năng"
-              placeholder="Tìm theo tên hoặc tên khác"
+              aria-label={t('Tìm kỹ năng')}
+              placeholder={t('Tìm theo tên hoặc tên khác')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="ps-6"
@@ -164,7 +181,7 @@ export function SkillsPage() {
           </div>
           <Button className="ms-auto" onClick={create}>
             <Plus aria-hidden />
-            Thêm kỹ năng <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
+            {t('Thêm kỹ năng')} <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
           </Button>
         </div>
       )}
@@ -179,7 +196,7 @@ export function SkillsPage() {
       {skills.error && !skills.data ? (
         <ApiErrorState error={skills.error} onRetry={skills.reload} />
       ) : !skills.data ? (
-        <ul className={matrixGrid} aria-busy="true" aria-label="Đang tải">
+        <ul className={matrixGrid} aria-busy="true" aria-label={t('Đang tải')}>
           {Array.from({ length: 8 }, (_, i) => (
             <li key={i}>
               <Skeleton className="h-20 rounded-xl" />
@@ -189,44 +206,47 @@ export function SkillsPage() {
       ) : empty ? (
         <EmptyPanel
           glyph={ListChecks}
-          title="Chưa có kỹ năng nào"
-          text="Thêm kỹ năng nền và kỹ năng của vai trò nhắm tới, rồi gắn bằng chứng: thứ đã ship, case study, bài viết."
+          title={t('Chưa có kỹ năng nào')}
+          text={t('Thêm kỹ năng nền và kỹ năng của vai trò nhắm tới, rồi gắn bằng chứng: thứ đã ship, case study, bài viết.')}
           action={
             <Button onClick={create} aria-keyshortcuts="n">
               <Plus aria-hidden />
-              Thêm kỹ năng đầu tiên
+              {t('Thêm kỹ năng đầu tiên')}
               <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
             </Button>
           }
           quick={
             <>
-              {suggestedSkills.map((name) => (
-                <Button
-                  key={name}
-                  size="sm"
-                  variant="outline"
-                  loading={adding === name}
-                  disabled={adding !== null}
-                  aria-label={`Thêm kỹ năng ${name}`}
-                  onClick={() => void quickAdd(name)}
-                >
-                  <Plus aria-hidden />
-                  {name}
-                </Button>
-              ))}
+              {suggestedSkills.map((skill) => {
+                const name = t(skill);
+                return (
+                  <Button
+                    key={skill.msgid}
+                    size="sm"
+                    variant="outline"
+                    loading={adding === name}
+                    disabled={adding !== null}
+                    aria-label={t('Thêm kỹ năng {name}', { name })}
+                    onClick={() => void quickAdd(name)}
+                  >
+                    <Plus aria-hidden />
+                    {name}
+                  </Button>
+                );
+              })}
             </>
           }
           guide="skill"
         />
       ) : shown.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Không có mục nào khớp bộ lọc.{' '}
+          {t('Không có mục nào khớp bộ lọc.')}{' '}
           <Button variant="link" size="sm" className="px-0" onClick={clearFilters}>
-            Xóa bộ lọc
+            {t('Xóa bộ lọc')}
           </Button>
         </p>
       ) : (
-        <ul className={matrixGrid} aria-label="Ma trận kỹ năng">
+        <ul className={matrixGrid} aria-label={t('Ma trận kỹ năng')}>
           {shown.map((s) => (
             <SkillTile key={s.id} skill={s} onOpen={() => setOpenId(s.id)} />
           ))}
@@ -249,7 +269,9 @@ export function SkillsPage() {
         onOpenChange={setDialogOpen}
         onSaved={(saved, created) => {
           setDialogOpen(false);
-          setNotice(created ? `Đã thêm "${saved.name}"` : `Đã lưu "${saved.name}"`);
+          setNotice(
+            created ? t('Đã thêm "{title}"', { title: saved.name }) : t('Đã lưu "{title}"', { title: saved.name }),
+          );
           skills.reload();
           if (created) setOpenId(saved.id);
           else setVersion((v) => v + 1);

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client';
 import { ApiErrorState, describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { fieldErrors, formatClock, formatMinutes, isTyping } from './format';
@@ -82,7 +83,7 @@ export function TimerPanel({
   onChanged,
   compact = false,
   onAddProject,
-  noProjectLabel = 'Chưa có dự án',
+  noProjectLabel,
 }: {
   timer: TimerState;
   projects: ApiProject[];
@@ -96,6 +97,7 @@ export function TimerPanel({
   /** The line before "Thêm dự án" ("Chưa có dự án"; the page says when only finished projects exist). */
   noProjectLabel?: string;
 }) {
+  const t = useT();
   const [picked, setPicked] = useState<number | null>(null);
   const [note, setNote] = useState('');
   const [billable, setBillable] = useState(true);
@@ -142,10 +144,10 @@ export function TimerPanel({
       });
       rememberProject(projectId);
       setNote('');
-      onChanged(`Bắt đầu bấm giờ cho "${entry.projectTitle}"`, entry);
+      onChanged(t('Bắt đầu bấm giờ cho "{title}"', { title: entry.projectTitle }), entry);
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body)) || describeApiError(e).title);
+      setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
     } finally {
       setBusy(false);
     }
@@ -159,12 +161,12 @@ export function TimerPanel({
       const entry = await timer.stop();
       onChanged(
         entry
-          ? `Đã dừng: ${formatMinutes(entry.minutes)} cho "${entry.projectTitle}"`
-          : 'Bộ bấm giờ đã dừng từ trước.',
+          ? t('Đã dừng: {time} cho "{title}"', { time: formatMinutes(entry.minutes, t), title: entry.projectTitle })
+          : t('Bộ bấm giờ đã dừng từ trước.'),
         entry,
       );
     } catch (err) {
-      setError(describeApiError(toApiError(err)).title);
+      setError(describeApiError(toApiError(err), t).title);
     } finally {
       setBusy(false);
     }
@@ -190,19 +192,19 @@ export function TimerPanel({
   const stopButton = (size: 'default' | 'sm') => (
     <Button onClick={() => void stop()} disabled={busy} size={size} aria-keyshortcuts="t">
       {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Square aria-hidden />}
-      Dừng
+      {t('Dừng')}
       <KeyHint k="T" />
     </Button>
   );
   const startedLabel =
     running?.startedAt &&
-    new Date(running.startedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    new Date(running.startedAt).toLocaleTimeString(t.intl, { hour: '2-digit', minute: '2-digit' });
 
   if (compact) {
     // nothing runs: no strip, only a failed T start says why
     if (!running) return errorLine || null;
     return (
-      <section aria-label="Đang bấm giờ" className="flex flex-col gap-2 rounded-xl border bg-card px-3 py-2">
+      <section aria-label={t('Đang bấm giờ')} className="flex flex-col gap-2 rounded-xl border bg-card px-3 py-2">
         <div className="flex min-h-8 items-center gap-3">
           <LiveDot />
           <p className="min-w-0 flex-1 truncate text-sm font-medium">{running.projectTitle}</p>
@@ -211,7 +213,7 @@ export function TimerPanel({
           )}
           {stopButton('sm')}
           <span className="sr-only" role="status">
-            Đang bấm giờ cho {running.projectTitle}
+            {t('Đang bấm giờ cho {title}', { title: running.projectTitle })}
           </span>
         </div>
         {errorLine}
@@ -220,16 +222,16 @@ export function TimerPanel({
   }
 
   if (timer.error && !timer.data) return <ApiErrorState error={timer.error} onRetry={timer.reload} />;
-  if (!timer.data) return <Skeleton className="h-24 rounded-xl" aria-label="Đang tải bộ bấm giờ" />;
+  if (!timer.data) return <Skeleton className="h-24 rounded-xl" aria-label={t('Đang tải bộ bấm giờ')} />;
   if (!running && projects.length === 0 && !onAddProject) return null;
 
   const objectiveChoices = [
-    { value: 'none', label: 'Không gắn mục tiêu' },
+    { value: 'none', label: t('Không gắn mục tiêu') },
     ...objectives.filter((o) => o.status !== 'dropped').map((o) => ({ value: String(o.id), label: o.title })),
   ];
 
   return (
-    <section aria-label="Bấm giờ" className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+    <section aria-label={t('Bấm giờ', null, 'timer')} className="flex flex-col gap-3 rounded-xl border bg-card p-4">
       {running ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <LiveDot />
@@ -239,14 +241,18 @@ export function TimerPanel({
           <div className="flex min-w-0 flex-1 basis-40 flex-col gap-0.5">
             <p className="text-sm font-medium break-words">{running.projectTitle}</p>
             <p className="text-xs text-muted-foreground break-words">
-              {[running.note, !running.billable && 'không tính tiền', startedLabel && `bắt đầu lúc ${startedLabel}`]
+              {[
+                running.note,
+                !running.billable && t('không tính tiền'),
+                startedLabel && t('bắt đầu lúc {time}', { time: startedLabel }),
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
           </div>
           {stopButton('default')}
           <span className="sr-only" role="status">
-            Đang bấm giờ cho {running.projectTitle}
+            {t('Đang bấm giờ cho {title}', { title: running.projectTitle })}
           </span>
         </div>
       ) : (
@@ -257,7 +263,7 @@ export function TimerPanel({
             void start();
           }}
         >
-          <h2 className="text-sm font-medium">Bấm giờ</h2>
+          <h2 className="text-sm font-medium">{t('Bấm giờ', null, 'timer')}</h2>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
             {/* Idle: the clock at zero keeps the panel's shape (Toggl); the running one replaces it */}
             <span className="font-heading text-2xl font-semibold tabular-nums" aria-hidden>
@@ -274,14 +280,16 @@ export function TimerPanel({
             >
               {projects.length > 0 ? (
                 <ChoiceSelect
-                  label="Dự án"
+                  label={t('Dự án')}
                   value={String(projectId ?? '')}
                   onChange={(v) => setPicked(Number(v))}
                   choices={projects.map((p) => ({ value: String(p.id), label: p.title }))}
                 />
               ) : (
                 <div className="flex h-9 min-w-0 items-center gap-2 sm:h-8">
-                  <span className="text-sm whitespace-nowrap text-muted-foreground">{noProjectLabel}</span>
+                  <span className="text-sm whitespace-nowrap text-muted-foreground">
+                    {noProjectLabel ?? t('Chưa có dự án')}
+                  </span>
                   <Button
                     type="button"
                     size="sm"
@@ -292,24 +300,24 @@ export function TimerPanel({
                     }}
                   >
                     <Plus aria-hidden />
-                    Thêm dự án
+                    {t('Thêm dự án')}
                   </Button>
                 </div>
               )}
               <Input
-                aria-label="Ghi chú (đang làm gì)"
-                placeholder="Đang làm gì? (không bắt buộc)"
+                aria-label={t('Ghi chú (đang làm gì)')}
+                placeholder={t('Đang làm gì? (không bắt buộc)')}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={500}
               />
               <label className="flex h-9 items-center gap-2 whitespace-nowrap text-sm sm:h-8">
                 <Checkbox checked={billable} onCheckedChange={setBillable} />
-                Tính tiền
+                {t('Tính tiền')}
               </label>
               {objectiveChoices.length > 1 ? (
                 <ChoiceSelect
-                  label="Mục tiêu tuần này"
+                  label={t('Mục tiêu tuần này')}
                   value={objective}
                   onChange={setObjective}
                   choices={objectiveChoices}
@@ -319,7 +327,7 @@ export function TimerPanel({
               )}
               <Button ref={startButton} type="submit" disabled={busy || projectId === null} aria-keyshortcuts="t">
                 {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
-                Bắt đầu
+                {t('Bắt đầu')}
                 <KeyHint k="T" />
               </Button>
             </div>
