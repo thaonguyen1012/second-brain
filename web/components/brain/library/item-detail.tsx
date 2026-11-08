@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import Link from 'next/link';
 import { Briefcase, ExternalLink, Maximize2, Pencil } from 'lucide-react';
 import { api, type ApiItem, type ApiItemStatus } from '@/lib/api/client';
@@ -8,7 +8,6 @@ import { handbookForSource, itemPicture } from '@/lib/handbook-picture';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
 import { formatDate, hostOf, itemStatusOf, itemTypeLabel } from '@/lib/labels';
-import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { SheetTitle } from '@/components/ui/sheet';
@@ -16,7 +15,6 @@ import { describeApiError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ItemDialog } from '../item-dialog';
 import { AreaTile } from '../page-header';
-import { DiscardChanges } from './discard-changes';
 import { DoneOutputHint, missingOutput } from './done-output';
 import { DetailPicture } from './item-image';
 import { ItemMentions } from './item-mentions';
@@ -73,20 +71,16 @@ export function ItemDetail({
   item,
   variant,
   composeOnOpen = false,
-  composerRef,
   titleRef,
   onItemChange,
   onOtherCounts,
   onDeleted,
-  onDirtyChange,
 }: {
   item: ApiItem;
   /** In the Sheet beside Thư viện (with "Mở trang đầy đủ") or as the full page (an h1). */
   variant: 'sheet' | 'page';
   /** Opened from "Viết ghi chú": the composer starts open. */
   composeOnOpen?: boolean;
-  /** The composer's textarea, for the Sheet's first focus (from "Viết ghi chú"). */
-  composerRef?: RefObject<HTMLTextAreaElement | null>;
   /** The Sheet's title, its first focus otherwise: never an action, so an Enter right after opening changes nothing. */
   titleRef?: RefObject<HTMLHeadingElement | null>;
   /** The Item as saved after a change made here (properties, status, note count). */
@@ -94,8 +88,6 @@ export function ItemDetail({
   /** Other Items whose note count changed here (a deleted note was linked to them too). */
   onOtherCounts?: (items: readonly number[], delta: number) => void;
   onDeleted: (item: ApiItem) => void;
-  /** Whether unsaved note text is on the page (the Sheet asks before it closes). */
-  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const t = useT();
   const [editOpen, setEditOpen] = useState(false);
@@ -103,16 +95,13 @@ export function ItemDetail({
   const [composeRequest, setComposeRequest] = useState(composeOnOpen ? 1 : 0);
   const [notice, setNotice] = useState<string | null>(null);
   const [stepping, setStepping] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const [leave, setLeave] = useState<(() => void) | null>(null);
-  useLeaveGuard(dirty, (go) => setLeave(() => go));
   // The Item as last rendered: a note saved after a status change must not put the old status back
   const latest = useRef(item);
   useEffect(() => {
     latest.current = item;
   });
-  const ownComposer = useRef<HTMLTextAreaElement | null>(null);
-  const composer = composerRef ?? ownComposer;
+  // the composer's editable (ItemNotes), where the focus goes after "Viết ghi chú" in the Item dialog
+  const composerId = useId();
   // "Viết ghi chú" in the Item dialog: once the dialog has closed, the focus goes to the composer it opened
   const writeAfterDialog = useRef(false);
 
@@ -231,16 +220,12 @@ export function ItemDetail({
       <ItemNotes
         item={item}
         composeRequest={composeRequest}
-        composerRef={composer}
+        composerId={composerId}
         onCountChange={(items, delta) => {
           const now = latest.current;
           if (items.includes(now.id)) onItemChange({ ...now, noteCount: Math.max(0, now.noteCount + delta) });
           const others = items.filter((id) => id !== now.id);
           if (others.length) onOtherCounts?.(others, delta);
-        }}
-        onDirtyChange={(d) => {
-          setDirty(d);
-          onDirtyChange?.(d);
         }}
       />
 
@@ -257,7 +242,8 @@ export function ItemDetail({
           if (o) writeAfterDialog.current = false;
           else setFocusRating(false);
         }}
-        finalFocus={() => (writeAfterDialog.current ? composer.current : null) ?? true}
+        // the composer's editor if it is ready (else it takes the focus itself once its chunk has loaded)
+        finalFocus={() => (writeAfterDialog.current ? document.getElementById(composerId) : null) ?? true}
         onSaved={(saved, _created, imageError) => {
           onItemChange(saved);
           setEditOpen(false);
@@ -271,15 +257,6 @@ export function ItemDetail({
           writeAfterDialog.current = true;
           setEditOpen(false);
           setComposeRequest((n) => n + 1);
-        }}
-      />
-      <DiscardChanges
-        open={leave !== null}
-        onKeep={() => setLeave(null)}
-        onDiscard={() => {
-          const go = leave;
-          setLeave(null);
-          go?.();
         }}
       />
     </div>

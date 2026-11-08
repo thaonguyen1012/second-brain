@@ -74,7 +74,20 @@ export const API_WRITE_EVENT = 'brain:api-write';
  * ApiError on failure, undefined for 204; a successful write fires API_WRITE_EVENT. An aborted `signal` rejects
  * with the fetch AbortError (not an ApiError), so callers can tell "cancelled" from "offline" (isAbort).
  */
-export async function request<T>(method: Method, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+/** The largest JSON body sent with `keepalive` (browsers refuse more than 64 KiB in flight per page). */
+const KEEPALIVE_MAX = 60_000;
+
+export async function request<T>(
+  method: Method,
+  path: string,
+  body?: unknown,
+  signal?: AbortSignal,
+  /**
+   * `keepalive`: the request may outlive the page (a note saved while the tab closes); dropped for a body too big to
+   * be kept alive, which then goes as a normal request.
+   */
+  init?: { keepalive?: boolean },
+): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   // The page's language (<html lang>, app/[lang]/layout.tsx): Django answers in it before the cookie, so a page
   // opened at /en/... gets English messages whatever the cookie says (backend/core/middleware.py)
@@ -84,14 +97,17 @@ export async function request<T>(method: Method, path: string, body?: unknown, s
   // A FormData body (a file upload) goes as it is: the browser writes multipart/form-data with its boundary.
   const form = body instanceof FormData;
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
+  const payload = body === undefined ? undefined : form ? body : JSON.stringify(body);
+  const keepalive = !!init?.keepalive && typeof payload === 'string' && payload.length <= KEEPALIVE_MAX;
   let res: Response;
   try {
     res = await fetch(path, {
       method,
       headers,
       credentials: 'same-origin',
-      body: body === undefined ? undefined : form ? body : JSON.stringify(body),
+      body: payload,
       signal,
+      ...(keepalive && { keepalive: true }),
     });
   } catch (err) {
     if (signal?.aborted) throw err;

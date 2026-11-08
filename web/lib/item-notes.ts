@@ -99,8 +99,24 @@ export function noteImageSrc(src: string | null | undefined): string | null {
   return null;
 }
 
-/** Whether a note's markdown differs from its starting template in more than whitespace (an untouched template). */
+/**
+ * The placeholder the editor (Milkdown) writes for an empty paragraph or list item, so that an empty item survives a
+ * save (`- <br />`). Readers treat it as an empty line; nothing else in a note may be raw HTML.
+ */
+const EMPTY_LINE = /<br\s*\/?>/gi;
+
+/** The markdown without the editor's empty-line placeholders and without any whitespace: what was really written. */
+const essence = (markdown: string) => markdown.replace(EMPTY_LINE, '').replace(/\s+/g, '');
+
+/**
+ * Whether a note's markdown differs from its starting template in more than whitespace and the editor's empty-line
+ * placeholders (an untouched template, as typed or as the editor saves it).
+ */
 export function changedFromTemplate(markdown: string, template: string): boolean {
-  const squash = (s: string) => s.replace(/\s+/g, ' ').trim();
-  return squash(markdown) !== squash(template);
+  return essence(markdown) !== essence(template);
+}
+
+/** Whether a note has no text at all (only whitespace and empty-line placeholders). */
+export function isBlankNote(markdown: string): boolean {
+  return essence(markdown) === '';
 }

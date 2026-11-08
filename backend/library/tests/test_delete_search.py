@@ -188,3 +188,12 @@ def test_note_search_sends_an_excerpt_not_the_body(client: Client) -> None:
     assert len(long["excerpt"]) <= 121 and set(long) == {"id", "title", "excerpt", "updatedAt"}
     assert client.get("/api/notes/search", {"q": " "}).json()["results"] == []
     assert client.get("/api/notes/search?q=focus&limit=21").status_code == 400
+
+
+def test_note_search_skips_the_editors_empty_line_placeholder(client: Client) -> None:
+    """Milkdown saves empty paragraphs and list items as <br />: it is no text for a title or an excerpt."""
+    user = owner(client)
+    Note.objects.create(user=user, markdown="<br />\n\n- <br />\n\nÝ chính về <br /> sự tập trung")
+    [hit] = client.get("/api/notes/search?q=chính").json()["results"]
+    assert hit["title"] == "Ý chính về sự tập trung"
+    assert "<br" not in hit["excerpt"]

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   changedFromTemplate,
   groupNotesByItem,
+  isBlankNote,
   markdownHref,
   noteDateLabel,
   noteHeading,
@@ -88,6 +89,21 @@ describe('changedFromTemplate', () => {
     expect(changedFromTemplate(`${book}\n\n`, book)).toBe(false);
     expect(changedFromTemplate(book.replace('- ', '- Thói quen nhỏ'), book)).toBe(true);
     expect(changedFromTemplate('Nhận xét: hay', 'Nhận xét: ')).toBe(true);
+  });
+
+  it('reads the editor\'s saved form of an untouched template as unchanged', () => {
+    const saved = '## Highlights\n\n- <br />\n\n## 3 ý chính\n\n1. <br />\n2. <br />\n3. <br />\n';
+    expect(changedFromTemplate(saved, book)).toBe(false);
+    expect(changedFromTemplate(saved.replace('1. <br />', '1. Thói quen'), book)).toBe(true);
+  });
+});
+
+describe('isBlankNote', () => {
+  it('sees only whitespace and empty-line placeholders as blank', () => {
+    expect(isBlankNote('')).toBe(true);
+    expect(isBlankNote('<br />\n\n<br/>\n')).toBe(true);
+    expect(isBlankNote('- <br />')).toBe(false);
+    expect(isBlankNote('a')).toBe(false);
   });
 });
 

@@ -13,34 +13,21 @@ import { groupNotesByItem, noteDateLabel, noteHeading, type NoteGroup } from '@/
 import { itemTypeLabel } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { useListView } from '@/lib/use-board-view';
-import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
-import {
-  Sheet,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetPanel,
-  SheetPopup,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
-import { ConfirmDelete, DeleteButton } from '../confirm-delete';
+import { ConfirmDelete } from '../confirm-delete';
 import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { KeyLegend } from '../key-legend';
 import { PAGE_WIDTH } from '../layout';
 import { RowMenu } from '../row-menu';
-import { noteTemplates } from './done-output';
 import { RowPicture } from './item-image';
-import { NoteBody } from './note-body';
-import { NoteDialog, type NoteDraft } from './note-dialog';
 import type { ItemLabel } from './item-picker';
 import { FilteredEmpty, RowsSkeleton, onRowClick } from './list-rows';
 import { useItemIndex } from './use-item-index';
@@ -49,8 +36,8 @@ const PAGE = 50;
 
 /** Starting text of the empty page's two template buttons (the outputs DECISIONS 4.2 asks of a book and a film). */
 const templates = [
-  { label: msg('Ghi chú sách'), markdown: noteTemplates.book },
-  { label: msg('Nhận xét phim'), markdown: noteTemplates.film },
+  { label: msg('Ghi chú sách'), type: 'book' },
+  { label: msg('Nhận xét phim'), type: 'film' },
 ] as const;
 
 type NotesView = 'list' | 'items';
@@ -278,26 +265,19 @@ export function NotesPage() {
   const router = useRouter();
   const pathname = useRoutePathname();
   const itemFilter = Number(params.get('item')) || null;
-  // Before useOpenFromUrl: a remembered "Theo item" waits until ?id= is gone (useBoardView's rule).
+  // A remembered "Theo item" waits until ?id= is gone (useBoardView's rule): the note page is on this route too.
   const [view, setView] = useListView<'items'>('alex-brain:notes-view', 'items', 'id');
 
   const [query, setQuery] = useState('');
   const q = useDebounced(query.trim(), 250);
   const [cursor, setCursor] = useState(0);
-  const [editing, setEditing] = useState<ApiNote | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  // A new note's starting markdown (the empty page's templates); null = blank
-  const [template, setTemplate] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ApiNote | null>(null);
-  // The note read in the Sheet; kept while the Sheet animates out
-  const [reading, setReading] = useState<ApiNote | null>(null);
-  const [readOpen, setReadOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // The full Item list is for the picker in the dialog and the pictures of "Theo item"; rows use the notes' labels.
-  const index = useItemIndex(dialogOpen || view === 'items');
+  // The full Item list is for the pictures of "Theo item"; rows use the labels sent with the notes.
+  const index = useItemIndex(view === 'items');
   const filters = { ...(q && { q }), ...(itemFilter && { item: itemFilter }) };
   const listNotes = useApi<Page<ApiNote>>(view === 'list' ? `notes:${q}:${itemFilter ?? ''}` : null, () =>
     notesApi.list({ limit: PAGE, ...filters }),
@@ -342,47 +322,26 @@ export function NotesPage() {
   );
   const filterItem = itemFilter ? itemTitle(itemFilter) : null;
 
-  const openEditor = useCallback((note: ApiNote | null, markdown: string | null = null) => {
-    setEditing(note);
-    setTemplate(markdown);
-    setDialogOpen(true);
-  }, []);
-  /** Reading one note beside the list (DESIGN.md §6 Overlays: Sheet). */
-  const openReader = useCallback((note: ApiNote) => {
-    setReading(note);
-    setReadOpen(true);
-  }, []);
-  // ?id=N (Cmd+K result): open that note in the reading Sheet, wherever it sits in the list.
-  useOpenFromUrl('id', (id) =>
-    notesApi.get(id).then(openReader, (err: unknown) => {
-      const e = toApiError(err);
-      setNotice(
-        e.status === 404 && e.reachable
-          ? t('Không tìm thấy ghi chú #{id}, có thể đã bị xóa.', { id })
-          : describeApiError(e, t).title,
-      );
-    }),
+  /**
+   * A note opens as its own page (`?id=N`, notes-route.tsx), where it is read and edited; a new one too (`?id=new`,
+   * with the Item filter and a template). The browser's own path keeps a page opened at /en/... in English.
+   */
+  const notePath = useCallback(
+    (query: string) => `${pathname.endsWith('/') ? pathname : `${pathname}/`}?${query}`,
+    [pathname],
   );
-  /** Same rule as the backend filters (case-insensitive substring; item link). */
-  const matches = (n: ApiNote) =>
-    (!itemFilter || n.items.includes(itemFilter)) &&
-    (!q || `${n.title}\n${n.markdown}`.toLowerCase().includes(q.toLowerCase()));
-
-  const upsert = (saved: ApiNote, created: boolean) =>
-    notes.mutate((d) => {
-      if (!d) return d;
-      const rest = d.results.filter((n) => n.id !== saved.id);
-      if (!matches(saved)) return { ...d, results: rest };
-      return {
-        ...d,
-        results: created ? [saved, ...rest] : d.results.map((n) => (n.id === saved.id ? saved : n)),
-      };
-    });
-
+  const openNote = useCallback((note: ApiNote) => router.push(notePath(`id=${note.id}`)), [router, notePath]);
+  const newNote = useCallback(
+    (template?: string) =>
+      router.push(
+        notePath(['id=new', itemFilter && `item=${itemFilter}`, template && `template=${template}`].filter(Boolean).join('&')),
+      ),
+    [router, notePath, itemFilter],
+  );
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (dialogOpen || deleting || readOpen || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
-      // The key legend dialog, the reading Sheet and a row's overflow menu handle their own keys
+      if (deleting || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      // The key legend dialog and a row's overflow menu handle their own keys
       if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return;
       const act: Record<string, () => void> = {
         ...(view === 'list' && {
@@ -391,11 +350,11 @@ export function NotesPage() {
           k: () => setCursor(Math.max(selected - 1, 0)),
           arrowup: () => setCursor(Math.max(selected - 1, 0)),
         }),
-        n: () => openEditor(null),
+        n: () => newNote(),
         '/': () => searchRef.current?.focus(),
         ...(current && {
-          e: () => openEditor(current),
-          enter: () => openReader(current),
+          e: () => openNote(current),
+          enter: () => openNote(current),
           // Del / Backspace delete, as on the week page (X there means "bỏ" an objective)
           delete: () => setDeleting(current),
           backspace: () => setDeleting(current),
@@ -410,7 +369,7 @@ export function NotesPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [dialogOpen, deleting, readOpen, selected, shown.length, current, openEditor, openReader, view]);
+  }, [deleting, selected, shown.length, current, openNote, newNote, view]);
 
   const loadMore = async () => {
     const next = notes.data?.next;
@@ -425,11 +384,6 @@ export function NotesPage() {
     }
   };
 
-  const itemsStatus = index.error
-    ? t('Không tải được danh sách item: {error}', { error: describeApiError(index.error, t).title })
-    : index.loading && index.items.length === 0
-      ? t('Đang tải danh sách item…')
-      : undefined;
   // The raw query counts too, so the search field never vanishes while its debounce runs
   const filtered = !!q || !!query.trim() || !!itemFilter;
   const failed = !!notes.error && !notes.data;
@@ -448,7 +402,6 @@ export function NotesPage() {
     setCursor(0);
     router.replace(withoutItem(), { scroll: false });
   };
-  const newDraft: NoteDraft = { items: itemFilter ? [itemFilter] : [], ...(template && { markdown: template }) };
 
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
@@ -522,7 +475,7 @@ export function NotesPage() {
                     size="icon"
                     className="sm:hidden"
                     aria-label={t('Ghi chú mới')}
-                    onClick={() => openEditor(null)}
+                    onClick={() => newNote()}
                   />
                 }
               >
@@ -530,7 +483,7 @@ export function NotesPage() {
               </TooltipTrigger>
               <TooltipPopup>{t('Ghi chú mới')}</TooltipPopup>
             </Tooltip>
-            <Button className="max-sm:hidden" onClick={() => openEditor(null)}>
+            <Button className="max-sm:hidden" onClick={() => newNote()}>
               <Plus aria-hidden />
               {t('Ghi chú mới')}
             </Button>
@@ -557,7 +510,7 @@ export function NotesPage() {
           title={t('Chưa có ghi chú nào')}
           text={t('Ghi lại điều đáng nhớ và gắn vào item.')}
           action={
-            <Button onClick={() => openEditor(null)}>
+            <Button onClick={() => newNote()}>
               <Plus aria-hidden />
               {t('Viết ghi chú')}
             </Button>
@@ -567,7 +520,7 @@ export function NotesPage() {
               key={tpl.label.msgid}
               variant="outline"
               size="sm"
-              onClick={() => openEditor(null, t(tpl.markdown))}
+              onClick={() => newNote(tpl.type)}
             >
               <Plus aria-hidden />
               {t(tpl.label)}
@@ -585,8 +538,8 @@ export function NotesPage() {
               label={g.item === null ? { title: t('Ghi chú rời') } : itemTitle(g.item)}
               withPicture={groupPictures}
               itemTitle={itemTitle}
-              onOpen={openReader}
-              onEdit={(n) => openEditor(n)}
+              onOpen={openNote}
+              onEdit={openNote}
               onDelete={setDeleting}
             />
           ))}
@@ -600,8 +553,8 @@ export function NotesPage() {
               itemTitle={itemTitle}
               selected={i === selected}
               onSelect={() => setCursor(i)}
-              onOpen={() => openReader(n)}
-              onEdit={() => openEditor(n)}
+              onOpen={() => openNote(n)}
+              onEdit={() => openNote(n)}
               onDelete={() => setDeleting(n)}
             />
           ))}
@@ -612,46 +565,6 @@ export function NotesPage() {
           {t('Tải thêm')}
         </Button>
       )}
-
-      <Sheet open={readOpen} onOpenChange={setReadOpen}>
-        <SheetPopup className="max-w-2xl" closeProps={{ 'aria-label': t('Đóng') }}>
-          {reading && (
-            <>
-              <SheetHeader>
-                <SheetTitle className="pe-8 leading-tight">{noteTitle(reading, t)}</SheetTitle>
-                <SheetDescription render={<div />} className="text-xs">
-                  <NoteMeta note={reading} itemTitle={itemTitle} onNavigate={() => setReadOpen(false)} />
-                </SheetDescription>
-              </SheetHeader>
-              <SheetPanel>
-                {/* Rendered markdown, no raw HTML, local images only (note-markdown.tsx) */}
-                <NoteBody markdown={reading.markdown} className="max-w-2xl" />
-              </SheetPanel>
-              <SheetFooter>
-                <DeleteButton
-                  size="sm"
-                  className="sm:me-auto"
-                  onClick={() => {
-                    setReadOpen(false);
-                    setDeleting(reading);
-                  }}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setReadOpen(false);
-                    openEditor(reading);
-                  }}
-                >
-                  <Pencil aria-hidden />
-                  {t('Sửa')}
-                </Button>
-              </SheetFooter>
-            </>
-          )}
-        </SheetPopup>
-      </Sheet>
 
       <ConfirmDelete
         open={deleting !== null}
@@ -670,27 +583,6 @@ export function NotesPage() {
           const gone = deleting.id;
           notes.mutate((d) => d && { ...d, results: d.results.filter((n) => n.id !== gone) });
           setNotice(t('Đã xóa "{title}"', { title: noteTitle(deleting, t) }));
-        }}
-      />
-
-      <NoteDialog
-        open={dialogOpen}
-        note={editing}
-        draft={editing ? undefined : newDraft}
-        items={index.items}
-        byId={labels}
-        itemsStatus={itemsStatus}
-        onOpenChange={setDialogOpen}
-        onSaved={(saved, created) => {
-          upsert(saved, created);
-          setReading((r) => (r && r.id === saved.id ? saved : r));
-          setDialogOpen(false);
-          setNotice(
-            created
-              ? t('Đã tạo "{title}"', { title: noteTitle(saved, t) })
-              : t('Đã lưu "{title}"', { title: noteTitle(saved, t) }),
-          );
-          if (created) setCursor(0);
         }}
       />
     </div>

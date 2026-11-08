@@ -37,6 +37,8 @@ NOTE_FIELDS = ("title", "markdown")
 EXCERPT_CHARS = 120
 EXCERPT_BEFORE = 40
 _MARKS = re.compile(r"[#>*_`~\[\]]+")
+# The editor's (Milkdown's) placeholder for an empty paragraph or list item: no text
+_EMPTY_LINE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 _LINE_PREFIX = re.compile(r"^\s*(#{1,6}\s+|>\s*|[-*+]\s+)")
 
 
@@ -299,7 +301,7 @@ def note_label(note: Note) -> str:
     if title := note.title.strip():
         return title
     for line in note.markdown.split("\n"):
-        if clean := _LINE_PREFIX.sub("", line).strip():
+        if clean := " ".join(_LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", line)).split()):
             return clean[:EXCERPT_CHARS]
     return ""
 
@@ -307,7 +309,7 @@ def note_label(note: Note) -> str:
 def note_excerpt(markdown: str, query: str) -> str:
     """About EXCERPT_CHARS characters around the first match of `query` (markdown marks dropped), else the
     start of the note."""
-    flat = " ".join(_MARKS.sub(" ", markdown).split())
+    flat = " ".join(_MARKS.sub(" ", _EMPTY_LINE.sub(" ", markdown)).split())
     at = flat.lower().find(query.lower()) if query else -1
     if at < 0:
         return flat[:EXCERPT_CHARS]

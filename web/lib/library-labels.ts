@@ -25,7 +25,14 @@ export function noteTitle(note: Pick<ApiNote, 'id' | 'title' | 'markdown'>, t: T
   if (note.title.trim()) return note.title.trim();
   const line = note.markdown
     .split('\n')
-    .map((l) => l.replace(/^\s*(#{1,6}\s+|>\s*|[-*+]\s+)/, '').trim())
+    .map((l) =>
+      l
+        // the editor's empty-line placeholder (`<br />`) is no text
+        .replace(/<br\s*\/?>/gi, ' ')
+        .replace(/^\s*(#{1,6}\s+|>\s*|[-*+]\s+)/, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
     .find(Boolean);
   return line ? line.slice(0, 120) : t('Ghi chú #{id}', { id: note.id });
 }

@@ -1,46 +1,36 @@
 'use client';
-import { useEffect, useId, useRef, useState, type Ref } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Loader2, NotebookPen, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Check, History, NotebookPen, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api, type ApiItem, type Page } from '@/lib/api/client';
 import { notesApi, type ApiNote } from '@/lib/api/library';
 import { loadAllPages } from '@/lib/api/pages';
-import { toApiError, useApi } from '@/lib/api/use-api';
-import { MAX_MARKDOWN, changedFromTemplate, noteDateLabel, noteHeading } from '@/lib/item-notes';
+import { useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
-import { msg, type Msg, type T } from '@/lib/i18n/translate';
-import { fieldErrors } from '@/lib/labels';
+import { noteDateLabel, noteHeading } from '@/lib/item-notes';
+import { formatDate } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
+import { linkHref } from '@/lib/note-links';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MenuItem, MenuLinkItem, MenuSeparator } from '@/components/ui/menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
-import { ApiErrorState, describeApiError } from '../api-state';
+import { ApiErrorState } from '../api-state';
 import { ConfirmDelete } from '../confirm-delete';
 import { RowMenu } from '../row-menu';
-import { SaveKeys } from '../save-keys';
-import { DiscardChanges } from './discard-changes';
 import { noteTemplateFor } from './done-output';
 import { NoteBody } from './note-body';
-import { NoteTextEditor } from './note-text-editor';
+import { NoteEditor } from './note-editor-lazy';
+import type { NoteEditorHandle } from './note-editor-types';
+import { SaveStatus } from './save-status';
+import { useNoteAutosave, type NoteBackup } from './use-note-autosave';
 
 // Every note of one Item on its page (DECISIONS 9.8 point 2): newest first, joined like one page (no card per note),
-// each shown as rendered markdown and edited in place; a composer on top starts from the type's template. Saving works
-// like NoteDialog (an explicit "Lưu", Cmd/Ctrl+Enter); unsaved text is reported up (onDirtyChange) so the Sheet and the
-// page ask before it goes. The block editor (after the owner picks it) replaces NoteTextEditor only.
-
-const FIELD_NAMES: Record<string, Msg> = { title: msg('Tiêu đề'), markdown: msg('Nội dung'), items: msg('Item') };
-
-interface Draft {
-  title: string;
-  markdown: string;
-}
-
-interface EditState extends Draft {
-  busy: boolean;
-  error: string | null;
-}
+// each shown as rendered markdown and written in place with the block editor (NoteEditor); a new note starts from the
+// type's template on top. Saving works like AFFiNE (use-note-autosave.ts): after a pause, with "Đã lưu" beside the
+// note, and at once when the editor or the Sheet closes or the page goes; no "Lưu" or "Hủy".
 
 /** Every note linked to the Item (all cursor pages, at most 20 of 100), newest first. */
 const loadNotes = (item: number) => () =>
@@ -48,101 +38,6 @@ const loadNotes = (item: number) => () =>
     () => notesApi.list({ item, limit: 100 }),
     (next) => api.page<ApiNote>(next),
   );
-
-/** Why a draft cannot be saved yet, before any request; null when it can. */
-function draftProblem(draft: Draft, template: string, t: T): string | null {
-  if (!draft.markdown.trim()) return t('Ghi chú cần có nội dung.');
-  if (template && !changedFromTemplate(draft.markdown, template)) return t('Viết vài dòng vào mẫu trước khi lưu.');
-  if (draft.markdown.length > MAX_MARKDOWN)
-    return t('Nội dung dài quá {max} ký tự.', { max: t.num(MAX_MARKDOWN) });
-  return null;
-}
-
-function saveError(err: unknown, t: T): string {
-  const e = toApiError(err);
-  return (e.status === 400 && fieldErrors(e.body, t, FIELD_NAMES)) || describeApiError(e, t).title;
-}
-
-/** Title (optional) and markdown of one note, with Hủy and Lưu: the composer and the in-place edit share it. */
-function InlineNoteForm({
-  idBase,
-  draft,
-  onDraft,
-  busy,
-  error,
-  saveLabel,
-  onSave,
-  onCancel,
-  textareaRef,
-}: {
-  idBase: string;
-  draft: Draft;
-  onDraft: (draft: Draft) => void;
-  busy: boolean;
-  error: string | null;
-  saveLabel: string;
-  onSave: () => void;
-  onCancel: () => void;
-  textareaRef?: Ref<HTMLTextAreaElement>;
-}) {
-  const t = useT();
-  return (
-    <form
-      className="flex flex-col gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave();
-      }}
-      // the title field's keys (the textarea handles its own)
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-          e.preventDefault();
-          onSave();
-        } else if (e.key === 'Escape' && !e.nativeEvent.isComposing) {
-          e.preventDefault();
-          e.stopPropagation();
-          onCancel();
-        }
-      }}
-    >
-      <Input
-        id={`${idBase}-title`}
-        value={draft.title}
-        maxLength={300}
-        onChange={(e) => onDraft({ ...draft, title: e.target.value })}
-        aria-label={t('Tiêu đề ghi chú (không bắt buộc)')}
-        placeholder={t('Tiêu đề (không bắt buộc)')}
-      />
-      <NoteTextEditor
-        id={`${idBase}-body`}
-        value={draft.markdown}
-        onChange={(markdown) => onDraft({ ...draft, markdown })}
-        label={t('Nội dung ghi chú')}
-        placeholder={t('Viết bằng markdown: ## tiêu đề, - danh sách, - [ ] việc cần làm')}
-        onSave={onSave}
-        onCancel={onCancel}
-        textareaRef={textareaRef}
-      />
-      {error && (
-        <p className="text-sm whitespace-pre-line text-destructive-foreground" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="flex items-center justify-end gap-2">
-        <span className="me-auto text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
-          <SaveKeys /> {t('để lưu')}
-        </span>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          {t('Hủy')}
-        </Button>
-        <Button type="submit" size="sm" disabled={busy}>
-          {busy && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />}
-          {saveLabel}
-        </Button>
-      </div>
-    </form>
-  );
-}
 
 /** Loading notes at their geometry (D27): a date line and a few lines of text, twice. */
 function NotesSkeleton() {
@@ -160,23 +55,168 @@ function NotesSkeleton() {
   );
 }
 
+/** A copy of unsaved text from an earlier visit (this browser): put it back, or drop it. */
+export function RecoveredDraft({
+  copy,
+  onRestore,
+  onDrop,
+}: {
+  copy: NoteBackup;
+  onRestore: () => void;
+  onDrop: () => void;
+}) {
+  const t = useT();
+  return (
+    <Alert>
+      <History aria-hidden />
+      <AlertTitle>{t('Có bản nháp chưa lưu trong trình duyệt này')}</AlertTitle>
+      <AlertDescription>
+        {t('Viết lúc {date}. Khôi phục sẽ thay nội dung đang có.', { date: formatDate(copy.at, t) })}
+      </AlertDescription>
+      <AlertAction>
+        <Button size="sm" variant="outline" onClick={onRestore}>
+          {t('Khôi phục')}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDrop}>
+          {t('Bỏ bản nháp')}
+        </Button>
+      </AlertAction>
+    </Alert>
+  );
+}
+
+/**
+ * One note written in place: its title (optional) and the block editor, saving by themselves, with "Xong" (or Escape,
+ * or Cmd/Ctrl+Enter) to go back to reading. `note` null is a new note on `item`, created by its first save with
+ * something written in it (an untouched template is not saved).
+ */
+function NoteInPlace({
+  idBase,
+  editorId,
+  item,
+  note,
+  template,
+  focusRequest,
+  onSaved,
+  onDone,
+}: {
+  idBase: string;
+  /** The editable's id (`${idBase}-body` unless given). */
+  editorId?: string;
+  item: ApiItem;
+  note: ApiNote | null;
+  template: string;
+  /** > 0 puts the cursor in the text once the editor is ready; a new value does it again. */
+  focusRequest: number;
+  onSaved: (note: ApiNote, created: boolean) => void;
+  /** Back to reading; what is left unsaved is sent first. */
+  onDone: () => void;
+}) {
+  const t = useT();
+  // a new note is named after its Item (noteHeading hides that name under the Item's own title)
+  const [title, setTitle] = useState(note?.title ?? item.title.slice(0, 300));
+  const [markdown, setMarkdown] = useState(note?.markdown ?? template);
+  // the editor opens with this text; a restored copy remounts it with that copy (`editorKey`)
+  const [opening, setOpening] = useState(markdown);
+  const [editorKey, setEditorKey] = useState(0);
+  const editor = useRef<NoteEditorHandle | null>(null);
+  const autosave = useNoteAutosave({
+    note,
+    template,
+    items: () => [item.id],
+    draftKey: `new-item-${item.id}`,
+    onSaved,
+    pull: () => editor.current?.markdown() ?? null,
+  });
+
+  const change = (next: { title?: string; markdown?: string }) => {
+    const text = { title: next.title ?? title, markdown: next.markdown ?? markdown };
+    if (next.title !== undefined) setTitle(next.title);
+    if (next.markdown !== undefined) setMarkdown(next.markdown);
+    autosave.change(text);
+  };
+  const done = () => {
+    void autosave.flush();
+    onDone();
+  };
+  const restore = () => {
+    const copy = autosave.takeRecovered();
+    if (!copy) return;
+    setTitle(copy.title);
+    setMarkdown(copy.markdown);
+    setOpening(copy.markdown);
+    setEditorKey((k) => k + 1);
+  };
+
+  return (
+    // data-note-editing: an Escape inside ends this edit; the Sheet around the page leaves it alone (item-sheet.tsx)
+    <div className="flex flex-col gap-2" data-note-editing="">
+      {autosave.recovered && (
+        <RecoveredDraft copy={autosave.recovered} onRestore={restore} onDrop={autosave.dropRecovered} />
+      )}
+      <Input
+        id={`${idBase}-title`}
+        value={title}
+        maxLength={300}
+        onChange={(e) => change({ title: e.target.value })}
+        onKeyDown={(e) => {
+          if (e.nativeEvent.isComposing) return;
+          if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
+            e.preventDefault();
+            // the edit ends here: the Sheet around the page must not close too (see the editor's Escape)
+            e.stopPropagation();
+            done();
+          }
+        }}
+        aria-label={t('Tiêu đề ghi chú (không bắt buộc)')}
+        placeholder={t('Tiêu đề (không bắt buộc)')}
+      />
+      <NoteEditor
+        key={editorKey}
+        id={editorId ?? `${idBase}-body`}
+        variant="inline"
+        defaultMarkdown={opening}
+        onChange={(md) => change({ markdown: md })}
+        label={t('Nội dung ghi chú')}
+        placeholder={t('Gõ / để chèn khối, hoặc viết luôn')}
+        focusRequest={focusRequest + editorKey}
+        caret={note || editorKey > 0 ? 'end' : 'first-empty'}
+        onInput={autosave.touch}
+        onReady={(handle) => {
+          editor.current = handle;
+        }}
+        onEscape={done}
+        onSubmit={done}
+      />
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <SaveStatus
+          className="me-auto"
+          state={autosave.state}
+          error={autosave.error}
+          onRetry={() => void autosave.flush()}
+        />
+        <Button type="button" variant="outline" size="sm" onClick={done}>
+          <Check aria-hidden />
+          {t('Xong')}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function ItemNotes({
   item,
   composeRequest,
-  composerRef,
+  composerId,
   onCountChange,
-  onDirtyChange,
 }: {
   item: ApiItem;
-  /** > 0 opens the composer and focuses it; each new value does it again ("Viết ghi chú" of the done hint). */
+  /** > 0 opens the composer and puts the cursor in it; each new value does it again ("Viết ghi chú" of the hint). */
   composeRequest: number;
-  /** The composer's textarea (the Sheet opened from "Viết ghi chú" focuses it first). */
-  composerRef?: Ref<HTMLTextAreaElement>;
+  /** The composer's editable id (the Item dialog sends the focus there after "Viết ghi chú"). */
+  composerId?: string;
   /** The note counts of `items` changed by `delta` (a note written here, or deleted with all its links). */
   onCountChange: (items: readonly number[], delta: number) => void;
-  /** Whether some note text here is not saved yet. */
-  onDirtyChange: (dirty: boolean) => void;
 }) {
   const t = useT();
   const base = useId();
@@ -184,172 +224,110 @@ export function ItemNotes({
   const composeButtonId = `${base}-compose`;
   const editButtonId = (id: number) => `${base}-note-${id}-edit`;
   const template = noteTemplateFor(item.type, t);
-  const freshDraft = (): Draft => ({ title: item.title.slice(0, 300), markdown: template });
 
   const notes = useApi<Page<ApiNote>>(`item-notes:${item.id}`, loadNotes(item.id));
   const list = notes.data?.results ?? [];
   const loaded = notes.data !== undefined;
 
-  // null until the user (or a request) opens or closes it; then an Item without notes opens it with the template
+  // null until the user (or a request) opens or closes it; meanwhile an Item without notes shows it with the template,
+  // without taking the focus
   const [composerOpen, setComposerOpen] = useState<boolean | null>(composeRequest > 0 ? true : null);
-  const [draft, setDraft] = useState<Draft>(freshDraft);
-  // what the composer started from: an Item renamed meanwhile does not make an untouched composer "unsaved"
-  const [draftBase, setDraftBase] = useState<Draft>(draft);
-  const [composeBusy, setComposeBusy] = useState(false);
-  const [composeError, setComposeError] = useState<string | null>(null);
-  const [edits, setEdits] = useState<ReadonlyMap<number, EditState>>(() => new Map());
+  const [composerFocus, setComposerFocus] = useState(composeRequest > 0 ? 1 : 0);
+  // each opening of the composer is a new note (a new instance of NoteInPlace)
+  const [composerKey, setComposerKey] = useState(0);
+  const composerInstance = useRef(0);
+  // the note the open composer created and goes on editing: not listed twice meanwhile
+  const [composed, setComposed] = useState<number | null>(null);
+  const [editing, setEditing] = useState<ReadonlySet<number>>(() => new Set());
   const [deleting, setDeleting] = useState<ApiNote | null>(null);
-  const [discard, setDiscard] = useState<(() => void) | null>(null);
   const [announcement, setAnnouncement] = useState('');
-  const composerId = `${base}-new-body`;
 
-  // Opening or closing a form removes the focused control (the pencil, "Viết ghi chú", the form's field): the focus
-  // waits on the section's heading meanwhile, so the Sheet around the page does not take it back to its own start,
-  // then goes to `id` (the field that opened, the button that came back) once React has drawn it. A field gets the
-  // caret at the end of its text, ready to add to it.
+  // Closing an editor removes the focused control ("Xong", the editor): the focus waits on the section's heading
+  // meanwhile, so the Sheet around the page does not take it back to its own start, then goes to `id` (the button that
+  // came back) once React has drawn it. An editor that opens takes the focus itself when it is ready.
   const pendingFocus = useRef<string | null>(null);
-  const focusNow = (el: HTMLElement) => {
-    el.focus();
-    if (el instanceof HTMLTextAreaElement) el.setSelectionRange(el.value.length, el.value.length);
-  };
   useEffect(() => {
     const id = pendingFocus.current;
     const el = id ? document.getElementById(id) : null;
     if (!el) return;
     pendingFocus.current = null;
-    focusNow(el);
+    el.focus();
   });
-  const focusAfter = (id: string) => {
-    const ready = document.getElementById(id);
-    if (ready && ready.isConnected) return focusNow(ready);
+  const focusAfter = (id: string | null) => {
     if (document.activeElement && document.activeElement !== document.body)
       document.getElementById(headingId)?.focus({ preventScroll: true });
     pendingFocus.current = id;
   };
 
   const showComposer = composerOpen ?? (loaded && list.length === 0);
-  const composerDirty = showComposer && (draft.title !== draftBase.title || changedFromTemplate(draft.markdown, draftBase.markdown));
-  const editDirty = (note: ApiNote, edit: EditState) => edit.title !== note.title || edit.markdown !== note.markdown;
-  const dirty = composerDirty || list.some((n) => {
-    const e = edits.get(n.id);
-    return !!e && editDirty(n, e);
-  });
 
-  const reportDirty = useRef(onDirtyChange);
-  useEffect(() => {
-    reportDirty.current = onDirtyChange;
-  });
-  useEffect(() => reportDirty.current(dirty), [dirty]);
-  // gone with the page: nothing left unsaved here
-  useEffect(() => () => reportDirty.current(false), []);
+  const openComposer = () => {
+    setComposerOpen(true);
+    setComposerFocus((n) => n + 1);
+  };
 
-  // "Viết ghi chú" asked again (the done hint): open the composer and put the cursor in it
+  // "Viết ghi chú" asked again (the done hint, the Item dialog): open the composer, cursor in it
   const handledRequest = useRef(composeRequest);
   useEffect(() => {
     if (composeRequest === handledRequest.current) return;
     handledRequest.current = composeRequest;
     setComposerOpen(true);
-    pendingFocus.current = composerId;
-    // already open (no new render follows): focus it now
-    const open = document.getElementById(composerId);
-    if (open) {
-      pendingFocus.current = null;
-      open.focus();
-    }
-  }, [composeRequest, composerId]);
+    setComposerFocus((n) => n + 1);
+  }, [composeRequest]);
 
   const say = (text: string) => setAnnouncement((prev) => (prev === text ? `${text} ` : text));
 
-  /** Runs `action` at once, or after "Bỏ thay đổi" when it would drop typed text. */
-  const unlessDirty = (isDirty: boolean, action: () => void) => (isDirty ? setDiscard(() => action) : action());
+  /** A save of a note shown here: the list follows; a new note is listed and counted ("Đã lưu" says the rest). */
+  const saved = (note: ApiNote, created: boolean, instance?: number) => {
+    notes.mutate(
+      (d) =>
+        d && {
+          ...d,
+          results: created
+            ? [note, ...d.results.filter((n) => n.id !== note.id)]
+            : d.results.map((n) => (n.id === note.id ? note : n)),
+        },
+    );
+    if (!created) return;
+    // the composer goes on editing it (and stays open, also when it opened by itself on an Item without notes),
+    // unless it was closed while the note was being created
+    if (instance === composerInstance.current) {
+      setComposed(note.id);
+      setComposerOpen(true);
+    }
+    onCountChange([item.id], 1);
+  };
 
   const closeComposer = () => {
     focusAfter(composeButtonId);
+    composerInstance.current += 1;
+    setComposerKey(composerInstance.current);
     setComposerOpen(false);
-    const next = freshDraft();
-    setDraft(next);
-    setDraftBase(next);
-    setComposeError(null);
+    setComposed(null);
   };
 
-  const create = async () => {
-    if (composeBusy) return;
-    const problem = draftProblem(draft, template, t);
-    if (problem) return setComposeError(problem);
-    setComposeBusy(true);
-    setComposeError(null);
-    try {
-      const saved = await notesApi.create({ title: draft.title.trim(), markdown: draft.markdown, items: [item.id] });
-      notes.mutate((d) => d && { ...d, results: [saved, ...d.results.filter((n) => n.id !== saved.id)] });
-      onCountChange([item.id], 1);
-      focusAfter(composeButtonId);
-      setComposerOpen(false);
-      const next = freshDraft();
-      setDraft(next);
-      setDraftBase(next);
-      say(t('Đã lưu ghi chú "{title}"', { title: noteTitle(saved, t) }));
-    } catch (err) {
-      setComposeError(saveError(err, t));
-    } finally {
-      setComposeBusy(false);
-    }
-  };
-
-  const setEdit = (id: number, next: EditState | null) =>
-    setEdits((m) => {
-      const copy = new Map(m);
-      if (next) copy.set(id, next);
-      else copy.delete(id);
-      return copy;
+  const setNoteEditing = (id: number, on: boolean) => {
+    if (!on) focusAfter(editButtonId(id));
+    setEditing((s) => {
+      const next = new Set(s);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
     });
-
-  const startEdit = (note: ApiNote) => {
-    focusAfter(`${base}-edit-${note.id}-body`);
-    setEdit(note.id, { title: note.title, markdown: note.markdown, busy: false, error: null });
   };
 
-  const stopEdit = (id: number) => {
-    focusAfter(editButtonId(id));
-    setEdit(id, null);
-  };
-
-  const saveEdit = async (note: ApiNote) => {
-    const edit = edits.get(note.id);
-    if (!edit || edit.busy) return;
-    const problem = draftProblem(edit, '', t);
-    if (problem) return setEdit(note.id, { ...edit, error: problem });
-    if (!editDirty(note, edit)) return stopEdit(note.id);
-    setEdit(note.id, { ...edit, busy: true, error: null });
-    try {
-      // links to other Items stay as they are: only title and text are sent
-      const saved = await notesApi.update(note.id, { title: edit.title.trim(), markdown: edit.markdown });
-      notes.mutate((d) => d && { ...d, results: d.results.map((n) => (n.id === saved.id ? saved : n)) });
-      say(t('Đã lưu ghi chú "{title}"', { title: noteTitle(saved, t) }));
-      stopEdit(note.id);
-    } catch (err) {
-      setEdit(note.id, { ...edit, busy: false, error: saveError(err, t) });
-    }
-  };
+  const shown = list.filter((n) => n.id !== composed);
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <div className="flex min-h-8 items-center gap-2">
-        {/* tabIndex -1: only a place for the focus to wait while a form closes (focusAfter) */}
+        {/* tabIndex -1: only a place for the focus to wait while an editor closes (focusAfter) */}
         <h2 id={headingId} tabIndex={-1} className="font-heading text-lg font-semibold tracking-tight outline-none">
           {t('Ghi chú', null, 'nav')}
         </h2>
         {loaded && <span className="text-xs text-muted-foreground tabular-nums">{list.length}</span>}
         {!showComposer && (
-          <Button
-            id={composeButtonId}
-            variant="outline"
-            size="sm"
-            className="ms-auto"
-            onClick={() => {
-              focusAfter(composerId);
-              setComposerOpen(true);
-            }}
-          >
+          <Button id={composeButtonId} variant="outline" size="sm" className="ms-auto" onClick={openComposer}>
             <Plus aria-hidden />
             {t('Viết ghi chú')}
           </Button>
@@ -357,16 +335,16 @@ export function ItemNotes({
       </div>
 
       {showComposer && (
-        <InlineNoteForm
+        <NoteInPlace
+          key={composerKey}
           idBase={`${base}-new`}
-          draft={draft}
-          onDraft={setDraft}
-          busy={composeBusy}
-          error={composeError}
-          saveLabel={t('Lưu ghi chú')}
-          onSave={() => void create()}
-          onCancel={() => unlessDirty(composerDirty, closeComposer)}
-          textareaRef={composerRef}
+          editorId={composerId}
+          item={item}
+          note={null}
+          template={template}
+          focusRequest={composerFocus}
+          onSaved={(note, created) => saved(note, created, composerKey)}
+          onDone={closeComposer}
         />
       )}
       <p className="sr-only" role="status">
@@ -377,12 +355,12 @@ export function ItemNotes({
         <ApiErrorState error={notes.error} onRetry={notes.reload} />
       ) : !loaded ? (
         <NotesSkeleton />
-      ) : list.length === 0 ? (
+      ) : shown.length === 0 ? (
         !showComposer && <p className="text-sm text-muted-foreground">{t('Chưa có ghi chú nào.')}</p>
       ) : (
         <ul aria-label={t('Ghi chú của item')} className="flex flex-col divide-y">
-          {list.map((note) => {
-            const edit = edits.get(note.id);
+          {shown.map((note) => {
+            const isEditing = editing.has(note.id);
             const heading = noteHeading(note.title, item.title);
             const others = note.itemLabels.filter((l) => l.id !== item.id);
             const name = noteTitle(note, t);
@@ -390,7 +368,7 @@ export function ItemNotes({
               <li key={note.id} className="flex flex-col gap-2 py-5 first:pt-0 last:pb-0">
                 <div className="flex items-start gap-2">
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    {heading && !edit && (
+                    {heading && !isEditing && (
                       <h3 className="font-heading text-[15px] leading-5 font-semibold break-words">{heading}</h3>
                     )}
                     <p className="text-xs text-muted-foreground">
@@ -401,7 +379,7 @@ export function ItemNotes({
                             <span key={o.id}>
                               {i > 0 && ', '}
                               <Link
-                                href={`/thu-vien/item/?id=${o.id}`}
+                                href={linkHref('item', o.id)}
                                 className="underline-offset-4 hover:text-foreground hover:underline"
                               >
                                 {o.title}
@@ -411,7 +389,7 @@ export function ItemNotes({
                         })}
                     </p>
                   </div>
-                  {!edit && (
+                  {!isEditing && (
                     <div className="-me-1.5 -mt-1 flex shrink-0 items-center">
                       <Tooltip>
                         <TooltipTrigger
@@ -421,7 +399,7 @@ export function ItemNotes({
                               size="icon-sm"
                               variant="ghost"
                               aria-label={t('Sửa ghi chú “{title}”', { title: name })}
-                              onClick={() => startEdit(note)}
+                              onClick={() => setNoteEditing(note.id, true)}
                             />
                           }
                         >
@@ -430,7 +408,7 @@ export function ItemNotes({
                         <TooltipPopup>{t('Sửa')}</TooltipPopup>
                       </Tooltip>
                       <RowMenu label={t('Thao tác cho ghi chú “{title}”', { title: name })}>
-                        <MenuLinkItem render={<Link href={`/thu-vien/ghi-chu/?id=${note.id}`} />}>
+                        <MenuLinkItem render={<Link href={linkHref('note', note.id)} />}>
                           <NotebookPen aria-hidden />
                           {t('Mở ở trang Ghi chú')}
                         </MenuLinkItem>
@@ -443,16 +421,15 @@ export function ItemNotes({
                     </div>
                   )}
                 </div>
-                {edit ? (
-                  <InlineNoteForm
+                {isEditing ? (
+                  <NoteInPlace
                     idBase={`${base}-edit-${note.id}`}
-                    draft={edit}
-                    onDraft={(d) => setEdit(note.id, { ...edit, ...d })}
-                    busy={edit.busy}
-                    error={edit.error}
-                    saveLabel={t('Lưu')}
-                    onSave={() => void saveEdit(note)}
-                    onCancel={() => unlessDirty(editDirty(note, edit), () => stopEdit(note.id))}
+                    item={item}
+                    note={note}
+                    template=""
+                    focusRequest={1}
+                    onSaved={(n) => saved(n, false)}
+                    onDone={() => setNoteEditing(note.id, false)}
                   />
                 ) : (
                   <NoteBody markdown={note.markdown} />
@@ -463,15 +440,6 @@ export function ItemNotes({
         </ul>
       )}
 
-      <DiscardChanges
-        open={discard !== null}
-        onKeep={() => setDiscard(null)}
-        onDiscard={() => {
-          const action = discard;
-          setDiscard(null);
-          action?.();
-        }}
-      />
       <ConfirmDelete
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
@@ -487,10 +455,14 @@ export function ItemNotes({
         onDeleted={() => {
           if (!deleting) return;
           const gone = deleting.id;
-          const at = list.findIndex((n) => n.id === gone);
-          const neighbour = list[at + 1] ?? list[at - 1];
+          const at = shown.findIndex((n) => n.id === gone);
+          const neighbour = shown[at + 1] ?? shown[at - 1];
           notes.mutate((d) => d && { ...d, results: d.results.filter((n) => n.id !== gone) });
-          setEdit(gone, null);
+          setEditing((s) => {
+            const next = new Set(s);
+            next.delete(gone);
+            return next;
+          });
           onCountChange(deleting.items, -1);
           say(t('Đã xóa ghi chú "{title}"', { title: noteTitle(deleting, t) }));
           // the deleted note's menu is gone: the next note's (or the composer's) button takes the focus

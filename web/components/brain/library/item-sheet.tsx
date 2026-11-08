@@ -1,18 +1,17 @@
 'use client';
-import { useRef, useState, type ComponentProps } from 'react';
+import { useRef, type ComponentProps } from 'react';
 import type { ApiItem } from '@/lib/api/client';
 import { useT } from '@/lib/i18n/client';
 import { Sheet, SheetPanel, SheetPopup } from '@/components/ui/sheet';
-import { DiscardChanges } from './discard-changes';
 import { ItemDetail } from './item-detail';
 
 type ChangeDetails = Parameters<NonNullable<ComponentProps<typeof Sheet>['onOpenChange']>>[1];
 
 /**
  * The Item page beside Thư viện (DECISIONS 9.8 point 1, "xem nhanh"): a right-side Sheet over the List or the Board,
- * which stay visible behind it (DESIGN.md §6 Overlays). Escape, the close button and a click outside close it, unless
- * note text is unsaved: then "Bỏ các thay đổi chưa lưu?" asks first. Escape typed inside a note's fields ends that edit
- * instead (the field handles it). `item` stays set while the Sheet animates out.
+ * which stay visible behind it (DESIGN.md §6 Overlays). Escape, the close button and a click outside close it; notes
+ * being written save by themselves as it closes (use-note-autosave.ts), so nothing asks first. Escape typed inside a
+ * note being written ends that edit instead (the editor handles it). `item` stays set while the Sheet animates out.
  */
 export function ItemSheet({
   item,
@@ -26,7 +25,7 @@ export function ItemSheet({
 }: {
   item: ApiItem | null;
   open: boolean;
-  /** Opened from "Viết ghi chú": the composer starts open and has the first focus. */
+  /** Opened from "Viết ghi chú": the composer starts open and takes the focus once its editor is ready. */
   compose: boolean;
   onOpenChange: (open: boolean) => void;
   /** Where the focus goes when the Sheet closes (the row or card it was opened from). */
@@ -37,21 +36,13 @@ export function ItemSheet({
   onDeleted: (item: ApiItem) => void;
 }) {
   const t = useT();
-  const dirty = useRef(false);
-  const composer = useRef<HTMLTextAreaElement | null>(null);
   const title = useRef<HTMLHeadingElement | null>(null);
-  const [askClose, setAskClose] = useState(false);
 
   const change = (next: boolean, details: ChangeDetails) => {
     if (next) return onOpenChange(true);
     const target = details.event?.target;
-    if (details.reason === 'escape-key' && target instanceof Element && target.closest('form')) {
+    if (details.reason === 'escape-key' && target instanceof Element && target.closest('[data-note-editing]')) {
       details.cancel();
-      return;
-    }
-    if (dirty.current) {
-      details.cancel();
-      setAskClose(true);
       return;
     }
     onOpenChange(false);
@@ -63,7 +54,7 @@ export function ItemSheet({
         className="max-w-2xl"
         closeProps={{ 'aria-label': t('Đóng') }}
         finalFocus={finalFocus}
-        initialFocus={compose ? composer : title}
+        initialFocus={title}
       >
         {item && (
           <SheetPanel>
@@ -72,26 +63,13 @@ export function ItemSheet({
               item={item}
               variant="sheet"
               composeOnOpen={compose}
-              composerRef={composer}
               titleRef={title}
               onItemChange={onItemChange}
               onOtherCounts={onOtherCounts}
               onDeleted={onDeleted}
-              onDirtyChange={(d) => {
-                dirty.current = d;
-              }}
             />
           </SheetPanel>
         )}
-        <DiscardChanges
-          open={askClose}
-          onKeep={() => setAskClose(false)}
-          onDiscard={() => {
-            setAskClose(false);
-            dirty.current = false;
-            onOpenChange(false);
-          }}
-        />
       </SheetPopup>
     </Sheet>
   );

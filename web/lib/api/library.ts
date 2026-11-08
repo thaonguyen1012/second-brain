@@ -18,9 +18,12 @@ export const notesApi = {
   /** Cmd+K: newest matching notes as title + ~120-character excerpt (never the whole markdown). */
   search: (q: string, limit = 5, signal?: AbortSignal) =>
     request<Schemas['NoteSearch']>('GET', withQuery('/api/notes/search', { q, limit }), undefined, signal),
-  create: (body: ApiNoteCreate) => request<ApiNote>('POST', '/api/notes', body),
+  /** `keepalive`: the save may outlive the page (autosave while leaving). */
+  create: (body: ApiNoteCreate, init?: { keepalive?: boolean }) =>
+    request<ApiNote>('POST', '/api/notes', body, undefined, init),
   /** `items` replaces the links (`[]` removes them). */
-  update: (id: number, body: ApiNotePatch) => request<ApiNote>('PATCH', `/api/notes/${id}`, body),
+  update: (id: number, body: ApiNotePatch, init?: { keepalive?: boolean }) =>
+    request<ApiNote>('PATCH', `/api/notes/${id}`, body, undefined, init),
   delete: (id: number) => request<void>('DELETE', `/api/notes/${id}`),
 };
 

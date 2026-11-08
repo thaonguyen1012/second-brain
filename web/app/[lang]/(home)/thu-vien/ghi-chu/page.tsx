@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { PageHeader } from '@/components/brain/page-header';
 import { RowsSkeleton } from '@/components/brain/library/list-rows';
 import { LibraryTabs } from '@/components/brain/library/library-tabs';
-import { NotesPage } from '@/components/brain/library/notes-page';
+import { NotesRoute, UnlessNote } from '@/components/brain/library/notes-route';
 import { getT } from '@/lib/i18n/server';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,16 +13,22 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Page() {
   const t = await getT();
+  const header = (
+    <PageHeader
+      title={t('Thư viện')}
+      nav="/thu-vien/ghi-chu/"
+      description={t('Ghi chú markdown; item xong cần có ghi chú.')}
+    >
+      <LibraryTabs current="notes" />
+    </PageHeader>
+  );
   return (
     <div className="flex w-full flex-col">
-      <PageHeader
-        title={t('Thư viện')}
-        nav="/thu-vien/ghi-chu/"
-        description={t('Ghi chú markdown; item xong cần có ghi chú.')}
-      >
-        <LibraryTabs current="notes" />
-      </PageHeader>
-      {/* useSearchParams (?item=) needs a Suspense boundary for the static shell */}
+      {/* The list's header; a note's page (?id=) has none. The static shell shows it (the fallback). */}
+      <Suspense fallback={header}>
+        <UnlessNote>{header}</UnlessNote>
+      </Suspense>
+      {/* useSearchParams (?id=, ?item=) needs a Suspense boundary for the static shell */}
       <Suspense
         fallback={
           <div className="w-full max-w-7xl px-4 sm:px-8">
@@ -30,7 +36,7 @@ export default async function Page() {
           </div>
         }
       >
-        <NotesPage />
+        <NotesRoute />
       </Suspense>
     </div>
   );

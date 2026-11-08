@@ -59,6 +59,8 @@ describe('noteTitle', () => {
 
   it('skips lines that are only marks and cuts long lines at 120 characters', () => {
     expect(noteTitle(note('', '#   \nnội dung'), tVi)).toBe('nội dung');
+    // the editor's empty-line placeholder is not text
+    expect(noteTitle(note('', '<br />\n\n- <br />\n\nÝ chính'), tVi)).toBe('Ý chính');
     expect(noteTitle(note('', 'x'.repeat(300)), tVi)).toHaveLength(120);
   });
 

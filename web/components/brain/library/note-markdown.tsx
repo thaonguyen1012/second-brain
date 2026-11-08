@@ -141,7 +141,33 @@ const makeComponents = (t: T): Components => ({
   td: (p: Props<'td'>) => <td {...rest(p)} className="border-b px-2 py-1.5 align-top" />,
 });
 
-const plugins = [remarkGfm];
+interface MdNode {
+  type: string;
+  value?: string;
+  children?: MdNode[];
+}
+
+/**
+ * The editor (Milkdown) saves an empty paragraph or list item as the raw HTML `<br />` (so it survives the next load).
+ * Raw HTML is otherwise shown as text here; this one placeholder becomes what it means, an empty line.
+ */
+function remarkEmptyLines() {
+  const walk = (node: MdNode) => {
+    if (!node.children) return;
+    node.children = node.children.map((child): MdNode => {
+      if (child.type === 'html' && /^<br\s*\/?>$/i.test((child.value ?? '').trim())) {
+        // an inline placeholder (inside a paragraph or a list item's paragraph) is a line break; a block one an empty
+        // paragraph with a break, so it keeps its height
+        return node.type === 'paragraph' ? { type: 'break' } : { type: 'paragraph', children: [{ type: 'break' }] };
+      }
+      walk(child);
+      return child;
+    });
+  };
+  return (tree: MdNode) => walk(tree);
+}
+
+const plugins = [remarkGfm, remarkEmptyLines];
 
 /** Renders `markdown` (GFM: tables, task lists, strikethrough, autolinks) as the note's reading text. */
 export default function NoteMarkdown({ markdown, className }: { markdown: string; className?: string }) {
