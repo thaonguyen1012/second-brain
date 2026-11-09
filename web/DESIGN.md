@@ -338,12 +338,15 @@ so the near pairs that remain are listed under the palette, not hidden.
   while a change waits (0.8 s) or goes, "Đã lưu" once the server has it, and a failure in `text-error-foreground`
   (AA on the page) with its reason and an outline `xs` "Thử lại" (none when the text itself cannot be saved; an
   emptied note gets an outline `xs` "Xóa ghi chú" there instead, which opens `ConfirmDelete`). A save with no answer
-  in 15 s fails the same way ("Máy chủ không trả lời."). "Xong" goes back to reading once the server has
+  in 15 s fails the same way ("Máy chủ không trả lời."), also one sent with `keepalive` as an editor closes or the tab hides. "Xong" goes back to reading once the server has
   everything: a failed save keeps the form open with its reason. Closing the Sheet, a link, hiding or closing the tab
   send what is left at once (with `keepalive` when the page goes), and until the server has it each editor keeps its
   own copy in this browser (`lib/note-copies.ts`; never written over by another editor, another tab or a save).
   A copy whose writer is gone is offered back: an `Alert` ("Có bản nháp chưa lưu trong trình duyệt này", "Khôi phục"
-  / "Bỏ bản nháp", the buttons under the text at every width) above the form. Such a copy stays until it is restored
+  / "Bỏ bản nháp", the buttons under the text at every width) above the form. A copy written over a version the note
+  has been saved after (elsewhere, or by that copy's own save as the tab closed) is never called unsaved: "Có bản nháp
+  viết trên bản cũ hơn của ghi chú", saying "Khôi phục sẽ thay bản mới hơn đang hiện.", and "Mở để xem" in the reading
+  view. A copy of an editor open in another tab is never offered or dropped there. Such a copy stays until it is restored
   or dropped, and the reading view says one is kept: a muted `text-xs` line with a History icon and a link-style "Mở
   để khôi phục" under the note's meta, under the "Ghi chú" heading for a new note's copy, and above the notes list
   for each new note started on its own page or for an Item (a new note's copy whose create may have arrived is first
@@ -368,7 +371,7 @@ so the near pairs that remain are listed under the palette, not hidden.
   text links stays linked, and a muted status line says why when it is unlinked; Ngày); the editor without a frame (headings up to 18px here); then "Được nhắc tới ở"
   with the notes that link this one. `?id=new` (with `&item=` and `&template=`, from "Ghi chú mới", the empty page's
   template buttons and `n`) is a new note with the caret in it; its first save puts its id in the address
-  (`router.replace`) without reopening the editor, only while that page still shows (a create that answers after the
+  (`router.replace`) without reopening the editor, only in the page that sent the create, while it still shows (a create that answers after the
   user left navigates nowhere). A version saved elsewhere replaces the page's editor as on the Item page (the `Alert`
   or the status line, the caret back in the text). A quick note from an Inbox entry stays a dialog (`note-dialog.tsx`).
 - **Note editor** (`library/note-editor.tsx`, Milkdown 7: commonmark + gfm, owner's choice 08/11/2026; lazy with its
@@ -384,15 +387,19 @@ so the near pairs that remain are listed under the palette, not hidden.
   Escape closes the menu only) with the caret staying in the text (`aria-activedescendant`); only the menu's own list
   scrolls to the highlighted row (never the page, the Sheet or a phone's visual viewport), and a menu is never wider
   than the room it has (the Sheet at 390 px; the `[[` list is placed from the editor's left edge, so a phone page never
-  widens). On a list line `/` offers every block: the line leaves its list when a block is picked (nothing is saved
-  while the menu is open), and one Cmd/Ctrl+Z gives the typed "/…" back. Links in the editor are not followed; the
+  widens). On a list line `/` offers every block: another list kind changes the whole list in place, the line's own kind changes
+  nothing, any other block takes the line out of its list (nothing is saved while the menu is open), and one Cmd/Ctrl+Z
+  gives the typed "/…" back. Đường kẻ goes after the line with the caret on a line below it. Links in the editor are not followed; the
   reading view follows them. The placeholder ("Gõ / để chèn khối, hoặc viết luôn") shows in an empty note and in the
   empty line holding the caret. Until the editor's chunk arrives the note shows as it reads (`NoteBody`, pictures
   loaded at once) in the editor's frame and cannot be used; the reading view draws every block at the editor's size
   and spacing (headings per variant, task rows, tables, quotes, lists nested in tight and loose items, pictures inline
   and middle-aligned), so nothing jumps when it comes (0 px at 1280 and 390, page and Sheet). A done task mutes and
-  strikes only its own text, never the list under it. Keys typed while the editor is being made (it opens with the
-  caret, or replaces one after a version saved elsewhere) are kept and typed into it.
+  strikes only its own text, never the list under it. Keys typed from the moment the editor is asked for with the caret
+  (while its chunk loads, while it is made, or after a version saved elsewhere replaces it) go to a hidden keeper field
+  ("Đang mở trình soạn thảo", IME included) and are typed into it; when ready it takes the focus only from that field or
+  where nothing holds it, never from the title or the Item picker. Pages that can open an editor fetch its chunk when
+  idle. A picture from another site inside a link shows as the link's text "[Ảnh: alt]" in both views.
 - **Tables** for numeric or time data (Giờ, thị trường): header `text-xs font-medium text-muted-foreground`,
   rows `h-10` with `divide-y`, no vertical cell borders, numbers right-aligned `tabular-nums`. Add the Space UI
   table component from the registry when first needed rather than styling `<table>` by hand.

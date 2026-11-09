@@ -98,13 +98,16 @@ web/
                                  on home; drawn block by block like the editor, which is its loading state) and are
                                  written in note-editor.tsx (Milkdown, lazy via note-editor-lazy.tsx with
                                  note-editor.css, never on home; markdown written by lib/note-stringify.ts, tested on
-                                 Milkdown's own serializer; keys typed before it is ready are kept: "/" block menu (one
+                                 Milkdown's own serializer, whitespace-only marks dropped; keys typed from the editor's request are kept by
+                                 note-editor-lazy.tsx (a keeper field; the chunks preload when idle), focus taken only where free: "/" block menu (one
                                  undo step), markdown shortcuts, task boxes,
                                  the `[[ ]]` picker in note-link-picker.tsx), saved by use-note-autosave.ts (AFFiNE's
                                  way: after a pause, "Đã lưu" in save-status.tsx, at once when leaving with keepalive,
                                  each editor's own copy in localStorage until the server has it (lib/note-copies.ts: one
                                  per editor, a gone writer's copy offered back until restored or dropped, named by
-                                 UnsavedCopyHint / NewNoteCopyHints; a new note's copy looked up by ?clientId=); an
+                                 UnsavedCopyHint / NewNoteCopyHints; a new note's copy looked up by ?clientId=; a copy names the version it was
+                                 written over (offered as "written on an older version" after a newer save); an editor
+                                 with a copy holds a Web Lock, so another open tab never offers it; a hand-off waits once); an
                                  edit's baseUpdatedAt (409 = saved elsewhere: the newer note shows, "Ghi chú vừa được
                                  lưu ở nơi khác"); the editors of one note on a page go on from their own saves; a 15 s
                                  timeout; no Lưu/Hủy); the note page is
@@ -151,11 +154,12 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  Item write incl. /api/projects) + Note (markdown, M2M Item; never sent to an LLM) +
                                  NoteLink (the `[[ ]]` links read out of a note's markdown on every save by links.py:
                                  note -> item|note|opportunity|skill, the owner's only; read where the reading view shows
-                                 a link (micromark's CommonMark + GFM blocks and inline links, titles, references; never
+                                 a link (micromark's CommonMark + GFM blocks and inline links, titles, references, destinations decoded,
+                                 task boxes; never
                                  code, HTML or images), linear on any text; migration 0005 keeps a byte-identical frozen
                                  copy, a test compares them; a linked Item joins the note's Items; derived, never
                                  exported); services.save_note (writes only the sent fields under a row lock; clientId,
-                                 baseUpdatedAt -> NoteConflict 409); note_label/note_excerpt read text as it shows (same
+                                 baseUpdatedAt -> NoteConflict 409; a create answers updated_at = created_at); note_label/note_excerpt read text as it shows (same
                                  as web/lib/library-labels.ts noteTitle); /api/items* (?q= title/source/exact tag; DELETE:
                                  links set null, 409 for a project with time entries), /api/notes* (?q= title/markdown,
                                  escapes shown when q has punctuation; ?item=, ?clientId=), /api/items/{id}/mentions (mentions.py: opportunities and skills that use the

@@ -236,9 +236,9 @@ Markdown is up to 200,000 characters.
 
 Saving from the editor (it saves by itself, DECISIONS 9.8): a `POST` may carry `clientId`, a UUID the editor gives
 the new note before its first save. A `POST` with a `clientId` the owner already used answers `200` with that note
-and changes nothing (a create sent again, as the page closed or from a restored copy, never makes a second note); the
+and changes nothing (a create answers one time for `createdAt` and `updatedAt`; a create sent again, as the page closed or from a restored copy, never makes a second note); the
 editor then sends its newer text with a `PATCH`, unless that note was edited since it was made (`updatedAt` after
-`createdAt`) and holds other text: then it shows that note and keeps its own text as a copy to restore. A copy of a new
+`createdAt`) and holds other text than the editor sent: then it shows that note and keeps its own text as a copy to restore. A copy of a new
 note left by a page that closed while creating it is first looked up with `GET /api/notes?clientId=`: if its create
 arrived, the copy belongs to that note. A `PATCH` may carry `baseUpdatedAt`, the `updatedAt` the edit
 started from: when the note was saved since then (another tab or device), nothing is written and the answer is
