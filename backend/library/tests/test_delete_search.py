@@ -188,3 +188,68 @@ def test_note_search_sends_an_excerpt_not_the_body(client: Client) -> None:
     assert len(long["excerpt"]) <= 121 and set(long) == {"id", "title", "excerpt", "updatedAt"}
     assert client.get("/api/notes/search", {"q": " "}).json()["results"] == []
     assert client.get("/api/notes/search?q=focus&limit=21").status_code == 400
+
+
+def test_note_search_skips_the_editors_empty_line_placeholder(client: Client) -> None:
+    """Milkdown saves empty paragraphs and list items as <br />: it is no text for a title or an excerpt."""
+    user = owner(client)
+    Note.objects.create(user=user, markdown="<br />\n\n- <br />\n\nÝ chính về <br /> sự tập trung")
+    [hit] = client.get("/api/notes/search?q=chính").json()["results"]
+    assert hit["title"] == "Ý chính về sự tập trung"
+    assert "<br" not in hit["excerpt"]
+
+
+def test_note_titles_show_links_by_their_text(client: Client) -> None:
+    """A `[[ ]]` link reads as its text in a note's title and excerpt; a task box is no text."""
+    user = owner(client)
+    Note.objects.create(user=user, markdown="- [ ] Đọc [Atomic Habits](/thu-vien/item/?id=12) lại")
+    [hit] = client.get("/api/notes/search?q=atomic").json()["results"]
+    assert hit["title"] == "Đọc Atomic Habits lại"
+    assert "/thu-vien" not in hit["excerpt"] and "Atomic Habits" in hit["excerpt"]
+
+
+def test_note_titles_show_escaped_characters_as_themselves(client: Client) -> None:
+    """The editor writes `\\[`, `\\*` and a link text's brackets escaped: titles and excerpts show the
+    characters."""
+    user = owner(client)
+    Note.objects.create(user=user, markdown=r"\[RD] mở ngoặc, file_name và 2\*3 = 6")
+    Note.objects.create(user=user, markdown="> - [ ] Xem [\\[RC\\] Book C](/thu-vien/item/?id=22) nhé")
+    found = [client.get(f"/api/notes/search?q={q}").json()["results"] for q in ("RC", "RD")]
+    hits = {h["title"]: h["excerpt"] for results in found for h in results}
+    assert hits == {
+        "Xem [RC] Book C nhé": "Xem [RC] Book C nhé",
+        "[RD] mở ngoặc, file_name và 2*3 = 6": "[RD] mở ngoặc, file_name và 2*3 = 6",
+    }
+
+
+def test_note_search_finds_text_the_editor_escapes(client: Client) -> None:
+    """The editor writes `AT\\&T`, `a\\@b.co` and `https\\://` with backslash escapes: the notes list and
+    Cmd+K find them as they read, in one query; the stored form is found too."""
+    user = owner(client)
+    note = Note.objects.create(
+        user=user, markdown="Hợp đồng AT\\&T, mail a\\@b.co, xem https\\://ex.com/a\\_b **gấp**"
+    )
+    Note.objects.create(user=user, markdown="khác")
+    Note.objects.create(user=stranger(), markdown="AT\\&T a\\@b.co https\\://ex.com/a\\_b")
+    for query in ("AT&T", "a@B.co", "https://ex.com/a_b", "AT\\&T"):
+        assert [n["id"] for n in client.get("/api/notes", {"q": query}).json()["results"]] == [note.pk]
+        with CaptureQueriesContext(connection) as queries:
+            hits = client.get("/api/notes/search", {"q": query}).json()["results"]
+        assert [h["id"] for h in hits] == [note.pk]
+        assert sum("library_note" in q["sql"] for q in queries.captured_queries) == 1
+    [hit] = client.get("/api/notes/search", {"q": "a@b.co"}).json()["results"]
+    assert hit["excerpt"] == "Hợp đồng AT&T, mail a@b.co, xem https://ex.com/a_b gấp"
+
+
+def test_note_search_reads_the_escapes_only_for_punctuation(client: Client) -> None:
+    """An escape's backslash sits right before punctuation, so a query without any matches the markdown as it
+    reads only where it matches the markdown itself: such a query runs no regex over every note."""
+    user = owner(client)
+    note = Note.objects.create(user=user, markdown="Hợp đồng AT\\&T với\\_nhau")
+    Note.objects.create(user=user, markdown="khác")
+    for query, regex in (("hợp đồng", False), ("AT", False), ("AT&T", True), ("với_nhau", True)):
+        for path in ("/api/notes", "/api/notes/search"):
+            with CaptureQueriesContext(connection) as queries:
+                found = client.get(path, {"q": query}).json()["results"]
+            assert [n["id"] for n in found] == [note.pk]
+            assert any("REGEXP_REPLACE" in q["sql"] for q in queries.captured_queries) is regex

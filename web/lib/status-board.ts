@@ -137,7 +137,7 @@ export interface BoardWords {
   none: Msg;
   /** An empty lane under a drag: "Thả dự án vào đây". */
   dropHere: Msg;
-  /** Read after a card's title, which opens its edit dialog: "sửa dự án". */
+  /** Read after a card's title, what its button opens: "sửa dự án" (the edit dialog), "xem item" (the Item page). */
   edit: Msg;
   /** A lane's count as a screen reader hears it: "{n} dự án". */
   count: Msg;
@@ -177,7 +177,8 @@ export const ITEM_BOARD: BoardKind = {
     addToLane: msg('Thêm item vào cột {lane}'),
     none: msg('Chưa có item'),
     dropHere: msg('Thả item vào đây'),
-    edit: msg('sửa item'),
+    // the card's title opens the Item page (the Sheet), where the Item is read and its notes written
+    edit: msg('xem item'),
     count: msg('{n} item'),
     gone: msg('item này không còn nữa'),
   },
@@ -199,19 +200,27 @@ export function parseDragId(data: string | null | undefined): number | null {
 /** The two views of a page with a board: the list (default) and the board (`?view=board`). */
 export type BoardView = 'list' | 'board';
 
-export function parseView(value: string | null | undefined): BoardView | null {
-  return value === 'board' || value === 'list' ? value : null;
+/**
+ * A page's view: the list (the default, no parameter) or the page's one other view, `alt` (`?view=board` on Dự án and
+ * Thư viện, `?view=items` for "Theo item" on Ghi chú). Anything else is null.
+ */
+export function parseView<A extends string = 'board'>(value: string | null | undefined, alt: A = 'board' as A): 'list' | A | null {
+  return value === alt || value === 'list' ? (value as 'list' | A) : null;
 }
 
 /** The URL's view wins, then the one last picked in this browser, else the list. */
-export function resolveView(fromUrl: string | null, stored: string | null): BoardView {
-  return parseView(fromUrl) ?? parseView(stored) ?? 'list';
+export function resolveView<A extends string = 'board'>(
+  fromUrl: string | null,
+  stored: string | null,
+  alt: A = 'board' as A,
+): 'list' | A {
+  return parseView(fromUrl, alt) ?? parseView(stored, alt) ?? 'list';
 }
 
-/** The query string for `view`: `view=board` for the board, no parameter for the list; other parameters kept. */
-export function viewSearch(search: string, view: BoardView): string {
+/** The query string for `view`: `view=<alt>` for the other view, no parameter for the list; other parameters kept. */
+export function viewSearch<A extends string = 'board'>(search: string, view: 'list' | A, alt: A = 'board' as A): string {
   const q = new URLSearchParams(search);
-  if (view === 'board') q.set('view', 'board');
+  if (view === alt) q.set('view', alt);
   else q.delete('view');
   return q.toString();
 }

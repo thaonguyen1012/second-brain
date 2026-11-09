@@ -16,13 +16,26 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.core.validators import URLValidator
 from django.db import transaction
-from django.db.models import CharField, Count, Exists, OuterRef, ProtectedError, Q, QuerySet, Value
+from django.db.models import (
+    CharField,
+    Count,
+    Exists,
+    F,
+    Func,
+    OuterRef,
+    ProtectedError,
+    Q,
+    QuerySet,
+    TextField,
+    Value,
+)
 from django.db.models.functions import Concat
 from django.utils import timezone
 
 from core.models import Job
 from core.services import jobs, thumbnails
 from core.services.search import normalize_query
+from library.links import sync_links
 from library.models import Item, Note
 
 MAX_TAGS = 30
@@ -34,10 +47,58 @@ _HTTP_URL = URLValidator(schemes=["http", "https"])
 # Item fields an API write may set (POST/PATCH /api/items; /api/projects sends a subset).
 ITEM_FIELDS = ("type", "status", "title", "tags", "source", "rating", "started_at", "finished_at")
 NOTE_FIELDS = ("title", "markdown")
+# The ASCII punctuation a backslash may escape in markdown (CommonMark), as the editor writes `AT\&T`
+_ESCAPABLE = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
 EXCERPT_CHARS = 120
 EXCERPT_BEFORE = 40
-_MARKS = re.compile(r"[#>*_`~\[\]]+")
-_LINE_PREFIX = re.compile(r"^\s*(#{1,6}\s+|>\s*|[-*+]\s+)")
+# Note labels (title, excerpt) read the same as the web's noteTitle (web/lib/library-labels.ts): the same
+# patterns, whitespace set (JavaScript's and U+0085), line ends and cut in code points, so a note has one
+# title everywhere.
+_SPACE = "\t\n\v\f\r \x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a"
+_SPACE += "\u2028\u2029\u202f\u205f\u3000\ufeff"
+_SPACES = re.compile(f"[{_SPACE}]+")
+_LINE = re.compile(r"[^\r\n]+")
+# A line's heading, quote, list and task marks (`## `, `> `, `- `, `1. `, `- [ ] `), nested ones too
+_LINE_PREFIX = re.compile(
+    r"^[ \t]*(?:(?:>|(?:[-*+]|[0-9]{1,9}[.)]|#{1,6})(?=[ \t]))[ \t]*)*(?:\[[ xX]\][ \t]+)?", re.MULTILINE
+)
+# The editor's (Milkdown's) placeholder for an empty paragraph or list item: no text
+_EMPTY_LINE = re.compile(f"<br[{_SPACE}]*/?>", re.IGNORECASE)
+# Lines that hold no title (after their marks): a code fence, and a line of only dashes, colons and pipes with
+# a dash (a thematic break, a setext underline, a table's delimiter row)
+_NO_TITLE = re.compile(r"`{3,}[^`]*+$|~{3,}|(?=[^-]*+-)[-:| \t]*+$")
+# Read left to right, so an escaped character is never the start of anything else (`\!` before a link stays
+# a `!`, `\[` opens no link) and every match attempt stops at the next bracket, parenthesis or line end that
+# no backslash escapes (linear):
+# 1. a backslash escape shows its character (the editor writes `\[`, `\*`, `\_`, `\&`);
+# a backslash that ends a line (a hard break) shows nothing;
+# 2. a link or image shows its text (`[Atomic Habits](/thu-vien/item/?id=12)`, `[\[RC\] Book](...)`, also with
+# the escaped parentheses the editor writes in a url: `(https://en.wikipedia.org/wiki/Atomic_Habits_\(book\))`);
+# 3, 4. a numeric character reference shows its character (the editor writes `&#x20;` for a leading space);
+# inline marks are left out (`_` inside a word, as in file_name, is no mark).
+_INLINE = re.compile(
+    r"\\([!-/:-@\[-`{-~])|\\(?=[\r\n]|\Z)"
+    r"|!?\[((?:\\[^\r\n]|[^\\\[\]\r\n])*+)\]\((?:\\[^\r\n]|[^()\\\r\n])*+\)"
+    r"|&#[xX]([0-9a-fA-F]{1,6});|&#([0-9]{1,7});"
+    r"|[*`~]+|(?<!_)(?<![^\W_])_+|(?<=[^\W_])_+(?!_)(?![^\W_])"
+)
+
+
+def _shown(match: re.Match[str]) -> str:
+    """What one _INLINE match shows."""
+    if match.group(1) is not None:
+        return match.group(1)
+    if match.group(2) is not None:
+        return _INLINE.sub(_shown, match.group(2))
+    if code := match.group(3) or match.group(4):
+        point = int(code, 16 if match.group(3) else 10)
+        return chr(point) if 0 < point <= 0x10FFFF and not 0xD800 <= point <= 0xDFFF else "\ufffd"
+    return " "
+
+
+def _plain(text: str) -> str:
+    """`text` as one line of shown characters: markdown marks out, whitespace runs as single spaces."""
+    return _SPACES.sub(" ", _INLINE.sub(_shown, text)).strip(" ")
 
 
 def normalize_tags(tags: Iterable[str]) -> list[str]:
@@ -284,30 +345,50 @@ def fetch_automatically(item: Item) -> None:
 
 
 def notes(user: User, query: str = "", item: int | None = None) -> QuerySet[Note]:
-    """The owner's notes; `query` matches title or markdown (case-insensitive), `item` a linked Item id."""
+    """The owner's notes; `query` matches title or markdown (case-insensitive), the markdown also as it reads
+    with its backslash escapes shown as their characters: the editor writes `AT\\&T`, `a\\@b.co`; `item` a
+    linked Item id. One query."""
     rows = Note.objects.filter(user=user)
     if query := query.strip():
-        rows = rows.filter(Q(title__icontains=query) | Q(markdown__icontains=query))
+        matches = Q(title__icontains=query) | Q(markdown__icontains=query)
+        # A removed backslash sits right before the punctuation it escapes, so a query without such a
+        # character matches the shown markdown only where it matches the markdown itself: the regex, which
+        # runs on every note, is spent only on a query it can help.
+        if not _ESCAPABLE.isdisjoint(query):
+            shown = Func(
+                F("markdown"),
+                Value(r"\\([!-/:-@\[-`{-~])"),  # a backslash before ASCII punctuation (CommonMark's escapes)
+                Value(r"\1"),
+                Value("g"),
+                function="REGEXP_REPLACE",
+                output_field=TextField(),
+            )
+            rows = rows.alias(shown=shown)
+            matches |= Q(shown__icontains=query)
+        rows = rows.filter(matches)
     if item is not None:
         rows = rows.filter(items__id=item)
     return rows
 
 
 def note_label(note: Note) -> str:
-    """The title, else the first non-empty markdown line without its heading/quote/list mark (as the web's
-    noteTitle), else ""."""
-    if title := note.title.strip():
+    """The title, else the first markdown line with text, without its heading/quote/list mark, links shown by
+    their text, escapes and character references by their character and inline marks left out (as the web's
+    noteTitle), cut at EXCERPT_CHARS characters; else "". Code fences, rules and delimiter rows hold no
+    title."""
+    if title := note.title.strip(_SPACE):
         return title
-    for line in note.markdown.split("\n"):
-        if clean := _LINE_PREFIX.sub("", line).strip():
-            return clean[:EXCERPT_CHARS]
+    for line in _LINE.finditer(note.markdown):
+        content = _LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", line.group()), count=1)
+        if not _NO_TITLE.match(content) and (text := _plain(content)):
+            return text[:EXCERPT_CHARS]
     return ""
 
 
 def note_excerpt(markdown: str, query: str) -> str:
-    """About EXCERPT_CHARS characters around the first match of `query` (markdown marks dropped), else the
-    start of the note."""
-    flat = " ".join(_MARKS.sub(" ", markdown).split())
+    """About EXCERPT_CHARS characters around the first match of `query` (markdown marks dropped, as in
+    note_label), else the start of the note."""
+    flat = _plain(_LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", markdown)))
     at = flat.lower().find(query.lower()) if query else -1
     if at < 0:
         return flat[:EXCERPT_CHARS]
@@ -332,13 +413,40 @@ def search_notes(user: User, query: str, limit: int) -> list[dict[str, Any]]:
     ]
 
 
-def save_note(note: Note, data: dict[str, Any]) -> Note:
-    """Create (unsaved `note`) or update; `items` (owner checked by the serializer) replaces the links."""
-    for field in NOTE_FIELDS:
-        if field in data:
-            setattr(note, field, data[field])
+class NoteConflict(Exception):
+    """The note was saved again since the version an edit started from (another tab or device)."""
+
+    def __init__(self, note: Note) -> None:
+        super().__init__(note.pk)
+        self.note = note
+
+
+def save_note(note: Note, data: dict[str, Any], base_updated_at: dt.datetime | None = None) -> Note:
+    """Create (unsaved `note`) or update. An update writes only the fields in `data`, on the row read again
+    under a lock, so two saves that cross (the text and the Items of one note) never put back each other's
+    older fields; with `base_updated_at` (the version the edit started from) a note saved since then raises
+    NoteConflict and nothing is written. `items` (owner checked by the serializer) replaces the links to
+    Items. The links written in the markdown are read again (library.links): its NoteLink rows, and the Items
+    it links join `items`, also after `items` replaced them (the text still links them)."""
+    fields = [field for field in NOTE_FIELDS if field in data]
     with transaction.atomic():
-        note.save()
+        if note.pk is not None:
+            note = Note.objects.select_for_update().get(pk=note.pk)
+            if base_updated_at is not None and note.updated_at != base_updated_at:
+                raise NoteConflict(note)
+        for field in fields:
+            setattr(note, field, data[field])
+        if note.pk is None:
+            note.save()
+            # One time for both (auto_now_add and auto_now each read the clock): a create sent again (its
+            # first answer lost) answers 200 with the note, and the editor reads updatedAt != createdAt as
+            # "edited since".
+            Note.objects.filter(pk=note.pk).update(updated_at=note.created_at)
+            note.updated_at = note.created_at
+        else:
+            note.save(update_fields=[*fields, "updated_at"])
         if "items" in data:
             note.items.set(data["items"])
+        if "markdown" in data or "items" in data:
+            sync_links(note)
     return note

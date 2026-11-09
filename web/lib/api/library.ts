@@ -9,6 +9,10 @@ export type ApiNoteCreate = Schemas['NoteWriteRequest'];
 export type ApiNotePatch = Schemas['PatchedNoteWriteRequest'];
 export type ApiNoteQuery = NonNullable<operations['listNotes']['parameters']['query']>;
 export type ApiNoteSearchHit = Schemas['NoteSearchHit'];
+export type ApiItemMentions = Schemas['ItemMentions'];
+export type ApiNoteMentions = Schemas['NoteMentions'];
+/** A note save may outlive the page (`keepalive`) or give up when no answer comes (`timeoutMs`). */
+type NoteSaveInit = { keepalive?: boolean; timeoutMs?: number };
 
 export const notesApi = {
   /** Newest created first; `q` matches title or markdown, `item` keeps notes linked to that Item. */
@@ -17,11 +21,35 @@ export const notesApi = {
   /** Cmd+K: newest matching notes as title + ~120-character excerpt (never the whole markdown). */
   search: (q: string, limit = 5, signal?: AbortSignal) =>
     request<Schemas['NoteSearch']>('GET', withQuery('/api/notes/search', { q, limit }), undefined, signal),
-  create: (body: ApiNoteCreate) => request<ApiNote>('POST', '/api/notes', body),
+  /** `keepalive`: the save may outlive the page (autosave while leaving). */
+  create: (body: ApiNoteCreate, init?: NoteSaveInit) => request<ApiNote>('POST', '/api/notes', body, undefined, init),
+  /**
+   * A create with a `clientId`: `created` is false when an earlier create with that id had made the note (it is
+   * answered as it is now, nothing changed).
+   */
+  createOnce: async (body: ApiNoteCreate, init?: NoteSaveInit): Promise<{ note: ApiNote; created: boolean }> => {
+    let status = 0;
+    const note = await request<ApiNote>('POST', '/api/notes', body, undefined, {
+      ...init,
+      onStatus: (code) => {
+        status = code;
+      },
+    });
+    return { note, created: status === 201 };
+  },
   /** `items` replaces the links (`[]` removes them). */
-  update: (id: number, body: ApiNotePatch) => request<ApiNote>('PATCH', `/api/notes/${id}`, body),
+  update: (id: number, body: ApiNotePatch, init?: NoteSaveInit) =>
+    request<ApiNote>('PATCH', `/api/notes/${id}`, body, undefined, init),
   delete: (id: number) => request<void>('DELETE', `/api/notes/${id}`),
+  /** The notes whose text links this note (its backlinks, "Được nhắc tới ở"). */
+  mentions: (id: number) => request<ApiNoteMentions>('GET', `/api/notes/${id}/mentions`),
 };
+
+/**
+ * Where an Item is used ("Được nhắc tới ở", DECISIONS 9.8): the opportunities that hold it as evidence (with the
+ * stance of each row) and the skills that do (with their freshness), newest evidence first.
+ */
+export const getItemMentions = (id: number) => request<ApiItemMentions>('GET', `/api/items/${id}/mentions`);
 
 /** Upper bound for loadAllItems(): 10 pages of 200 (the backend's max page size). */
 const ITEM_PAGES = 10;

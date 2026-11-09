@@ -5,10 +5,10 @@ data/items.json, which already ends in .webp). The command writes a folder, the 
 files as a zip. Both read every table in batches (TABLE_BATCH rows) and every image in FILE_CHUNK pieces,
 never a whole table or file at once.
 
-Never exported: the User row (password hash), sessions, Job and LlmCache rows, LlmCall (not owned data), and
-nothing from settings or the environment. A test checks that every model with owner data is listed here.
-Inbox thumbnails stay out too: they come from the link and can be fetched again.
-"""
+Never exported: the User row (password hash), sessions, Job and LlmCache rows, LlmCall (not owned data),
+NoteLink rows (read again from the notes' markdown on every save, library.links), and nothing from settings or
+the environment. A test checks that every model with owner data is listed here. Inbox thumbnails stay out too:
+they come from the link and can be fetched again."""
 
 import json
 import re

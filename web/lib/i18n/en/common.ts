@@ -143,7 +143,7 @@ export const common = {
   'Thêm item vào cột {lane}': 'Add an item to {lane}',
   'Chưa có item': 'No items yet',
   'Thả item vào đây': 'Drop the item here',
-  'sửa item': 'edit item',
+  'xem item': 'view item',
   'item này không còn nữa': 'this item no longer exists',
 
   // Durations and weekdays (work/format.ts, tuan/week-utils.ts, week-strip.tsx)

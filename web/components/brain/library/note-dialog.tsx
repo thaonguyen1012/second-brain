@@ -29,13 +29,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { describeApiError } from '../api-state';
 import { ItemPicker, type ItemLabel } from './item-picker';
+import { MAX_MARKDOWN } from '@/lib/item-notes';
 import { fieldErrors as sharedFieldErrors } from '@/lib/labels';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { SaveKeys } from '../save-keys';
 
-/** Backend limit for `markdown` (API_CONTRACT.md). */
-const MAX_MARKDOWN = 200_000;
 
 export interface NoteDraft {
   title?: string;
@@ -149,7 +148,7 @@ function NoteForm({
             autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            {t('Ghi chú là riêng tư, không gửi cho AI. Hiển thị dạng văn bản thô, giữ nguyên xuống dòng.')}
+            {t('Ghi chú là riêng tư, không gửi cho AI. Viết bằng markdown: ## tiêu đề, - danh sách, - [ ] việc cần làm.')}
           </p>
         </div>
         <div className="flex flex-col gap-1.5">

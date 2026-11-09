@@ -196,6 +196,24 @@ Automatic fetch: creating an Item, or a `PATCH` that changes its `source`, queue
 true` in that answer) when the Item has no image, its `source` is an http(s) URL and it is not a project (a page's
 banner makes a poor logo). Handbook courses (source `/docs/...`) and sources that are plain text are skipped.
 
+### Where an Item is used
+
+`GET /api/items/{id}/mentions` ("Được nhắc tới ở" on the Item page, DECISIONS 9.8): the owner's opportunities that
+hold the Item as evidence, with the stance of each such row, the skills that do, with their freshness (from all
+their evidence, as on `/api/skills`), and the notes whose markdown links the Item (`[[ ]]`, see Notes below). The
+opportunities and skills follow their newest evidence `date`, and so do the rows inside each; the notes are newest
+first (`updatedAt`), `title` as in the note search below. Read only; `404` for an unknown id or another owner's Item.
+A fixed number of queries whatever the number of rows.
+
+```json
+200 { "opportunities": [ { "id": 2, "title": "Bakery stock", "decision": "keep",
+                           "evidence": [ { "id": 8, "stance": "supports", "title": "Deep Work", "note": "",
+                                           "date": "2026-11-02" } ] } ],
+      "skills": [ { "id": 3, "name": "Django", "freshness": "fresh",
+                    "evidence": [ { "id": 5, "title": "Pekárna eshop", "note": "", "date": "2026-10-01" } ] } ],
+      "notes": [ { "id": 7, "title": "Thói quen nhỏ", "updatedAt": "2026-11-07T20:14:03Z" } ] }
+```
+
 ## Notes (`/api/notes`)
 
 A note is markdown linked to any number of the owner's Items (DECISIONS 4.1). Note bodies stay private: they are
@@ -208,18 +226,50 @@ response 201 { "id": 3, "title": "Deep Work: 3 ý chính", "markdown": "# ...", 
                "createdAt": "...", "updatedAt": "..." }
 ```
 
-`GET /api/notes?q=focus&item=1` lists notes (cursor pagination, newest first; both filters optional): `q` matches
-title or markdown (case-insensitive substring), `item` keeps notes linked to that Item id. `GET /api/notes/{id}`
+`GET /api/notes?q=focus&item=1` lists notes (cursor pagination, newest first; the filters are optional): `q` matches
+title or markdown (case-insensitive substring; a `q` with ASCII punctuation also matches the markdown with its
+backslash escapes shown, so `AT&T` finds `AT\&T` as the editor writes it), `item` keeps notes linked to that Item id, `clientId` (a UUID, `400`
+otherwise) keeps the note a create with that `clientId` made, if it arrived. `GET /api/notes/{id}`
 reads one, `DELETE /api/notes/{id}` removes it (`204`); `PATCH /api/notes/{id}` accepts `title`, `markdown` and `items` (replaces the links; `[]` removes them).
-`items` are sorted ids; an Item that is not the owner's answers `400`. Markdown is up to 200,000 characters.
+`items` are sorted ids, up to 10,000 (as many as a note's text can link); an Item that is not the owner's answers `400`.
+Markdown is up to 200,000 characters.
+
+Saving from the editor (it saves by itself, DECISIONS 9.8): a `POST` may carry `clientId`, a UUID the editor gives
+the new note before its first save. A `POST` with a `clientId` the owner already used answers `200` with that note
+and changes nothing (a create answers one time for `createdAt` and `updatedAt`; a create sent again, as the page closed or from a restored copy, never makes a second note); the
+editor then sends its newer text with a `PATCH`, unless that note was edited since it was made (`updatedAt` after
+`createdAt`) and holds other text than the editor sent: then it shows that note and keeps its own text as a copy to restore. A copy of a new
+note left by a page that closed while creating it is first looked up with `GET /api/notes?clientId=`: if its create
+arrived, the copy belongs to that note. A `PATCH` may carry `baseUpdatedAt`, the `updatedAt` the edit
+started from: when the note was saved since then (another tab or device), nothing is written and the answer is
+`409 { "detail": "...", "note": { ...the note as it is now } }`. A `PATCH` writes only the fields it sends, so a
+save of the Items never puts back older text.
 `itemLabels` (read only) gives the id, title and type of each linked Item, so a list can label its links without
 loading every Item.
 
+Links (`[[ ]]`, DECISIONS 9.8): the editor's picker writes a readable markdown link to a record's page, such as
+`[Atomic Habits](/thu-vien/item/?id=12)`; the pages are `/thu-vien/item/` (Item), `/thu-vien/ghi-chu/` (note),
+`/co-hoi/` (opportunity) and `/phat-trien/ky-nang/` (skill), with or without `/vi` or `/en` before them. Every
+`POST`, and every `PATCH` that sends `markdown` or `items`, reads the note's links into its link table. A link counts
+where the reading view (CommonMark + GFM, as micromark reads it) shows one: in the text of a paragraph, heading or
+table cell, written `[text](url)` (an optional title in `""`, `''` or `()`) or as a reference (`[text][label]`,
+`[label][]`, `[label]` with a definition); never inside code (fenced or indented, in quotes and lists too), an HTML
+block or raw HTML, an autolink, an image or another link's text. An unknown id, another owner's record and the note
+itself are ignored. A link to an Item also
+adds that Item to `items` (a `PATCH` that replaces `items` keeps the Items the text links). The markdown stays the
+only source: the table is rebuilt from it, and an export carries only the markdown.
+
+`GET /api/notes/{id}/mentions` ("Được nhắc tới ở" on the note page): the owner's notes that link this note, newest
+first, as `{ "notes": [ { "id": 9, "title": "...", "updatedAt": "..." } ] }`; `404` for an unknown id or another
+owner's note.
+
 `GET /api/notes/search?q=focus&limit=5` (`q` required, `limit` 1-20, default 5) is the Cmd+K form of the search:
 the newest matching notes as `{ "results": [ { "id": 3, "title": "...", "excerpt": "…around the match…",
-"updatedAt": "..." } ] }`, never the whole markdown. `title` is the note's title, else its first non-empty line
-without heading/quote/list marks, else `""`; `excerpt` is about 120 characters around the first match with markdown
-marks removed. An empty `q` answers `{ "results": [] }`.
+"updatedAt": "..." } ] }`, never the whole markdown. `title` is the note's title, else its first line with text,
+read as it shows: without heading/quote/list/task marks and inline marks, links by their text, escapes and numeric
+character references (`&#x20;`) by their character, no hard break's backslash, at most 120 characters; else `""`.
+`excerpt` is about 120 characters around the first match, read the same way. An empty `q` answers
+`{ "results": [] }`.
 
 ## Inbox (`/api/inbox`)
 

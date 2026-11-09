@@ -46,7 +46,10 @@ export const library = {
 
   // A done Item needs an output (components/brain/library/done-output.tsx); "rating" = an Item's 1-10 rating
   '## Highlights\n\n- \n\n## 3 ý chính\n\n1. \n2. \n3. \n': '## Highlights\n\n- \n\n## 3 key ideas\n\n1. \n2. \n3. \n',
-  'Nhận xét: ': 'Review: ',
+  '## Nhận xét\n\n- ': '## Review\n\n- ',
+  '## Học được gì\n\n- \n\n## Sẽ áp dụng vào đâu\n\n- \n': '## What I learned\n\n- \n\n## Where I will use it\n\n- \n',
+  '## Ý chính\n\n- \n\n## Vì sao đáng nhớ\n\n': '## Key ideas\n\n- \n\n## Why it is worth remembering\n\n',
+  '## Kết quả (kèm con số)\n\n- \n\n## Bài học rút ra\n\n- \n': '## Results (with numbers)\n\n- \n\n## Lessons learned\n\n- \n',
   'Ghi highlights và 3 ý chính.': 'Write down the highlights and 3 key ideas.',
   'Ghi một câu nhận xét.': 'Write a one-line review.',
   'Ghi lại những gì đã học được.': 'Write down what you learned.',
@@ -110,8 +113,8 @@ export const library = {
   'Để trống thì lấy dòng đầu của nội dung': 'Leave empty to use the first line',
   'Nội dung (markdown)': 'Content (markdown)',
   '# Ba ý chính\n\n- …': '# Three key ideas\n\n- …',
-  'Ghi chú là riêng tư, không gửi cho AI. Hiển thị dạng văn bản thô, giữ nguyên xuống dòng.':
-    'Notes are private and never sent to AI. They show as plain text, with line breaks kept.',
+  'Ghi chú là riêng tư, không gửi cho AI. Viết bằng markdown: ## tiêu đề, - danh sách, - [ ] việc cần làm.':
+    'Notes are private and never sent to AI. Write markdown: ## heading, - list, - [ ] to-do.',
   'Liên kết tới item': 'Link to items',
   'Tạo ghi chú': 'Create note',
   'Bỏ các thay đổi chưa lưu?': 'Discard unsaved changes?',
@@ -122,7 +125,6 @@ export const library = {
   // Notes page (components/brain/library/notes-page.tsx)
   'Ghi chú sách': 'Book note',
   'Nhận xét phim': 'Film review',
-  '## Một câu nhận xét\n\n': '## One-line review\n\n',
   'sửa {date}': 'edited {date}',
   'Chưa liên kết item': 'Not linked to an item',
   'Lọc ghi chú theo item này': 'Filter notes by this item',
@@ -131,8 +133,6 @@ export const library = {
   'ghi chú mới': 'new note',
   tìm: 'search',
   'Phím tắt của Ghi chú': 'Keyboard shortcuts for Notes',
-  'Không tìm thấy ghi chú #{id}, có thể đã bị xóa.': 'Note #{id} not found; it may have been deleted.',
-  'Không tải được danh sách item: {error}': 'Could not load the items: {error}',
   'Tìm trong ghi chú': 'Search notes',
   'Tìm trong tiêu đề và nội dung…': 'Search titles and content…',
   'Item: {title}, bỏ lọc': 'Item: {title}, clear the filter',
@@ -142,4 +142,86 @@ export const library = {
   'Xóa ghi chú?': 'Delete this note?',
   '"{title}" bị xóa hẳn. Item liên kết vẫn giữ nguyên. Không hoàn tác được.':
     '"{title}" is deleted for good. Linked items stay as they are. This cannot be undone.',
+
+  // The Item page (components/brain/library/item-detail.tsx, item-notes.tsx, item-mentions.tsx; DECISIONS 9.8)
+  'Đã chuyển sang {status}': 'Moved to {status}',
+  'rating::Điểm': 'Rating',
+  'Nguồn': 'Source',
+  'Tag': 'Tags',
+  'Mở trang đầy đủ': 'Open full page',
+  'Đã lưu, nhưng chưa lưu được ảnh: {error}.': 'Saved, but the picture was not saved: {error}.',
+  'Được nhắc tới ở': 'Mentioned in',
+  'Chưa có cơ hội, kỹ năng hay ghi chú nào nhắc tới item này.':
+    'No opportunity, skill or note mentions this item yet.',
+  'Chưa có ghi chú nào nhắc tới ghi chú này.': 'No note mentions this note yet.',
+  '{freshness} · bằng chứng {dates}': '{freshness} · evidence {dates}',
+  'Tiêu đề ghi chú (không bắt buộc)': 'Note title (optional)',
+  'Nội dung ghi chú': 'Note text',
+  'Đang tải ghi chú': 'Loading notes',
+  'Chưa có ghi chú nào.': 'No notes yet.',
+  'Ghi chú của item': "The item's notes",
+  ' · cũng gắn với {items}': ' · also linked to {items}',
+  'Sửa ghi chú “{title}”': 'Edit the note “{title}”',
+  'Thao tác cho ghi chú “{title}”': 'Actions for the note “{title}”',
+  'Mở ở trang Ghi chú': 'Open on the Notes page',
+  '"{title}" bị xóa hẳn, cả ở các item khác nó gắn với. Không hoàn tác được.':
+    '"{title}" is deleted for good, also from the other items it is linked to. This cannot be undone.',
+  'Đã xóa ghi chú "{title}"': 'Deleted the note "{title}"',
+  'Không tìm thấy item này': 'This item was not found',
+  'Có thể item đã bị xóa hoặc link đã cũ. Quay lại Thư viện để chọn item khác.':
+    'It may have been deleted, or the link is old. Go back to the Library to pick another item.',
+  'Đã xong: ': 'Done: ',
+  'Chưa xong: ': 'To do: ',
+  'Ảnh: {alt}': 'Picture: {alt}',
+  'Ảnh': 'Picture',
+  // Writing a note (note-editor.tsx, use-note-autosave.ts, save-status.tsx) and the note page (note-page.tsx)
+  'Gõ / để chèn khối, hoặc viết luôn': 'Type / to insert a block, or just write',
+  'Đang mở trình soạn thảo': 'Opening the editor',
+  'Chưa lưu được: {reason}': 'Not saved: {reason}',
+  'Có bản nháp chưa lưu trong trình duyệt này': 'There is an unsaved draft in this browser',
+  'Viết lúc {date}. Khôi phục sẽ thay nội dung đang có.': 'Written {date}. Restoring replaces the current text.',
+  'Khôi phục': 'Restore',
+  'Mở để khôi phục': 'Open to restore',
+  '{items} vẫn gắn với ghi chú vì nội dung có liên kết tới nó; bỏ liên kết trong nội dung trước.':
+    '{items} stays linked because the note’s text links to it; remove that link from the text first.',
+  'Bỏ bản nháp': 'Discard draft',
+  'Không có tiêu đề': 'Untitled',
+  'Chưa lưu được liên kết: {reason}': 'The links were not saved: {reason}',
+  'Không tìm thấy ghi chú này': 'This note was not found',
+  'Có thể ghi chú đã bị xóa hoặc link đã cũ.': 'It may have been deleted, or the link is old.',
+  // Why a save failed (use-note-autosave.ts)
+  'Máy chủ không nhận nội dung này.': 'The server did not accept this content.',
+  'Ghi chú không còn trên máy chủ.': 'The note is no longer on the server.',
+  'Máy chủ trả lỗi {status}.': 'The server answered with error {status}.',
+  'Máy chủ không trả lời.': 'The server did not answer.',
+  // A note saved elsewhere while it was being written here (item-notes.tsx, note-page.tsx)
+  'Ghi chú vừa được lưu ở nơi khác': 'The note was just saved somewhere else',
+  'Đang hiện bản đó. Chữ gõ ở đây chưa lưu được giữ làm bản nháp (lúc {date}): Khôi phục sẽ thay nội dung đang có.':
+    'That version is shown now. What you typed here and was not saved is kept as a draft ({date}): restoring replaces the current text.',
+  'Ghi chú vừa được lưu ở nơi khác: đang hiện bản đó.': 'The note was just saved somewhere else: that version is shown now.',
+  // A copy written over a version the note was saved after since, perhaps by its own save (use-note-autosave.ts)
+  'Có bản nháp viết trên bản cũ hơn của ghi chú': 'There is a draft written on an older version of this note',
+  'Ghi chú đã được lưu lại sau khi bản nháp này được viết (lúc {date}), ở đây hay ở nơi khác. Khôi phục sẽ thay bản mới hơn đang hiện.':
+    'The note was saved again after this draft was written ({date}), here or somewhere else. Restoring replaces the newer version shown.',
+  'Mở để xem': 'Open to review',
+  'Xóa ghi chú': 'Delete note',
+  // The editor's "/" menu, "[[" picker and task boxes (note-editor.tsx)
+  'Văn bản': 'Text',
+  'Tiêu đề 1': 'Heading 1',
+  'Tiêu đề 2': 'Heading 2',
+  'Tiêu đề 3': 'Heading 3',
+  'Danh sách số': 'Numbered list',
+  'Việc cần làm': 'To-do',
+  'Trích dẫn': 'Quote',
+  'Khối mã': 'Code block',
+  'Đường kẻ': 'Divider',
+  'Chèn khối': 'Insert a block',
+  'Liên kết tới': 'Link to',
+  'Chưa tìm được, thử lại sau.': 'The search failed; try again later.',
+  'Không tìm thấy “{query}”': 'Nothing found for “{query}”',
+  'Gõ để tìm item, ghi chú, cơ hội, kỹ năng': 'Type to find items, notes, opportunities, skills',
+  'Đã xong': 'Done',
+  // The notes page's "Theo item" view (notes-page.tsx)
+  'Theo item': 'By item',
+  'Ghi chú rời': 'Loose notes',
 } satisfies Dictionary;

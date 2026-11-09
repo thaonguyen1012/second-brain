@@ -18,6 +18,8 @@ EN: dict[str, str] = {
     "Không phải mục tiêu của bạn.": "Not your objective.",
     "Không có trong dữ liệu của bạn.": "Not in your data.",
     "Không tìm thấy item.": "Item not found.",
+    # Notes
+    "Ghi chú vừa được lưu ở nơi khác.": "The note was just saved somewhere else.",
     # Evidence (growth, opportunities)
     "Bằng chứng loại {kind} không gắn {field}.": "Evidence of kind {kind} takes no {field}.",
     "Bằng chứng loại {kind} cần chọn mục được gắn.": "Evidence of kind {kind} needs the record it links.",

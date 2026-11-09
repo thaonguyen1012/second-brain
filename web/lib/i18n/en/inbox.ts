@@ -19,7 +19,7 @@ export const inbox = {
 
   // Entry cards (components/brain/inbox-page.tsx)
   'Gợi ý tự động: {destination}': 'Auto suggestion: {destination}',
-  'Ghi chú của item này': "This item's notes",
+  'Trang item: thuộc tính và mọi ghi chú': 'Item page: properties and every note',
   'Đang xử lý': 'Processing',
   'Lỗi xử lý': 'Processing failed',
   'verb::Lưu trữ': 'Archive',

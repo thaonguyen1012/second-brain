@@ -275,7 +275,10 @@ so the near pairs that remain are listed under the palette, not hidden.
   route halves (Thư viện Item / Ghi chú). Never filled primary buttons as tabs. A view switch sits first in the
   toolbar; the filters that belong to one view follow it only in that view. The view lives in the URL
   (`?view=board`, the default view has no parameter), the last choice in localStorage (the URL wins), switched with
-  `router.replace` without scrolling.
+  `router.replace` without scrolling. Ghi chú's switch is "Danh sách" / "Theo item" (`?view=items`, DECISIONS 9.8;
+  text only, since the rows stay rows): every matching note under each Item it is linked to, one container per group
+  whose first row is the heading (the Item's picture flush at its start, its title a link to the Item page, type and
+  note count as meta), "Ghi chú rời" (notes without an Item) last.
 - **Board** (Dự án, owner 07/11/2026: "như page All task trên ClickUp, có dạng list và board"; Thư viện the same
   day, DECISIONS 9.6; the shared `components/brain/status-board.tsx`, card parts in `work/project-card.tsx` and
   `library/item-parts.tsx`, pure logic in `lib/status-board.ts`, the view in `lib/use-board-view.ts`): one lane per
@@ -284,7 +287,7 @@ so the near pairs that remain are listed under the palette, not hidden.
   bg-well p-2 gap-2 min-h-40`) headed by its `StatusBadge` and count (`text-xs` muted `tabular-nums`), ending in a
   ghost `xs` "+ Thêm dự án" that opens the dialog with that status; empty, it says "Chưa có dự án" quietly. A card is
   a white surface (`rounded-lg border bg-card p-3 gap-2`): title (`text-sm font-medium`, 2 lines, a button that
-  opens the edit dialog) with the `RowMenu` at its end, the row's meta text (up to 2 lines, so a long client never
+  opens the record: Dự án's edit dialog, Thư viện's Item page in the Sheet) with the `RowMenu` at its end, the row's meta text (up to 2 lines, so a long client never
   cuts the price), then a footer only when there is something to say (Dự án: the `bw-red` now dot, hours with
   `MiniBillableBar`, "thực tế" rate; Thư viện: the rating, the note count, and on a done Item without its output
   (DECISIONS 4.2) the warning words with one outline `xs` "Viết ghi chú" or "Chấm điểm"; a drop into Xong is never
@@ -304,9 +307,99 @@ so the near pairs that remain are listed under the palette, not hidden.
 - **Toolbar:** one row, `h-8` controls: filters (`ChoiceSelect`/`Select`) left, the primary action right; wraps
   to two rows at 390 px with the primary action keeping the end of the first row or full width, never orphaned.
 - **Overlays:** `Dialog` for create/edit forms (fields via `Field`, errors via `fieldErrors()` under the field);
-  `Sheet` for reading or editing one record beside the list; `AlertDialog` (`confirm-delete.tsx`) for every
+  `Sheet` for reading or editing one record beside the list (the Item page beside Thư viện, below);
+  `AlertDialog` (`confirm-delete.tsx`) for every
   delete, never `window.confirm`; `Menu` for overflow; `Tooltip` for icon-only controls; a small `Dialog` for
   the keyboard legend (add `@spaceui/popover` if a non-modal panel is needed).
+- **Item page** (owner 07/11/2026: "ấn vào item thì hiện ra các ghi chú của item đó"; DECISIONS 9.8;
+  `library/item-detail.tsx`, one component for the right-side `Sheet` beside Thư viện, `max-w-2xl`, and the full page
+  `/thu-vien/item/?id=N`, `max-w-3xl` under a "Thư viện" back link like /co-hoi/?id=N). A List row, a row's title, a
+  Board card's title, `?item=N` and the Cmd+K item results open the Sheet; the List and the Board stay visible behind
+  it, Escape closes it and the focus goes back to the row or card (`recordFocusTarget`). From the top: the picture
+  (§9a) and the title (the Sheet's 20px title, the page's 30px h1; without a picture the page shows the Thư viện title
+  icon); the properties as AFFiNE shows them, a two-column `dl` (muted `text-xs` labels, values in `text-sm`: status
+  badge, type, rating, source, tags, dates; an empty one is left out); one row of `sm` buttons: the List row's next
+  step (outline "Bắt đầu"/"Xong"), outline "Sửa" (the existing `ItemDialog`, the one way to edit properties and the
+  picture), "Công việc" for a project and, in the Sheet only, a ghost "Mở trang đầy đủ" at the end; the
+  done-needs-an-output warning (DECISIONS 4.2); then "Ghi chú" (h2, its count, an outline "Viết ghi chú") and every
+  note of the Item, newest first, joined like one page: no card per note, `divide-y` with 20px above and below each,
+  a note's own title as a 15px heading (left out when it only repeats the Item's title), the date and the other
+  Items it is linked to as meta (`break-words`: an Item title may be one long word), a ghost pencil and a `RowMenu` (Mở ở trang Ghi chú, Xóa) at the end, then its
+  markdown as reading text (`note-markdown.tsx`, lazy: headings at most 15px, body 14/23 in the foreground colour,
+  code and tables scroll inside themselves (a table spans the width), task boxes drawn with lucide squares at the
+  list's edge and read out in words, a done task muted and struck through, the other items of a list with tasks keep
+  their bullets, links in the link blue, raw HTML shown as text, only local images; a picture from another site is a link). Writing happens in
+  place with the block editor (below): the composer (title, optional, prefilled with the Item's title; the type's
+  template, `noteTemplates` in `done-output.tsx`) shows on an Item without notes without taking the focus, and opens
+  with the caret in the template's first blank line from every "Viết ghi chú"; a note's pencil turns it into the same
+  form with the caret at the end. The form is an `Input` for the title, the editor in its field-like frame, then the
+  save state at the start and an outline `sm` "Xong" at the end (Escape and Cmd/Ctrl+Enter do the same). There is no
+  "Lưu" and no "Hủy": everything saves by itself (`use-note-autosave.ts`, AFFiNE's way): "Đang lưu…" with a spinner
+  while a change waits (0.8 s) or goes, "Đã lưu" once the server has it, and a failure in `text-error-foreground`
+  (AA on the page) with its reason and an outline `xs` "Thử lại" (none when the text itself cannot be saved; an
+  emptied note gets an outline `xs` "Xóa ghi chú" there instead, which opens `ConfirmDelete`). A save with no answer
+  in 15 s fails the same way ("Máy chủ không trả lời."), also one sent with `keepalive` as an editor closes or the tab hides. "Xong" goes back to reading once the server has
+  everything: a failed save keeps the form open with its reason. Closing the Sheet, a link, hiding or closing the tab
+  send what is left at once (with `keepalive` when the page goes), and until the server has it each editor keeps its
+  own copy in this browser (`lib/note-copies.ts`; never written over by another editor, another tab or a save).
+  A copy whose writer is gone is offered back: an `Alert` ("Có bản nháp chưa lưu trong trình duyệt này", "Khôi phục"
+  / "Bỏ bản nháp", the buttons under the text at every width) above the form. A copy written over a version the note
+  has been saved after (elsewhere, or by that copy's own save as the tab closed) is never called unsaved: "Có bản nháp
+  viết trên bản cũ hơn của ghi chú", saying "Khôi phục sẽ thay bản mới hơn đang hiện.", and "Mở để xem" in the reading
+  view. A copy of an editor open in another tab is never offered or dropped there. Such a copy stays until it is restored
+  or dropped, and the reading view says one is kept: a muted `text-xs` line with a History icon and a link-style "Mở
+  để khôi phục" under the note's meta, under the "Ghi chú" heading for a new note's copy, and above the notes list
+  for each new note started on its own page or for an Item (a new note's copy whose create may have arrived is first
+  looked up, and then belongs to that note). A note saved elsewhere since the edit began (another tab or device) is
+  never written over: the form starts again from the newer note with the caret in it, and the `Alert` says so
+  (role `alert`: "Ghi chú vừa được lưu ở nơi khác", this text kept as the copy to restore; with nothing unsaved, a
+  muted status line). Nothing asks before closing; only a copy whose save failed makes the browser ask before the
+  tab goes (also after its form closed), until it is saved, restored or dropped. An untouched template is not saved; a new note is created by its first save and the composer goes
+  on editing it (it joins the list when "Xong" closes the composer). Last comes "Được nhắc tới ở" (h2, `library/item-mentions.tsx`, from
+  `GET /api/items/{id}/mentions`): under a muted `text-xs` label per kind ("Cơ hội", "Kỹ năng", "Ghi chú"), rows in one
+  container each, a row's title a link to its page; an opportunity's meta says each evidence row's stance in words
+  (`font-medium`) and date, its decision badge at the end; a skill starts with its freshness dot and says the
+  freshness word and the evidence dates; a note (one whose text links the Item with `[[ ]]`) says when it changed;
+  with none of them, one muted line.
+- **Note page** (`/thu-vien/ghi-chu/?id=N`, `library/note-page.tsx`, in place of the old edit dialog; DECISIONS 9.8):
+  a notes row, a note's "Mở ở trang Ghi chú", a `[[ ]]` link, a backlink and the Cmd+K note results open it; the
+  notes list's header is not shown. `max-w-3xl` reading width with the PageHeader's gutters; a "Ghi chú" back link and,
+  at the end of that row, the save state and a `RowMenu` (Xóa); the title as a bare 30px field that wraps like a
+  heading (a one-row textarea that grows with its lines; Enter goes on to the text; placeholder "Không có tiêu đề";
+  an `sr-only` h1 names the page); AFFiNE's properties as a two-column `dl` (Item: the `ItemPicker`, saved at once,
+  its chips shrinking to the column with the title cut by an ellipsis and a 44px touch target on the ✕; an Item the
+  text links stays linked, and a muted status line says why when it is unlinked; Ngày); the editor without a frame (headings up to 18px here); then "Được nhắc tới ở"
+  with the notes that link this one. `?id=new` (with `&item=` and `&template=`, from "Ghi chú mới", the empty page's
+  template buttons and `n`) is a new note with the caret in it; its first save puts its id in the address
+  (`router.replace`) without reopening the editor, only in the page that sent the create, while it still shows (a create that answers after the
+  user left navigates nowhere). A version saved elsewhere replaces the page's editor as on the Item page (the `Alert`
+  or the status line, the caret back in the text). A quick note from an Inbox entry stays a dialog (`note-dialog.tsx`).
+- **Note editor** (`library/note-editor.tsx`, Milkdown 7: commonmark + gfm, owner's choice 08/11/2026; lazy with its
+  CSS, `note-editor-lazy.tsx`, never on Hôm nay): blocks as they will read (`note-editor.css` follows
+  `note-markdown.tsx`: body 14/23, 16px on phones so iOS does not zoom, headings 15px inline), saved as markdown.
+  Inline it sits in the `Textarea`'s frame (`border-input`, `bg-popover`, focus ring); on the note page it has none.
+  `/` at the start of a line or after a space opens the block menu (Văn bản, Tiêu đề 1-3, Danh sách, Danh sách số,
+  Việc cần làm, Trích dẫn, Khối mã, Đường kẻ, Bảng; typing filters without accents: `/tieu de 2`); `#`, `-`, `1.`, `>`,
+  "```" and `[]` turn the line into that block as they are typed; a task has a real checkbox (Cmd/Ctrl+Enter ticks
+  it); `[[` opens the link picker (Item, Ghi chú, Cơ hội, Kỹ năng, each a muted group heading) and a pick writes the
+  record's title as a link. Both menus are one popover surface under the caret (`--popover`, border, Depth/Popover
+  shadow, 8px radius, the highlighted row in `--accent`, 44px rows on touch), driven from the keyboard (arrows, Enter,
+  Escape closes the menu only) with the caret staying in the text (`aria-activedescendant`); only the menu's own list
+  scrolls to the highlighted row (never the page, the Sheet or a phone's visual viewport), and a menu is never wider
+  than the room it has (the Sheet at 390 px; the `[[` list is placed from the editor's left edge, so a phone page never
+  widens). On a list line `/` offers every block: another list kind changes the whole list in place, the line's own kind changes
+  nothing, any other block takes the line out of its list (nothing is saved while the menu is open), and one Cmd/Ctrl+Z
+  gives the typed "/…" back. Đường kẻ goes after the line with the caret on a line below it. Links in the editor are not followed; the
+  reading view follows them. The placeholder ("Gõ / để chèn khối, hoặc viết luôn") shows in an empty note and in the
+  empty line holding the caret. Until the editor's chunk arrives the note shows as it reads (`NoteBody`, pictures
+  loaded at once) in the editor's frame and cannot be used; the reading view draws every block at the editor's size
+  and spacing (headings per variant, task rows, tables, quotes, lists nested in tight and loose items, pictures inline
+  and middle-aligned), so nothing jumps when it comes (0 px at 1280 and 390, page and Sheet). A done task mutes and
+  strikes only its own text, never the list under it. Keys typed from the moment the editor is asked for with the caret
+  (while its chunk loads, while it is made, or after a version saved elsewhere replaces it) go to a hidden keeper field
+  ("Đang mở trình soạn thảo", IME included) and are typed into it; when ready it takes the focus only from that field or
+  where nothing holds it, never from the title or the Item picker. Pages that can open an editor fetch its chunk when
+  idle. A picture from another site inside a link shows as the link's text "[Ảnh: alt]" in both views.
 - **Tables** for numeric or time data (Giờ, thị trường): header `text-xs font-medium text-muted-foreground`,
   rows `h-10` with `divide-y`, no vertical cell borders, numbers right-aligned `tabular-nums`. Add the Space UI
   table component from the registry when first needed rather than styling `<table>` by hand.
@@ -425,7 +518,10 @@ wins.
   the status leaves its badge for the meta line below `md` so the title keeps its room at 390 px; a Công việc row gets
   the track from `md` only (its status is already in the meta line on phones, so the track would only take the
   title's room); a board card shows a cover or a handbook band flush on top (16:7), a poster as a flush 4rem start
-  column (2:3 at the card's minimum height), a logo as a 40px square before the title. A logo is the one inset
+  column (2:3 at the card's minimum height), a logo as a 40px square before the title. On the Item page (the Sheet
+  and /thu-vien/item/, §6) no container holds the picture, so it stands beside the title as the record's own object
+  (`DetailPicture`): a 2:3 poster 4rem wide (5rem from sm), a 16:7 cover 7rem (9rem), the handbook's cover thumb in
+  a 4rem (5rem) square, a 48px (56px) logo on its ground, `rounded-md`, no frame or shadow. A logo is the one inset
   picture: `object-contain` on `--logo-ground`, white in both themes and kept under forced colours (a sticker; the logo
   keeps its transparency and most logos are drawn for a light page), `rounded-md` on cards. No picture: the row keeps
   an empty track and the card stays text-only; never a placeholder drawing. Skeletons take the picture geometry the

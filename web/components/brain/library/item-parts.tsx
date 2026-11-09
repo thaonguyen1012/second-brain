@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Briefcase, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
+import { Briefcase, Maximize2, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
 import type { ApiItem, ApiItemStatus } from '@/lib/api/client';
 import { itemPicture } from '@/lib/handbook-picture';
 import { formatDate, itemStatusOf, itemTypeLabel } from '@/lib/labels';
@@ -35,7 +35,10 @@ const nextStep: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: Msg }>
   active: { to: 'done', label: msg('Xong') },
 };
 
-/** Sửa, Ghi chú, Viết ghi chú, Chấm điểm (a done film without a rating) and, for a project, Công việc. */
+/**
+ * Sửa, Viết ghi chú, Mở trang đầy đủ, Chấm điểm (a done film without a rating) and, for a project, Công việc. The
+ * notes themselves are on the Item page (the row or card title opens it beside the list).
+ */
 export function ItemMenuItems({
   item,
   onEdit,
@@ -55,14 +58,14 @@ export function ItemMenuItems({
         <Pencil aria-hidden />
         {t('Sửa')}
       </MenuItem>
-      <MenuLinkItem render={<Link href={`/thu-vien/ghi-chu/?item=${item.id}`} />}>
-        <NotebookPen aria-hidden />
-        {t('Ghi chú', null, 'nav')}
-      </MenuLinkItem>
       <MenuItem onClick={onWriteNote}>
-        <Plus aria-hidden />
+        <NotebookPen aria-hidden />
         {t('Viết ghi chú')}
       </MenuItem>
+      <MenuLinkItem render={<Link href={`/thu-vien/item/?id=${item.id}`} />}>
+        <Maximize2 aria-hidden />
+        {t('Mở trang đầy đủ')}
+      </MenuLinkItem>
       {gap?.rating && (
         <MenuItem onClick={onRate}>
           <Star aria-hidden />
@@ -83,6 +86,7 @@ export function ItemMenuItems({
 export function ItemRow({
   item,
   withPicture,
+  onOpen,
   onEdit,
   onStep,
   onWriteNote,
@@ -91,6 +95,9 @@ export function ItemRow({
   item: ApiItem;
   /** The list has a picture track (itemListGrid). */
   withPicture: boolean;
+  /** The title and a click on the row: the Item page beside the list. */
+  onOpen: () => void;
+  /** The menu's "Sửa": the Item dialog. */
   onEdit: () => void;
   onStep: (to: ApiItemStatus) => void;
   onWriteNote: () => void;
@@ -121,7 +128,7 @@ export function ItemRow({
         // a picture is flush with the list's start edge, clipped by its radius; the text keeps 12px from it
         withPicture ? 'ps-0 pe-3' : 'px-3',
       )}
-      onClick={(e) => onRowClick(e, onEdit)}
+      onClick={(e) => onRowClick(e, onOpen)}
     >
       {withPicture && <RowPicture picture={itemPicture(item)} />}
       <span className={cn('flex', withPicture && 'max-md:hidden')}>
@@ -131,7 +138,7 @@ export function ItemRow({
         <button
           type="button"
           className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={onEdit}
+          onClick={onOpen}
         >
           {item.title}
         </button>

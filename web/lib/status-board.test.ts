@@ -224,6 +224,15 @@ describe('view', () => {
     expect(parseView(undefined)).toBeNull();
   });
 
+  it('takes another second view for pages without a board ("Theo item" on Ghi chú)', () => {
+    expect(resolveView('items', null, 'items')).toBe('items');
+    expect(resolveView('board', 'items', 'items')).toBe('items');
+    expect(resolveView('board', null, 'items')).toBe('list');
+    expect(parseView('items')).toBeNull();
+    expect(viewSearch('item=4', 'items', 'items')).toBe('item=4&view=items');
+    expect(viewSearch('view=items', 'list', 'items')).toBe('');
+  });
+
   it('writes view=board for the board, drops it for the list, keeps other parameters', () => {
     expect(viewSearch('', 'board')).toBe('view=board');
     expect(viewSearch('view=board', 'list')).toBe('');

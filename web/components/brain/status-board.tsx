@@ -417,7 +417,7 @@ export interface StatusBoardProps<T extends BoardCardRecord> {
   kind: BoardKind;
   records: readonly T[];
   moves: Pick<StatusMoves<T>, 'ranks' | 'pending' | 'focusId' | 'clearFocus' | 'move'>;
-  /** The card's title button: the record's edit dialog (also the focus target after a move from the menu). */
+  /** The card's title button: the record's edit dialog or page (also the focus target after a move from the menu). */
   onOpen: (record: T) => void;
   /** A lane's "+ Thêm <noun>": a new record in that status. */
   onAdd: (status: ApiItemStatus) => void;

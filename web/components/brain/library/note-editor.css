@@ -1,0 +1,333 @@
+/* The note editor (note-editor.tsx, Milkdown): loaded with the editor's chunk only, never on Hôm nay. The text looks
+   like the note when read (note-markdown.tsx); colours are the app's tokens (app/global.css), so dark mode follows. */
+
+.note-editor-root {
+  position: relative; /* anchors the "/" menu and the "[[" picker */
+}
+
+.note-editor {
+  outline: none;
+  min-height: 7.5rem;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  color: var(--foreground);
+  /* ProseMirror's own rules (prosemirror-view/style/prosemirror.css) that matter here */
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0;
+}
+.note-editor[data-variant='page'] {
+  min-height: 16rem;
+}
+.note-editor pre {
+  white-space: pre-wrap;
+}
+.note-editor li {
+  position: relative;
+}
+.note-editor .ProseMirror-hideselection *::selection {
+  background: transparent;
+}
+.note-editor .ProseMirror-selectednode {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.note-editor .ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+}
+.note-editor .ProseMirror-gapcursor::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1px solid var(--foreground);
+  animation: note-editor-cursor-blink 1.1s steps(2, start) infinite;
+}
+@keyframes note-editor-cursor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+.note-editor.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+
+/* Text: the reading look of a note, block by block (note-markdown.tsx draws the same sizes and spacing, and shows the
+   note while this chunk loads, so nothing moves when the editor comes; DESIGN.md §2 body 14/23, headings at most 15px
+   inline) */
+.note-editor > * + * {
+  margin-top: 0.5rem;
+}
+:where(.note-editor p) {
+  margin: 0; /* no specificity: paragraphs keep the 0.5rem between blocks */
+}
+/* a paragraph after another block inside a quote or a list item, as between the note's own blocks */
+.note-editor :is(blockquote, li, .task-content) > * + p {
+  margin-top: 0.5rem;
+}
+/* the first and last block of the note, of a quote and of a list item have no outer margin, as when read (a gap
+   cursor drawn before or after a table or a rule is no block: the table does not move when it shows) */
+.note-editor > :nth-child(1 of :not(.ProseMirror-gapcursor)),
+.note-editor :is(blockquote, li, .task-content) > :nth-child(1 of :not(.ProseMirror-gapcursor)) {
+  margin-top: 0;
+}
+.note-editor > :nth-last-child(1 of :not(.ProseMirror-gapcursor)),
+.note-editor :is(blockquote, li, .task-content) > :nth-last-child(1 of :not(.ProseMirror-gapcursor)) {
+  margin-bottom: 0;
+}
+.note-editor :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+  margin: 1.25rem 0 0.5rem;
+}
+.note-editor :is(h1, h2) {
+  font-size: 15px;
+  line-height: 20px;
+}
+.note-editor :is(h3, h4, h5, h6) {
+  font-size: 14px;
+  line-height: 20px;
+  margin-top: 1rem;
+}
+/* The note page is the note's own page: its first heading levels may be larger (still below the title, 30px) */
+.note-editor[data-variant='page'] h1 {
+  font-size: 18px;
+  line-height: 28px;
+}
+.note-editor ul,
+.note-editor ol {
+  margin: 0.5rem 0;
+  padding-inline-start: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.note-editor ul {
+  list-style: disc;
+}
+.note-editor ol {
+  list-style: decimal;
+}
+.note-editor :is(li, .task-content) > :is(ul, ol) {
+  margin: 0.25rem 0;
+}
+.note-editor li::marker {
+  color: var(--muted-foreground);
+}
+.note-editor blockquote {
+  margin: 0.75rem 0;
+  border-inline-start: 2px solid var(--border);
+  padding-inline-start: 0.75rem;
+  color: var(--muted-foreground);
+}
+.note-editor hr {
+  margin: 1rem 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.note-editor a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: color-mix(in oklab, var(--primary) 40%, transparent);
+  cursor: text;
+}
+.note-editor code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  border-radius: 4px;
+  background: var(--muted);
+  padding: 0.125rem 0.25rem;
+}
+.note-editor pre {
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: var(--muted);
+  padding: 0.75rem;
+  font-size: 13px;
+  line-height: 1.625;
+}
+.note-editor pre code {
+  background: transparent;
+  padding: 0;
+}
+.note-editor table {
+  display: block; /* a wide table scrolls inside itself, never the page (390 px) */
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+/* the rows (one tbody) are the table's box: the full width, as when read, and wider when the cells need it */
+.note-editor table > tbody {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+}
+.note-editor :is(th, td) {
+  border-bottom: 1px solid var(--border);
+  padding: 0.375rem 0.5rem;
+  text-align: start;
+  vertical-align: top;
+  min-width: 4rem;
+}
+.note-editor th {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+/* A picture is an inline node: drawn in its line as when read (Tailwind's preflight makes every img a block, which put
+   ProseMirror's trailing break under it, an empty line more than when read) */
+.note-editor img {
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 100%;
+  max-height: 24rem;
+  border-radius: 0.375rem;
+}
+/* ProseMirror's own rule (prosemirror-view/style/prosemirror.css, "protect against generic img rules"): the cursor
+   helpers it puts beside a picture (before it at a line's start, after it at a line's end) stay in its line */
+.note-editor img.ProseMirror-separator {
+  display: inline;
+  border: none;
+  margin: 0;
+}
+.note-editor .selectedCell {
+  background: var(--accent);
+}
+/* an image that is not one of the app's files: shown as text, never loaded, at the text's size as when read (the
+   reading view's "[Ảnh: alt]"), so its line wraps the same */
+.note-editor .note-image-external {
+  color: var(--muted-foreground);
+}
+
+/* Placeholder: the whole note empty, or the empty top-level paragraph holding the caret while the editor has focus */
+.note-editor p.is-empty::before {
+  content: attr(data-placeholder);
+  content: attr(data-placeholder) / ''; /* no text of the note for a screen reader (aria-placeholder says it) */
+  float: inline-start;
+  height: 0;
+  pointer-events: none;
+  color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+}
+.note-editor:not(.ProseMirror-focused) p.is-empty.is-current::before {
+  content: none;
+}
+
+/* Tasks (node view: li > span.task-box > input, li > div.task-content). The box is one line high, its top on the
+   text's (baseline alignment put the checkbox's bottom on the text's baseline: each task row 3 px taller than read) */
+.note-editor li[data-item-type='task'] {
+  list-style: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-inline-start: -1.25rem;
+}
+/* no user-select: none on the box: Chrome then restarts an IME composition typed at the start of the note's first task
+   (Telex v, vi, ... gave 'vviệt') */
+.note-editor li[data-item-type='task'] > .task-box {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 1lh;
+}
+.note-editor li[data-item-type='task'] > .task-box > input {
+  margin: 0;
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+.note-editor li[data-item-type='task'] > .task-content {
+  flex: 1;
+  min-width: 0;
+}
+/* a done task reads as done, here and when read (note-markdown.tsx): its own text, never a list under it (a line
+   through a block reaches everything inside it, open subtasks too) */
+.note-editor li[data-item-type='task'][data-checked='true'] > .task-content > :not(ul, ol) {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+}
+
+/* The "/" menu and the "[[" picker: a popover surface under the caret (positions are set inline) */
+.note-popover {
+  position: absolute;
+  z-index: 50;
+}
+.note-popover:not([data-show='true']) {
+  display: none;
+}
+.note-popover-list {
+  position: relative; /* the options' offsetTop counts from here (revealOption) */
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  min-width: 13rem;
+  max-width: min(22rem, calc(100vw - 2rem));
+  max-height: 18rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 8px 24px rgb(0 0 0 / 0.12);
+  font-size: 14px;
+  line-height: 20px;
+}
+.note-popover-group + .note-popover-group {
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.25rem;
+}
+.note-popover-heading {
+  padding: 0.25rem 0.5rem;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-foreground);
+}
+.note-popover-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: calc(var(--radius) - 4px);
+  cursor: pointer;
+  min-height: 2rem;
+}
+.note-popover-option > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note-popover-option > kbd {
+  margin-inline-start: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.note-popover-option[aria-selected='true'] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.note-popover-empty {
+  padding: 0.375rem 0.5rem;
+  color: var(--muted-foreground);
+}
+@media (pointer: coarse) {
+  .note-popover-option {
+    min-height: 2.75rem;
+  }
+}

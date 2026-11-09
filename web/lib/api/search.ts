@@ -13,6 +13,7 @@ import {
 import type { ApiAchievement, ApiJobAd, ApiPrediction, ApiSkill } from './growth';
 import { notesApi, type ApiNoteSearchHit } from './library';
 import { toApiError } from './use-api';
+import type { LinkTarget } from '@/lib/note-links';
 
 export interface BrainSearchResults {
   items: ApiItem[];
@@ -63,4 +64,32 @@ export async function searchBrain(q: string, limit = 5, signal?: AbortSignal): P
     jobAds: rows(jobAds),
     news: rows(news),
   };
+}
+
+/**
+ * The `[[` picker of the note editor (DECISIONS 9.8): Items, notes, opportunities and skills whose title (or name)
+ * matches `q`, at most `limit` of each, through the same `?q=` filters as Cmd+K. A kind that fails is left out; only
+ * when every kind fails the first error is thrown. `except` drops one note (the note being edited).
+ */
+export async function searchLinkTargets(
+  q: string,
+  limit = 5,
+  signal?: AbortSignal,
+  except?: number,
+): Promise<LinkTarget[]> {
+  const first = <T>(path: string) => api.page<T>(withQuery(path, { q, limit }), signal);
+  const settled = await Promise.allSettled([
+    first<ApiItem>('/api/items').then((p) => p.results.map((i): LinkTarget => ({ kind: 'item', id: i.id, title: i.title }))),
+    notesApi
+      .search(q, limit, signal)
+      .then((r) => r.results.filter((n) => n.id !== except).map((n): LinkTarget => ({ kind: 'note', id: n.id, title: n.title }))),
+    first<ApiOpportunity>('/api/opportunities').then((p) =>
+      p.results.map((o): LinkTarget => ({ kind: 'opportunity', id: o.id, title: o.title })),
+    ),
+    first<ApiSkill>('/api/skills').then((p) => p.results.map((s): LinkTarget => ({ kind: 'skill', id: s.id, title: s.name }))),
+  ]);
+  if (signal?.aborted) throw signal.reason;
+  const failed = settled.filter((s): s is PromiseRejectedResult => s.status === 'rejected');
+  if (failed.length === settled.length) throw toApiError(failed[0].reason);
+  return settled.flatMap((s) => (s.status === 'fulfilled' ? s.value.slice(0, limit) : []));
 }

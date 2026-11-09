@@ -250,6 +250,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/items/{id}/mentions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Where the Item is used ("Được nhắc tới ở" on the Item page): the opportunities that hold it as
+         *     evidence, with the stance of each row, and the skills that do, with their freshness. 404 for another
+         *     owner's Item.
+         */
+        get: operations["getItemMentions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/market/job-ads": {
         parameters: {
             query?: never;
@@ -381,6 +402,10 @@ export interface paths {
         };
         get: operations["listNotes"];
         put?: never;
+        /**
+         * @description 201 with the new note; 200 with the note an earlier POST with the same `clientId` made (nothing
+         *     changes then).
+         */
         post: operations["createNote"];
         delete?: never;
         options?: never;
@@ -402,7 +427,31 @@ export interface paths {
         delete: operations["deleteNote"];
         options?: never;
         head?: never;
+        /**
+         * @description With `baseUpdatedAt` (the version the edit started from): 409 and the note as it is now when it was
+         *     saved since then, and nothing is written.
+         */
         patch: operations["updateNote"];
+        trace?: never;
+    };
+    "/api/notes/{id}/mentions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The notes whose text links this note ("Được nhắc tới ở" on the note page). 404 for another owner's
+         *     note.
+         */
+        get: operations["getNoteMentions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/notes/search": {
@@ -1211,6 +1260,15 @@ export interface components {
             readonly title: string;
             readonly type: components["schemas"]["TypeEnum"];
         };
+        /**
+         * @description GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8): newest evidence first in the first
+         *     two, the most recently changed note first.
+         */
+        ItemMentions: {
+            opportunities: components["schemas"]["OpportunityMention"][];
+            skills: components["schemas"]["SkillMention"][];
+            notes: components["schemas"]["NoteMention"][];
+        };
         ItemRequest: {
             type: components["schemas"]["TypeEnum"];
             status?: components["schemas"]["ItemStatusEnum"];
@@ -1388,6 +1446,22 @@ export interface components {
             /** Format: date-time */
             readonly updatedAt: string;
         };
+        /** @description 409 on PATCH /api/notes/{id}: the note was saved elsewhere since `baseUpdatedAt`; `note` is it now. */
+        NoteConflict: {
+            detail: string;
+            note: components["schemas"]["Note"];
+        };
+        /** @description A note that links the Item or note in its text: its title, else its first line. */
+        NoteMention: {
+            id: number;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description GET /api/notes/{id}/mentions: the notes whose text links this note (its backlinks). */
+        NoteMentions: {
+            notes: components["schemas"]["NoteMention"][];
+        };
         NoteSearch: {
             results: components["schemas"]["NoteSearchHit"][];
         };
@@ -1407,6 +1481,10 @@ export interface components {
             title?: string;
             markdown: string;
             items?: number[];
+            /** Format: uuid */
+            clientId?: string;
+            /** Format: date-time */
+            baseUpdatedAt?: string;
         };
         /** @enum {unknown} */
         NullEnum: null;
@@ -1513,6 +1591,22 @@ export interface components {
             updatedAt: string;
             evidence: components["schemas"]["Evidence"][];
             scoreHistory: components["schemas"]["ScoreSnapshot"][];
+        };
+        /** @description An opportunity that uses the Item as evidence (supports or contradicts). */
+        OpportunityMention: {
+            id: number;
+            title: string;
+            decision: components["schemas"]["OpportunityDecisionEnum"];
+            evidence: components["schemas"]["OpportunityMentionEvidence"][];
+        };
+        /** @description One evidence row of an opportunity that points at the Item. */
+        OpportunityMentionEvidence: {
+            id: number;
+            stance: components["schemas"]["EvidenceStanceEnum"];
+            title: string;
+            note: string;
+            /** Format: date */
+            date: string;
         };
         PageWork: {
             book: string;
@@ -1732,6 +1826,10 @@ export interface components {
             title?: string;
             markdown?: string;
             items?: number[];
+            /** Format: uuid */
+            clientId?: string;
+            /** Format: date-time */
+            baseUpdatedAt?: string;
         };
         PatchedObjectiveUpdateRequest: {
             title?: string;
@@ -2091,6 +2189,21 @@ export interface components {
          * @enum {string}
          */
         SkillFreshnessEnum: "fresh" | "aging" | "faded";
+        /** @description A skill that uses the Item as evidence, with its freshness from all its evidence. */
+        SkillMention: {
+            id: number;
+            name: string;
+            freshness: components["schemas"]["SkillFreshnessEnum"];
+            evidence: components["schemas"]["SkillMentionEvidence"][];
+        };
+        /** @description One evidence row of a skill that points at the Item. */
+        SkillMentionEvidence: {
+            id: number;
+            title: string;
+            note: string;
+            /** Format: date */
+            date: string;
+        };
         SkillRef: {
             id: number;
             name: string;
@@ -2747,6 +2860,27 @@ export interface operations {
             };
         };
     };
+    getItemMentions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemMentions"];
+                };
+            };
+        };
+    };
     listJobAds: {
         parameters: {
             query?: {
@@ -2991,6 +3125,8 @@ export interface operations {
     listNotes: {
         parameters: {
             query?: {
+                /** @description Only the note a create with this `clientId` made (none if it never arrived). */
+                clientId?: string;
                 /** @description The pagination cursor value. */
                 cursor?: string;
                 /** @description Only notes linked to this Item id. */
@@ -3029,6 +3165,14 @@ export interface operations {
             };
         };
         responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
+                };
+            };
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -3101,6 +3245,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Note"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteConflict"];
+                };
+            };
+        };
+    };
+    getNoteMentions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteMentions"];
                 };
             };
         };

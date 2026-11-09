@@ -55,16 +55,89 @@ describe('noteTitle', () => {
     expect(noteTitle(note('  ', '> trích dẫn hay'), tVi)).toBe('trích dẫn hay');
     expect(noteTitle(note('', '- việc một\n- việc hai'), tVi)).toBe('việc một');
     expect(noteTitle(note('', '#hashtag không phải heading'), tVi)).toBe('#hashtag không phải heading');
+    expect(noteTitle(note('', '1. bước đầu'), tVi)).toBe('bước đầu');
+    expect(noteTitle(note('', '- [ ] việc chưa xong'), tVi)).toBe('việc chưa xong');
+  });
+
+  it('shows escaped characters as themselves, as the editor writes them', () => {
+    expect(noteTitle(note('', String.raw`\[RD] mở ngoặc vuông, file_name và 2\*3 = 6`), tVi)).toBe(
+      '[RD] mở ngoặc vuông, file_name và 2*3 = 6',
+    );
+    expect(noteTitle(note('', String.raw`Xem [\[RC\] Book C](/thu-vien/item/?id=22) nhé`), tVi)).toBe('Xem [RC] Book C nhé');
+    expect(noteTitle(note('', String.raw`\# không phải heading, 1\. không phải danh sách`), tVi)).toBe(
+      '# không phải heading, 1. không phải danh sách',
+    );
+    expect(noteTitle(note('', '> - [ ] việc trong trích dẫn'), tVi)).toBe('việc trong trích dẫn');
+    expect(noteTitle(note('', '-5 độ'), tVi)).toBe('-5 độ');
+  });
+
+  it('shows a link by its text (a `[[ ]]` link)', () => {
+    expect(noteTitle(note('', 'Xem [Atomic Habits](/thu-vien/item/?id=12) và [ý khác](/thu-vien/ghi-chu/?id=3)'), tVi)).toBe(
+      'Xem Atomic Habits và ý khác',
+    );
+    // the editor escapes the parentheses of a url (a Wikipedia link)
+    const wiki = String.raw`https://en.wikipedia.org/wiki/Atomic_Habits_\(book\)`;
+    expect(noteTitle(note('', `Đọc thêm [Atomic Habits (Wikipedia)](${wiki}) rồi ghi`), tVi)).toBe(
+      'Đọc thêm Atomic Habits (Wikipedia) rồi ghi',
+    );
+  });
+
+  it('skips code fences, rules and table delimiter rows', () => {
+    expect(noteTitle(note('', '```js\nconsole.log(1)\n```'), tVi)).toBe('console.log(1)');
+    expect(noteTitle(note('', '---\n\nNội dung'), tVi)).toBe('Nội dung');
+    expect(noteTitle(note('', '- - -\n> ---\n|---|---|\n| a | b |'), tVi)).toBe('| a | b |');
+    expect(noteTitle(note('', '~~~\n~~~'), tVi)).toBe('Ghi chú #7');
   });
 
   it('skips lines that are only marks and cuts long lines at 120 characters', () => {
     expect(noteTitle(note('', '#   \nnội dung'), tVi)).toBe('nội dung');
+    // the editor's empty-line placeholder is not text
+    expect(noteTitle(note('', '<br />\n\n- <br />\n\nÝ chính'), tVi)).toBe('Ý chính');
     expect(noteTitle(note('', 'x'.repeat(300)), tVi)).toHaveLength(120);
   });
 
   it('uses "Ghi chú #id" for an empty note', () => {
     expect(noteTitle(note('', ''), tVi)).toBe('Ghi chú #7');
     expect(noteTitle(note('', '\n  \n'), tVi)).toBe('Ghi chú #7');
+  });
+
+  it('shows no backslash for a line break (Shift+Enter, pasted lines)', () => {
+    expect(noteTitle(note('', '\\[V3] Dòng một\\\ndòng hai'), tVi)).toBe('[V3] Dòng một');
+    expect(noteTitle(note('', 'Dòng một\\\r\ndòng hai'), tVi)).toBe('Dòng một');
+    expect(noteTitle(note('', 'C:\\\\\nx'), tVi)).toBe('C:\\');
+  });
+
+  it('shows numeric character references as their character', () => {
+    expect(noteTitle(note('', String.raw`&#x20;\[V3] khoảng trắng đầu`), tVi)).toBe('[V3] khoảng trắng đầu');
+    expect(noteTitle(note('', '# &#x20;Tiêu đề'), tVi)).toBe('Tiêu đề');
+    expect(noteTitle(note('', '&#x9;Tab đầu'), tVi)).toBe('Tab đầu');
+    expect(noteTitle(note('', '&#123;json&#125; và &#0;'), tVi)).toBe('{json} và \uFFFD');
+    expect(noteTitle(note('', String.raw`\&#x20;viết như chữ`), tVi)).toBe('&#x20;viết như chữ');
+  });
+
+  it('leaves inline marks out and keeps escaped characters, an escaped "!" before a link too', () => {
+    expect(noteTitle(note('', '**Ý chính:** đọc *chương* `3` ~~cũ~~'), tVi)).toBe('Ý chính: đọc chương 3 cũ');
+    expect(noteTitle(note('', String.raw`2\*3 = 6, file_name và _nghiêng_`), tVi)).toBe('2*3 = 6, file_name và nghiêng');
+    expect(noteTitle(note('', String.raw`Hay quá\![Sách](/thu-vien/item/?id=5)`), tVi)).toBe('Hay quá!Sách');
+  });
+
+  it('reads like the backend: ASCII list numbers, one whitespace set, a cut that never splits a character', () => {
+    expect(noteTitle(note('', '٣. chữ số'), tVi)).toBe('٣. chữ số');
+    expect(noteTitle(note('', '\uFEFFBOM a\u0085b\u001Cc'), tVi)).toBe('BOM a b\u001Cc');
+    expect(noteTitle(note('', `${'a'.repeat(119)}😀b`), tVi)).toBe(`${'a'.repeat(119)}😀`);
+    expect(Array.from(noteTitle(note('', '😀'.repeat(61)), tVi))).toHaveLength(61);
+    expect(noteTitle(note('  \uFEFF Tiêu đề\u3000', 'x'), tVi)).toBe('Tiêu đề');
+  });
+
+  it('stays fast on long lines of escaped brackets and reads only up to the first line with text', () => {
+    for (const markdown of ['[' + String.raw`\[`.repeat(99_999), String.raw`Ghi chú \[V3\]V `.repeat(2_500)]) {
+      const started = performance.now();
+      noteTitle(note('', markdown), tVi);
+      expect(performance.now() - started).toBeLessThan(500);
+    }
+    const started = performance.now();
+    expect(noteTitle(note('', `# Tiêu đề\n${'[' + String.raw`\[`.repeat(99_999)}`), tVi)).toBe('Tiêu đề');
+    expect(performance.now() - started).toBeLessThan(50);
   });
 });
 

@@ -541,6 +541,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Item'
           description: ''
+  /api/items/{id}/mentions:
+    get:
+      operationId: getItemMentions
+      description: |-
+        Where the Item is used ("Được nhắc tới ở" on the Item page): the opportunities that hold it as
+        evidence, with the stance of each row, and the skills that do, with their freshness. 404 for another
+        owner's Item.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - items
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemMentions'
+          description: ''
   /api/market/job-ads:
     get:
       operationId: listJobAds
@@ -818,6 +842,13 @@ paths:
     get:
       operationId: listNotes
       parameters:
+      - in: query
+        name: clientId
+        schema:
+          type: string
+          format: uuid
+        description: Only the note a create with this `clientId` made (none if it
+          never arrived).
       - name: cursor
         required: false
         in: query
@@ -853,6 +884,9 @@ paths:
           description: ''
     post:
       operationId: createNote
+      description: |-
+        201 with the new note; 200 with the note an earlier POST with the same `clientId` made (nothing
+        changes then).
       tags:
       - notes
       requestBody:
@@ -865,6 +899,12 @@ paths:
       - sessionAuth: []
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+          description: ''
+        '200':
           content:
             application/json:
               schema:
@@ -892,6 +932,9 @@ paths:
           description: ''
     patch:
       operationId: updateNote
+      description: |-
+        With `baseUpdatedAt` (the version the edit started from): 409 and the note as it is now when it was
+        saved since then, and nothing is written.
       parameters:
       - in: path
         name: id
@@ -914,6 +957,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Note'
           description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteConflict'
+          description: ''
     delete:
       operationId: deleteNote
       description: Evidence that pointed at the note keeps its title snapshot.
@@ -930,6 +979,29 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/notes/{id}/mentions:
+    get:
+      operationId: getNoteMentions
+      description: |-
+        The notes whose text links this note ("Được nhắc tới ở" on the note page). 404 for another owner's
+        note.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - notes
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteMentions'
+          description: ''
   /api/notes/search:
     get:
       operationId: searchNotes
@@ -2800,6 +2872,28 @@ components:
       - id
       - title
       - type
+    ItemMentions:
+      type: object
+      description: |-
+        GET /api/items/{id}/mentions ("Được nhắc tới ở", DECISIONS 9.8): newest evidence first in the first
+        two, the most recently changed note first.
+      properties:
+        opportunities:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpportunityMention'
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillMention'
+        notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteMention'
+      required:
+      - notes
+      - opportunities
+      - skills
     ItemRequest:
       type: object
       properties:
@@ -3284,6 +3378,45 @@ components:
       - markdown
       - title
       - updatedAt
+    NoteConflict:
+      type: object
+      description: '409 on PATCH /api/notes/{id}: the note was saved elsewhere since
+        `baseUpdatedAt`; `note` is it now.'
+      properties:
+        detail:
+          type: string
+        note:
+          $ref: '#/components/schemas/Note'
+      required:
+      - detail
+      - note
+    NoteMention:
+      type: object
+      description: 'A note that links the Item or note in its text: its title, else
+        its first line.'
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - title
+      - updatedAt
+    NoteMentions:
+      type: object
+      description: 'GET /api/notes/{id}/mentions: the notes whose text links this
+        note (its backlinks).'
+      properties:
+        notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteMention'
+      required:
+      - notes
     NoteSearch:
       type: object
       properties:
@@ -3329,7 +3462,13 @@ components:
           type: array
           items:
             type: integer
-          maxItems: 50
+          maxItems: 10000
+        clientId:
+          type: string
+          format: uuid
+        baseUpdatedAt:
+          type: string
+          format: date-time
       required:
       - markdown
     NullEnum:
@@ -3602,6 +3741,46 @@ components:
       - title
       - updatedAt
       - whyNow
+    OpportunityMention:
+      type: object
+      description: An opportunity that uses the Item as evidence (supports or contradicts).
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        decision:
+          $ref: '#/components/schemas/OpportunityDecisionEnum'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpportunityMentionEvidence'
+      required:
+      - decision
+      - evidence
+      - id
+      - title
+    OpportunityMentionEvidence:
+      type: object
+      description: One evidence row of an opportunity that points at the Item.
+      properties:
+        id:
+          type: integer
+        stance:
+          $ref: '#/components/schemas/EvidenceStanceEnum'
+        title:
+          type: string
+        note:
+          type: string
+        date:
+          type: string
+          format: date
+      required:
+      - date
+      - id
+      - note
+      - stance
+      - title
     PageWork:
       type: object
       properties:
@@ -3990,7 +4169,13 @@ components:
           type: array
           items:
             type: integer
-          maxItems: 50
+          maxItems: 10000
+        clientId:
+          type: string
+          format: uuid
+        baseUpdatedAt:
+          type: string
+          format: date-time
     PatchedObjectiveUpdateRequest:
       type: object
       properties:
@@ -4907,6 +5092,44 @@ components:
         * `fresh` - Fresh
         * `aging` - Aging
         * `faded` - Faded
+    SkillMention:
+      type: object
+      description: A skill that uses the Item as evidence, with its freshness from
+        all its evidence.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        freshness:
+          $ref: '#/components/schemas/SkillFreshnessEnum'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillMentionEvidence'
+      required:
+      - evidence
+      - freshness
+      - id
+      - name
+    SkillMentionEvidence:
+      type: object
+      description: One evidence row of a skill that points at the Item.
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        note:
+          type: string
+        date:
+          type: string
+          format: date
+      required:
+      - date
+      - id
+      - note
+      - title
     SkillRef:
       type: object
       properties:

@@ -51,6 +51,35 @@ describe('request', () => {
     await expect(request('GET', '/api/items')).rejects.toMatchObject({ status: 502, reachable: false });
   });
 
+  it('gives up on a request with no answer by its time limit, and says the status of one that answered', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal(
+        'fetch',
+        (_url: string, init: RequestInit) =>
+          new Promise((_resolve, reject) =>
+            init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))),
+          ),
+      );
+      const hung = request('PATCH', '/api/notes/1', { markdown: 'x' }, undefined, { timeoutMs: 15_000 }).catch(
+        (e: unknown) => e,
+      );
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(await hung).toMatchObject({ status: 0, reachable: false, timedOut: true });
+    } finally {
+      vi.useRealTimers();
+    }
+    vi.stubGlobal('fetch', async () => json(200, { id: 1 }));
+    let status = 0;
+    await request('POST', '/api/notes', { markdown: 'x' }, undefined, {
+      timeoutMs: 15_000,
+      onStatus: (code) => {
+        status = code;
+      },
+    });
+    expect(status).toBe(200);
+  });
+
   it('keeps the parsed body of a DRF 400', async () => {
     answer = json(400, { file: ['Ảnh lớn hơn 10 MB.'] });
     await expect(request('POST', '/api/items/1/image', new FormData())).rejects.toMatchObject({

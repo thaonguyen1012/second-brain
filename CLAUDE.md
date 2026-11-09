@@ -33,7 +33,9 @@ web/
   app/[lang]/                    every page, prerendered per UI language (vi, en): next.config.mjs rewrites /x/ to
                                  /vi/x/ or, with the cookie lang=en, /en/x/ (lib/i18n/README.md); root layout here
   app/[lang]/(home)/page.tsx     "Hôm nay" (continue learning, week objectives, inbox count, today's brief)
-  app/[lang]/(home)/<route>/     app pages in the shell: inbox/, thu-vien/ (Items) + thu-vien/ghi-chu/ (notes),
+  app/[lang]/(home)/<route>/     app pages in the shell: inbox/, thu-vien/ (Items; ?item=N opens the Item page in a
+                                 Sheet) + thu-vien/item/ (?id=N, the full Item page) + thu-vien/ghi-chu/ (notes,
+                                 ?view=items "Theo item"; ?id=N one note as its page, ?id=new&item=&template= a new one),
                                  phat-trien/ (handbook grid) + {ky-nang,thi-truong,thanh-tuu}/, tuan/ (?w=&tab=),
                                  co-hoi/ (?id= detail), cong-viec/ (projects) + cong-viec/gio/ (time); static shells;
                                  inbox/them/ (?url=&title=&text= capture: bookmarklet + PWA share target);
@@ -69,6 +71,10 @@ web/
   lib/status-board.ts            pure logic of the List/Board pages (Dự án, Thư viện): lanes, optimistic moves, BoardKind
                                  (noun, drag type, view key), the view in the URL; lib/use-board-view.ts = the view hook;
                                  lib/api/pages.ts = loadAllPages (every cursor page, cap 20 x 100)
+  lib/item-notes.ts              notes by Item ("Theo item"), note date/heading words, which markdown links render, an
+                                 untouched template (the editor's `<br />` empty lines); lib/note-links.ts = the page of
+                                 each record a note links to (item, note, opportunity, skill; same paths as
+                                 backend/library/links.py, a test compares them)
   lib/item-picture.ts            which picture an Item shows (its own image: poster/cover/logo by type; else the Sổ tay
                                  cover of a handbook course) + upload checks; drawn by components/brain/library/item-image.tsx
   lib/dates.ts                   Europe/Prague today, mondayOf, addDays, formatDay (date-only, UTC arithmetic)
@@ -86,7 +92,27 @@ web/
                                  same drawing as public/icons/icon.svg; DESIGN.md §4): sidebar header, docs nav, intro hero
   components/brain/              second-brain UI (client): BrainCard, api-state (empty/error states), today,
                                  inbox-page, library-page, dialogs; per area: tuan/, opportunities/, work/,
-                                 growth/, library/; status-board.tsx (the shared Bảng: lanes, native drag and drop,
+                                 growth/, library/; library/item-detail.tsx = the Item page (DECISIONS 9.8: picture,
+                                 properties, done hint, every note in place via item-notes.tsx), shown in
+                                 item-sheet.tsx (beside Thư viện) and item-page.tsx (/thu-vien/item/); notes render
+                                 through note-body.tsx (lazy react-markdown + remark-gfm in note-markdown.tsx, never
+                                 on home; drawn block by block like the editor, which is its loading state) and are
+                                 written in note-editor.tsx (Milkdown, lazy via note-editor-lazy.tsx with
+                                 note-editor.css, never on home; markdown written by lib/note-stringify.ts, tested on
+                                 Milkdown's own serializer, whitespace-only marks dropped; keys typed from the editor's request are kept by
+                                 note-editor-lazy.tsx (a keeper field; the chunks preload when idle), focus taken only where free: "/" block menu (one
+                                 undo step), markdown shortcuts, task boxes,
+                                 the `[[ ]]` picker in note-link-picker.tsx), saved by use-note-autosave.ts (AFFiNE's
+                                 way: after a pause, "Đã lưu" in save-status.tsx, at once when leaving with keepalive,
+                                 each editor's own copy in localStorage until the server has it (lib/note-copies.ts: one
+                                 per editor, a gone writer's copy offered back until restored or dropped, named by
+                                 UnsavedCopyHint / NewNoteCopyHints; a new note's copy looked up by ?clientId=; a copy names the version it was
+                                 written over (offered as "written on an older version" after a newer save); an editor
+                                 with a copy holds a Web Lock, so another open tab never offers it; a hand-off waits once); an
+                                 edit's baseUpdatedAt (409 = saved elsewhere: the newer note shows, "Ghi chú vừa được
+                                 lưu ở nơi khác"); the editors of one note on a page go on from their own saves; a 15 s
+                                 timeout; no Lưu/Hủy); the note page is
+                                 note-page.tsx, routed by notes-route.tsx; status-board.tsx (the shared Bảng: lanes, native drag and drop,
                                  useStatusMoves, BoardStatus; cards' parts in work/project-card.tsx and
                                  library/item-parts.tsx) + view-switch.tsx; library/item-image(-field).tsx (pictures in
                                  rows and cards, the dialogs' "Ảnh bìa"/"Logo" field). Data loads in the browser, never at build. Deletes only through
@@ -126,9 +152,20 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
   progress/                      progress API (API_CONTRACT.md); logic in services.py, thin views
   library/                       Item (type, status, tags ArrayField, rating; noteCount + imagePending annotated by
                                  services.items; status moves started_at/finished_at in apply_status_dates, used by every
-                                 Item write incl. /api/projects) + Note (markdown, M2M Item; never sent to an LLM);
-                                 /api/items* (?q= title/source/exact tag; DELETE: links set null, 409 for a project with
-                                 time entries), /api/notes* (?q= title/markdown, ?item=). Every owned row has a DELETE
+                                 Item write incl. /api/projects) + Note (markdown, M2M Item; never sent to an LLM) +
+                                 NoteLink (the `[[ ]]` links read out of a note's markdown on every save by links.py:
+                                 note -> item|note|opportunity|skill, the owner's only; read where the reading view shows
+                                 a link (micromark's CommonMark + GFM blocks and inline links, titles, references, destinations decoded,
+                                 task boxes; never
+                                 code, HTML or images), linear on any text; migration 0005 keeps a byte-identical frozen
+                                 copy, a test compares them; a linked Item joins the note's Items; derived, never
+                                 exported); services.save_note (writes only the sent fields under a row lock; clientId,
+                                 baseUpdatedAt -> NoteConflict 409; a create answers updated_at = created_at); note_label/note_excerpt read text as it shows (same
+                                 as web/lib/library-labels.ts noteTitle); /api/items* (?q= title/source/exact tag; DELETE:
+                                 links set null, 409 for a project with time entries), /api/notes* (?q= title/markdown,
+                                 escapes shown when q has punctuation; ?item=, ?clientId=), /api/items/{id}/mentions (mentions.py: opportunities and skills that use the
+                                 Item as evidence and the notes that link it, "Được nhắc tới ở"), /api/notes/{id}/mentions
+                                 (the notes that link a note). Every owned row has a DELETE
                                  (204; 404 for another owner). Item image (cover; project logo): image_path (webp in
                                  THUMBS_DIR), only through services.set_image (row lock, `expect`; any other change
                                  ends the Item's waiting or running fetch, so it never undoes it); /api/items/{id}/image

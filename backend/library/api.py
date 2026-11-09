@@ -1,9 +1,12 @@
+import uuid
 from typing import Any
 
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from django.db.models import QuerySet
 from django.http.response import HttpResponseBase
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
@@ -19,14 +22,17 @@ from core.pagination import NewestFirstCursor
 from core.serializers import ErrorSerializer
 from core.services import thumbnails
 from core.views import thumbnail_response
-from library import services
+from library import mentions, services
 from library.models import Item, Note
 from library.serializers import (
     IMAGE_UNREADABLE,
     NO_HTTP_LINK,
     ItemImageFetchSerializer,
     ItemImageUploadSerializer,
+    ItemMentionsSerializer,
     ItemSerializer,
+    NoteConflictSerializer,
+    NoteMentionsSerializer,
     NoteSearchSerializer,
     NoteSerializer,
     NoteWriteSerializer,
@@ -103,6 +109,17 @@ class ItemView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ItemMentionsView(APIView):
+    @extend_schema(responses=ItemMentionsSerializer, operation_id="getItemMentions")
+    def get(self, request: Request, pk: int) -> Response:
+        """Where the Item is used ("Được nhắc tới ở" on the Item page): the opportunities that hold it as
+        evidence, with the stance of each row, and the skills that do, with their freshness. 404 for another
+        owner's Item."""
+        user = request_user(request)
+        item = get_object_or_404(Item, pk=pk, user=user)
+        return Response(ItemMentionsSerializer(mentions.item_mentions(user, item)).data)
+
+
 class ItemImageView(APIView):
     """The Item's image (a cover; a project's logo). The upload is the app's only multipart body: this view
     parses multipart and nothing else, so a JSON body answers 415."""
@@ -175,6 +192,11 @@ def _note(request: Request, pk: int) -> Note:
         parameters=[
             OpenApiParameter("q", str, description="Case-insensitive match in title or markdown."),
             OpenApiParameter("item", int, description="Only notes linked to this Item id."),
+            OpenApiParameter(
+                "clientId",
+                OpenApiTypes.UUID,
+                description="Only the note a create with this `clientId` made (none if it never arrived).",
+            ),
         ],
     )
 )
@@ -188,14 +210,41 @@ class NoteListView(generics.ListAPIView[Note]):
             raise ValidationError({"item": "A positive integer."})
         query = self.request.query_params.get("q", "")
         rows = services.notes(request_user(self.request), query, int(raw) if raw is not None else None)
+        # The editor asks whether a create it sent as a page closed arrived (its copy in the browser then
+        # belongs to that note, not to a new one)
+        if (client := self.request.query_params.get("clientId")) is not None:
+            try:
+                rows = rows.filter(client_id=uuid.UUID(client))
+            except ValueError:
+                raise ValidationError({"clientId": "A UUID."}) from None
         return rows.prefetch_related("items")
 
-    @extend_schema(request=NoteWriteSerializer, responses={201: NoteSerializer}, operation_id="createNote")
+    @extend_schema(
+        request=NoteWriteSerializer,
+        responses={201: NoteSerializer, 200: NoteSerializer},
+        operation_id="createNote",
+    )
     def post(self, request: Request) -> Response:
+        """201 with the new note; 200 with the note an earlier POST with the same `clientId` made (nothing
+        changes then)."""
         user = request_user(request)
         body = NoteWriteSerializer(data=request.data, context={"user": user})
         body.is_valid(raise_exception=True)
-        note = services.save_note(Note(user=user), dict(body.validated_data))
+        data = dict(body.validated_data)
+        data.pop("baseUpdatedAt", None)
+        client_id = data.pop("clientId", None)
+        if client_id is not None:
+            made = Note.objects.filter(user=user, client_id=client_id).first()
+            if made is not None:
+                return Response(NoteSerializer(_note(request, made.pk)).data)
+        try:
+            note = services.save_note(Note(user=user, client_id=client_id), data)
+        except IntegrityError:
+            # a POST with the same client id crossed this one and made the note first
+            made = Note.objects.filter(user=user, client_id=client_id).first()
+            if made is None:
+                raise
+            return Response(NoteSerializer(_note(request, made.pk)).data)
         return Response(NoteSerializer(_note(request, note.pk)).data, status=status.HTTP_201_CREATED)
 
 
@@ -222,17 +271,40 @@ class NoteSearchView(APIView):
         return Response(NoteSearchSerializer({"results": hits}).data)
 
 
+class NoteMentionsView(APIView):
+    @extend_schema(responses=NoteMentionsSerializer, operation_id="getNoteMentions")
+    def get(self, request: Request, pk: int) -> Response:
+        """The notes whose text links this note ("Được nhắc tới ở" on the note page). 404 for another owner's
+        note."""
+        user = request_user(request)
+        note = get_object_or_404(Note, pk=pk, user=user)
+        return Response(NoteMentionsSerializer(mentions.note_mentions(user, note)).data)
+
+
 class NoteView(APIView):
     @extend_schema(responses=NoteSerializer, operation_id="getNote")
     def get(self, request: Request, pk: int) -> Response:
         return Response(NoteSerializer(_note(request, pk)).data)
 
-    @extend_schema(request=NoteWriteSerializer, responses=NoteSerializer, operation_id="updateNote")
+    @extend_schema(
+        request=NoteWriteSerializer,
+        responses={200: NoteSerializer, 409: NoteConflictSerializer},
+        operation_id="updateNote",
+    )
     def patch(self, request: Request, pk: int) -> Response:
+        """With `baseUpdatedAt` (the version the edit started from): 409 and the note as it is now when it was
+        saved since then, and nothing is written."""
         note = get_object_or_404(Note, pk=pk, user=request_user(request))
         body = NoteWriteSerializer(data=request.data, partial=True, context={"user": request_user(request)})
         body.is_valid(raise_exception=True)
-        services.save_note(note, dict(body.validated_data))
+        data = dict(body.validated_data)
+        data.pop("clientId", None)
+        base = data.pop("baseUpdatedAt", None)
+        try:
+            services.save_note(note, data, base)
+        except services.NoteConflict:
+            conflict = {"detail": tr("Ghi chú vừa được lưu ở nơi khác."), "note": _note(request, pk)}
+            return Response(NoteConflictSerializer(conflict).data, status=status.HTTP_409_CONFLICT)
         return Response(NoteSerializer(_note(request, pk)).data)
 
     @extend_schema(responses={204: None}, operation_id="deleteNote")

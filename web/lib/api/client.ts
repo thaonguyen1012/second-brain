@@ -43,6 +43,8 @@ export class ApiError extends Error {
     readonly reachable = true,
     /** Parsed JSON error body (DRF: `{ detail }` or `{ field: [messages] }`). */
     readonly body?: unknown,
+    /** No answer within the request's `timeoutMs` (the connection may be dead): unreachable, said differently. */
+    readonly timedOut = false,
   ) {
     super(message);
   }
@@ -74,7 +76,30 @@ export const API_WRITE_EVENT = 'brain:api-write';
  * ApiError on failure, undefined for 204; a successful write fires API_WRITE_EVENT. An aborted `signal` rejects
  * with the fetch AbortError (not an ApiError), so callers can tell "cancelled" from "offline" (isAbort).
  */
-export async function request<T>(method: Method, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+/**
+ * Browsers refuse a `keepalive` request once the bodies of all keepalive requests in flight from the page pass 64 KiB
+ * (UTF-8 bytes): a body that would pass it goes as a normal request.
+ */
+const KEEPALIVE_BUDGET = 64 * 1024;
+let keepaliveInFlight = 0;
+
+export async function request<T>(
+  method: Method,
+  path: string,
+  body?: unknown,
+  signal?: AbortSignal,
+  /**
+   * `keepalive`: the request may outlive the page (a note saved while the tab closes); dropped when its body would
+   * pass the page's keepalive budget, and it then goes as a normal request. `timeoutMs`: give up (ApiError with
+   * `timedOut`) when no full answer came by then, so a save on a dead connection fails instead of waiting forever.
+   * `onStatus`: the status of a successful answer (a create sent again answers 200 instead of 201).
+   */
+  init?: {
+    keepalive?: boolean;
+    timeoutMs?: number;
+    onStatus?: (status: number) => void;
+  },
+): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   // The page's language (<html lang>, app/[lang]/layout.tsx): Django answers in it before the cookie, so a page
   // opened at /en/... gets English messages whatever the cookie says (backend/core/middleware.py)
@@ -84,30 +109,61 @@ export async function request<T>(method: Method, path: string, body?: unknown, s
   // A FormData body (a file upload) goes as it is: the browser writes multipart/form-data with its boundary.
   const form = body instanceof FormData;
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
-  let res: Response;
+  const payload = body === undefined ? undefined : form ? body : JSON.stringify(body);
+  const size = init?.keepalive && typeof payload === 'string' ? new TextEncoder().encode(payload).length : Infinity;
+  const keepalive = keepaliveInFlight + size <= KEEPALIVE_BUDGET;
+  if (keepalive) keepaliveInFlight += size;
+  // With a time limit the request has its own signal, which the caller's (if any) also aborts
+  const limit = init?.timeoutMs ? new AbortController() : null;
+  let timedOut = false;
+  const timer = limit
+    ? setTimeout(() => {
+        timedOut = true;
+        limit.abort();
+      }, init?.timeoutMs)
+    : undefined;
+  const forward = () => limit?.abort();
+  if (limit) signal?.addEventListener('abort', forward);
+  const noAnswer = () => new ApiError(0, `${method} ${path}: no answer`, false, undefined, true);
   try {
-    res = await fetch(path, {
-      method,
-      headers,
-      credentials: 'same-origin',
-      body: body === undefined ? undefined : form ? body : JSON.stringify(body),
-      signal,
-    });
-  } catch (err) {
-    if (signal?.aborted) throw err;
-    throw new ApiError(0, `${method} ${path}: network error`, false);
+    let res: Response;
+    try {
+      res = await fetch(path, {
+        method,
+        headers,
+        credentials: 'same-origin',
+        body: payload,
+        signal: limit?.signal ?? signal,
+        ...(keepalive && { keepalive: true }),
+      }).finally(() => {
+        if (keepalive) keepaliveInFlight -= size;
+      });
+    } catch (err) {
+      if (timedOut) throw noAnswer();
+      if (signal?.aborted) throw err;
+      throw new ApiError(0, `${method} ${path}: network error`, false);
+    }
+    const json = (res.headers.get('content-type') ?? '').includes('application/json');
+    if (!res.ok) {
+      // 413 is nginx's own HTML page for a body over its limit: an answer about the request, not "offline"
+      const reachable = (json || res.status === 413) && ![502, 503, 504].includes(res.status);
+      const errBody: unknown = json ? await res.json().catch(() => undefined) : undefined;
+      throw new ApiError(res.status, `${method} ${path}: ${res.status}`, reachable, errBody);
+    }
+    if (method !== 'GET') window.dispatchEvent(new Event(API_WRITE_EVENT));
+    init?.onStatus?.(res.status);
+    if (res.status === 204) return undefined as T;
+    if (!json) throw new ApiError(res.status, `${method} ${path}: not JSON`, false);
+    try {
+      return (await res.json()) as T;
+    } catch (err) {
+      if (timedOut) throw noAnswer();
+      throw err;
+    }
+  } finally {
+    clearTimeout(timer);
+    if (limit) signal?.removeEventListener('abort', forward);
   }
-  const json = (res.headers.get('content-type') ?? '').includes('application/json');
-  if (!res.ok) {
-    // 413 is nginx's own HTML page for a body over its limit: an answer about the request, not "offline"
-    const reachable = (json || res.status === 413) && ![502, 503, 504].includes(res.status);
-    const errBody: unknown = json ? await res.json().catch(() => undefined) : undefined;
-    throw new ApiError(res.status, `${method} ${path}: ${res.status}`, reachable, errBody);
-  }
-  if (method !== 'GET') window.dispatchEvent(new Event(API_WRITE_EVENT));
-  if (res.status === 204) return undefined as T;
-  if (!json) throw new ApiError(res.status, `${method} ${path}: not JSON`, false);
-  return (await res.json()) as T;
 }
 
 /** Appends the defined, non-empty query values. */
@@ -176,7 +232,9 @@ export const api = {
   },
   /** The "hữu ích / không" button; null clears the rating. */
   rateNewsItem: (id: number, feedback: ApiNewsFeedback | null) =>
-    request<ApiNewsItem>('PATCH', `/api/news/${id}`, { feedback } satisfies Schemas['PatchedNewsFeedbackRequest']),
+    request<ApiNewsItem>('PATCH', `/api/news/${id}`, {
+      feedback,
+    } satisfies Schemas['PatchedNewsFeedbackRequest']),
 
   listInbox: (query?: Query<'listInbox'>) => list<ApiInboxEntry>(withQuery('/api/inbox', query)),
   /** One COUNT query on the server (the Inbox badge), never the rows. */

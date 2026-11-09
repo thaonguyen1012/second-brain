@@ -18,16 +18,27 @@ export function missingOutput(item: Pick<ApiItem, 'status' | 'type' | 'rating' |
   return note || rating ? { note, rating } : null;
 }
 
-/** Starting text of a note written to close a done Item (DECISIONS 4.2: what each type asks for). */
-const noteTemplates: Partial<Record<ApiItemType, Msg>> = {
+/**
+ * Starting text of a new note on an Item, one per type (DECISIONS 4.2: the output each type asks for; 9.8: a template
+ * for all five). The same words as the hints below, as headings to fill in; shown in the UI language.
+ */
+export const noteTemplates: Record<ApiItemType, Msg> = {
   book: msg('## Highlights\n\n- \n\n## 3 ý chính\n\n1. \n2. \n3. \n'),
-  film: msg('Nhận xét: '),
+  film: msg('## Nhận xét\n\n- '),
+  course: msg('## Học được gì\n\n- \n\n## Sẽ áp dụng vào đâu\n\n- \n'),
+  article: msg('## Ý chính\n\n- \n\n## Vì sao đáng nhớ\n\n'),
+  project: msg('## Kết quả (kèm con số)\n\n- \n\n## Bài học rút ra\n\n- \n'),
 };
+
+/** The type's template in the UI language; an unknown type starts empty. */
+export function noteTemplateFor(type: string, t: T): string {
+  const template = noteTemplates[type as ApiItemType] as Msg | undefined;
+  return template ? t(template) : '';
+}
 
 /** The new note behind "Viết ghi chú": titled after the Item, linked to it, with the type's template. */
 export function noteDraftForItem(item: ApiItem, t: T): NoteDraft {
-  const template = noteTemplates[item.type];
-  return { title: item.title.slice(0, 300), markdown: template ? t(template) : '', items: [item.id] };
+  return { title: item.title.slice(0, 300), markdown: noteTemplateFor(item.type, t), items: [item.id] };
 }
 
 /** The output each type asks for (DECISIONS 4.2). */
@@ -52,9 +63,9 @@ export function gapLabel(gap: { note: boolean; rating: boolean }, t: T): string 
 }
 
 /**
- * Gentle reminder in the Item dialog on a done Item without its output: no note yet, or a film without a rating
- * (a warning Alert, DESIGN.md §6; no sparkle, D18). `onWriteNote` opens a new note linked to the Item; `onRate`
- * (films) focuses the rating. List rows show `gapLabel()` in their meta line instead.
+ * Gentle reminder on a done Item without its output (the Item page and the Item dialog): no note yet, or a film without
+ * a rating (a warning Alert, DESIGN.md §6; no sparkle, D18). `onWriteNote` opens a new note linked to the Item;
+ * `onRate` (films) goes to the rating. List rows show `gapLabel()` in their meta line instead.
  */
 export function DoneOutputHint({
   type,
