@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Fragment } from 'react';
+import type * as PageTree from 'fumadocs-core/page-tree';
 import { source } from '@/lib/source';
 import { DocsBody, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
@@ -12,6 +13,7 @@ import { loadPage } from '@/lib/content/compile';
 import type { DocPageData } from '@/lib/content/scan';
 import { LazyDocsLayout } from '@/components/lazy-docs-layout';
 import { DoneCheckbox, VisitTracker } from '@/components/progress';
+import { contentText } from '@/lib/i18n/content-lang';
 import { getT } from '@/lib/i18n/server';
 import type { T } from '@/lib/i18n/translate';
 
@@ -23,20 +25,31 @@ function Breadcrumb({ url, t }: { url: string; t: T }) {
   const crumbs = [{ name: t('Trang chủ'), url: '/' }, ...getCrumbs(url)];
   return (
     <nav aria-label="Breadcrumb" className="mb-2 flex flex-wrap items-center gap-1.5 text-sm text-fd-muted-foreground">
-      {crumbs.map((c, i) => (
-        <Fragment key={`${i}-${c.name}`}>
-          {i > 0 && <span aria-hidden>›</span>}
-          {c.url ? (
-            <Link href={c.url} className="truncate hover:text-fd-primary">
-              {c.name}
-            </Link>
-          ) : (
-            <span className="truncate">{c.name}</span>
-          )}
-        </Fragment>
-      ))}
+      {crumbs.map((c, i) => {
+        // after "Trang chủ", the book and its folders: handbook titles
+        const name = i === 0 ? c.name : contentText(c.name, t.locale);
+        return (
+          <Fragment key={`${i}-${c.name}`}>
+            {i > 0 && <span aria-hidden>›</span>}
+            {c.url ? (
+              <Link href={c.url} className="truncate hover:text-fd-primary">
+                {name}
+              </Link>
+            ) : (
+              <span className="truncate">{name}</span>
+            )}
+          </Fragment>
+        );
+      })}
     </nav>
   );
+}
+
+/** A previous/next link: its title and description (the book's first page has one) are handbook text. */
+function neighbour(item: PageTree.Item | undefined, t: T): PageTree.Item | undefined {
+  if (!item) return undefined;
+  const text = (s: PageTree.Item['name']) => (typeof s === 'string' ? contentText(s, t.locale) : s);
+  return { ...item, name: text(item.name), description: text(item.description) };
 }
 
 export default async function Page(props: PageProps<'/[lang]/docs/[[...slug]]'>) {
@@ -48,6 +61,7 @@ export default async function Page(props: PageProps<'/[lang]/docs/[[...slug]]'>)
   const t = await getT();
   const { body: MDX, toc, codeCss, readingMinutes } = await loadPage(data.absolutePath, t);
   const { tree, book } = getShellTree(page.url);
+  const { previous, next } = getNeighbours(page.url);
 
   return (
     <LazyDocsLayout tree={tree} book={book} {...baseOptions(t)}>
@@ -56,7 +70,7 @@ export default async function Page(props: PageProps<'/[lang]/docs/[[...slug]]'>)
       <DocsPage
         toc={toc.map((i) => ({ ...i, title: <span lang="vi">{i.title}</span> }))}
         breadcrumb={{ enabled: false }}
-        footer={{ items: getNeighbours(page.url) }}
+        footer={{ items: { previous: neighbour(previous, t), next: neighbour(next, t) } }}
       >
         <Breadcrumb url={page.url} t={t} />
         <DocsTitle lang="vi">{data.title}</DocsTitle>

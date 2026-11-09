@@ -53,10 +53,11 @@ web/
   lib/books.ts                   registry (block between BOOKS markers is written by scripts; English titles and
                                  descriptions in lib/i18n/en/shell.ts, keyed by the Vietnamese)
   lib/i18n/                      UI languages: t() / msg() (translate.ts), useT (client.tsx), getT (server.ts,
-                                 next/root-params), English dictionaries per area (en/), coverage test; the switch is
-                                 components/language-switch.tsx; lib/use-app-pathname.ts = the path without /vi or
-                                 /en to render, useRoutePathname (the browser's path) to navigate (ESLint forbids
-                                 usePathname)
+                                 next/root-params), English dictionaries per area (en/), coverage test, contentText
+                                 (content-lang.ts: handbook titles quoted outside a lesson, lang="vi" on their
+                                 Vietnamese parts on English pages); the switch is components/language-switch.tsx;
+                                 lib/use-app-pathname.ts = the path without /vi or /en to render, useRoutePathname
+                                 (the browser's path) to navigate (ESLint forbids usePathname)
   lib/content/                   CONTENT_DIR scan, on-demand MDX compile, MDX plugin chain
   lib/mdx/                       rehype-safe-html (placeholders, safe raw HTML), rehype-code-classes (R4)
   lib/progress/                  ProgressStore interface; localStorage store (default) or ApiProgressStore when

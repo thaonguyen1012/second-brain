@@ -10,6 +10,7 @@ import { SectionHeader } from '@/components/brain/layout';
 import { BookCover } from './book-cover';
 import { bookState, bookVerb, coverLinkFocus, doneIn, percent, type BookState } from './progress';
 import { useT } from '@/lib/i18n/client';
+import { contentText } from '@/lib/i18n/content-lang';
 import { msg } from '@/lib/i18n/translate';
 
 // The progress-aware parts of the Sổ tay page (DESIGN.md §9a). The server page passes plain props, class strings
@@ -161,7 +162,7 @@ export function StartedShelf({ books }: { books: readonly ShelfBook[] }) {
                   </span>
                   {page && (
                     <span className="truncate text-xs text-muted-foreground max-sm:hidden">
-                      {t('Gần nhất: {page}', { page })}
+                      {t.rich('Gần nhất: {page}', { page: contentText(page, t.locale) })}
                     </span>
                   )}
                 </span>

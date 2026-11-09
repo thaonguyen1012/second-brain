@@ -244,8 +244,11 @@ function MenuTrigger() {
 
 /**
  * Opens the search dialog (components/search-dialog.tsx): handbooks and the second brain. The accessible name stays
- * "Tìm mọi thứ" at every width; the visible label shortens below sm so it never truncates, and the key hint is
- * hidden on touch and small screens (DESIGN.md D24).
+ * "Tìm mọi thứ" at every width. Below sm the visible label shortens to "Tìm…" and shows whole or not at all: the
+ * span is one line tall (h-6, the 24 px line of text-base; not h-lh, Firefox before 120 has no lh) and its empty
+ * ::before holds that line, so a label that does not fit beside the Inbox button (its count arrives after hydration)
+ * and the EN/VI switch wraps to the clipped second line (overflow-clip: not a scroll container, so find in page cannot
+ * scroll it into view) and leaves the magnifier alone, never a stub like "Se…" (DESIGN.md §6). The key hint is hidden on touch and small screens (DESIGN.md D24).
  */
 function SearchButton() {
   const t = useT();
@@ -258,7 +261,7 @@ function SearchButton() {
       className="w-full min-w-0 max-w-[280px] shrink justify-start font-normal text-muted-foreground"
     >
       <Search aria-hidden />
-      <span className="sm:hidden">{t('Tìm…')}</span>
+      <span className="flex h-6 min-w-0 flex-1 flex-wrap overflow-clip before:h-6 sm:hidden">{t('Tìm…')}</span>
       <span className="max-sm:hidden">{t('Tìm mọi thứ...')}</span>
       <Kbd className="ms-auto max-sm:hidden pointer-coarse:hidden">⌘ K</Kbd>
     </Button>
