@@ -764,7 +764,7 @@ function Lockup({ state }: { state: S['lockup'] }) {
       <BrandMark className="bl-lockup__mark" />
       <span className="bl-lockup__name">Alex&apos;s Brain</span>
       <span className="bl-lockup__tag">A self-hosted second brain for learning, work and what comes next.</span>
-      <span className="bl-lockup__stack">Next.js · Django · Postgres · built with an AI agent</span>
+      <span className="bl-lockup__stack">Next.js · Django · Postgres</span>
     </div>
   )
 }
