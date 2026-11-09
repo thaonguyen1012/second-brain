@@ -204,13 +204,10 @@
 .note-editor .selectedCell {
   background: var(--accent);
 }
-/* an image that is not one of the app's files: shown as text, never loaded. Its smaller text keeps a line's height
-   (with the frame's 23px line height its own box reached 1px below the line: each such line 1px taller than read) */
+/* an image that is not one of the app's files: shown as text, never loaded, at the text's size as when read (the
+   reading view's "[Ảnh: alt]"), so its line wraps the same */
 .note-editor .note-image-external {
   color: var(--muted-foreground);
-  font-size: 0.875em;
-  line-height: 1;
-  overflow-wrap: anywhere;
 }
 
 /* Placeholder: the whole note empty, or the empty top-level paragraph holding the caret while the editor has focus */

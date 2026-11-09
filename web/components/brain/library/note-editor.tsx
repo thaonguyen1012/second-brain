@@ -30,10 +30,10 @@ import {
   hardbreakSchema,
   hrSchema,
   imageSchema,
-  insertHrCommand,
   insertHrInputRule,
   linkSchema,
   listItemSchema,
+  orderedListSchema,
   paragraphSchema,
   splitListItemCommand,
   turnIntoTextCommand,
@@ -77,7 +77,7 @@ import { noteImageSrc } from '@/lib/item-notes';
 import { noteStringifyOptions } from '@/lib/note-stringify';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
-import { noteEditorFrame, type NoteEditorHandle, type NoteEditorProps } from './note-editor-types';
+import { focusIsFree, noteEditorFrame, type NoteEditorHandle, type NoteEditorInnerProps } from './note-editor-types';
 import { LinkPicker, LinkPickerList, revealOption } from './note-link-picker';
 
 // The note editor (DECISIONS 9.8, PROMPT-item-notes step 4): Milkdown 7.23 (commonmark + gfm + listener + history),
@@ -125,17 +125,16 @@ function placeholderPlugin(text: string) {
 
 /* -------------------------------------------------------------------------------------------------------------------
  * Tasks from markdown habits. GFM's own rule only works inside a list item ('- ' then '[ ] '); this one also takes
- * '[] ', '[ ] ' and '[x] ' at the start of any paragraph: inside a list item it makes that item a task, elsewhere it
- * wraps the paragraph in a bullet list with one task (joined to a bullet list right above, like the '- ' rule).
+ * '[] ', '[ ] ' and '[x] ' at the start of any paragraph: on the line that opens a list item it makes that item a task,
+ * elsewhere (also a quote line or a next paragraph inside an item, which are not the item's own line) it wraps the
+ * paragraph in a bullet list with one task (joined to a bullet list right above, like the '- ' rule).
  * ---------------------------------------------------------------------------------------------------------------- */
 function turnIntoTask(tr: Transaction, pos: number, checked: boolean, ctx: Ctx): Transaction | null {
   const $pos = tr.doc.resolve(pos);
-  const listItem = listItemSchema.type(ctx);
-  for (let depth = $pos.depth; depth > 0; depth--) {
-    const node = $pos.node(depth);
-    if (node.type !== listItem) continue;
-    if (node.attrs.checked != null) return null;
-    return tr.setNodeMarkup($pos.before(depth), undefined, { ...node.attrs, checked });
+  if ($pos.depth >= 2 && $pos.node(-1).type === listItemSchema.type(ctx) && $pos.index(-1) === 0) {
+    const item = $pos.node(-1);
+    if (item.attrs.checked != null) return null;
+    return tr.setNodeMarkup($pos.before(-1), undefined, { ...item.attrs, checked });
   }
   const bulletList = bulletListSchema.type(ctx);
   const range = $pos.blockRange();
@@ -202,6 +201,28 @@ const hrInputRule = $inputRule(
       return tr.setSelection(TextSelection.create(tr.doc, from + nodes[0].nodeSize + 1)).scrollIntoView();
     }),
 );
+
+/** The "/" menu's "Đường kẻ": the rule after the caret's line (in place of it when it is empty), then the caret on the
+ *  line after the rule. Milkdown's insertHrCommand put it inside a line with text, which left an empty line between
+ *  the text and the rule (saved as `<br />`) and the caret above it. */
+const insertRuleCommand = $command('InsertNoteRule', (ctx) => () => (state, dispatch) => {
+  const { $from } = state.selection;
+  if (!$from.parent.isTextblock || $from.depth < 1) return false;
+  const paragraph = paragraphSchema.type(ctx);
+  const empty = $from.parent.content.size === 0;
+  const at = empty ? $from.before() : $from.after();
+  const index = $from.index(-1) + (empty ? 0 : 1);
+  // a line after it that is empty already takes the caret; otherwise a new one
+  const next = $from.node(-1).maybeChild(empty ? index + 1 : index);
+  const reuse = next?.type === paragraph && next.content.size === 0;
+  const nodes = reuse ? [hrSchema.type(ctx).create()] : [hrSchema.type(ctx).create(), paragraph.create()];
+  if (!$from.node(-1).canReplace(index, empty ? index + 1 : index, Fragment.from(nodes))) return false;
+  if (dispatch) {
+    const tr = state.tr.replaceWith(at, empty ? $from.after() : at, nodes);
+    dispatch(tr.setSelection(TextSelection.create(tr.doc, at + nodes[0].nodeSize + 1)).scrollIntoView());
+  }
+  return true;
+});
 
 /** What Milkdown's input-rule plugin keeps for undo; `text` is '\n' when Enter fired the rule ('```' Enter). */
 interface UndoableRule {
@@ -337,8 +358,9 @@ const pasteTextAsMarkdown = $prose(
 
 /** Images: only the ones the reading view shows load (the app's own files, noteImageSrc); any other image (pasted
  *  from a web page, ![](https://...), an /api/ address) shows as text, so the editor never asks another site or the
- *  API for anything. The markdown is unchanged. */
-function imageView(fallbackAlt: string) {
+ *  API for anything. The text is the reading view's ("[Ảnh: alt]", its address on hover), so the line wraps the same
+ *  when the editor takes the reading view's place. The markdown is unchanged. */
+function imageView(text: (alt: string) => string) {
   return $view(
     imageSchema.node,
     (): NodeViewConstructor => (node) => {
@@ -346,7 +368,8 @@ function imageView(fallbackAlt: string) {
       if (noteImageSrc(src)) return { dom: DOMSerializer.renderSpec(document, node.type.spec.toDOM!(node)).dom };
       const dom = document.createElement('span');
       dom.className = 'note-image-external';
-      dom.textContent = `[${String(node.attrs.alt) || fallbackAlt}: ${src}]`;
+      dom.textContent = `[${text(String(node.attrs.alt ?? ''))}]`;
+      dom.title = src;
       return { dom };
     },
   );
@@ -509,7 +532,7 @@ const SLASH_ITEMS: SlashItem[] = [
     id: 'hr',
     label: msg('Đường kẻ'),
     keywords: 'divider hr rule line duong ke',
-    command: insertHrCommand,
+    command: insertRuleCommand,
     when: parentAccepts(hrSchema),
   },
   {
@@ -570,6 +593,53 @@ function inListLine(state: EditorState, ctx: Ctx): boolean {
   );
 }
 
+type ListKind = 'bullet' | 'ordered' | 'task';
+const isListKind = (id: string): id is ListKind => id === 'bullet' || id === 'ordered' || id === 'task';
+
+/** The kind of the list item the caret's line opens: a task (it has a box), or its list's kind; null off such a line. */
+function listLineKind(state: EditorState, ctx: Ctx): ListKind | null {
+  if (!inListLine(state, ctx)) return null;
+  const { $from } = state.selection;
+  if ($from.node(-1).attrs.checked != null) return 'task';
+  return $from.node(-2).type === orderedListSchema.type(ctx) ? 'ordered' : 'bullet';
+}
+
+/**
+ * A list kind for the caret's list line, in place, so the note keeps one list (lifting the line out and wrapping it
+ * made three lists, saved with alternating markers and numbered from 1 again): "Việc cần làm" gives the item a box;
+ * "Danh sách" or "Danh sách số" takes a task's box away and makes the whole list that kind. The line's own kind leaves
+ * it as it is (only the typed "/…" goes).
+ */
+function changeListKind(ctx: Ctx, to: ListKind): Command {
+  return (state, dispatch) => {
+    if (!inListLine(state, ctx)) return false;
+    const { $from } = state.selection;
+    const tr = state.tr;
+    const item = $from.node(-1);
+    if (to === 'task') {
+      if (item.attrs.checked == null) tr.setNodeMarkup($from.before(-1), undefined, { ...item.attrs, checked: false });
+    } else {
+      if (item.attrs.checked != null) tr.setNodeMarkup($from.before(-1), undefined, { ...item.attrs, checked: null });
+      const list = $from.node(-2);
+      const type = (to === 'ordered' ? orderedListSchema : bulletListSchema).type(ctx);
+      if (list.type !== type) {
+        const at = $from.before(-2);
+        const { spread } = list.attrs;
+        tr.setNodeMarkup(at, type, to === 'ordered' ? { order: 1, spread } : { spread });
+        // each item says its kind too: Milkdown turns a bullet list whose first item says "ordered" back into a
+        // numbered one
+        list.forEach((_child, offset, index) => {
+          const pos = at + 1 + offset;
+          const attrs = tr.doc.nodeAt(pos)?.attrs;
+          tr.setNodeMarkup(pos, undefined, { ...attrs, listType: to, label: to === 'ordered' ? `${index + 1}.` : '•' });
+        });
+      }
+    }
+    dispatch?.(tr.scrollIntoView());
+    return true;
+  };
+}
+
 /**
  * The document and selection of `state` (or of a transaction on its way) in a state without plugins. What the menu
  * tries out runs there: EditorState.apply runs every plugin's apply, and Milkdown's listener then reported a line
@@ -594,7 +664,9 @@ function runInto(tr: Transaction, command: Command): boolean {
  * a quote or code cannot open a list item; "Văn bản" on a list line means leaving the lists), null = not here.
  */
 function slashLifts(ctx: Ctx, state: EditorState, item: ShownSlashItem): number | null {
-  const onList = inListLine(state, ctx);
+  const kind = listLineKind(state, ctx);
+  if (kind && isListKind(item.id)) return 0; // in place (changeListKind)
+  const onList = kind !== null;
   if (!(item.id === 'text' && onList) && canRun(ctx, state, item)) return 0;
   if (!onList) return null;
   const listItem = listItemSchema.type(ctx);
@@ -664,12 +736,15 @@ class SlashController {
     const item = active?.items[index];
     if (!view || !ctx || !active || !item) return false;
     const tr = view.state.tr.delete(active.from, active.to);
-    const lifts = slashLifts(ctx, bareState(tr), item) ?? 0;
     let done = true;
-    for (let i = 0; i < lifts && done; i++) done = runInto(tr, liftListItem(listItemSchema.type(ctx)));
-    // "Văn bản" on a list line is the line out of its lists
-    if (done && !(item.id === 'text' && lifts > 0))
-      done = runInto(tr, ctx.get(commandsCtx).get(item.command.key)(item.payload));
+    if (listLineKind(bareState(tr), ctx) && isListKind(item.id)) done = runInto(tr, changeListKind(ctx, item.id));
+    else {
+      const lifts = slashLifts(ctx, bareState(tr), item) ?? 0;
+      for (let i = 0; i < lifts && done; i++) done = runInto(tr, liftListItem(listItemSchema.type(ctx)));
+      // "Văn bản" on a list line is the line out of its lists
+      if (done && !(item.id === 'text' && lifts > 0))
+        done = runInto(tr, ctx.get(commandsCtx).get(item.command.key)(item.payload));
+    }
     if (!done) return false; // nothing changes: '/query' stays as typed
     view.dispatch(closeHistory(tr).scrollIntoView()); // not joined to the typing before it
     view.dispatch(closeHistory(view.state.tr)); // typing in the new block starts the next undo step
@@ -907,8 +982,8 @@ function inputSignal(onInput: () => void) {
   );
 }
 
-/** The caret at the end of the note, or in its first empty line (a template's first blank). */
-function placeCaret(view: EditorView, at: 'end' | 'first-empty') {
+/** The caret at the end of the note, or in its first empty line (a template's first blank); with the focus, in view. */
+function placeCaret(view: EditorView, at: 'end' | 'first-empty', focus = true) {
   const { doc } = view.state;
   let pos = -1;
   if (at === 'first-empty')
@@ -921,8 +996,27 @@ function placeCaret(view: EditorView, at: 'end' | 'first-empty') {
       return true;
     });
   const selection = pos >= 0 ? TextSelection.create(doc, pos) : Selection.atEnd(doc);
+  if (!focus) {
+    view.dispatch(view.state.tr.setSelection(selection)); // the page stays where the user is
+    return;
+  }
   view.focus();
   view.dispatch(view.state.tr.setSelection(selection).scrollIntoView());
+}
+
+/**
+ * Text typed before the editor was ready, typed into it now as the keys would have been: each character through the
+ * input rules ("- " starts a list, "[[" opens the picker) and each line break as Enter (a new item in a list).
+ */
+function typeInto(view: EditorView, text: string) {
+  text.split('\n').forEach((line, i) => {
+    if (i > 0) view.someProp('handleKeyDown', (handle) => handle(view, new KeyboardEvent('keydown', { key: 'Enter' })));
+    for (const char of line) {
+      const { from, to } = view.state.selection;
+      const typed = () => view.state.tr.insertText(char, from, to);
+      if (!view.someProp('handleTextInput', (handle) => handle(view, from, to, char, typed))) view.dispatch(typed());
+    }
+  });
 }
 
 interface Ready {
@@ -955,7 +1049,8 @@ export default function NoteEditor({
   selfNoteId,
   variant = 'inline',
   className,
-}: NoteEditorProps) {
+  early,
+}: NoteEditorInnerProps) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const [opening] = useState(() => ({
@@ -963,7 +1058,7 @@ export default function NoteEditor({
     placeholder: placeholder ?? '',
     items: slashItems(t),
     taskLabel: t('Đã xong'),
-    imageLabel: t('Ảnh'),
+    imageText: (alt: string) => (alt ? t('Ảnh: {alt}', { alt }) : t('Ảnh')),
   }));
   // The text as last reported: an effect that runs again on this component (Fast Refresh, <Activity>) makes its editor
   // from it, not from the first render's text, which would drop what was typed since
@@ -982,7 +1077,10 @@ export default function NoteEditor({
     handledFocus.current = focusRequest;
     return focusRequest;
   });
-  const wantsFocus = useEffectEvent(() => focusRequest > 0);
+  // what the loading state kept (note-editor-lazy.tsx); nothing when the editor was made without one
+  const handOff = useEffectEvent((take: (typed: { text: string; focused: boolean }) => void) =>
+    early ? early(take) : take({ text: '', focused: false }),
+  );
 
   useEffect(() => {
     const host = hostRef.current;
@@ -1043,12 +1141,13 @@ export default function NoteEditor({
       .use(taskInputRule)
       .use(hrInputRule)
       .use(wrapInTaskListCommand)
+      .use(insertRuleCommand)
       .use(codeFenceKeymap)
       .use(undoEnterRuleKeymap)
       .use(noteStartKeymap)
       .use(taskKeymap)
       .use(taskItemView(opening.taskLabel))
-      .use(imageView(opening.imageLabel))
+      .use(imageView(opening.imageText))
       .use(placeholderPlugin(opening.placeholder))
       .use(slash.plugin)
       .use(gapCursorPlugin) // a caret before or after a table or a rule at either end of the note (after the menu's keys)
@@ -1056,35 +1155,6 @@ export default function NoteEditor({
       .use(linkClickGuard)
       .use(pageKeys(keys))
       .use(inputSignal(() => emitInput()));
-    // Asked for the focus, the editor keeps what is typed before it is ready (it is made asynchronously): its frame
-    // holds the keyboard meanwhile when nothing else does (an editor that replaced the one in use after a version saved
-    // elsewhere, a new note's page), and the keys go into the text once the editor is ready.
-    let early = '';
-    const keepEarly = (e: KeyboardEvent) => {
-      if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
-      early += e.key;
-      e.preventDefault();
-    };
-    const stopEarly = () => {
-      host.removeEventListener('keydown', keepEarly);
-      host.removeAttribute('tabindex');
-      host.style.removeProperty('outline');
-    };
-    if (wantsFocus()) {
-      const active = document.activeElement;
-      // the page, the Sheet itself or a place the focus waits on (tabIndex -1): never a field or a button in use
-      const free =
-        !active ||
-        active === document.body ||
-        active.getAttribute('role') === 'dialog' ||
-        (active instanceof HTMLElement && active.tabIndex === -1 && !active.isContentEditable);
-      if (free) {
-        host.tabIndex = -1;
-        host.style.outline = 'none';
-        host.addEventListener('keydown', keepEarly);
-        host.focus({ preventScroll: true });
-      }
-    }
     let alive = true;
     editor.create().then(
       () => {
@@ -1092,6 +1162,9 @@ export default function NoteEditor({
         last = editor.action(getMarkdown());
         opened = true;
         const focus = (at: 'end' | 'first-empty') => editor.action((ctx) => placeCaret(ctx.get(editorViewCtx), at));
+        // the request found now is answered by the hand-off below, which waits for a word an IME is composing in the
+        // loading state's field: the effect for later requests must not take the focus (and end the word) meanwhile
+        const asked = firstFocus();
         setReady({ slash, picker, focus });
         emitReady({
           markdown: () => {
@@ -1100,20 +1173,22 @@ export default function NoteEditor({
             return now === last ? null : now;
           },
         });
-        const typed = early;
-        stopEarly();
-        if (firstFocus() > 0) focus(caret);
-        if (typed)
+        // Asked for the focus, the caret goes in, and the focus with it when the loading state still kept the keys or
+        // nothing holds the focus: never taken from the title, the Item picker or a link the user went to meanwhile.
+        // What was typed while the editor was made goes in at the caret.
+        handOff((typed) => {
+          if (!alive) return;
           editor.action((ctx) => {
             const view = ctx.get(editorViewCtx);
-            view.dispatch(view.state.tr.insertText(typed));
+            if (asked > 0) placeCaret(view, caret, typed.focused || focusIsFree());
+            if (typed.text) typeInto(view, typed.text);
           });
+        });
       },
       (error: unknown) => console.error(error),
     );
     return () => {
       alive = false;
-      stopEarly();
       root.hidden = true;
       // markdownUpdated waits 200 ms: what was typed in that time is reported now
       if (opened && editor.status === EditorStatus.Created) report(editor.action(getMarkdown()));

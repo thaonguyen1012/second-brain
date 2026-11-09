@@ -31,6 +31,42 @@ export interface NoteEditorProps {
   className?: string;
 }
 
+/** Keys typed while the editor was fetched and made, kept by its loading state (note-editor-lazy.tsx). */
+export interface EarlyInput {
+  /**
+   * Hands what was typed to `take` (at once, or when an IME is done composing a word) and stops keeping keys; `focused`:
+   * the keys were still kept when the editor got ready (the focus is there, nothing else took it).
+   */
+  handOff: (take: (typed: { text: string; focused: boolean }) => void) => void;
+}
+
+/** The editor itself (note-editor.tsx): the props pages give, and what its loading state kept. */
+export interface NoteEditorInnerProps extends NoteEditorProps {
+  early?: EarlyInput['handOff'];
+}
+
+/** The user is typing in a field (the title, the Item picker, another editor): the focus is never taken from it. */
+export function typingElsewhere(): boolean {
+  const active = document.activeElement;
+  return active instanceof HTMLElement && (active.isContentEditable || active.matches('input, textarea, select'));
+}
+
+/**
+ * Whether a ready editor asked for the focus may take it: nothing holds it but the page, a dialog (the Sheet) or a
+ * place the focus waits on (tabIndex -1, as the notes' heading while an editor opens); never a field, a link, a button
+ * or a menu the user went to, and never another editor.
+ */
+export function focusIsFree(): boolean {
+  const active = document.activeElement;
+  if (!active || active === document.body || active.getAttribute('role') === 'dialog') return true;
+  return (
+    active instanceof HTMLElement &&
+    active.tabIndex === -1 &&
+    !active.isContentEditable &&
+    !active.matches('a[href], button, input, textarea, select, [role]')
+  );
+}
+
 export interface NoteEditorHandle {
   /** The text as markdown now, or null while it is as it was opened (never re-saved just for being opened). */
   markdown: () => string | null;

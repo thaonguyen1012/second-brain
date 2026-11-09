@@ -176,6 +176,7 @@ export const library = {
   'Ảnh': 'Picture',
   // Writing a note (note-editor.tsx, use-note-autosave.ts, save-status.tsx) and the note page (note-page.tsx)
   'Gõ / để chèn khối, hoặc viết luôn': 'Type / to insert a block, or just write',
+  'Đang mở trình soạn thảo': 'Opening the editor',
   'Chưa lưu được: {reason}': 'Not saved: {reason}',
   'Có bản nháp chưa lưu trong trình duyệt này': 'There is an unsaved draft in this browser',
   'Viết lúc {date}. Khôi phục sẽ thay nội dung đang có.': 'Written {date}. Restoring replaces the current text.',
@@ -198,6 +199,11 @@ export const library = {
   'Đang hiện bản đó. Chữ gõ ở đây chưa lưu được giữ làm bản nháp (lúc {date}): Khôi phục sẽ thay nội dung đang có.':
     'That version is shown now. What you typed here and was not saved is kept as a draft ({date}): restoring replaces the current text.',
   'Ghi chú vừa được lưu ở nơi khác: đang hiện bản đó.': 'The note was just saved somewhere else: that version is shown now.',
+  // A copy written over a version the note was saved after since, perhaps by its own save (use-note-autosave.ts)
+  'Có bản nháp viết trên bản cũ hơn của ghi chú': 'There is a draft written on an older version of this note',
+  'Ghi chú đã được lưu lại sau khi bản nháp này được viết (lúc {date}), ở đây hay ở nơi khác. Khôi phục sẽ thay bản mới hơn đang hiện.':
+    'The note was saved again after this draft was written ({date}), here or somewhere else. Restoring replaces the newer version shown.',
+  'Mở để xem': 'Open to review',
   'Xóa ghi chú': 'Delete note',
   // The editor's "/" menu, "[[" picker and task boxes (note-editor.tsx)
   'Văn bản': 'Text',

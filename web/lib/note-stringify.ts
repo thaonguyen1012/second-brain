@@ -1,6 +1,7 @@
 // How the note editor writes markdown (note-editor.tsx): the remark-stringify options it sets on top of Milkdown's.
 // Apart from the editor so that a test runs Milkdown's own parser and serializer with them (note-stringify.test.ts).
-import type { Handle } from 'mdast-util-to-markdown';
+import type { Nodes } from 'mdast';
+import { defaultHandlers, type Handle } from 'mdast-util-to-markdown';
 import type { Options } from 'remark-stringify';
 
 /**
@@ -23,8 +24,40 @@ export const noteText: Handle = (node, _parent, state, info) => {
   return `&#x${value.charCodeAt(0).toString(16).toUpperCase()};${value.slice(1)}`;
 };
 
+const MARKS = new Set(['strong', 'emphasis', 'delete']);
+
+/** A bold, italic or struck-through run with nothing but whitespace in it (or nothing at all), marks inside included. */
+function blankMark(node: Nodes): boolean {
+  return MARKS.has(node.type) && 'children' in node && node.children.every((c) => blankMark(c) || blankText(c));
+}
+
+const blankText = (node: Nodes) => node.type === 'text' && !/\S/.test(node.value);
+
+/**
+ * Takes the marks that hold only whitespace out of the tree (their text stays in their place), and the empty texts left
+ * where they were. Milkdown moves a mark's outer spaces out of it, so a bold space (left after a bold word was deleted)
+ * reached remark as an empty mark, written as bare markers: "Một **** sau", and "~~~~ việc" at a line start, which reads
+ * back as a code fence that turns the rest of the note into code. A space or tab left at a line start is then written
+ * by noteText (an empty text before it would hide that it starts the line).
+ */
+function dropBlankMarks(node: Nodes): void {
+  if (!('children' in node)) return;
+  if (node.children.some(blankMark)) {
+    const unwrap = (child: Nodes): Nodes[] =>
+      blankMark(child) && 'children' in child ? child.children.flatMap(unwrap) : [child];
+    node.children = node.children.flatMap(unwrap).filter((c) => !(c.type === 'text' && c.value === '')) as typeof node.children;
+  }
+  node.children.forEach(dropBlankMarks);
+}
+
+/** The whole note: blank marks dropped first (the tree is the serializer's own, made for this one write). */
+const noteRoot: Handle = (node, parent, state, info) => {
+  dropBlankMarks(node);
+  return defaultHandlers.root(node, parent, state, info);
+};
+
 /** Milkdown's options with the note's: `-` bullets and `---` rules, as people type them (remark's defaults are `*` and
- *  `***`), and the text handler above. */
+ *  `***`), and the text and root handlers above. */
 export function noteStringifyOptions(prev: Options): Options {
-  return { ...prev, bullet: '-', rule: '-', handlers: { ...prev.handlers, text: noteText } };
+  return { ...prev, bullet: '-', rule: '-', handlers: { ...prev.handlers, root: noteRoot, text: noteText } };
 }

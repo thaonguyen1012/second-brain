@@ -6,9 +6,11 @@ import re
 import unicodedata
 from bisect import bisect_left, bisect_right
 from collections import defaultdict
+from html.entities import html5
 from urllib.parse import parse_qs, urlsplit
 
 from django.db import migrations
+from django.db.models import Q
 
 PATHS = {
     "/thu-vien/item/": "item",
@@ -28,8 +30,13 @@ _LANG = re.compile(r"^/(?:vi|en)(?=/)")
 # pass is linear.
 _LINE_END = re.compile(r"\r\n|\r|\n")
 _TAB = 4
-_QUOTE, _ITEM, _NOTE = range(3)  # containers: [kind, content column, began blank, blank line since]
+# containers: [kind, content column, began blank, blank line since, the line its first block starts on]
+_QUOTE, _ITEM, _NOTE = range(3)
 _PARA, _CODE, _FENCE, _HTML, _TABLE = range(1, 6)  # leaf blocks that span lines (0: none open)
+# GFM reads `[x]`, `[X]` or `[ ]` that opens a list item's first paragraph as the item's task box (not
+# text, so no link label) when a line end, or spaces and more text, follow it
+# (micromark-extension-gfm-task-list-item)
+_TASK_BOX = re.compile(r"\[[ xX]\](?=\n|[ \t]++[^ \t])")
 # A list marker (group 1: an ordered item's number), a footnote definition's label. As micromark reads a
 # label, a backslash before `[`, `\` or `]` escapes it, and the label is read once (possessive): `[^\]:` is no
 # label, and a run of backslashes that does not end in `]:` fails at once instead of trying every way to
@@ -291,6 +298,7 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str], set[str]]:
     # starts (its first, or one that might interrupt it), but not on a line indented 4 columns, nor on a lazy
     # line after a table, which it tries as one more row of that table (refused: lazy)
     head = False
+    task = False  # whether the open paragraph is a list item's first block (it may start with a task box)
     fence = ""
     html_end: re.Pattern[str] | None = None
 
@@ -298,7 +306,11 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str], set[str]]:
         nonlocal leaf
         if leaf == _PARA:
             text = "\n".join(para)
-            texts.append(_definitions(text, definitions) if text.startswith("[") else text)
+            if text.startswith("["):
+                text = _definitions(text, definitions)
+                if task and _TASK_BOX.match(text):
+                    text = text[3:]
+            texts.append(text)
         leaf = 0
         del stack[depth:]
         while quotes and quotes[-1] >= depth:
@@ -306,8 +318,10 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str], set[str]]:
         while others and others[-1] >= depth:
             others.pop()
 
-    for line in _LINE_END.split(markdown):
+    for index, line in enumerate(_LINE_END.split(markdown)):
         pos = col = 0
+        # whether the innermost container is an item that began blank with its first block due on this line
+        armed = bool(stack) and stack[-1][0] == _ITEM and stack[-1][4] == index
         nn, nn_col = _nonspace(line, 0, 0)
         matched = 0
         while matched < len(stack):
@@ -384,6 +398,11 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str], set[str]]:
                 quotes.append(len(stack))
             if new[0] != _NOTE:
                 others.append(len(stack))
+            # An item that began blank gets its first block on the next line, but only when nothing, not
+            # even a space, follows its marker: micromark marks an item's first content only when its flow
+            # starts with that content or with a blank line ending right before it
+            # (micromark-util-subtokenize)
+            new.append(index if not new[2] else index + 1 if line[-1] not in " \t" else -1)
             stack.append(new)
             matched += 1
             nn, nn_col = _nonspace(line, pos, col)
@@ -430,7 +449,8 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str], set[str]]:
                 leaf = _TABLE
                 continue
             if _SETEXT.match(line, nn) and not _only_definitions(para):
-                close(len(stack))  # the paragraph is a heading
+                task = False  # the paragraph is a heading, which holds no task box
+                close(len(stack))
                 continue
             if not _interrupts(line, nn, False):
                 para.append(line[nn:])
@@ -451,6 +471,11 @@ def _texts(markdown: str) -> tuple[list[str], dict[str, str], set[str]]:
             leaf = 0 if html_end and html_end.search(line, start) else _HTML
         elif not (char in "*-_" and _THEMATIC.match(line, nn)):
             leaf, para, head = _PARA, [line[nn:]], not after_table
+            # A paragraph that opens an item's first block, with no indent of its own (indent beyond the
+            # item's content column is a whitespace event before the content). micromark also reads a box on
+            # the line after an item that began blank when that line leaves the item unindented: the item's
+            # flow goes on with it (`-\n[x] a` shows a box, no link)
+            task = indent == 0 and (stack[-1][0] == _ITEM and stack[-1][4] == index if opened else armed)
     close(0)
     return texts, definitions, footnotes
 
@@ -466,14 +491,28 @@ _INLINE = re.compile(r"[\\`<!\[\]]")
 _CALL = re.compile(r"\^((?:\\[\[\]\\]|[^ \t\n\[\]]){1,999}+)\]")
 _TICKS = re.compile(r"`+")
 _PUNCTUATION = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
-# The destination of an inline link: (url) or (<url>), or none, with an optional title ("t", 't' or (t),
-# escapes allowed): such a link is a link too, so it ends the brackets around it. No bracket, parenthesis or
-# space in a bare url (the app's links have none), so every match attempt stops at the next one. micromark
-# lets a (title) hold a `(`: it ends at the next `)` no backslash escapes, found in a list made once.
-_RESOURCE = re.compile(r"\(\s*(?:<([^<>\n]*)>|([^()\s<>\[\]]*+))")
-_RESOURCE_TITLE = re.compile(r"\s+(?:\"(?:\\[\s\S]|[^\"\\])*+\"|'(?:\\[\s\S]|[^'\\])*+'|(\())")
-_RESOURCE_END = re.compile(r"\s*\)")
+# The destination of an inline link, as micromark reads it: (<url>), (url) or none, then an optional title
+# ("t", 't' or (t), escapes allowed); such a link is a link too, so it ends the brackets around it. A bare url
+# holds no space or control character, a backslash escapes a parenthesis or itself, and parentheses nest up to
+# 32 deep: the editor writes `[Atomic Habits](https://en.wikipedia.org/wiki/Atomic_Habits_\(book\))` and
+# `?filter\[type]=book`. A (title) may hold a `(`: it ends at the next `)` no backslash escapes, found in a
+# list made once.
+_SPACING = re.compile(r"[ \t\n]*+")
+_TITLE = re.compile(r"\"(?:\\[\s\S]|[^\"\\])*+\"|'(?:\\[\s\S]|[^'\\])*+'|(\()")
 _PAREN_CLOSE = re.compile(r"\\[\s\S]|(\))")
+
+
+def _nested(depth: int) -> str:
+    """A bare url's characters, with parentheses balanced up to `depth` deep."""
+    part = r"[^\x00-\x20\x7f()\\]++|\\[()\\]?"
+    return rf"(?:{part}|\({_nested(depth - 1)}\))*+" if depth else rf"(?:{part})*+"
+
+
+# A bare url in one match: it ends at a space, a line end or a `)` outside its parentheses (or the end of the
+# text); where it stops at a `(` (unclosed, or 33 deep) or a control character, there is none. Each match runs
+# where micromark reads, and the urls that reach one place are nested in each other (each one more `(` deep),
+# so at most 33 links tried read a character: linear however many there are.
+_BARE = re.compile(_nested(32))
 _AUTOLINK = re.compile(
     r"<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\x00-\x20\x7f<>]*+"
     r"|[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]++@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
@@ -613,25 +652,41 @@ def _literal_end(text: str, at: int, known: dict[int, bool], dead: list[int]) ->
     return pos
 
 
+def _end(pattern: re.Pattern[str], text: str, pos: int) -> int:
+    """The end of `pattern` (one that matches the empty string too) at `pos`."""
+    match = pattern.match(text, pos)
+    return match.end() if match else pos
+
+
 def _resource(text: str, pos: int, closers: list[int]) -> tuple[str, int] | None:
     """The url and end of the inline link destination at `pos` (just after the `]`), else None. `closers`
     lists the text's unescaped `)` once it is needed (it starts empty)."""
-    head = _RESOURCE.match(text, pos)
-    if head is None:
+    if not text.startswith("(", pos):
         return None
-    url = head.group(2) if head.group(1) is None else head.group(1)
-    if title := _RESOURCE_TITLE.match(text, head.end()):
-        end = title.end()
+    start = _end(_SPACING, text, pos + 1)
+    if text.startswith(")", start):
+        return "", start + 1
+    if text.startswith("<", start):
+        if (angle := _ANGLE_URL.match(text, start)) is None:
+            return None
+        url, end = angle.group(1), angle.end()
+    else:
+        end = _end(_BARE, text, start)
+        if end == start or (end < len(text) and text[end] not in " \t\n)"):
+            return None
+        url = text[start:end]
+    after = _end(_SPACING, text, end)
+    if after > end and (title := _TITLE.match(text, after)):
+        close = title.end()
         if title.group(1):
             if not closers:
                 closers += [m.start() for m in _PAREN_CLOSE.finditer(text) if m.group(1)] or [-1]
-            after = bisect_right(closers, title.start(1))
-            end = closers[after] + 1 if after < len(closers) else -1
-        if end >= 0 and (close := _RESOURCE_END.match(text, end)):
-            return url, close.end()
-    if close := _RESOURCE_END.match(text, head.end()):
-        return url, close.end()
-    return None
+            found = bisect_right(closers, after)
+            if found == len(closers):
+                return None
+            close = closers[found] + 1
+        after = _end(_SPACING, text, close)
+    return (url, after + 1) if text.startswith(")", after) else None
 
 
 def _reference(
@@ -729,17 +784,50 @@ def _destinations(text: str, definitions: dict[str, str], footnotes: set[str]) -
     return [url for _, url in found]
 
 
+# The url a link opens is its destination decoded as micromark decodes it (decodeString): a backslash escape
+# gives its character and a character reference the one it names, so `?id=5\&x=1` and `?id\=12` name items 5
+# and 12, and `?id=4&mp;` names nothing (`&mp;` is the minus-or-plus sign, part of the id)
+_DECODE = re.compile(r"\\([!-/:-@\[-`{-~])|&(#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[0-9A-Za-z]{1,31});")
+
+
+def _decoded(match: re.Match[str]) -> str:
+    """What one _DECODE match stands for (an unknown name stays as written; a numeric reference to a
+    control, a surrogate or a noncharacter is U+FFFD)."""
+    if match.group(1) is not None:
+        return match.group(1)
+    name = match.group(2)
+    if name[0] != "#":
+        return html5.get(name + ";", match.group())
+    point = int(name[2:], 16) if name[1] in "xX" else int(name[1:])
+    if (
+        point < 9
+        or point == 11
+        or 13 < point < 32
+        or 126 < point < 160
+        or 0xD7FF < point < 0xE000
+        or 0xFDCF < point < 0xFDF0
+        or point & 0xFFFE == 0xFFFE
+        or point > 0x10FFFF
+    ):
+        return "\ufffd"
+    return chr(point)
+
+
 def parse(markdown):  # type: ignore[no-untyped-def]
     found = defaultdict(set)
     if "](" not in markdown and "]:" not in markdown:
         return found
     texts, definitions, footnotes = _texts(markdown)
+    read = set()
     for text in texts:
         if "](" not in text and not (definitions and "]" in text):
             continue
         for destination in _destinations(text, definitions, footnotes):
+            if destination in read:
+                continue
+            read.add(destination)
             try:
-                url = urlsplit(destination)
+                url = urlsplit(_DECODE.sub(_decoded, destination))
             except ValueError:
                 continue
             if url.scheme or url.netloc:
@@ -760,7 +848,8 @@ def fill(apps, schema_editor):  # type: ignore[no-untyped-def]
     Skill = apps.get_model("growth", "Skill")
     targets = {"item": (Item, "item"), "note": (Note, "target_note"), "opportunity": (Opportunity, "opportunity")}
     targets["skill"] = (Skill, "skill")
-    for note in Note.objects.filter(markdown__contains="id=").iterator():
+    # the notes parse() may find a link in (a destination may write its `id=` with an escape or a reference)
+    for note in Note.objects.filter(Q(markdown__contains="](") | Q(markdown__contains="]:")).iterator():
         rows = []
         for kind, ids in parse(note.markdown).items():
             model, field = targets[kind]

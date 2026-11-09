@@ -75,6 +75,18 @@ describe('noteTitle', () => {
     expect(noteTitle(note('', 'Xem [Atomic Habits](/thu-vien/item/?id=12) và [ý khác](/thu-vien/ghi-chu/?id=3)'), tVi)).toBe(
       'Xem Atomic Habits và ý khác',
     );
+    // the editor escapes the parentheses of a url (a Wikipedia link)
+    const wiki = String.raw`https://en.wikipedia.org/wiki/Atomic_Habits_\(book\)`;
+    expect(noteTitle(note('', `Đọc thêm [Atomic Habits (Wikipedia)](${wiki}) rồi ghi`), tVi)).toBe(
+      'Đọc thêm Atomic Habits (Wikipedia) rồi ghi',
+    );
+  });
+
+  it('skips code fences, rules and table delimiter rows', () => {
+    expect(noteTitle(note('', '```js\nconsole.log(1)\n```'), tVi)).toBe('console.log(1)');
+    expect(noteTitle(note('', '---\n\nNội dung'), tVi)).toBe('Nội dung');
+    expect(noteTitle(note('', '- - -\n> ---\n|---|---|\n| a | b |'), tVi)).toBe('| a | b |');
+    expect(noteTitle(note('', '~~~\n~~~'), tVi)).toBe('Ghi chú #7');
   });
 
   it('skips lines that are only marks and cuts long lines at 120 characters', () => {

@@ -75,6 +75,7 @@ def test_odd_link_destinations_are_ignored() -> None:
 
 L = "[A](/thu-vien/item/?id=7)"
 U = "/thu-vien/item/?id=7"
+WIKI = "https://en.wikipedia.org/wiki/Atomic_Habits_\\(book\\)"  # as the editor writes the url
 # Each pair: markdown and the links the reading view (react-markdown with remark-gfm) shows in it.
 READING_VIEW = [
     # fenced code inside a quote or a list item, nested too, ends with its fence or its container
@@ -144,6 +145,59 @@ READING_VIEW = [
     (f"[^1]({U})\n\n[^2]: note", {"item": {7}}),
     (f"[^ 1]\n\n[^ 1]: {U}", {"item": {7}}),
     (f"> [^1]\n>\n> [r]: /u\n    [^1]: {U}", {"item": {7}}),
+    # a bare url as micromark reads it (R4P-1): the editor escapes a url's parentheses and brackets, so a
+    # `[[ ]]` link picked right after such a link (with or without a space) is read; `[`, `]`, `<` may be in a
+    # url, parentheses nest up to 32 deep, and no space, unclosed `(` or control character is
+    (f"[Atomic Habits (Wikipedia)]({WIKI}){L}", {"item": {7}}),
+    (f"[Atomic Habits (Wikipedia)]({WIKI}) {L}", {"item": {7}}),
+    (f"[kết quả](https://example.com/search?filter\\[type]=book){L}", {"item": {7}}),
+    ("[]([](/thu-vien/item/?id=8))", {}),
+    (f"[](]http://a){L}", {"item": {7}}),
+    (f"[](x<http://a){L}", {"item": {7}}),
+    (f"![{L}](\\)", {"item": {7}}),
+    (f"[a]({U}#[)", {"item": {7}}),
+    (f"[a]({U}&x=(a(b)))", {"item": {7}}),
+    (f"[a]({U}&x={'(' * 32}{')' * 32})", {"item": {7}}),
+    (f"[a]({U}&x={'(' * 33}{')' * 33})", {}),
+    (f"[a]({U}&x=(a b))", {}),
+    (f"[a]({U}\x01)", {}),
+    (f'[a]( "{U}")', {}),
+    (f"[[a]( x)]({U})", {}),
+    # the url is decoded before it is read (R4P-4): escapes and character references, in definitions too
+    ("[S](/thu-vien/item/?id=5\\&x=1)", {"item": {5}}),
+    ("[S](/thu-vien/item/?id\\=12)", {"item": {12}}),
+    ("[S](/thu-vien/item/?id=1&#48;)", {"item": {10}}),
+    ("[x](/thu-vien/ghi-chu/?id=4&mp;)", {}),
+    ("[S][r]\n\n[r]: </thu-vien/item/?id&#61;7>", {"item": {7}}),
+    ("[S][r]\n\n[r]: /thu-vien/item/?id\\=7&amp;x=1", {"item": {7}}),
+    # a task box is no reference link (R4P-2): `[x]`, `[X]` or `[ ]` opening a list item's first paragraph,
+    # with a line end or spaces and text after it; not in a heading, a quote or a later paragraph
+    (f"- [x] Đọc xong chương 1\n- [ ] Chương 2\n\n[x]: {U}", {}),
+    (f"1. [X]\ta\n> - [x] b\n- [x]\n  c\n\n[x]: {U}", {}),
+    (f"-\n  [x] a\n\n[x]: {U}", {}),
+    (f"- [r]: /u\n  [x] a\n\n[x]: {U}", {}),
+    (f"- [x]\n\n[x]: {U}", {"item": {7}}),
+    (f"- [x] \n\n[x]: {U}", {"item": {7}}),
+    (f"- [x]a\n\n[x]: {U}", {"item": {7}}),
+    (f"- [x] [x]\n\n[x]: {U}", {"item": {7}}),
+    (f"- > [x] a\n\n[x]: {U}", {"item": {7}}),
+    (f"- [x] a\n  ===\n\n[x]: {U}", {"item": {7}}),
+    (f"- a\n\n  [x] b\n\n[x]: {U}", {"item": {7}}),
+    (f"[x] a\n\n[x]: {U}", {"item": {7}}),
+    # after an item that began blank, a box only when nothing follows the marker and the next line adds no
+    # indent of its own; an unindented line outside the item still takes the box (micromark's quirk)
+    (f"- \n  [x] a\n\n[x]: {U}", {"item": {7}}),
+    (f"-\t\n  [x] a\n\n[x]: {U}", {"item": {7}}),
+    (f"1. \n   [x] a\n\n[x]: {U}", {"item": {7}}),
+    (f"> - \n>   [x] a\n\n[x]: {U}", {"item": {7}}),
+    (f"-\n   [x] a\n\n[x]: {U}", {"item": {7}}),
+    (f"-\n [x] a\n\n[x]: {U}", {"item": {7}}),
+    (f"-\n> [x] a\n\n[x]: {U}", {"item": {7}}),
+    (f"-\n\n[x] a\n\n[x]: {U}", {"item": {7}}),
+    (f"-\n[x] a\n\n[x]: {U}", {}),
+    (f"> -\n> [x] a\n\n[x]: {U}", {}),
+    (f"p\n\n1.\n[x] a\n\n[x]: {U}", {}),
+    (f"- -\n    [x] a\n\n[x]: {U}", {}),
 ]
 
 
@@ -192,6 +246,14 @@ def _backtick_runs(k: int) -> str:
         "[^1]: n\n\n" + "[^1]" * 49_990 + L,
         "> a|b\n> -|-\n" + "x||\n-|-\n" * 24_990 + L,
         "[r]: /u\n" * 20_000 + "-\n" * 10_000 + "===\n" + L,
+        # one long url referenced many times is read once (R4P-3); bare urls that nest or run far (R4P-1)
+        "[r]: /thu-vien/item/?id=5" + "&a" * 50_000 + "\n\n" + "[a][r]" * 16_660,
+        "[](" * 66_000 + L,
+        "[]([](" * 33_000 + L,
+        "[](a(b)" * 28_000 + L,
+        "[](\\)" * 40_000 + L,
+        "[](" + "(" * 199_000 + L,
+        "- [x] [x]\n" * 20_000 + "\n[x]: /u",
     ],
 )
 def test_parsing_stays_linear_on_pathological_text(text: str) -> None:
@@ -229,6 +291,16 @@ def test_labels_stay_linear_on_escaped_brackets(text: str) -> None:
         ("**Ý chính:** đọc *chương* `3` ~~cũ~~", "Ý chính: đọc chương 3 cũ"),
         ("2\\*3 = 6, file_name và _nghiêng_", "2*3 = 6, file_name và nghiêng"),
         ("Hay quá\\![Sách](/thu-vien/item/?id=5)", "Hay quá!Sách"),
+        # a link whose url has escaped parentheses (the editor's Wikipedia link) shows its text
+        (
+            f"Đọc thêm [Atomic Habits (Wikipedia)]({WIKI}) rồi ghi",
+            "Đọc thêm Atomic Habits (Wikipedia) rồi ghi",
+        ),
+        # code fences, rules and delimiter rows hold no title
+        ("```js\nconsole.log(1)\n```", "console.log(1)"),
+        ("---\n\nNội dung", "Nội dung"),
+        ("- - -\n> ---\n|---|---|\n| a | b |", "| a | b |"),
+        ("-5 độ", "-5 độ"),
         # list numbers are ASCII digits; one whitespace set; the cut never splits a character
         ("\u0663. chữ số", "\u0663. chữ số"),
         ("\ufeffBOM a\x85b\x1cc", "BOM a b\x1cc"),
@@ -378,8 +450,9 @@ def test_the_migration_reads_the_links_of_existing_notes() -> None:
     note = Note.objects.create(
         user=user, markdown=f"[A](/thu-vien/item/?id={book.pk}) [x](/thu-vien/item/?id=0)"
     )
+    escaped = Note.objects.create(user=user, markdown=f"[A](/thu-vien/item/?id\\={book.pk})")
     Note.objects.create(user=user, markdown="no links")
     fill = importlib.import_module("library.migrations.0005_fill_note_links").fill
     fill(apps, None)
-    assert links_of(note.pk) == {("item", book.pk)}
+    assert links_of(note.pk) == {("item", book.pk)} == links_of(escaped.pk)
     assert list(note.items.all()) == [book]

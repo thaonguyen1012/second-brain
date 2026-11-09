@@ -62,6 +62,7 @@ function NoteEditing({
   newItem,
   template,
   afterConflict,
+  linkErrorAtStart = null,
   onCreated,
   onConflict,
 }: {
@@ -69,13 +70,15 @@ function NoteEditing({
   note: ApiNote | null;
   /** This page now shows a version saved elsewhere that replaced the one being edited (it says so). */
   afterConflict: boolean;
+  /** Why an Item picked as that version arrived could not be put on it (the page says so). */
+  linkErrorAtStart?: string | null;
   /** A new note's first Item link (`&item=`). */
   newItem: number | null;
   /** A new note's starting text (`&template=`). */
   template: string;
   onCreated: (note: ApiNote) => void;
   /** Show this newer version instead (saved elsewhere; this page's unsaved text comes back as the copy). */
-  onConflict: (note: ApiNote) => void;
+  onConflict: (note: ApiNote, linkError?: string) => void;
 }) {
   const t = useT();
   const router = useRouter();
@@ -84,7 +87,7 @@ function NoteEditing({
   // the Items as last picked, for a create on its way (an Item picked meanwhile is saved right after it)
   const picked = useRef(items);
   const picking = useRef(0);
-  const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(linkErrorAtStart);
   // An Item the user unlinked that the note's text still links: it stays, and the page says why
   const [linkNotice, setLinkNotice] = useState<string | null>(null);
   const titleField = useRef<HTMLTextAreaElement>(null);
@@ -219,6 +222,7 @@ function NoteEditing({
       {autosave.recovered ? (
         <RecoveredDraft
           copy={autosave.recovered}
+          offer={autosave.recoveredOffer ?? 'unsaved'}
           afterConflict={afterConflict}
           onRestore={restore}
           onDrop={autosave.dropRecovered}
@@ -336,13 +340,25 @@ export function NotePageView({
   const res = useApi<ApiNote>(id === 'new' ? null : `note:${id}`, () => notesApi.get(id as number));
   const template = templateType && templateType in noteTemplates ? t(noteTemplates[templateType as keyof typeof noteTemplates]) : '';
   // A newer version of the note (saved in another tab or on another device): the editor starts again from it, and
-  // what this page had not saved comes back as the copy to restore
-  const [version, setVersion] = useState<{ note: ApiNote; n: number } | null>(null);
-  const onConflict = (newer: ApiNote) => {
+  // what this page had not saved comes back as the copy to restore (an Item picked meanwhile is on it, or said not)
+  const [version, setVersion] = useState<{ note: ApiNote; n: number; linkError?: string } | null>(null);
+  const onConflict = (newer: ApiNote, linkError?: string) => {
     if (id !== 'new') res.mutate(() => newer);
-    setVersion((v) => ({ note: newer, n: (v?.n ?? 0) + 1 }));
+    setVersion((v) => ({ note: newer, n: (v?.n ?? 0) + 1, linkError }));
   };
   const afterConflict = version !== null;
+  // A create answers this page only while it is the page that sent it: a late answer reaches no new-note page opened
+  // since (it would take this note's id) and navigates nowhere once this page is gone
+  const shown = useRef(false);
+  useEffect(() => {
+    shown.current = true;
+    return () => {
+      shown.current = false;
+    };
+  }, []);
+  const created = (note: ApiNote) => {
+    if (shown.current) onCreated(note);
+  };
 
   let body;
   if (id === 'new')
@@ -353,7 +369,8 @@ export function NotePageView({
         newItem={newItem}
         template={template}
         afterConflict={afterConflict}
-        onCreated={onCreated}
+        linkErrorAtStart={version?.linkError}
+        onCreated={created}
         onConflict={onConflict}
       />
     );
@@ -378,7 +395,8 @@ export function NotePageView({
         newItem={null}
         template=""
         afterConflict={afterConflict}
-        onCreated={onCreated}
+        linkErrorAtStart={version?.linkError}
+        onCreated={created}
         onConflict={onConflict}
       />
     );

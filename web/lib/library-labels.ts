@@ -30,13 +30,18 @@ const LINE = /[^\r\n]+/g;
 const LINE_PREFIX = /^[ \t]*(?:(?:>|(?:[-*+]|[0-9]{1,9}[.)]|#{1,6})(?=[ \t]))[ \t]*)*(?:\[[ xX]\][ \t]+)?/;
 // The editor's empty-line placeholder is no text
 const EMPTY_LINE = new RegExp(`<br[${SPACE}]*/?>`, 'gi');
+// Lines that hold no title (after their marks): a code fence, and a line of only dashes, colons and pipes with a dash
+// (a thematic break, a setext underline, a table's delimiter row)
+const NO_TITLE = /^(?:`{3,}[^`]*$|~{3,}|(?=[^-]*-)[-:| \t]*$)/;
 // Read left to right, so an escaped character is never the start of anything else (`\!` before a link stays a
-// `!`, `\[` opens no link) and every match attempt stops at the next bracket or line end (linear): an escape shows
-// its character, a backslash that ends a line (a hard break) nothing, a link or image its text, a numeric
-// character reference its character (the editor writes `&#x20;` for a leading space); inline marks are left out
-// (`_` inside a word, as in file_name, is no mark).
+// `!`, `\[` opens no link) and every match attempt stops at the next bracket, parenthesis or line end that no
+// backslash escapes (linear): an escape shows its character, a backslash that ends a line (a hard break) nothing,
+// a link or image its text (also with the escaped parentheses the editor writes in a url:
+// `(https://en.wikipedia.org/wiki/Atomic_Habits_\(book\))`), a numeric character reference its character (the
+// editor writes `&#x20;` for a leading space); inline marks are left out (`_` inside a word, as in file_name, is
+// no mark).
 const INLINE =
-  /\\([!-/:-@[-`{-~])|\\(?=[\r\n]|$)|!?\[((?:\\[^\r\n]|[^\\[\]\r\n])*)\]\([^()\r\n]*\)|&#[xX]([0-9a-fA-F]{1,6});|&#([0-9]{1,7});|[*`~]+|(?<!_)(?<![\p{L}\p{N}])_+|(?<=[\p{L}\p{N}])_+(?!_)(?![\p{L}\p{N}])/gu;
+  /\\([!-/:-@[-`{-~])|\\(?=[\r\n]|$)|!?\[((?:\\[^\r\n]|[^\\[\]\r\n])*)\]\((?:\\[^\r\n]|[^()\\\r\n])*\)|&#[xX]([0-9a-fA-F]{1,6});|&#([0-9]{1,7});|[*`~]+|(?<!_)(?<![\p{L}\p{N}])_+|(?<=[\p{L}\p{N}])_+(?!_)(?![\p{L}\p{N}])/gu;
 
 function shown(_match: string, char?: string, text?: string, hex?: string, decimal?: string): string {
   if (char !== undefined) return char;
@@ -52,13 +57,16 @@ function shown(_match: string, char?: string, text?: string, hex?: string, decim
 /**
  * Title shown for a note: its title, else the first markdown line with text, without its heading, quote, list or
  * task marks (nested ones too), links shown by their text, escapes and character references by their character and
- * inline marks left out, cut at 120 characters (never inside one).
+ * inline marks left out, cut at 120 characters (never inside one). Code fences, rules and delimiter rows hold no
+ * title.
  */
 export function noteTitle(note: Pick<ApiNote, 'id' | 'title' | 'markdown'>, t: T): string {
   const title = note.title.replace(TRIM, '');
   if (title) return title;
   for (const [line] of note.markdown.matchAll(LINE)) {
-    const text = line.replace(EMPTY_LINE, ' ').replace(LINE_PREFIX, '').replace(INLINE, shown).replace(SPACES, ' ').trim();
+    const content = line.replace(EMPTY_LINE, ' ').replace(LINE_PREFIX, '');
+    if (NO_TITLE.test(content)) continue;
+    const text = content.replace(INLINE, shown).replace(SPACES, ' ').trim();
     if (text) return Array.from(text).slice(0, 120).join('');
   }
   return t('Ghi chú #{id}', { id: note.id });

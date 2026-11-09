@@ -25,7 +25,7 @@ import { NoteBody } from './note-body';
 import { NoteEditor } from './note-editor-lazy';
 import type { NoteEditorHandle } from './note-editor-types';
 import { SaveStatus, UnsavedCopyHint } from './save-status';
-import { noteKey, useNoteAutosave, type NoteBackup } from './use-note-autosave';
+import { noteKey, useNoteAutosave, type CopyOffer, type NoteBackup } from './use-note-autosave';
 
 // Every note of one Item on its page (DECISIONS 9.8 point 2): newest first, joined like one page (no card per note),
 // each shown as rendered markdown and written in place with the block editor (NoteEditor); a new note starts from the
@@ -56,17 +56,21 @@ function NotesSkeleton() {
 }
 
 /**
- * A copy of unsaved text in this browser (an earlier visit, another tab, a save that failed): put it back, or drop
+ * A copy of unsaved text in this browser (an earlier visit, a closed tab, a save that failed): put it back, or drop
  * it. `afterConflict`: the note was just saved elsewhere and now shows that version; the copy is what was typed here,
- * said at once (an alert) since the text under the user's hands just changed.
+ * said at once (an alert) since the text under the user's hands just changed. `offer` 'older': the copy was written
+ * over a version the note has been saved after since (perhaps by the copy's own save), so it is not called unsaved,
+ * and restoring it replaces that newer version.
  */
 export function RecoveredDraft({
   copy,
+  offer = 'unsaved',
   afterConflict = false,
   onRestore,
   onDrop,
 }: {
   copy: NoteBackup;
+  offer?: CopyOffer;
   afterConflict?: boolean;
   onRestore: () => void;
   onDrop: () => void;
@@ -77,7 +81,11 @@ export function RecoveredDraft({
     <Alert role={afterConflict ? 'alert' : undefined}>
       <History aria-hidden />
       <AlertTitle>
-        {afterConflict ? t('Ghi chú vừa được lưu ở nơi khác') : t('Có bản nháp chưa lưu trong trình duyệt này')}
+        {afterConflict
+          ? t('Ghi chú vừa được lưu ở nơi khác')
+          : offer === 'older'
+            ? t('Có bản nháp viết trên bản cũ hơn của ghi chú')
+            : t('Có bản nháp chưa lưu trong trình duyệt này')}
       </AlertTitle>
       <AlertDescription>
         {afterConflict
@@ -85,7 +93,12 @@ export function RecoveredDraft({
               'Đang hiện bản đó. Chữ gõ ở đây chưa lưu được giữ làm bản nháp (lúc {date}): Khôi phục sẽ thay nội dung đang có.',
               { date },
             )
-          : t('Viết lúc {date}. Khôi phục sẽ thay nội dung đang có.', { date })}
+          : offer === 'older'
+            ? t(
+                'Ghi chú đã được lưu lại sau khi bản nháp này được viết (lúc {date}), ở đây hay ở nơi khác. Khôi phục sẽ thay bản mới hơn đang hiện.',
+                { date },
+              )
+            : t('Viết lúc {date}. Khôi phục sẽ thay nội dung đang có.', { date })}
       </AlertDescription>
       {/* under the text at every width: it shows in narrow places (the Sheet, a phone) */}
       <AlertAction className="col-start-2 row-start-auto row-end-auto ms-0 mt-2 flex-wrap justify-start">
@@ -192,6 +205,7 @@ function NoteInPlace({
       {autosave.recovered ? (
         <RecoveredDraft
           copy={autosave.recovered}
+          offer={autosave.recoveredOffer ?? 'unsaved'}
           afterConflict={afterConflict}
           onRestore={restore}
           onDrop={autosave.dropRecovered}

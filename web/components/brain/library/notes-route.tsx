@@ -46,10 +46,8 @@ export function NotesRoute() {
       newItem={mine ? adopted.item : newItem}
       templateType={mine ? adopted.template : templateType}
       onCreated={(note: ApiNote) => {
-        // A create that answers after the page was left (back to the list, another page) navigates nowhere: only the
-        // new-note page still showing in this tab takes the note's id
-        const here = new URL(window.location.href);
-        if (here.pathname !== pathname || here.searchParams.get('id') !== 'new') return;
+        // Only from the page that sent the create, while it shows (NotePageView): a create answering after that page
+        // was left (the list, another page, a second new note) navigates nowhere
         setAdopted({ id: note.id, item: newItem, template: templateType });
         const path = pathname.endsWith('/') ? pathname : `${pathname}/`; // trailingSlash: true (next.config)
         router.replace(`${path}?id=${note.id}`, { scroll: false });

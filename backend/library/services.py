@@ -64,16 +64,21 @@ _LINE_PREFIX = re.compile(
 )
 # The editor's (Milkdown's) placeholder for an empty paragraph or list item: no text
 _EMPTY_LINE = re.compile(f"<br[{_SPACE}]*/?>", re.IGNORECASE)
+# Lines that hold no title (after their marks): a code fence, and a line of only dashes, colons and pipes with
+# a dash (a thematic break, a setext underline, a table's delimiter row)
+_NO_TITLE = re.compile(r"`{3,}[^`]*+$|~{3,}|(?=[^-]*+-)[-:| \t]*+$")
 # Read left to right, so an escaped character is never the start of anything else (`\!` before a link stays
-# a `!`, `\[` opens no link) and every match attempt stops at the next bracket or line end (linear):
+# a `!`, `\[` opens no link) and every match attempt stops at the next bracket, parenthesis or line end that
+# no backslash escapes (linear):
 # 1. a backslash escape shows its character (the editor writes `\[`, `\*`, `\_`, `\&`);
 # a backslash that ends a line (a hard break) shows nothing;
-# 2. a link or image shows its text (`[Atomic Habits](/thu-vien/item/?id=12)`, `[\[RC\] Book](...)`);
+# 2. a link or image shows its text (`[Atomic Habits](/thu-vien/item/?id=12)`, `[\[RC\] Book](...)`, also with
+# the escaped parentheses the editor writes in a url: `(https://en.wikipedia.org/wiki/Atomic_Habits_\(book\))`);
 # 3, 4. a numeric character reference shows its character (the editor writes `&#x20;` for a leading space);
 # inline marks are left out (`_` inside a word, as in file_name, is no mark).
 _INLINE = re.compile(
     r"\\([!-/:-@\[-`{-~])|\\(?=[\r\n]|\Z)"
-    r"|!?\[((?:\\[^\r\n]|[^\\\[\]\r\n])*+)\]\([^()\r\n]*+\)"
+    r"|!?\[((?:\\[^\r\n]|[^\\\[\]\r\n])*+)\]\((?:\\[^\r\n]|[^()\\\r\n])*+\)"
     r"|&#[xX]([0-9a-fA-F]{1,6});|&#([0-9]{1,7});"
     r"|[*`~]+|(?<!_)(?<![^\W_])_+|(?<=[^\W_])_+(?!_)(?![^\W_])"
 )
@@ -369,11 +374,13 @@ def notes(user: User, query: str = "", item: int | None = None) -> QuerySet[Note
 def note_label(note: Note) -> str:
     """The title, else the first markdown line with text, without its heading/quote/list mark, links shown by
     their text, escapes and character references by their character and inline marks left out (as the web's
-    noteTitle), cut at EXCERPT_CHARS characters; else ""."""
+    noteTitle), cut at EXCERPT_CHARS characters; else "". Code fences, rules and delimiter rows hold no
+    title."""
     if title := note.title.strip(_SPACE):
         return title
     for line in _LINE.finditer(note.markdown):
-        if text := _plain(_LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", line.group()), count=1)):
+        content = _LINE_PREFIX.sub("", _EMPTY_LINE.sub(" ", line.group()), count=1)
+        if not _NO_TITLE.match(content) and (text := _plain(content)):
             return text[:EXCERPT_CHARS]
     return ""
 
@@ -431,6 +438,11 @@ def save_note(note: Note, data: dict[str, Any], base_updated_at: dt.datetime | N
             setattr(note, field, data[field])
         if note.pk is None:
             note.save()
+            # One time for both (auto_now_add and auto_now each read the clock): a create sent again (its
+            # first answer lost) answers 200 with the note, and the editor reads updatedAt != createdAt as
+            # "edited since".
+            Note.objects.filter(pk=note.pk).update(updated_at=note.created_at)
+            note.updated_at = note.created_at
         else:
             note.save(update_fields=[*fields, "updated_at"])
         if "items" in data:

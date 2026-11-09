@@ -34,6 +34,26 @@ def test_a_create_sent_again_with_its_client_id_answers_the_same_note(client: Cl
     assert plain.status_code == 201 and Note.objects.count() == 3
 
 
+def test_a_create_answers_one_time_for_created_and_updated(client: Client) -> None:
+    """A create sent again answers 200 with the note: updatedAt == createdAt says nobody edited it
+    since (the editor goes on from it), a later edit makes them differ (it shows that version)."""
+    headers = csrf(client)
+    owner(client)
+    key = str(uuid.uuid4())
+    made = send(client, "post", "/api/notes", {"markdown": "Một", "clientId": key}, headers).json()
+    assert made["createdAt"] == made["updatedAt"]
+    plain = send(client, "post", "/api/notes", {"markdown": "Không id"}, headers).json()
+    assert plain["createdAt"] == plain["updatedAt"]
+    again = send(client, "post", "/api/notes", {"markdown": "Một hai", "clientId": key}, headers)
+    assert again.status_code == 200 and again.json()["updatedAt"] == again.json()["createdAt"]
+    # the version the create answered is the one an edit starts from
+    url = f"/api/notes/{made['id']}"
+    edited = send(client, "patch", url, {"markdown": "Một ba", "baseUpdatedAt": made["updatedAt"]}, headers)
+    assert edited.status_code == 200 and edited.json()["updatedAt"] != edited.json()["createdAt"]
+    later = send(client, "post", "/api/notes", {"markdown": "Một hai", "clientId": key}, headers).json()
+    assert later["markdown"] == "Một ba" and later["updatedAt"] != later["createdAt"]
+
+
 def test_client_ids_belong_to_one_owner(client: Client) -> None:
     headers = csrf(client)
     owner(client)

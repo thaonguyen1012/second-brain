@@ -45,7 +45,7 @@ beforeAll(async () => {
   schema = ctx.get(schemaCtx);
 });
 
-// A paragraph of runs: a string is plain text, [text, mark, attrs] a marked one
+// A paragraph of runs: a string is plain text, [text, mark, attrs] a marked one ('strong+emphasis': both marks)
 type Run = string | [string, string, Record<string, unknown>?] | 'break';
 function paragraph(...runs: Run[]): Node {
   return schema.nodes.paragraph.create(
@@ -55,7 +55,10 @@ function paragraph(...runs: Run[]): Node {
         ? schema.nodes.hardbreak.create()
         : typeof run === 'string'
           ? schema.text(run)
-          : schema.text(run[0], [schema.marks[run[1]].create(run[2])]),
+          : schema.text(
+              run[0],
+              run[1].split('+').map((name) => schema.marks[name].create(run[2])),
+            ),
     ),
   );
 }
@@ -117,6 +120,54 @@ describe('note-stringify: what the editor writes reads back as typed', () => {
     expect(serialize(doc(paragraph('Phím ` mở console. ', link('x'))))).toBe(
       'Phím \\` mở console. [x](/thu-vien/item/?id=12)\n',
     );
+  });
+
+  // A bold, italic or struck-through run of only spaces (the space left after a bold word is deleted, a mark toggled
+  // around a space): Milkdown moves a mark's outer spaces out of it, and the empty mark was written as bare markers,
+  // "Một **** sau", or "~~~~ " at a line start, which reloads as a code fence and turns the rest of the note into code
+  // (R4E-3, R4P-6). Such a run is written as its text, without the mark.
+  const marked = (text: string, ...marks: string[]): Run => [text, marks.join('+')];
+  const blank: [string, () => Node, string][] = [
+    ['bold space mid-line', () => doc(paragraph('Một ', marked(' ', 'strong'), 'sau')), 'Một  sau\n'],
+    ['bold toggled around a space', () => doc(paragraph('a', marked(' ', 'strong'), 'b')), 'a b\n'],
+    ['italic space', () => doc(paragraph('a', marked(' ', 'emphasis'), 'b')), 'a b\n'],
+    ['bold space at the end of a line', () => doc(paragraph('a', marked(' ', 'strong'))), 'a \n'],
+    ['bold spaces before a hard break', () => doc(paragraph('a', marked('  ', 'strong'), 'break', 'b')), 'a  \\\nb\n'],
+    [
+      'strikethrough space at the start of a paragraph',
+      () => doc(paragraph(marked(' ', 'strike_through'), 'Đã hủy'), paragraph('Việc tiếp')),
+      '&#x20;Đã hủy\n\nViệc tiếp\n',
+    ],
+    [
+      'strikethrough spaces before a link at a line start',
+      () => doc(paragraph(marked('  ', 'strike_through'), link('Sách'))),
+      '&#x20; [Sách](/thu-vien/item/?id=12)\n',
+    ],
+    ['nested marks around a space', () => doc(paragraph('a', marked(' ', 'strong', 'emphasis'), 'b')), 'a b\n'],
+    ['a tab in bold at a line start', () => doc(paragraph(marked('\t', 'strong'), 'x')), '&#x9;x\n'],
+    ['struck space in a task', () => doc(bullets(item(paragraph(marked(' ', 'strike_through'), 'việc'), false))), '- [ ] &#x20;việc\n'],
+    ['struck space in a quote', () => doc(quote(paragraph(marked(' ', 'strike_through'), 'x'))), '> &#x20;x\n'],
+  ];
+  it.each(blank)('%s: written without markers, read back as the same text', (_name, build, expected) => {
+    const typedDoc = build();
+    const markdown = serialize(typedDoc);
+    expect(markdown).toBe(expected);
+    const back = parse(markdown);
+    expect(back.textContent).toBe(typedDoc.textContent.replace(/[ \t]+$/, ''));
+    // the reload has the blocks it was typed with (no code block, no markers as text)
+    const blocks = (n: Node) => {
+      const names: string[] = [];
+      n.descendants((d) => void (d.isBlock && names.push(d.type.name)));
+      return names;
+    };
+    expect(blocks(back)).toEqual(blocks(typedDoc));
+    expect(serialize(back)).toBe(markdown.replace(/[ \t]+\n$/, '\n'));
+  });
+
+  it('keeps the markers of a mark with text, its outer spaces outside it', () => {
+    expect(serialize(doc(paragraph('a ', marked(' b ', 'strong'), ' c')))).toBe('a  **b**  c\n');
+    expect(serialize(doc(paragraph(marked(' x', 'strike_through'), ' y')))).toBe('&#x20;~~x~~ y\n');
+    expect(serialize(doc(paragraph('a', marked(' ', 'strong'), marked('b', 'strong', 'emphasis'))))).toBe('a ***b***\n');
   });
 
   // Stored forms that already read back as written stay as they are

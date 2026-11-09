@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Children, isValidElement, useMemo, type ComponentProps, type ReactNode } from 'react';
+import { Children, createContext, isValidElement, use, useMemo, type ComponentProps, type ReactNode } from 'react';
 import { Square, SquareCheckBig } from 'lucide-react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -74,6 +74,40 @@ const doneText = (children: ReactNode): ReactNode[] => {
   return out;
 };
 
+/** Inside a link: a picture from another site is that link's text, not a link of its own (an <a> in an <a> opened the
+ *  picture's address, not the link's page). */
+const InLink = createContext(false);
+
+/** A picture: the app's own file is shown; any other is never loaded, its words ("[Ảnh: alt]") stand for it. */
+function NoteImage({ src, alt, images, t }: { src: unknown; alt?: string; images: ImageLoading; t: T }) {
+  const inLink = use(InLink);
+  const url = typeof src === 'string' ? src : '';
+  const local = noteImageSrc(url);
+  // in its line, as in the editor: a picture is an inline node there, and ProseMirror's cursor helpers beside it
+  // (note-editor.css) share its line; drawn as a block it would leave the editor a line taller than when read
+  if (local)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- a local file of the app; next/image adds nothing here
+      <img
+        src={local}
+        alt={alt ?? ''}
+        loading={images}
+        decoding="async"
+        className="inline-block max-h-96 max-w-full rounded-md align-middle"
+      />
+    );
+  const link = markdownHref(url);
+  const label = alt ? t('Ảnh: {alt}', { alt }) : t('Ảnh');
+  // never loaded from another domain: the reader opens it on purpose
+  return link.kind === 'external' && !inLink ? (
+    <a href={link.href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 decoration-primary/40">
+      [{label}]
+    </a>
+  ) : (
+    <span className={inLink ? undefined : 'text-muted-foreground'}>[{label}]</span>
+  );
+}
+
 /** The renderers of each markdown element, with the few words they add in the UI language. */
 const makeComponents = (t: T, noteLook: NoteLook, images: ImageLoading): Components => ({
   h1: (p: Props<'h1'>) => <h4 {...rest(p)} className={noteLook === 'page' ? headingPage : headingLarge} />,
@@ -126,53 +160,28 @@ const makeComponents = (t: T, noteLook: NoteLook, images: ImageLoading): Compone
   a: ({ href, children }: Props<'a'>) => {
     const target = markdownHref(href);
     const look = 'text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary break-words';
+    const inner = <InLink value>{children}</InLink>;
     if (target.kind === 'internal')
       return (
         <Link href={target.href} prefetch={false} className={look}>
-          {children}
+          {inner}
         </Link>
       );
     if (target.kind === 'file')
       return (
         <a href={target.href} className={look}>
-          {children}
+          {inner}
         </a>
       );
     if (target.kind === 'external')
       return (
         <a href={target.href} target="_blank" rel="noopener noreferrer" className={look}>
-          {children}
+          {inner}
         </a>
       );
     return <span className="break-words">{children}</span>;
   },
-  img: ({ src, alt }: Props<'img'>) => {
-    const url = typeof src === 'string' ? src : '';
-    const local = noteImageSrc(url);
-    // in its line, as in the editor: a picture is an inline node there, and ProseMirror's cursor helpers beside it
-    // (note-editor.css) share its line; drawn as a block it would leave the editor a line taller than when read
-    if (local)
-      return (
-        // eslint-disable-next-line @next/next/no-img-element -- a local file of the app; next/image adds nothing here
-        <img
-          src={local}
-          alt={alt ?? ''}
-          loading={images}
-          decoding="async"
-          className="inline-block max-h-96 max-w-full rounded-md align-middle"
-        />
-      );
-    const link = markdownHref(url);
-    const label = alt ? t('Ảnh: {alt}', { alt }) : t('Ảnh');
-    // never loaded from another domain: the reader opens it on purpose
-    return link.kind === 'external' ? (
-      <a href={link.href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 decoration-primary/40">
-        [{label}]
-      </a>
-    ) : (
-      <span className="text-muted-foreground">[{label}]</span>
-    );
-  },
+  img: ({ src, alt }: Props<'img'>) => <NoteImage src={src} alt={alt} images={images} t={t} />,
   code: ({ className, ...p }: Props<'code'>) => (
     // inside a block (pre > code) the pre draws the ground; inline code gets its own
     <code
@@ -193,10 +202,14 @@ const makeComponents = (t: T, noteLook: NoteLook, images: ImageLoading): Compone
       <table {...rest(p)} className="w-full border-collapse text-sm" />
     </div>
   ),
+  // the editor's cell rules (note-editor.css): the same columns, so pictures in cells keep their size when it comes
   th: (p: Props<'th'>) => (
-    <th {...rest(p)} className="border-b px-2 py-1.5 text-start text-xs font-medium text-muted-foreground" />
+    <th
+      {...rest(p)}
+      className="min-w-16 border-b px-2 py-1.5 text-start align-top text-xs font-medium text-muted-foreground"
+    />
   ),
-  td: (p: Props<'td'>) => <td {...rest(p)} className="border-b px-2 py-1.5 align-top" />,
+  td: (p: Props<'td'>) => <td {...rest(p)} className="min-w-16 border-b px-2 py-1.5 align-top" />,
 });
 
 interface HastNode {
