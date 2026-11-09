@@ -23,6 +23,8 @@ const english = [
   '15.7 Position absolute #1',
   'Intuit Academy Bookkeeping – Intuit',
   '2.20 Comment trong HTML?', // Vietnamese without a diacritic: not seen
+  '8.1.3 Ángel: My personal career journey', // accents French and Spanish share: only inside a Vietnamese syllable
+  '7.4.12 Tone & Style – Avoid using clichés in your writing',
 ];
 
 /** The markup of `node` inside a <p>. */
@@ -43,16 +45,16 @@ describe('contentText', () => {
 
   it('marks only the Vietnamese label of an English title', () => {
     expect(en('Module 8.4 · Week 8: Deferred Taxes — Phần 4')).toBe(
-      '<p>Module 8.4 · Week 8: Deferred Taxes — <span lang="vi">Phần 4</span></p>',
+      '<p><span>Module 8.4 · Week 8: Deferred Taxes — <span lang="vi">Phần 4</span></span></p>',
     );
     expect(en('⭐ Tóm tắt chương 3 – Tracking expenses, liabilities, and equity')).toBe(
-      '<p><span lang="vi">⭐ Tóm tắt chương 3 – </span>Tracking expenses, liabilities, and equity</p>',
+      '<p><span><span lang="vi">⭐ Tóm tắt chương 3 – </span>Tracking expenses, liabilities, and equity</span></p>',
     );
     expect(en('Khóa 1. Supervised Machine Learning: Regression and Classification')).toBe(
-      '<p><span lang="vi">Khóa 1. </span>Supervised Machine Learning: Regression and Classification</p>',
+      '<p><span><span lang="vi">Khóa 1. </span>Supervised Machine Learning: Regression and Classification</span></p>',
     );
     expect(en('Cách học với sổ tay này · How to use')).toBe(
-      '<p><span lang="vi">Cách học với sổ tay này · </span>How to use</p>',
+      '<p><span><span lang="vi">Cách học với sổ tay này · </span>How to use</span></p>',
     );
   });
 

@@ -35,7 +35,7 @@ export const shell = {
   'Mở hoặc đóng menu': 'Open or close the menu',
   'Tìm mọi thứ': 'Search everything',
   // Below sm, beside the Inbox count and the EN/VI switch, shown whole or not at all (app-shell.tsx SearchButton):
-  // a longer word hides it on more phones ("Search…" shows from about 345 px, 380 px beside a count)
+  // a longer word hides it on more phones ("Search…": from about 345 px; 375, or 380 with 3 digits, beside a count)
   'Tìm…': 'Search…',
   'Tìm mọi thứ...': 'Search everything...',
   'Đổi giao diện': 'Change theme',

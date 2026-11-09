@@ -332,12 +332,15 @@ so the near pairs that remain are listed under the palette, not hidden.
   (DECISIONS 9.3). The top bar ends with the language switch (a ghost button: the Languages glyph and the other
   language's code, "EN" or "VI", named and tooltipped in that language; DECISIONS 9.9) and the theme toggle.
   Below sm the search button's label is the short "Tìm…", shown whole or not at all, never cut into a stub ("Se…")
-  or run past its border: the span is `flex h-lh min-w-0 flex-1 flex-wrap overflow-hidden` and its empty
-  `before:h-lh` holds the first line, so a label that does not fit wraps to the clipped second line. On a phone it
-  shows from about 325 px (Vietnamese) and 345 px (English), beside an Inbox count from about 360 and 380 px (the
-  count arrives after load, so between those widths the label goes a moment after the page shows); narrower, the
-  button is the outlined field with the magnifier alone, still named "Tìm mọi thứ", without a tooltip (one would
-  also show from sm, beside the whole label). Check the top bar at 320 px in both languages with a 3-digit count.
+  or run past its border: the span is `flex h-6 min-w-0 flex-1 flex-wrap overflow-clip` and its empty `before:h-6`
+  holds the first line (24 px, the button's text-base line below sm; not `h-lh`, which Firefox before 120 drops), so
+  a label that does not fit wraps to the clipped second line (`overflow-clip`, not `overflow-hidden`: a hidden box
+  scrolls, and find in page or a `#:~:text=` link would scroll the cut line into view). On a phone it shows from
+  about 325 px (Vietnamese) and 345 px (English), beside an Inbox count from about 355 and 375 px, 360 and 380 px with
+  a 3-digit count (the count arrives after load, so between those widths the label goes a moment after the page
+  shows); narrower, the button is the outlined field with the magnifier alone, still named "Tìm mọi thứ", without a
+  tooltip (one would also show from sm, beside the whole label). Check the top bar at 320 px in both languages with
+  a 3-digit count.
   English UI copy is sentence case like the Vietnamese and must fit the same boxes: check the 390 px layouts in
   both languages (English runs about 10% shorter, some labels longer).
 

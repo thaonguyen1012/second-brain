@@ -56,8 +56,11 @@ The lessons are not translated, and the lesson page marks its title, headings an
 handbook title or description quoted anywhere else (the Hôm nay hero, "Gần nhất: …" on Sổ tay, the lesson sidebar and
 the page name in its table-of-contents bar, breadcrumbs, previous/next links, Cmd+K) is printed with
 `contentText(text, t.locale)` (`content-lang.ts`). On English pages the text is cut where titles join their parts
-(" · ", " — ", " – ", ". ") and each run of parts with a Vietnamese letter (ă â đ ê ô ơ ư or a tone mark) goes in
-`<span lang="vi">`; the rest keeps the page's language. Of the 5,917 page, folder and separator titles in 11/2026,
+(" · ", " — ", " – ", ". ") and each run of parts with a Vietnamese letter goes in `<span lang="vi">` (ă đ ĩ ũ ơ ư
+or a tone mark only Vietnamese writes; à é ô and the other accents French and Spanish share count only inside one
+Vietnamese syllable, so "clichés" or "Ángel" in an English lesson stays unmarked); the rest keeps the page's language.
+A mixed title comes back as one `<span>` around its runs: the lesson sidebar's rows are flex rows, where loose runs
+would become side-by-side flex items. Of the 5,917 page, folder and separator titles in 11/2026,
 4,200 have no Vietnamese letter ("31.2. MCP Server", Coursera names), 842 are Vietnamese and 875 are an English title
 with a Vietnamese label ("Module 8.4 · Week 8: Deferred Taxes — Phần 4", "Khóa 1. …"), so a whole title marked
 `lang="vi"` would have a screen reader read English with a Vietnamese voice (WCAG 2.2 SC 3.1.2, Language of Parts).
