@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { BookCover } from './book-cover';
 import { GroupMark } from './group-mark';
 import { useT } from '@/lib/i18n/client';
+import { contentText } from '@/lib/i18n/content-lang';
 import { msg, type Msg } from '@/lib/i18n/translate';
 
 /** "Đã học xong" checkbox at the bottom of every lesson page. */
@@ -213,8 +214,13 @@ export function ContinueReading({
             </span>
             <span className="line-clamp-2 font-heading text-lg font-semibold tracking-tight">
               {/* the book's own root page (empty pageSlug; its stored title is the untranslated book title) is
-                  "Mở đầu sổ tay", so the book name is never said twice */}
-              {!resumed ? book.title : last?.title && last.pageSlug ? last.title : t('Mở đầu sổ tay')}
+                  "Mở đầu sổ tay", so the book name is never said twice. Only the stored title is handbook text
+                  (contentText: its Vietnamese parts lang="vi" on English pages); the other two are UI text */}
+              {!resumed
+                ? book.title
+                : last?.title && last.pageSlug
+                  ? contentText(last.title, t.locale)
+                  : t('Mở đầu sổ tay')}
             </span>
             <BookProgress book={book.slug} total={book.lessonCount} fill={book.fill} className="mt-1 max-w-md" />
           </span>
