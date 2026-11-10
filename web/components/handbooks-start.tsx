@@ -25,7 +25,7 @@ export function HandbooksStart({ t, className }: { t: T; className?: string }) {
       </h2>
       <p className="max-w-prose text-sm leading-relaxed text-pretty text-muted-foreground">
         {t(
-          'Nhập sổ tay đầu tiên từ file zip GitBook hoặc một file HTML. Bài đang học và tiến độ sẽ hiện ở đây.',
+          'Nhập sổ tay đầu tiên từ file zip GitBook, một file HTML hoặc một thư mục markdown. Bài đang học và tiến độ sẽ hiện ở đây.',
         )}
       </p>
       <Button render={<Link href={IMPORT_GUIDE_HREF} />}>{t('Xem cách nhập sổ tay')}</Button>

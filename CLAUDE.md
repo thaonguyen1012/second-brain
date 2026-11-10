@@ -278,7 +278,7 @@ Makefile                         make check = web types+lint+Vitest (web/lib/**/
 ## Import workflow
 
 ```
-node web/scripts/import-gitbook.mjs <zip|html> --track <track> --slug <slug> --title "<title>" [--merge auto|m2|module|m1|none] [--cover <name>] [--replace]
+node web/scripts/import-gitbook.mjs <zip|html|folder> --track <track> --slug <slug> --title "<title>" [--from zip|html|markdown-dir] [--merge auto|m2|module|m1|none] [--cover <name>] [--replace]
 ```
 
 Merge rules (owner decision, do not change without asking):

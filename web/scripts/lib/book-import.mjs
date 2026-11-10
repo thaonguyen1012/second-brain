@@ -317,3 +317,93 @@ export function readHtmlBook(htmlPath) {
   }
   return { pages, tree: root, sections };
 }
+
+const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+const isFolderIndex = (name) => /^(readme|index)\.md$/i.test(name);
+
+/** A title from a file or folder name: "02-modules_and-lessons.md" -> "Modules and lessons". */
+export function titleFromName(name) {
+  const base = name.replace(/\.md$/i, '').replace(/^\d+[-_. ]+/, '').replace(/[-_]+/g, ' ').trim() || name;
+  return base.charAt(0).toUpperCase() + base.slice(1);
+}
+
+/** The leading H1 of a page, or null. */
+const h1Of = (md) => md.replace(/^﻿/, '').match(/^\s*#\s+(.+?)\s*#*\s*(?:\n|$)/)?.[1].trim() ?? null;
+
+/**
+ * Read a folder of markdown as a handbook: { pages: Map<srcPath, markdown>, tree, aliases }.
+ *
+ * With a SUMMARY.md at its top (or in a single top folder) it is read exactly like a GitBook zip. Without one, the
+ * folder tree is the structure: sub-folders are modules (nested folders nest), .md files are items, both in
+ * natural alphabetical order ("2-x" before "10-x"); a folder's README.md or index.md is its page, and the top
+ * folder's is the book's own first page. Titles come from each page's leading H1, else from the file or folder
+ * name. A folder without a page of its own gets one that holds only its title, so the module still has a page.
+ * index.md is filed as README.md (the name the layout reads as a folder page); `aliases` sends links to the
+ * index.md file there. Hidden files and folders (".x") are skipped; other files are ignored. Text is never changed.
+ */
+export function readMarkdownDir(dirPath) {
+  const root0 = path.resolve(dirPath);
+  if (!fs.statSync(root0).isDirectory()) throw new Error(`${dirPath} is not a folder`);
+  // a single top folder (an unpacked export) is the book
+  const visible = (d) => fs.readdirSync(d, { withFileTypes: true }).filter((e) => !e.name.startsWith('.'));
+  let root = root0;
+  const top = visible(root0);
+  if (top.length === 1 && top[0].isDirectory()) root = path.join(root0, top[0].name);
+
+  const pages = new Map();
+  const aliases = new Map();
+  const walk = (dir, rel) => {
+    for (const e of visible(dir)) {
+      const relPath = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(path.join(dir, e.name), relPath);
+      else if (/\.md$/i.test(e.name) && relPath !== 'SUMMARY.md') {
+        const text = fs.readFileSync(path.join(dir, e.name), 'utf8');
+        if (/^index\.md$/i.test(e.name)) {
+          const readme = rel ? `${rel}/README.md` : 'README.md';
+          if (visible(dir).some((x) => /^readme\.md$/i.test(x.name))) {
+            pages.set(relPath, text); // both exist: README.md is the folder's page, index.md an ordinary item
+            continue;
+          }
+          pages.set(readme, text);
+          aliases.set(relPath, { src: readme, anchor: null });
+        } else if (/^readme\.md$/i.test(e.name)) pages.set(rel ? `${rel}/README.md` : 'README.md', text);
+        else pages.set(relPath, text);
+      }
+    }
+  };
+  walk(root, '');
+
+  const summaryFile = path.join(root, 'SUMMARY.md');
+  if (fs.existsSync(summaryFile)) return { pages, tree: parseSummary(fs.readFileSync(summaryFile, 'utf8')), aliases };
+
+  const titleOf = (src, name) => h1Of(pages.get(src) ?? '') ?? titleFromName(name);
+  const build = (dir, rel) => {
+    const entries = visible(dir)
+      .filter((e) => e.isDirectory() || (/\.md$/i.test(e.name) && !isFolderIndex(e.name) && !(rel === '' && e.name === 'SUMMARY.md')))
+      .sort((a, b) => collator.compare(a.name, b.name));
+    const nodes = [];
+    for (const e of entries) {
+      const relPath = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        const children = build(path.join(dir, e.name), relPath);
+        const src = `${relPath}/README.md`;
+        if (!pages.has(src)) {
+          if (children.length === 0) continue; // no markdown inside
+          pages.set(src, `# ${titleFromName(e.name)}\n`);
+        }
+        nodes.push({ title: titleOf(src, e.name), src, children });
+      } else nodes.push({ title: titleOf(relPath, e.name), src: relPath, children: [] });
+    }
+    // index.md next to a README.md is an ordinary item
+    for (const e of visible(dir)) {
+      if (/^index\.md$/i.test(e.name) && visible(dir).some((x) => /^readme\.md$/i.test(x.name))) {
+        const relPath = rel ? `${rel}/${e.name}` : e.name;
+        nodes.push({ title: titleOf(relPath, e.name), src: relPath, children: [] });
+      }
+    }
+    return nodes;
+  };
+  const children = build(root, '');
+  if (pages.has('README.md')) children.unshift({ title: titleOf('README.md', path.basename(root)), src: 'README.md', children: [] });
+  return { pages, tree: { children }, aliases };
+}

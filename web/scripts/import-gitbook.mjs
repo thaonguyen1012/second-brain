@@ -2,17 +2,19 @@
 // Import a handbook into the site: unzip/read, merge items into learning units, normalize,
 // write web/content/docs/<track>/<slug>/, register in lib/books.ts, re-index search.
 //
-//   node web/scripts/import-gitbook.mjs <zip|html> --track <track> --slug <slug> --title "<title>"
-//        [--description "..."] [--merge auto|m2|module|m1|none] [--cover <name>] [--replace] [--no-register]
+//   node web/scripts/import-gitbook.mjs <zip|html|folder> --track <track> --slug <slug> --title "<title>"
+//        [--from zip|html|markdown-dir] [--description "..."] [--merge auto|m2|module|m1|none] [--cover <name>]
+//        [--replace] [--no-register]
 //
 // --cover names a drawing of web/public/covers/ (without ".svg"); without it a new book gets one by its slug.
 //
 // A .zip is a GitBook markdown export (SUMMARY.md); a .html is a single-file handbook with an
-// embedded book-data block.
+// embedded book-data block; a folder (--from markdown-dir, the default for a folder) holds markdown files: with a
+// SUMMARY.md it is read like the zip, without one its folders are the modules (readMarkdownDir in lib/book-import.mjs).
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { readGitbookZip, readHtmlBook, parseSummary, writeBook, CONTENT_DIR, WEB_DIR } from './lib/book-import.mjs';
+import { readGitbookZip, readHtmlBook, readMarkdownDir, parseSummary, writeBook, CONTENT_DIR, WEB_DIR } from './lib/book-import.mjs';
 import { mergeBook, readmeGroups } from './lib/merge.mjs';
 import { coverNames, registerBook, trackSlugs } from './lib/registry.mjs';
 import { rebuildSearch } from './lib/search-db.mjs';
@@ -25,6 +27,7 @@ const { values, positionals } = parseArgs({
     title: { type: 'string' },
     description: { type: 'string', default: '' },
     merge: { type: 'string', default: 'auto' },
+    from: { type: 'string' },
     cover: { type: 'string' },
     replace: { type: 'boolean', default: false },
     'no-register': { type: 'boolean', default: false },
@@ -34,7 +37,9 @@ const { values, positionals } = parseArgs({
 const [input] = positionals;
 const { track, slug, title } = values;
 if (!input || !track || !slug || !title) {
-  console.error('Usage: import-gitbook.mjs <zip|html> --track <track> --slug <slug> --title "<title>" [--merge auto|m2|module|m1|none] [--replace]');
+  console.error(
+    'Usage: import-gitbook.mjs <zip|html|folder> --track <track> --slug <slug> --title "<title>" [--from zip|html|markdown-dir] [--merge auto|m2|module|m1|none] [--cover <name>] [--replace]',
+  );
   process.exit(1);
 }
 if (!/^[a-z0-9-]+$/.test(slug) || !/^[a-z0-9-]+$/.test(track)) {
@@ -54,7 +59,15 @@ const t0 = performance.now();
 let pages;
 let tree;
 let sections = null;
-if (input.endsWith('.html')) ({ pages, tree, sections } = readHtmlBook(path.resolve(input)));
+let dirAliases = new Map();
+const from =
+  values.from ?? (fs.existsSync(input) && fs.statSync(input).isDirectory() ? 'markdown-dir' : input.endsWith('.html') ? 'html' : 'zip');
+if (!['zip', 'html', 'markdown-dir'].includes(from)) {
+  console.error('--from must be zip, html or markdown-dir');
+  process.exit(1);
+}
+if (from === 'html') ({ pages, tree, sections } = readHtmlBook(path.resolve(input)));
+else if (from === 'markdown-dir') ({ pages, tree, aliases: dirAliases } = readMarkdownDir(input));
 else {
   const zip = readGitbookZip(path.resolve(input));
   pages = zip.pages;
@@ -71,6 +84,8 @@ if (mode === 'auto') {
   mode = labelled ? 'm2' : depth(tree.children) >= 2 ? 'module' : 'm1';
 }
 const { aliases, report } = mode === 'none' ? { aliases: new Map(), report: { mode } } : mergeBook({ tree, pages, mode, sections });
+// a folder's index.md is filed as its README.md: links to the index.md file follow it (through a merge too)
+for (const [file, { src }] of dirAliases) aliases.set(file, aliases.get(src) ?? { src, anchor: null });
 
 const bookDir = path.join(CONTENT_DIR, track, slug);
 if (fs.existsSync(bookDir)) {
@@ -102,6 +117,7 @@ console.log(
   JSON.stringify(
     {
       slug,
+      from,
       mode,
       itemsInSource: itemsBefore,
       pagesWritten: stats.pages,

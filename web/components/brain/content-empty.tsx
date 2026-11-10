@@ -18,7 +18,7 @@ export function HandbooksEmpty({ className }: { className?: string }) {
       glyph={BookPlus}
       title={t('Chưa có sổ tay nào')}
       text={t.rich(
-        'Sổ tay được nhập bằng một lệnh, từ file zip GitBook hoặc một file HTML: <code>node web/scripts/import-gitbook.mjs</code>. Nhập xong, sổ tay hiện ở đây cùng tiến độ học.',
+        'Sổ tay được nhập bằng một lệnh, từ file zip GitBook, một file HTML hoặc một thư mục markdown: <code>node web/scripts/import-gitbook.mjs</code>. Nhập xong, sổ tay hiện ở đây cùng tiến độ học.',
         { code: (c) => <code className="rounded bg-muted px-1 py-0.5 text-xs break-all">{c}</code> },
       )}
       action={<Button render={<Link href={IMPORT_GUIDE_HREF} />}>{t('Xem cách nhập sổ tay')}</Button>}

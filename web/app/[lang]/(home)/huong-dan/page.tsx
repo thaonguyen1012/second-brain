@@ -43,6 +43,7 @@ const guides: { guide: EmptyGuideName; href: string; label: Msg; text?: Msg }[] 
 const importCommands = [
   'node web/scripts/import-gitbook.mjs export.zip --track ky-nang --slug my-notes --title "My notes"',
   'node web/scripts/import-gitbook.mjs handbook.html --track it --slug my-course --title "My course"',
+  'node web/scripts/import-gitbook.mjs ~/notes/course --track kinh-doanh --slug course --title "Course notes"',
 ];
 
 /**
@@ -57,7 +58,7 @@ function ImportGuide({ t }: { t: T }) {
       </h2>
       <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
         {t.rich(
-          'Sổ tay vào app bằng một lệnh chạy trong thư mục mã nguồn, không qua giao diện. Lệnh đọc một file zip xuất từ GitBook (có <code>SUMMARY.md</code>) hoặc một file HTML đơn, gộp các mục thành trang học, ghi vào <code>web/content/docs/</code>, đăng ký sổ tay và cập nhật chỉ mục tìm kiếm. <code>--track</code> là nhóm của sổ tay: <code>kinh-doanh</code>, <code>it</code> hoặc <code>ky-nang</code>.',
+          'Sổ tay vào app bằng một lệnh chạy trong thư mục mã nguồn, không qua giao diện. Lệnh đọc một file zip xuất từ GitBook (có <code>SUMMARY.md</code>), một file HTML đơn hoặc một thư mục markdown (có <code>SUMMARY.md</code> thì đọc như file zip; không có thì mỗi thư mục con là một module, mỗi file là một bài, theo thứ tự tên), gộp các mục thành trang học, ghi vào <code>web/content/docs/</code>, đăng ký sổ tay và cập nhật chỉ mục tìm kiếm. <code>--track</code> là nhóm của sổ tay: <code>kinh-doanh</code>, <code>it</code> hoặc <code>ky-nang</code>.',
           { code: (c) => <code className="rounded bg-muted px-1 py-0.5 text-xs">{c}</code> },
         )}
       </p>

@@ -42,13 +42,21 @@ Optional static export (not the deploy target, use with a subset): `BUILD_SUBSET
 ## Add a handbook
 
 ```bash
-node web/scripts/import-gitbook.mjs <export.zip | handbook.html> --track <kinh-doanh|it|ky-nang> \
-  --slug <ascii-slug> --title "<Vietnamese title>" [--description "..."] [--merge auto|m2|module|m1|none]
+node web/scripts/import-gitbook.mjs <export.zip | handbook.html | folder> --track <kinh-doanh|it|ky-nang> \
+  --slug <ascii-slug> --title "<title>" [--description "..."] [--merge auto|m2|module|m1|none] [--cover <name>]
 ```
 
-One command: reads the GitBook zip (SUMMARY.md) or a single-file HTML handbook (embedded `book-data`),
-merges items into learning pages, normalizes GitBook syntax, writes `web/content/docs/<track>/<slug>/`,
-registers the book in `web/lib/books.ts` and re-indexes search. Then:
+Three inputs, picked from the path (or `--from zip|html|markdown-dir`):
+
+* **GitBook zip**: a markdown export with `SUMMARY.md` and one file per page;
+* **single HTML**: a handbook in one HTML file with an embedded `<script id="book-data">` JSON block;
+* **folder of markdown**: with a `SUMMARY.md` it is read like the zip; without one, each sub-folder is a module,
+  each `.md` file a lesson, in natural name order (`2-x` before `10-x`), a folder's `README.md` or `index.md` is
+  its page and titles come from each file's first `# heading` (else its name).
+
+One command: merges items into learning pages (structure only, the text is never rewritten), normalizes GitBook
+syntax, writes `web/content/docs/<track>/<slug>/`, registers the book in `web/lib/books.ts` and re-indexes search.
+Then:
 
 1. add its English title and description to `web/lib/i18n/en/shell.ts` (the coverage test asks for them),
 2. optional: list the slug before `"..."` in `web/content/docs/<track>/meta.json` (`pages`) to set its position,

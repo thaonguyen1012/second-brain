@@ -152,11 +152,11 @@ export const shell = {
   // First-run blocks, before the first handbook and without a roadmap file (components/handbooks-start.tsx,
   // components/brain/content-empty.tsx)
   'Chưa có sổ tay nào': 'No handbooks yet',
-  'Nhập sổ tay đầu tiên từ file zip GitBook hoặc một file HTML. Bài đang học và tiến độ sẽ hiện ở đây.':
-    'Import your first handbook from a GitBook zip or a single HTML file. The lesson you are on and your progress will show here.',
+  'Nhập sổ tay đầu tiên từ file zip GitBook, một file HTML hoặc một thư mục markdown. Bài đang học và tiến độ sẽ hiện ở đây.':
+    'Import your first handbook from a GitBook zip, a single HTML file or a folder of markdown. The lesson you are on and your progress will show here.',
   'Xem cách nhập sổ tay': 'See how to import a handbook',
-  'Sổ tay được nhập bằng một lệnh, từ file zip GitBook hoặc một file HTML: <code>node web/scripts/import-gitbook.mjs</code>. Nhập xong, sổ tay hiện ở đây cùng tiến độ học.':
-    'A handbook comes in with one command, from a GitBook zip or a single HTML file: <code>node web/scripts/import-gitbook.mjs</code>. Once imported, it shows here with its progress.',
+  'Sổ tay được nhập bằng một lệnh, từ file zip GitBook, một file HTML hoặc một thư mục markdown: <code>node web/scripts/import-gitbook.mjs</code>. Nhập xong, sổ tay hiện ở đây cùng tiến độ học.':
+    'A handbook comes in with one command, from a GitBook zip, a single HTML file or a folder of markdown: <code>node web/scripts/import-gitbook.mjs</code>. Once imported, it shows here with its progress.',
   'Chưa có lộ trình': 'No roadmap yet',
   'Lộ trình là dữ liệu của bạn: một file <code>web/content/roadmap.json</code> với các giai đoạn, số tháng và những gì học trong từng giai đoạn. Tạo file theo mẫu trong README rồi tải lại trang.':
     'The roadmap is your own data: a file <code>web/content/roadmap.json</code> with the phases, their months and what to study in each. Create it from the sample in the README, then reload the page.',
