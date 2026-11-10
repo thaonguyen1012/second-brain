@@ -1,0 +1,11 @@
+{
+  "title": "Using Alex's Brain",
+  "root": true,
+  "pages": [
+    "index",
+    "---Part A. The handbooks---",
+    "module-1",
+    "---Part B. The second brain---",
+    "module-2"
+  ]
+}

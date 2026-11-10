@@ -39,7 +39,19 @@ export const tracks: { slug: TrackSlug; title: string; description: string }[] =
 ];
 
 // BOOKS:START
-export const books: Book[] = [];
+export const books: Book[] = [
+  {
+    "slug": "sample-handbook",
+    "title": "Using Alex's Brain",
+    "description": "A sample handbook about the app itself: handbooks, lessons, progress, notes and the week. Replace it with your own.",
+    "track": "ky-nang",
+    "order": 1,
+    "lessonCount": 6,
+    "courseraUrls": [],
+    "originalHtml": null,
+    "cover": "hourglass"
+  }
+];
 // BOOKS:END
 
 export function getBook(slug: string): Book | undefined {

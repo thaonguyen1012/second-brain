@@ -169,4 +169,8 @@ export const shell = {
   IT: 'IT',
   'Kỹ thuật: lập trình, dữ liệu, hạ tầng.': 'Technical: programming, data, infrastructure.',
   'Cách học và kỹ năng làm việc.': 'Learning how to learn, and working skills.',
+  // The sample handbook (web/examples/sample-handbook): English text, so the entries are the same words
+  "Using Alex's Brain": "Using Alex's Brain",
+  'A sample handbook about the app itself: handbooks, lessons, progress, notes and the week. Replace it with your own.':
+    'A sample handbook about the app itself: handbooks, lessons, progress, notes and the week. Replace it with your own.',
 } satisfies Dictionary;

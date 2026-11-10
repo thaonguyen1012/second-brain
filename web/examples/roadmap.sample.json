@@ -1,0 +1,39 @@
+{
+  "roadmapIntro": {
+    "vi": "Lộ trình mẫu: bốn bước chung để bắt đầu. Sửa file này thành lộ trình của bạn.",
+    "en": "A sample roadmap: four general steps to get started. Edit this file into your own roadmap."
+  },
+  "businessPhases": [
+    {
+      "name": { "vi": "Bước 1, làm quen", "en": "Step 1, getting started" },
+      "months": [0, 1],
+      "items": [
+        { "text": { "vi": "Đọc sổ tay mẫu", "en": "Read the sample handbook" }, "books": ["sample-handbook"], "links": [] }
+      ]
+    },
+    {
+      "name": { "vi": "Bước 2, nhập tài liệu", "en": "Step 2, bring your material" },
+      "months": [1, 2],
+      "items": [
+        { "text": { "vi": "Nhập sổ tay đầu tiên của bạn", "en": "Import your first own handbook" }, "books": [], "links": [] }
+      ]
+    },
+    {
+      "name": { "vi": "Bước 3, nhịp tuần", "en": "Step 3, the weekly rhythm" },
+      "months": [2, 4],
+      "items": [
+        { "text": { "vi": "Mỗi tuần chọn 3 ưu tiên và nhìn lại", "en": "Pick three priorities each week and review them" }, "books": [], "links": [] }
+      ]
+    },
+    {
+      "name": { "vi": "Bước 4, ra sản phẩm", "en": "Step 4, ship something" },
+      "months": [4, 6],
+      "items": [
+        { "text": { "vi": "Một dự án nhỏ dùng điều đã học", "en": "A small project that uses what you learned" }, "books": [], "links": [] }
+      ]
+    }
+  ],
+  "itTitle": "",
+  "itStages": [],
+  "pdf": null
+}
