@@ -17,7 +17,6 @@ NAMED_FEEDS = (
     ("OpenAI News", "https://openai.com/news/rss.xml", Area.AI),
     ("Google DeepMind", "https://deepmind.google/blog/rss.xml", Area.AI),
     ("Stratechery", "https://stratechery.com/feed/", Area.BUSINESS),
-    
     ("Quanta Magazine", "https://www.quantamagazine.org/feed/", Area.SCIENCE),
     ("Our World in Data", "https://ourworldindata.org/atom.xml", Area.SCIENCE),
 )

@@ -34,7 +34,7 @@ CONTROLLED_TAGS = (
     "marketing",
     "productivity",
     "learning",
-    "czech",
+    "languages",
     "finance",
     "health",
     "entertainment",
