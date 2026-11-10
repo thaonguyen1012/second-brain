@@ -12,10 +12,10 @@ Contract only; phase 1 has no API client. Everything is **same origin** (`brain.
 
 ## Identifiers
 
-* `book`: book slug from `web/lib/books.ts` (ASCII, e.g. `handbook-08`).
+* `book`: book slug from `web/lib/books.ts` (ASCII, e.g. `garden-notes`).
 * `page`: page path inside the book, without leading/trailing slash; the book's index page is the empty
-  string, sent as `_index` in URLs. Example: `/docs/it/handbook-08/c5-m3-linux-commands-in-the-bash-shell/001-navigate-the-linux-file-system/`
-  → book `handbook-08`, page `c5-m3-linux-commands-in-the-bash-shell/001-navigate-the-linux-file-system`.
+  string, sent as `_index` in URLs. Example: `/docs/ky-nang/garden-notes/01-soil-and-water/001-what-plants-need/`
+  → book `garden-notes`, page `01-soil-and-water/001-what-plants-need`.
   In URLs the page is percent-encoded as one segment (`/` → `%2F`).
 
 ## GET /api/me
@@ -30,8 +30,8 @@ Full progress snapshot, the same shape as `ProgressSnapshot` in `web/lib/progres
 
 ```json
 200 {
-  "done": { "handbook-08": { "c5-m3-linux-commands-in-the-bash-shell/001-navigate-the-linux-file-system": true } },
-  "lastVisited": { "bookSlug": "handbook-08", "pageSlug": "c5-m3-...", "title": "Navigate the Linux file system", "at": "2026-10-31T10:00:00Z" }
+  "done": { "garden-notes": { "01-soil-and-water/001-what-plants-need": true } },
+  "lastVisited": { "bookSlug": "garden-notes", "pageSlug": "01-soil-...", "title": "What plants need", "at": "2026-10-31T10:00:00Z" }
 }
 ```
 
@@ -43,7 +43,7 @@ Mark one page done or not done. Idempotent.
 
 ```json
 request  { "done": true }
-response 200 { "book": "handbook-08", "page": "c5-m3-...", "done": true, "updatedAt": "2026-10-31T10:00:00Z" }
+response 200 { "book": "garden-notes", "page": "01-soil-...", "done": true, "updatedAt": "2026-10-31T10:00:00Z" }
 ```
 
 `400` for an unknown book or a malformed body. Unknown pages are accepted (content may change between imports).
@@ -51,8 +51,8 @@ response 200 { "book": "handbook-08", "page": "c5-m3-...", "done": true, "update
 ## PUT /api/progress/last-visited
 
 ```json
-request  { "book": "handbook-08", "page": "c5-m3-...", "title": "Navigate the Linux file system" }
-response 200 { "bookSlug": "handbook-08", "pageSlug": "c5-m3-...", "title": "Navigate the Linux file system", "at": "2026-10-31T10:00:00Z" }
+request  { "book": "garden-notes", "page": "01-soil-...", "title": "What plants need" }
+response 200 { "bookSlug": "garden-notes", "pageSlug": "01-soil-...", "title": "What plants need", "at": "2026-10-31T10:00:00Z" }
 ```
 
 `title` is optional and for display only.
@@ -339,7 +339,7 @@ Review. `PATCH /api/weeks/{start}/review` saves any of `reviewWin`, `reviewDistr
 200 { "week": <week>, "objectiveCounts": { "open": 1, "done": 3, "dropped": 0 },
       "days": [ { "date": "2026-11-02", "inboxArchived": [ { "id": 7, "title": "..." } ],
                   "itemsFinished": [ { "id": 1, "title": "Deep Work", "type": "book" } ],
-                  "pagesDone": [ { "book": "handbook-08", "page": "c5-m3-..." } ] }, ... 7 days ] }
+                  "pagesDone": [ { "book": "garden-notes", "page": "01-soil-..." } ] }, ... 7 days ] }
 ```
 
 Body of work per day: inbox entries with status archived (by `archivedAt`), Items by `finishedAt`,
@@ -564,7 +564,7 @@ Each month the owner pastes 5 to 10 job ads for the target roles (DECISIONS 9.5)
 
 ```json
 200 { "id": 9, "title": "Product Engineer", "company": "Acme", "url": "https://...", "text": "...",
-      "month": "2026-11", "skills": ["python", "llm apis", "czech"], "seniority": "senior",
+      "month": "2026-11", "skills": ["python", "llm apis", "german"], "seniority": "senior",
       "processed": true, "processedAt": "...", "error": "", "createdAt": "...", "updatedAt": "..." }
 ```
 

@@ -1,0 +1,43 @@
+# Next.js standalone server of Alex's Brain. Install as /etc/systemd/system/brain-web.service.
+[Unit]
+Description=Alex's Brain web (Next.js standalone)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Slice=brain.slice
+User=brain
+Group=brain
+WorkingDirectory=/srv/brain/app/web/.next/standalone
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=3001
+Environment=CONTENT_DIR=/srv/brain/content
+Environment=SEARCH_DB=/srv/brain/search.sqlite
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+UMask=0027
+MemoryHigh=900M
+MemoryMax=1100M
+OOMScoreAdjust=500
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+ReadOnlyPaths=/srv/brain/app/web /srv/brain/content /srv/brain/search.sqlite
+# Next writes its ISR cache under .next/cache of the standalone tree
+ReadWritePaths=/srv/brain/app/web/.next/standalone/.next/cache
+
+[Install]
+WantedBy=multi-user.target

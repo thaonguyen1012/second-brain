@@ -1,0 +1,27 @@
+# Nightly pg_dump -Fc into /srv/brain/backups (BACKUP_DIR, BACKUP_KEEP in backend/.env) plus a mirror of the
+# item images. 03:10: pick a time clear of the other jobs on your machine.
+[Unit]
+Description=Alex's Brain nightly backup
+After=postgresql@16-brain.service
+Requires=postgresql@16-brain.service
+
+[Service]
+Type=oneshot
+Slice=brain.slice
+User=brain
+Group=brain
+WorkingDirectory=/srv/brain/app/backend
+ExecStart=/srv/brain/app/backend/.venv/bin/python manage.py backup
+Nice=15
+IOSchedulingClass=idle
+UMask=0077
+MemoryMax=512M
+OOMScoreAdjust=600
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/srv/brain/app /srv/brain/thumbs
+ReadWritePaths=/srv/brain/backups

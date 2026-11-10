@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Background jobs of Alex's Brain on the laptop (launchd user agent): `manage.py run_jobs` every 300 s, the
+  same as `make jobs` and the production cron. Installation: deploy/README.md, "Background jobs on the laptop".
+  Paths are absolute (launchd has no ~ and no shell profile); change them if the repo or uv move.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.example.brain.jobs</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/you/.local/bin/uv</string>
+    <string>run</string>
+    <string>python</string>
+    <string>manage.py</string>
+    <string>run_jobs</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/you/alex-brain/backend</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/you/.local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>StartInterval</key>
+  <integer>300</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/you/Library/Logs/com.example.brain.jobs.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/you/Library/Logs/com.example.brain.jobs.log</string>
+</dict>
+</plist>

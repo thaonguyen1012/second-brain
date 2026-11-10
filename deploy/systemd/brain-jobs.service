@@ -1,0 +1,36 @@
+# One run of the background jobs (unfurl, LLM tagging, feeds, morning brief). brain-jobs.timer starts it every
+# 5 minutes; run_jobs itself enqueues the feed fetches (6/12/18) and the 06:30 brief (Europe/Prague).
+# The only service of the app that makes outbound requests on its own.
+[Unit]
+Description=Alex's Brain background jobs (one run)
+After=postgresql@16-brain.service network-online.target
+Requires=postgresql@16-brain.service
+
+[Service]
+Type=oneshot
+Slice=brain.slice
+User=brain
+Group=brain
+WorkingDirectory=/srv/brain/app/backend
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/srv/brain/app/backend/.venv/bin/python manage.py run_jobs
+TimeoutStartSec=20min
+Nice=10
+UMask=0027
+MemoryHigh=400M
+MemoryMax=512M
+OOMScoreAdjust=600
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+ReadOnlyPaths=/srv/brain/app /srv/brain/content
+ReadWritePaths=/srv/brain/thumbs

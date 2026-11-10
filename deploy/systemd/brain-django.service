@@ -1,0 +1,42 @@
+# Django API of Alex's Brain (Gunicorn). Install as /etc/systemd/system/brain-django.service.
+# No EnvironmentFile: Django reads backend/.env itself (config/settings.py).
+[Unit]
+Description=Alex's Brain API (Gunicorn + Django)
+After=network-online.target postgresql@16-brain.service
+Wants=network-online.target
+Requires=postgresql@16-brain.service
+
+[Service]
+Type=simple
+Slice=brain.slice
+User=brain
+Group=brain
+WorkingDirectory=/srv/brain/app/backend
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/srv/brain/app/backend/.venv/bin/python manage.py migrate --noinput
+ExecStartPre=/srv/brain/app/backend/.venv/bin/python manage.py collectstatic --noinput
+ExecStart=/srv/brain/app/backend/.venv/bin/gunicorn config.wsgi --bind 127.0.0.1:8001 --workers 2 --timeout 60 --access-logfile -
+Restart=on-failure
+RestartSec=5
+UMask=0027
+MemoryHigh=560M
+MemoryMax=700M
+OOMScoreAdjust=500
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+ReadOnlyPaths=/srv/brain/app /srv/brain/content /srv/brain/files
+# thumbs: uploaded item images (0644); staticfiles: collectstatic
+ReadWritePaths=/srv/brain/thumbs /srv/brain/staticfiles
+
+[Install]
+WantedBy=multi-user.target

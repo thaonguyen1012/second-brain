@@ -1,6 +1,15 @@
-# Deploy (config only, not deployed yet)
+# Deploy examples
 
-One VPS runs everything in Docker: Postgres, Django (gunicorn), Next.js standalone, nginx and cloudflared.
+Configuration examples for running Alex's Brain for one person, behind a login. Replace `brain.example.com` with your
+own host name and the paths with yours. Two server variants share the same pieces (Postgres, Django under gunicorn,
+the Next.js standalone server, nginx, cloudflared, the jobs runner):
+
+* `docker-compose.prod.yml` + `nginx/`: one VPS runs everything in Docker (below);
+* `systemd/`: the same stack as systemd units on a machine without Docker ("systemd", further down).
+
+And for a laptop or desktop that is the server itself: `launchd/` (macOS agents for the jobs and the nightly backup).
+
+In the Docker variant one VPS runs Postgres, Django (gunicorn), Next.js standalone, nginx and cloudflared.
 No port is published; the only way in is the Cloudflare Tunnel, and Cloudflare Access sits in front of it.
 
 ```
@@ -38,9 +47,10 @@ Django refuses to start with `DEBUG=false` and a missing Access value, and refus
 
 ## Files on the VPS (never in git)
 
-* `web/content/docs` and `web/data/search.sqlite`: copied from the laptop (`rsync`), mounted read-only.
-* Attachments: `raw/tai-lieu-so-tay-*` prepared by `npm run assets:prepare`, copied to `FILES_DIR`
-  (`deploy/.env`). nginx serves them only after `auth_request` and Django's `X-Accel-Redirect`.
+* `web/content/docs` and `web/data/search.sqlite`: copied from the machine where you import handbooks (`rsync`),
+  mounted read-only.
+* Attachments: prepared by `node web/scripts/prepare-assets.mjs <slug> <folder>` into `web/public/files/`, copied to
+  `FILES_DIR` (`deploy/.env`). nginx serves them only after `auth_request` and Django's `X-Accel-Redirect`.
 * `deploy/.env` (Postgres password, tunnel token) and `backend/.env`.
 
 ## Start
@@ -52,9 +62,9 @@ docker compose -f deploy/docker-compose.prod.yml exec django uv run --no-sync py
 
 The web image is built with `NEXT_PUBLIC_PROGRESS_STORE=api` (inlined at build time).
 
-## Laptop: daily use without Docker
+## A laptop or desktop as the server, without Docker
 
-Prerequisites: Homebrew Postgres 16 running, `backend/.env` filled in (see `backend/.env.example`), and the morning
+Prerequisites: Postgres 16 running (Homebrew, apt, or `docker compose -f backend/docker-compose.yml up -d`), `backend/.env` filled in (see `backend/.env.example`), and the morning
 brief feeds added once:
 
 ```
@@ -77,7 +87,7 @@ cd backend && uv run python manage.py brief_sources seed     # the feeds DECISIO
 
 ### Background jobs on the laptop (launchd)
 
-`deploy/launchd/com.example.brain.jobs.plist` runs `manage.py run_jobs` every 300 s while Alex is logged in, without
+`deploy/launchd/com.example.brain.jobs.plist` runs `manage.py run_jobs` every 300 s while you are logged in, without
 a terminal (the feeds at their hours, the 06:30 brief, tagging). It is not installed; to install it:
 
 ```
@@ -89,8 +99,9 @@ tail -f ~/Library/Logs/com.example.brain.jobs.log
 
 To stop it: `launchctl bootout gui/$(id -u)/com.example.brain.jobs` (then delete the copied file).
 
-* The paths inside are absolute (repo, `~/.local/bin/uv`, log file); edit the copy if the repo or uv moves.
-* The repo is under `~/Desktop`, which macOS protects: if the log shows "Operation not permitted", give `uv`
+* The paths inside are placeholders (`/Users/you/alex-brain`, `~/.local/bin/uv`, the log file): edit the copy
+  before installing it.
+* If the repo is under `~/Desktop` or `~/Documents`, which macOS protects: if the log shows "Operation not permitted", give `uv`
   (`~/.local/bin/uv`) Full Disk Access in System Settings > Privacy & Security, or move the repo out of Desktop.
 * Do not run `make jobs` / `make dev` at the same time as the agent: it is safe (jobs are claimed with row locks)
   but doubles the free-tier LLM request rate.
@@ -99,7 +110,7 @@ To stop it: `launchctl bootout gui/$(id -u)/com.example.brain.jobs` (then delete
 
 ### Backups on the laptop
 
-DECISIONS 10.1, until the VPS exists: the dev database is the real data.
+When the laptop is the server, its database is the real data (DECISIONS 10.1).
 
 ```
 make backup          # pg_dump -Fc -> backend/backups/<date>.dump (gitignored), keeps the newest 14,
@@ -149,7 +160,7 @@ tail ~/Library/Logs/com.example.brain.backup.log
 ```
 
 To stop it: `launchctl bootout gui/$(id -u)/com.example.brain.backup` (then delete the copied file). The same notes as
-for the jobs agent apply (absolute paths, Full Disk Access for `uv` while the repo is under `~/Desktop`).
+for the jobs agent apply (placeholder paths, Full Disk Access for `uv` when the repo is in a protected folder).
 
 ### Capture from the browser and the phone
 
@@ -160,16 +171,33 @@ for the jobs agent apply (absolute paths, Full Disk Access for `uv` while the re
   page (Android share target; iOS Safari does not support share targets, use the bookmarklet there). Needs the
   Access bypass for the manifest and icons above. There is no service worker and nothing works offline.
 
+## systemd (a server without Docker)
+
+`systemd/` holds the same stack as units for a Linux machine without Docker: `brain-django.service` (gunicorn on
+127.0.0.1:8001), `brain-web.service` (the Next standalone server), `brain-jobs.service` + `.timer` (every 5 minutes),
+`brain-backup.service` + `.timer` (nightly), `brain-restore-check.service` + `.timer` (monthly), `brain-cloudflared`,
+all in `brain.slice` (memory cap, lower CPU and IO weight, for a small shared server); `nginx/brain.conf` (nginx on
+127.0.0.1:8080 only, Cloudflare Tunnel in front); `postgresql-brain.slice.conf` (a drop-in that puts a Postgres
+cluster on port 5433 in the same slice); `backend.env.example` and `cloudflared.env.example`; `release.sh` (as root:
+`uv sync`, `npm ci` and `next build` in a capped transient slice, restart the units, check `/healthz`).
+
+The units assume a system user `brain`, the app checked out in `/srv/brain/app` and data folders under
+`/srv/brain/` (`content`, `files`, `thumbs`, `staticfiles`, `backups`); change the paths in the units if yours
+differ. Order: create the user and folders, the Postgres cluster and role, `backend/.env` from the example, copy the
+units to `/etc/systemd/system/` and the nginx file to `/etc/nginx/sites-enabled/`, the tunnel token into
+`/etc/brain/cloudflared.env`, then run `sudo BRAIN_HOST=brain.example.com /srv/brain/app/deploy/systemd/release.sh`.
+The Cloudflare steps above are the same, with the tunnel's public hostname pointing at `http://localhost:8080`.
+
 ## Not validated yet
 
-The laptop has no Docker or nginx, so the Dockerfiles, `docker-compose.prod.yml` and `nginx/` have not been
-run. First run on the VPS: `nginx -t` inside the nginx container, then the checks above, then open an
+The author ran neither variant end to end: the Dockerfiles, `docker-compose.prod.yml`, `nginx/` and `systemd/` have not
+been run. First run on the VPS: `nginx -t` inside the nginx container, then the checks above, then open an
 attachment whose name has Vietnamese characters (checks that nginx decodes the X-Accel-Redirect path).
 
 ## Still to do before going live
 
 * Nightly encrypted `pg_dump` to object storage, monthly restore drill (DECISIONS 10.1). The laptop part exists
-  (`make backup`, `make restore-check`, launchd agent above); the VPS still needs a cron/systemd timer running
+  (`make backup`, `make restore-check`, launchd agent above, the systemd timers); the Docker VPS still needs a cron/systemd timer running
   `manage.py backup` in the django container, encryption (age or gpg) and the upload, of the dumps and of
   `BACKUP_DIR/thumbs/` (the images; the django container mounts the `thumbs` volume read-write for uploads).
 * After the first deploy with Item images: restart django and jobs together right after `migrate`, so no old

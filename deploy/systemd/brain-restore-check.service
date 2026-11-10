@@ -1,0 +1,26 @@
+# Monthly restore drill (DECISIONS 10.1): restores the newest dump into a throwaway database on the brain
+# cluster, compares row counts with the live database and drops it. The role brain has CREATEDB on that cluster only.
+[Unit]
+Description=Alex's Brain restore check of the newest dump
+After=postgresql@16-brain.service
+Requires=postgresql@16-brain.service
+
+[Service]
+Type=oneshot
+Slice=brain.slice
+User=brain
+Group=brain
+WorkingDirectory=/srv/brain/app/backend
+ExecStart=/srv/brain/app/backend/.venv/bin/python manage.py restore_check
+Nice=15
+IOSchedulingClass=idle
+UMask=0077
+MemoryMax=512M
+OOMScoreAdjust=600
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/srv/brain/app /srv/brain/backups

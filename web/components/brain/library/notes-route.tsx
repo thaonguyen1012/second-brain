@@ -22,7 +22,7 @@ export function UnlessNote({ children }: { children: ReactNode }) {
 
 /**
  * /thu-vien/ghi-chu/: the notes list, or with `?id=N` one note as a page (`?id=new&item=&template=` for a new one;
- * DECISIONS 9.8, PROMPT-item-notes step 4). A new note keeps its page when its first save gives it an id: the URL
+ * DECISIONS 9.8). A new note keeps its page when its first save gives it an id: the URL
  * then shows the id, without reopening the editor.
  */
 export function NotesRoute() {

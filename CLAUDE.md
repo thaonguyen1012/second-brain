@@ -1,7 +1,8 @@
 # CLAUDE.md — working rules for this repo
 
 Alex's Brain: Fumadocs study site built from study handbooks (imported markdown), and a second brain with Django.
-Read DECISIONS.md (owner's decisions), PLAN.md (v2), ARCHITECTURE.md and API_CONTRACT.md before changing things.
+Read DECISIONS.md (the product and engineering decisions), ARCHITECTURE.md and API_CONTRACT.md before changing things.
+"The owner" below is the person who runs this instance: the app is single-owner by design.
 
 ## Project status (several sessions work in parallel)
 
@@ -14,11 +15,12 @@ Read DECISIONS.md (owner's decisions), PLAN.md (v2), ARCHITECTURE.md and API_CON
 
 ## Communication and conventions
 
-* Talk to the owner in Vietnamese. Code, comments, commit messages, file/folder names, slugs: English, ASCII.
+* Talk to the owner in the language they write in. Code, comments, commit messages, file/folder names, slugs:
+  English, ASCII.
   UI text on the site: Vietnamese in the code, English through `web/lib/i18n/` (README there, DECISIONS 9.9): every
   UI string goes through `t()` / `msg()` and gets its English entry in `lib/i18n/en/<area>.ts`
   (`lib/i18n/coverage.test.ts` fails otherwise). Fumadocs' own Vietnamese strings: `web/lib/i18n-vi.ts`.
-* One commit per step, English message, local only. No git remote, no push, no deploy.
+* One commit per step, English message. Push and deploy only when the owner asks.
 * Never delete originals. In the author's private tree these were `archive/` (the original HTML handbooks and
   zips) and `web/public/original/` (their copies); the public tree never had them. What stays true here: the
   sources a handbook was imported from (`raw/`, gitignored, and an optional `web/public/original/<slug>.html`) are
@@ -241,9 +243,10 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
   prompts/, evals/               versioned prompts (inbox_tag, jd_skills, news_tag, brief_intro); golden sets for
                                  `manage.py eval tag|jd|brief` (real LLM, never in make check). inbox/tagging.py:
                                  pydantic schema + `tag` job
-  docker-compose.yml             dev Postgres (the laptop uses Homebrew Postgres 16 instead)
+  docker-compose.yml             dev Postgres (a local Postgres 16 works as well)
 deploy/                          nginx/ (site.conf + header snippets), docker-compose.prod.yml, .env.example, README (Cloudflare Tunnel +
-                                 Access setup; laptop use: make dev, launchd); launchd/com.example.brain.jobs.plist
+                                 Access setup; laptop use: make dev, launchd); systemd/ (the same stack as units,
+                                 without Docker); launchd/com.example.brain.jobs.plist
                                  (run_jobs every 300 s) and com.example.brain.backup.plist (make backup at 02:30), not
                                  installed; config only, not deployed
 Makefile                         make check = web types+lint+Vitest (web/lib/**/*.test.ts), backend ruff+mypy+migrations+pytest,
@@ -300,7 +303,7 @@ with `node web/scripts/smoke-test.mjs --book <slug>`; restart or rebuild the web
 
 Engineering standards for phase 2 are DECISIONS.md section 10 (Postgres, Hermes as conversation layer only,
 API budget 5 USD/month, `make check`, AI harness with golden sets, security rules). Read it before writing backend code.
-Django + Postgres in `backend/` behind nginx on the same origin, Cloudflare Tunnel + Access on brain.example.com.
+Django + Postgres in `backend/` behind nginx on the same origin, Cloudflare Tunnel + Access on your own host name.
 Implement API_CONTRACT.md, swap `getProgressStore()` to an API store, serve `/files/` via nginx
 auth_request + X-Accel-Redirect, then second-brain models (Item, Note, Collection, Inbox, DailyBrief).
 Then the DECISIONS.md §9 objects in this order: Inbox + Item, Week, Project + TimeEntry, Opportunity, Skill + Market,

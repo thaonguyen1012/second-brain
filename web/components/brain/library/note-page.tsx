@@ -23,7 +23,7 @@ import { SaveStatus } from './save-status';
 import { useItemIndex } from './use-item-index';
 import { saveErrorText, useNoteAutosave } from './use-note-autosave';
 
-// /thu-vien/ghi-chu/?id=N: one note as a page (DECISIONS 9.8, PROMPT-item-notes step 4), in place of the edit dialog:
+// /thu-vien/ghi-chu/?id=N: one note as a page (DECISIONS 9.8), in place of the edit dialog:
 // the title, the Items it is linked to (AFFiNE's properties), the block editor, and later "Được nhắc tới ở". Everything
 // saves by itself (use-note-autosave.ts). `?id=new` (with `&item=N` and `&template=<type>`) is a new note, created by
 // its first save; the route then shows its id without reopening the page.

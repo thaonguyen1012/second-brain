@@ -1,0 +1,33 @@
+# The Cloudflare Tunnel: the only way a request reaches nginx on 127.0.0.1:8080. Outbound only; no port of the
+# machine opens. The token lives in /etc/brain/cloudflared.env (root, 0600), never on the command line, so that
+# `systemctl show` and `ps` do not print it. Install as /etc/systemd/system/brain-cloudflared.service.
+[Unit]
+Description=Alex's Brain Cloudflare Tunnel
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Slice=brain.slice
+DynamicUser=yes
+EnvironmentFile=/etc/brain/cloudflared.env
+ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel run
+Restart=always
+RestartSec=5
+MemoryMax=192M
+OOMScoreAdjust=300
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

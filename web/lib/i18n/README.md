@@ -1,8 +1,8 @@
 # UI languages: Vietnamese and English
 
-Owner, 08/11/2026: "create english version for this app". Vietnamese stays the default and the language the code is
-written in; English is a second language for the whole app UI. Lesson content (the 15 handbooks), the owner's data
-and LLM output are not translated.
+Since 08/11/2026 (DECISIONS 9.9): Vietnamese stays the default and the language the code is written in; English is a
+second language for the whole app UI. Lesson content (the imported handbooks), the owner's data and LLM output are
+not translated.
 
 ## How it works
 
@@ -60,7 +60,7 @@ the page name in its table-of-contents bar, breadcrumbs, previous/next links, Cm
 or a tone mark only Vietnamese writes; à é ô and the other accents French and Spanish share count only inside one
 Vietnamese syllable, so "clichés" or "Ángel" in an English lesson stays unmarked); the rest keeps the page's language.
 A mixed title comes back as one `<span>` around its runs: the lesson sidebar's rows are flex rows, where loose runs
-would become side-by-side flex items. Of the 5,917 page, folder and separator titles in 11/2026,
+would become side-by-side flex items. Of the author's 5,917 page, folder and separator titles in 11/2026,
 4,200 have no Vietnamese letter ("31.2. MCP Server", Coursera names), 842 are Vietnamese and 875 are an English title
 with a Vietnamese label ("Module 8.4 · Week 8: Deferred Taxes — Phần 4", "Khóa 1. …"), so a whole title marked
 `lang="vi"` would have a screen reader read English with a Vietnamese voice (WCAG 2.2 SC 3.1.2, Language of Parts).
@@ -85,7 +85,7 @@ the Vietnamese UI marks nothing `lang="en"`.
 | Hôm nay | Today | page |
 | Tuần, tuần này, tuần tới | Week, this week, next week | page; week starts Monday |
 | Phát triển | Growth | sidebar group |
-| Sổ tay | Handbooks (page), handbook | the 15 study handbooks |
+| Sổ tay | Handbooks (page), handbook | the imported study handbooks |
 | Lộ trình | Roadmap | |
 | Kỹ năng | Skills | |
 | Thị trường | Market | |

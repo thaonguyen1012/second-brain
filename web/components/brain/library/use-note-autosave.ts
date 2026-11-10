@@ -27,7 +27,7 @@ import {
 } from '@/lib/note-copies';
 import { describeApiError } from '../api-state';
 
-// Saving a note like AFFiNE (DECISIONS 9.8, PROMPT-item-notes step 4): no "Lưu" button. A change is saved after a
+// Saving a note like AFFiNE (DECISIONS 9.8): no "Lưu" button. A change is saved after a
 // short pause; leaving (closing the editor or the Sheet, another page, hiding or closing the tab) saves at once.
 // - Each editor keeps its own copy of what the server lacks in this browser (lib/note-copies.ts) and removes it once
 //   the server has it; it never writes over or removes another's. A copy whose writer is gone (a closed or crashed

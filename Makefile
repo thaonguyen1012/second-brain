@@ -62,7 +62,7 @@ build:
 # Backups (DECISIONS 10.1): pg_dump -Fc of the dev database into backend/backups/<date>.dump (gitignored), the newest
 # 14 kept (BACKUP_DIR, BACKUP_KEEP in backend/.env). restore-check restores the newest dump into a throwaway
 # database, prints row counts against the live database and drops it; it never writes to the dev database.
-# Nightly on the laptop: deploy/launchd/com.example.brain.backup.plist (deploy/README.md).
+# Nightly on a laptop: deploy/launchd/com.example.brain.backup.plist (deploy/README.md).
 backup:
 	$(UV) python manage.py backup
 

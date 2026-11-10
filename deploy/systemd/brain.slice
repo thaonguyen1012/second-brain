@@ -1,0 +1,14 @@
+# Alex's Brain: every unit of the app runs in this slice, so the whole app together can never take more than
+# MemoryMax of the machine, and under CPU or IO contention gets half the share of other services (systemd's default
+# weight is 100). Useful when the app shares a small server. Install as /etc/systemd/system/brain.slice
+# (deploy/README.md, "systemd").
+[Unit]
+Description=Alex's Brain (all services)
+
+[Slice]
+MemoryHigh=1800M
+MemoryMax=2200M
+MemorySwapMax=1G
+CPUWeight=50
+IOWeight=50
+TasksMax=512

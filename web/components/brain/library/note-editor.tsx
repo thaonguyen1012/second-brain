@@ -80,7 +80,7 @@ import { cn } from '@/lib/utils';
 import { focusIsFree, noteEditorFrame, type NoteEditorHandle, type NoteEditorInnerProps } from './note-editor-types';
 import { LinkPicker, LinkPickerList, revealOption } from './note-link-picker';
 
-// The note editor (DECISIONS 9.8, PROMPT-item-notes step 4): Milkdown 7.23 (commonmark + gfm + listener + history),
+// The note editor (DECISIONS 9.8): Milkdown 7.23 (commonmark + gfm + listener + history),
 // markdown in and markdown out, so a note stays one markdown text (4.1, 4.7). Bullets are saved as `-`; Milkdown's
 // empty-line plugin stays on, so an empty list item is saved as `- <br />` (lib/item-notes.ts and the renderer read it
 // back as an empty line). On top of the presets:

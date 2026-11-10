@@ -1,0 +1,11 @@
+[Unit]
+Description=Alex's Brain nightly backup at 03:10
+
+[Timer]
+OnCalendar=*-*-* 03:10:00
+Persistent=true
+RandomizedDelaySec=5min
+Unit=brain-backup.service
+
+[Install]
+WantedBy=timers.target

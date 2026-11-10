@@ -1,0 +1,10 @@
+[Unit]
+Description=Alex's Brain monthly restore check (the 2nd, 04:10)
+
+[Timer]
+OnCalendar=*-*-02 04:10:00
+Persistent=true
+Unit=brain-restore-check.service
+
+[Install]
+WantedBy=timers.target

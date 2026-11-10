@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Nightly backup of Alex's Brain on the laptop (launchd user agent): `manage.py backup` (= `make backup`) at 02:30,
+  pg_dump -Fc into backend/backups/<date>.dump, the newest 14 kept. A sleeping laptop runs it once on wake.
+  Installation: deploy/README.md, "Backups on the laptop". Not installed by anything in the repo.
+  Paths are absolute (launchd has no ~ and no shell profile); change them if the repo, uv or Postgres move.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.example.brain.backup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/you/.local/bin/uv</string>
+    <string>run</string>
+    <string>python</string>
+    <string>manage.py</string>
+    <string>backup</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/you/alex-brain/backend</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/you/.local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>2</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/you/Library/Logs/com.example.brain.backup.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/you/Library/Logs/com.example.brain.backup.log</string>
+</dict>
+</plist>

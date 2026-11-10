@@ -5,12 +5,12 @@
 ```
 browser ──> Next.js (standalone, Node)          web/
               ├─ /                 home dashboard (static)
-              ├─ /lo-trinh/        roadmap (static)
+              ├─ /lo-trinh/        roadmap, read from content/roadmap.json on request
               ├─ /docs/**          lesson pages: markdown read from CONTENT_DIR, compiled on request
               │                    (@fumadocs/mdx-remote), cached in memory + Next ISR cache
               ├─ /trees/<book>.json  full sidebar tree of one book (lazy sidebar)
               ├─ /api/search       SQLite FTS5 (node:sqlite, read-only) at SEARCH_DB
-              ├─ /original/*.html  original single-file handbooks
+              ├─ /original/*.html  original single-file handbooks, when public/original/ has them
               └─ /files/**         attachments (dev only; production: nginx, see below)
 ```
 
@@ -19,7 +19,7 @@ browser ──> Next.js (standalone, Node)          web/
 * Search index: `web/data/search.sqlite`, built at import time or by `npm run search:rebuild`, never at start.
 * Progress: `web/lib/progress/` — `ProgressStore` interface, phase 1 implementation in localStorage.
 * No runtime request leaves the origin: fonts self-hosted by next/font, Mermaid served from `/vendor/`,
-  KaTeX CSS bundled, images from expired Coursera URLs replaced by server-rendered placeholders.
+  KaTeX CSS bundled, external images replaced by server-rendered placeholders.
 
 ## UI languages (Vietnamese, English; DECISIONS 9.9)
 
@@ -251,7 +251,7 @@ note (a film also without a rating) shows "Xong rồi, nhưng chưa có đầu r
 on its Thư viện card and in the item dialog, with "Viết ghi chú" (new linked note with a template) and "Chấm điểm"
 (opens the dialog on the rating field).
 
-Local end to end: `make dev` (deploy/README.md, "Laptop: daily use without Docker") builds the web app with
+Local end to end: `make dev` (deploy/README.md, "A laptop or desktop as the server, without Docker") builds the web app with
 `NEXT_PUBLIC_PROGRESS_STORE=api` and runs Django :8000, a Next production server :3100, the dev proxy :8080 and
 the jobs loop (`make jobs`); it never touches :3000. `deploy/launchd/com.example.brain.jobs.plist` (not installed)
 runs `run_jobs` every 300 s as a launchd user agent.
@@ -350,11 +350,11 @@ did not make (`web/.next/progress-store-api` holds the BUILD_ID of the last API 
 * **Progress:** `getProgressStore()` in `web/lib/progress/index.ts` returns an API-backed store calling
   `GET /api/progress`, `PUT /api/progress/{book}/{page}`, `PUT /api/progress/last-visited`; the home page
   offers once to move this browser's localStorage progress to the server.
-* **Attachments (`/files/`):** ~1.8 GB of course PDFs, spreadsheets and Power BI files. In production they
+* **Attachments (`/files/`):** course PDFs, spreadsheets and other files linked from the handbooks (can be gigabytes). In production they
   live in their own directory (copied from `raw/tai-lieu-so-tay-*`), are not packaged with the Next build,
   and are served by nginx after `auth_request` to Django succeeds (X-Accel-Redirect to an internal location).
 * **Second brain (later):** Item (course, book, film, article, project; status, tags, ratings), Note
   (markdown, linked to items), Collection, Inbox, DailyBrief, managed first through Django admin. Search can
   move to Postgres full-text when notes live in the database.
-* **Hosting:** one VPS (Oracle Always Free ARM or Hetzner) runs nginx, Next.js, Django, Postgres,
+* **Hosting:** one small VPS (any provider) runs nginx, Next.js, Django, Postgres,
   `cloudflared`. Security headers and `X-Robots-Tag: noindex` at nginx. `raw/` never leaves the laptop.
