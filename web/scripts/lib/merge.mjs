@@ -1,6 +1,6 @@
 // Merge step: turns item pages (one per video/reading/quiz) into learning units.
 //   m2     — IT books: one page per lesson group inside a module (module index stays its own page).
-//   module — Handbook books: one page per module, split into "Phần N" above ~120 KB or 12 lessons.
+//   module — course > module > item books: one page per module, split into "Phần N" above ~120 KB or 12 lessons.
 //   m1     — fallback: fold near-empty pages into the previous page.
 // Only structure changes: each item becomes a `## <item title> [#<item id>]` section, its own
 // headings move one level down, its text is kept as is.

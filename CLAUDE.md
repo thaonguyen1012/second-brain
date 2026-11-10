@@ -287,7 +287,7 @@ node web/scripts/import-gitbook.mjs <zip|html|folder> --track <track> --slug <sl
 Merge rules (owner decision, do not change without asking):
 * **m2** (books with lesson groups, auto-detected from the module README "🔗 Bài học trong module" bold labels
   or from book-data sections): one page per lesson group inside a module; module README stays its page.
-* **module** (course > module > item trees, e.g. Handbook 1–5): one page per module, split into "Phần N" at
+* **module** (course > module > item trees): one page per module, split into "Phần N" at
   lesson boundaries above 12 lessons or ~120 KB; module README opens part 1.
 * **m1** (no structure, e.g. F8): fold near-empty items into the previous page.
 * Each item becomes `## <title> [#<item-file-id>]` with its headings shifted one level; links to merged items
