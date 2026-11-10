@@ -31,6 +31,7 @@ if [ "$web" != --backend ]; then
        --setenv=HOME=/var/lib/brain --setenv=npm_config_cache=/var/lib/brain/npm-cache
        --setenv=NEXT_TELEMETRY_DISABLED=1 --setenv=NEXT_PUBLIC_PROGRESS_STORE=api
        --setenv=CONTENT_DIR=/srv/brain/content --setenv=SEARCH_DB=/srv/brain/search.sqlite
+       --setenv=ROADMAP_FILE=/srv/brain/roadmap.json
        --setenv=NODE_OPTIONS=--max-old-space-size=1536
        --working-directory="$app/web")
   "${run[@]}" /usr/bin/npm ci --no-audit --no-fund

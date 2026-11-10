@@ -116,7 +116,7 @@ you have working URLs.
 | What | Where |
 | --- | --- |
 | Handbooks | `web/content/docs/<track>/<slug>/` (markdown + `meta.json`), the registry in `web/lib/books.ts` |
-| Roadmap | `web/content/roadmap.json` (sample shipped; delete it and the page and its sidebar row go away) |
+| Roadmap | `web/content/roadmap.json`, or the path in `ROADMAP_FILE` (sample shipped; delete it and the page and its sidebar row go away) |
 | Search index | `web/data/search.sqlite` (gitignored, `npm run search:rebuild`) |
 | Progress | the browser's localStorage (web only) or Postgres (with the backend, `NEXT_PUBLIC_PROGRESS_STORE=api`) |
 | Everything else | Postgres; item pictures and inbox thumbnails as webp files in `THUMBS_DIR` |

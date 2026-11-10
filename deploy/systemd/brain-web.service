@@ -16,6 +16,7 @@ Environment=HOSTNAME=127.0.0.1
 Environment=PORT=3001
 Environment=CONTENT_DIR=/srv/brain/content
 Environment=SEARCH_DB=/srv/brain/search.sqlite
+Environment=ROADMAP_FILE=/srv/brain/roadmap.json
 ExecStart=/usr/bin/node server.js
 Restart=on-failure
 RestartSec=5

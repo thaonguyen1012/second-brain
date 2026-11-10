@@ -1,5 +1,5 @@
-// The study roadmap is the owner's data, like the handbooks: a JSON file on disk beside CONTENT_DIR
-// (content/roadmap.json, or ROADMAP_FILE), never bundled. /lo-trinh/ reads it on every request; the sidebar row,
+// The study roadmap is the owner's data, like the handbooks: a JSON file on disk (ROADMAP_FILE, default
+// web/content/roadmap.json; `npm start` and the deploy examples set it), never bundled. /lo-trinh/ reads it on every request; the sidebar row,
 // the Sổ tay button and the "Hôm nay" blocks follow the file as it was when the app was built (they sit in
 // prerendered shells, like the handbook registry). No file: no row, and the page shows how to add one.
 //
@@ -9,9 +9,9 @@
 // English on English pages; `books` are handbook slugs of lib/books.ts (unknown ones are ignored by the pages).
 import fs from 'node:fs';
 import path from 'node:path';
-import { CONTENT_DIR } from './config';
-
-export const ROADMAP_FILE = path.resolve(process.env.ROADMAP_FILE ?? path.join(CONTENT_DIR, '..', 'roadmap.json'));
+/** Statically scoped default (like CONTENT_DIR in ./config): a path computed from another folder makes the build
+ * trace the whole project into the standalone output. */
+export const ROADMAP_FILE = path.resolve(process.env.ROADMAP_FILE ?? path.join(process.cwd(), 'content/roadmap.json'));
 
 /** A text of the roadmap: one string for both languages, or one per language (English falls back to `vi`). */
 export type RoadmapText = string | { vi: string; en?: string };
