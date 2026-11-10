@@ -1,10 +1,12 @@
 # Handbook covers: style guide
 
-One SVG per handbook, `web/public/covers/<slug>.svg`, shown by `components/book-cover.tsx`. Think of a series of
-paperbacks from one mid-century publisher: the same paper, the same inks, the same hand, one idea per book. The
-references that set the bar: `handbook-01.svg` (three columns rising like a bar chart before a clay sun) and
-`handbook-08.svg` (a lighthouse keeping watch at dusk). Copy their structure, not their subjects. Original drawings
-only: never trace or imitate Anthropic's (or anyone's) real artwork, logos or wordmarks.
+A set of drawings, `web/public/covers/<name>.svg`, shown by `components/book-cover.tsx`. A handbook's registry entry
+names its drawing (`cover` in `lib/books.ts`): the importer takes `--cover <name>` or, without it, picks one by the
+slug, so every imported handbook has a cover; draw a new one and name it in the registry to give a book its own.
+Think of a series of paperbacks from one mid-century publisher: the same paper, the same inks, the same hand, one
+idea per book. The references that set the bar: `columns.svg` (three columns rising like a bar chart before a clay
+sun) and `lighthouse.svg` (a lighthouse keeping watch at dusk). Copy their structure, not their subjects. Original
+drawings only: never trace or imitate anyone's real artwork, logos or wordmarks.
 
 The book's name is **not** in the drawing. The app prints it in HTML over the drawing's calm top-left.
 
@@ -89,23 +91,25 @@ x 0                    144      180                       320
 - Give a book a **metaphor**, not its logo or a literal UI: an adult, warm, slightly witty object. No two covers share
   a subject; vary the background shapes across the set (not a sun on every cover).
 
-Suggested subjects (take one or propose better; avoid the clichés below):
+The drawings in the set (a new one takes a subject none of them has):
 
-| Slug | Suggestion |
+| Name | Subject |
 |---|---|
-| handbook-02 | a rotary desk telephone, its coiled cord running off the edge |
-| handbook-03 | a big magnifying glass, a bar chart seen enlarged through the lens |
-| handbook-04 | a vintage megaphone, its sound as concentric flat arcs |
-| handbook-05 | an abacus, or a ledger with a fountain pen |
-| handbook-06 | a Calder-style hanging mobile (weights on wires, like a network's weights) |
-| handbook-07 | a row of dominoes mid-fall: one push, a chain of steps |
-| handbook-09 | a water tower with pipes and valves (pipelines) |
-| handbook-10 | a hot-air balloon among flat cloud shapes |
-| handbook-11 | stacked wooden blocks, the layers of a web app |
-| handbook-12 | an easel holding a framed grid layout |
-| handbook-13 | a cut-away house: facade in front, pipes in the walls |
-| handbook-14 | an hourglass on a stack of books |
-| handbook-15 | a mountain with a zig-zag path and flags at the milestones |
+| abacus | an abacus on a hill |
+| balloon | a hot-air balloon among flat cloud shapes |
+| blocks | stacked wooden blocks |
+| columns | three columns rising like a bar chart before a clay sun |
+| easel | an easel holding a framed grid layout |
+| hourglass | an hourglass on a stack of books, a moon behind |
+| house | a cut-away house: facade in front, pipes in the walls |
+| lighthouse | a lighthouse keeping watch at dusk |
+| magnifier | a big magnifying glass over a chart on paper |
+| megaphone | a vintage megaphone on a crate, its sound as flat arcs |
+| mobile | a Calder-style hanging mobile |
+| mountain | a mountain with a zig-zag path and flags at the milestones |
+| telephone | a rotary desk telephone, ringing |
+| water-tower | a water tower with a pipe and a valve |
+| wind-up-bird | a wind-up bird with its key |
 
 ## Avoid
 
@@ -127,4 +131,4 @@ simple silhouette), dense detail that turns to noise at 64 px, symmetrical "icon
 - [ ] Looks right on the white page and on the dark card (the cover does not change with the theme).
 
 Check with the contact sheet (lints the file and renders every crop above at 2x):
-`node web/scripts/cover-sheet.mjs <slug> [<slug> ...] --out <dir>`, then look at `<dir>/<slug>.png` and `<dir>/sheet.png`.
+`node web/scripts/cover-sheet.mjs <name> [<name> ...] --out <dir>`, then look at `<dir>/<name>.png` and `<dir>/sheet.png`.

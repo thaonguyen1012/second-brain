@@ -58,6 +58,10 @@ LLM_MONTHLY_BUDGET_USD = env.float(
 # true: LlmCall.cost is recorded as 0 (tokens are kept). The budget guard ignores it and always counts
 # paid-tier prices, so a project that silently becomes billed is still capped.
 LLM_FREE_TIER = env.bool("LLM_FREE_TIER", default=False)
+# Who the prompts work for (the `{reader}` mark in backend/prompts/*.md): one line that follows "The reader
+# is", e.g. "a data analyst in Lisbon who is moving into product management". Empty: a neutral default
+# (core/services/llm.py).
+READER_PROFILE = env.str("READER_PROFILE", default="")
 # USD per 1M tokens on the paid tier (ai.google.dev/gemini-api/docs/pricing, read 2026-11-02).
 LLM_PRICES = {
     "gemini-3.1-flash-lite": {"in": 0.25, "out": 1.50, "cache_read": 0.025},
@@ -161,7 +165,7 @@ X_FRAME_OPTIONS = "DENY"
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
 # HTTPS is enforced at the Cloudflare edge; nginx only sees tunnel traffic. HSTS for subdomains and
-# preload are not ours to decide for all of example.com.
+# preload are not ours to decide for the whole domain.
 SILENCED_SYSTEM_CHECKS = ["security.W008", "security.W005", "security.W021"]
 
 REST_FRAMEWORK = {

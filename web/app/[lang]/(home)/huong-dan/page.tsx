@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/brain/page-header';
 import { Button } from '@/components/ui/button';
 import { EmptyStateGuide, type EmptyGuideName } from '@/components/stageshow/lazy';
 import { getT } from '@/lib/i18n/server';
-import { msg, type Msg } from '@/lib/i18n/translate';
+import { msg, type Msg, type T } from '@/lib/i18n/translate';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -39,6 +39,44 @@ const guides: { guide: EmptyGuideName; href: string; label: Msg; text?: Msg }[] 
   { guide: 'library', href: '/thu-vien/', label: msg('Mở Thư viện') },
 ];
 
+/** The importer's inputs as the commands to type; shown as they are in both languages. */
+const importCommands = [
+  'node web/scripts/import-gitbook.mjs export.zip --track ky-nang --slug my-notes --title "My notes"',
+  'node web/scripts/import-gitbook.mjs handbook.html --track it --slug my-course --title "My course"',
+];
+
+/**
+ * "Nhập sổ tay": how handbooks get into the app (a command, not a page of the app). The block every "no handbook
+ * yet" state links to (lib/import-guide.ts), so it keeps its id and stands first.
+ */
+function ImportGuide({ t }: { t: T }) {
+  return (
+    <section id="nhap-so-tay" aria-labelledby="nhap-so-tay-title" className="flex scroll-mt-20 flex-col gap-2">
+      <h2 id="nhap-so-tay-title" className="font-heading text-lg font-semibold tracking-tight">
+        {t('Nhập sổ tay')}
+      </h2>
+      <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        {t.rich(
+          'Sổ tay vào app bằng một lệnh chạy trong thư mục mã nguồn, không qua giao diện. Lệnh đọc một file zip xuất từ GitBook (có <code>SUMMARY.md</code>) hoặc một file HTML đơn, gộp các mục thành trang học, ghi vào <code>web/content/docs/</code>, đăng ký sổ tay và cập nhật chỉ mục tìm kiếm. <code>--track</code> là nhóm của sổ tay: <code>kinh-doanh</code>, <code>it</code> hoặc <code>ky-nang</code>.',
+          { code: (c) => <code className="rounded bg-muted px-1 py-0.5 text-xs">{c}</code> },
+        )}
+      </p>
+      <pre className="max-w-full overflow-x-auto rounded-xl border bg-card p-3 text-xs leading-relaxed">
+        <code>{importCommands.join('\n')}</code>
+      </pre>
+      <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        {t.rich(
+          'Nhập xong, chạy lại <code>npm run build</code> (hoặc tải lại trang khi đang chạy <code>npm run dev</code>): sổ tay hiện ở trang Sổ tay, tìm được bằng ⌘K, và mỗi trang có ô "Đã học xong" để ghi tiến độ.',
+          { code: (c) => <code className="rounded bg-muted px-1 py-0.5 text-xs">{c}</code> },
+        )}
+      </p>
+      <Button variant="link" size="sm" className="self-start px-0" render={<Link href="/phat-trien/" />}>
+        {t('Mở Sổ tay')}
+      </Button>
+    </section>
+  );
+}
+
 /** Animated how-tos for the brain pages (Stageshow guides, components/stageshow). Loaded lazily in the browser. */
 export default async function Page() {
   const t = await getT();
@@ -51,6 +89,7 @@ export default async function Page() {
         )}
       />
       <div className="flex flex-col gap-8 px-4 pb-12 sm:px-8">
+        <ImportGuide t={t} />
         {guides.map((g) => (
           <div key={g.guide} className="flex flex-col gap-2">
             <EmptyStateGuide guide={g.guide} variant="page" hideable={false} open />

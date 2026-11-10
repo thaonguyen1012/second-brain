@@ -72,7 +72,7 @@ export function LibraryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   // Lesson progress picks each course's status; the button waits for it (`loaded`), or every book would be "Dự định"
   const { done, loaded } = useProgress();
-  // "Thêm 15 khóa học từ Sổ tay": sent/total while it runs; the ref stops a second click before the re-render
+  // "Thêm N khóa học từ Sổ tay": sent/total while it runs; the ref stops a second click before the re-render
   const [importing, setImporting] = useState<{ sent: number; total: number } | null>(null);
   const importLock = useRef(false);
   // The Item whose dialog or Sheet is open or was just saved: its card or row takes the focus back when it closes, even
@@ -294,18 +294,21 @@ export function LibraryPage() {
               {t('Thêm item')}
             </Button>
           }
+          // Built from the owner's own content: offered only once a handbook is imported
           quick={
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void addHandbooks()}
-              disabled={importing !== null || loaded === false}
-            >
-              {importing ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Plus aria-hidden />}
-              {importing
-                ? t('Đang thêm {sent}/{n} khóa học…', { sent: importing.sent, n: importing.total })
-                : t('Thêm {n} khóa học từ Sổ tay', { n: handbooks.length })}
-            </Button>
+            handbooks.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void addHandbooks()}
+                disabled={importing !== null || loaded === false}
+              >
+                {importing ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Plus aria-hidden />}
+                {importing
+                  ? t('Đang thêm {sent}/{n} khóa học…', { sent: importing.sent, n: importing.total })
+                  : t('Thêm {n} khóa học từ Sổ tay', { n: handbooks.length })}
+              </Button>
+            )
           }
           guide={items.error ? undefined : 'library'}
         />

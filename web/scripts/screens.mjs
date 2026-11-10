@@ -7,12 +7,30 @@
 // (channel 'chrome'); never downloads a browser. Read-only: it never clicks anything that writes, and every
 // non-GET request to /api/ is aborted and reported. Files are named <slug>--<width>--<theme>.png. Against `next dev`
 // the dev overlay (nextjs-portal) is hidden from the shots; issues it reports are listed as a warning instead.
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
+import { CONTENT_DIR } from './lib/book-import.mjs';
 
-const SEARCH_QUERY = 'khách hàng';
-const LESSON = '/docs/kinh-doanh/handbook-01/01-wharton-marketing/m01-phan-1/';
+const SEARCH_QUERY = 'progress';
+
+/** The first lesson page on disk (a page of a handbook that is not its index), or null without handbooks. */
+function firstLesson() {
+  if (!existsSync(CONTENT_DIR)) return null;
+  const walk = (dir) => {
+    const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
+    for (const e of entries) {
+      if (e.isDirectory()) {
+        const found = walk(path.join(dir, e.name));
+        if (found) return found;
+      } else if (e.name.endsWith('.md') && e.name !== 'index.md') return path.join(dir, e.name);
+    }
+    return null;
+  };
+  const file = walk(CONTENT_DIR);
+  return file ? `/docs/${path.relative(CONTENT_DIR, file).split(path.sep).join('/').replace(/\.md$/, '')}/` : null;
+}
+const LESSON = firstLesson();
 
 /** slug -> path; `search` is the Cmd+K dialog opened on the home page. */
 const PAGES = [
@@ -36,8 +54,7 @@ const PAGES = [
   ['gioi-thieu', '/gioi-thieu/'],
   ['huong-dan', '/huong-dan/'],
   ['lo-trinh', '/lo-trinh/'],
-  ['personal', '/personal/'],
-  ['docs-lesson', LESSON],
+  ...(LESSON ? [['docs-lesson', LESSON]] : []),
   ['search', '/', { search: SEARCH_QUERY }],
 ];
 

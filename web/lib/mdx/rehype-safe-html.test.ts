@@ -1,9 +1,15 @@
 import type { Element, ElementContent, Root } from 'hast';
 import type { VFile } from 'vfile';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { books } from '../books';
 import { CONTENT_DIR } from '../content/config';
 import { rehypeSafeHtml } from './rehype-safe-html';
+
+// Fixture handbooks: the real registry is the owner's data and may be empty
+vi.mock('../books', async (importOriginal) => {
+  const { mockRegistry } = await import('../books.fixture');
+  return mockRegistry(await importOriginal<typeof import('../books')>());
+});
 
 // Hand-built hast trees, as rehype-raw hands them over. CONTENT_DIR points at an empty path (vitest.config.mts),
 // so the image -> lesson map is empty and only the book's course link can be used.

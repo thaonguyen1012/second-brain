@@ -50,9 +50,11 @@ One command: reads the GitBook zip (SUMMARY.md) or a single-file HTML handbook (
 merges items into learning pages, normalizes GitBook syntax, writes `web/content/docs/<track>/<slug>/`,
 registers the book in `web/lib/books.ts` and re-indexes search. Then:
 
-1. add the slug to `web/content/docs/<track>/meta.json` (`pages`) to set its position,
-2. add its programs to `PROGRAMS` in `web/scripts/extract-courses.mjs` and run it (course links),
-3. `npm run assets:prepare` if it has attachments, then edit the description in `web/lib/books.ts` if needed.
+1. add its English title and description to `web/lib/i18n/en/shell.ts` (the coverage test asks for them),
+2. optional: list the slug before `"..."` in `web/content/docs/<track>/meta.json` (`pages`) to set its position,
+3. optional: add its programs to `web/content/courses.json` and run `node web/scripts/extract-courses.mjs`
+   (course links), `node web/scripts/prepare-assets.mjs <slug> <folder>` if it has attachments, then edit the
+   description in `web/lib/books.ts` if needed.
 
 Images whose URLs expired render as placeholders. When fresh URLs exist, put them in a file in the same
 order as `raw/missing-images.json` and run `node web/scripts/backfill-images.mjs <file>`.

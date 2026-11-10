@@ -24,6 +24,8 @@ export interface ShelfBook {
   lessonCount: number;
   /** Progress fill of the book's Sổ tay group (`trackFill`). */
   fill: string;
+  /** The drawing of its cover (a name of public/covers/), or null for the plain ground. */
+  cover: string | null;
 }
 
 /** The last visited page when it belongs to this book. */
@@ -151,7 +153,7 @@ export function StartedShelf({ books }: { books: readonly ShelfBook[] }) {
                   coverLinkFocus,
                 )}
               >
-                <BookCover slug={book.slug} title={book.title} variant="thumb" className="self-stretch" />
+                <BookCover cover={book.cover} title={book.title} variant="thumb" className="self-stretch" />
                 {/* ms-1: the words 16px from the picture's edge */}
                 <span className="ms-1 flex min-w-0 flex-col gap-1">
                   <span className="truncate text-sm font-medium">{book.title}</span>

@@ -5,8 +5,9 @@ export type BookCoverVariant = 'band' | 'side' | 'thumb';
 
 /**
  * A handbook's cover (DESIGN.md §9a; drawing rules in components/book-cover.md): the illustration
- * `public/covers/<slug>.svg` on the flat cover ground, with the book's name printed in HTML over the drawing's calm
- * top-left. A printed object, so the same in both themes (`--cover-ground`, `--cover-ink`).
+ * `public/covers/<cover>.svg` (the registry's `cover`, picked by the importer) on the flat cover ground, with the
+ * book's name printed in HTML over the drawing's calm top-left. A printed object, so the same in both themes
+ * (`--cover-ground`, `--cover-ink`).
  *
  * - `band`: full width at 16:7, cropped from the right (the Sổ tay card's top).
  * - `side`: the Hôm nay hero. Below sm a 16:7 band (with the name) on top of the card; from sm the column its parent
@@ -21,17 +22,18 @@ export type BookCoverVariant = 'band' | 'side' | 'thumb';
  * The name is 14-18px with the cover's width (container units), two lines at most. Decorative (`aria-hidden`): the
  * card or row around it always names the book. A static file in a plain <img>, never inline SVG, so nothing of the
  * drawing ships in a client bundle; this component has no hooks and renders on the server and the client alike. The
- * root is a block `span`, so it can sit inside a link. A book with no drawing yet shows the ground and its name: the
- * broken image is painted over with the ground (`::after`, which browsers draw only on an image that failed), so no
- * broken-image icon shows.
+ * root is a block `span`, so it can sit inside a link. A book with no drawing (`cover` null) shows the ground and
+ * its name; so does one whose file is missing: the broken image is painted over with the ground (`::after`, which
+ * browsers draw only on an image that failed), so no broken-image icon shows.
  */
 export function BookCover({
-  slug,
+  cover,
   title,
   variant,
   className,
 }: {
-  slug: string;
+  /** The drawing: a file name of public/covers/ without ".svg" (lib/books.ts `cover`), or null for none. */
+  cover: string | null | undefined;
   /** Registry title; the cover prints coverName(title). */
   title: string;
   variant: BookCoverVariant;
@@ -47,14 +49,16 @@ export function BookCover({
         className,
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- a static vector drawing; next/image adds nothing here */}
-      <img
-        src={`/covers/${slug}.svg`}
-        alt=""
-        loading={variant === 'side' ? 'eager' : 'lazy'}
-        decoding="async"
-        className="absolute inset-0 size-full object-cover object-right after:absolute after:inset-0 after:bg-cover-ground"
-      />
+      {cover && (
+        // eslint-disable-next-line @next/next/no-img-element -- a static vector drawing; next/image adds nothing here
+        <img
+          src={`/covers/${cover}.svg`}
+          alt=""
+          loading={variant === 'side' ? 'eager' : 'lazy'}
+          decoding="async"
+          className="absolute inset-0 size-full object-cover object-right after:absolute after:inset-0 after:bg-cover-ground"
+        />
+      )}
       {variant !== 'thumb' && (
         <span
           className={cn(

@@ -1,5 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { expect, test } from './fixtures';
 import { navRows, otherNav } from '@/lib/app-nav';
+
+/** The Lộ trình row shows only while the roadmap file exists (lib/content/roadmap.ts; the flows run from web/). */
+const roadmap = fs.existsSync(process.env.ROADMAP_FILE ?? path.join(process.cwd(), 'content/roadmap.json'));
 
 test('home page renders "Hôm nay" inside the app shell', async ({ page }) => {
   const errors: string[] = [];
@@ -14,10 +19,9 @@ test('home page renders "Hôm nay" inside the app shell', async ({ page }) => {
   // context starts without the language cookie, so the titles are the Vietnamese texts (msgid).
   const sidebar = page.getByRole('navigation', { name: 'Menu' });
   for (const link of [...navRows, ...otherNav.links]) {
-    await expect(sidebar.getByRole('link', { name: new RegExp(`^${link.title.msgid}(,|$)`) })).toHaveAttribute(
-      'href',
-      link.href,
-    );
+    const row = sidebar.getByRole('link', { name: new RegExp(`^${link.title.msgid}(,|$)`) });
+    if (link.href === '/lo-trinh/' && !roadmap) await expect(row).toHaveCount(0);
+    else await expect(row).toHaveAttribute('href', link.href);
   }
   // Top bar: search trigger and theme toggle are hydrated and usable.
   await expect(page.getByRole('button', { name: /Tìm mọi thứ/ })).toBeVisible();

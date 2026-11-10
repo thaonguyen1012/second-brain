@@ -80,8 +80,12 @@ export const shell = {
   'Gần nhất: {page}': 'Last viewed: {page}',
 
   // Handbooks page (app/[lang]/(home)/phat-trien/page.tsx)
-  '{books} sổ tay từ các khóa Coursera và F8, {lessons} bài học, chia theo ba nhóm.':
-    '{books} handbooks from Coursera and F8 courses, {lessons} lessons, in three groups.',
+  '{n} sổ tay với {lessons} bài học, chia theo nhóm.': {
+    one: '{n} handbook with {lessons} lessons, in groups.',
+    other: '{n} handbooks with {lessons} lessons, in groups.',
+  },
+  'Ghi chú khóa học của bạn, đọc theo từng bài và đánh dấu khi học xong.':
+    'Your course notes, read lesson by lesson and ticked off when done.',
   'Xem lộ trình học': 'See the study roadmap',
   'Nhóm sổ tay': 'Handbook groups',
   '{books} sổ tay · {lessons} bài': '{books} handbooks · {lessons} lessons',
@@ -135,59 +139,34 @@ export const shell = {
   '{phase} · tháng {from}–{to}': '{phase} · months {from}–{to}',
   'tháng {from}–{to}': 'months {from}–{to}',
   'Lộ trình IT · {months}': 'IT roadmap · {months}',
+  'Bắt đầu từ đây': 'Start here',
 
-  // Roadmap page (app/[lang]/lo-trinh/)
+  // Roadmap page (app/[lang]/lo-trinh/); its texts are the owner's data (content/roadmap.json), not in here
+  'Lộ trình học': 'Study roadmap',
+  'Thứ tự học gợi ý': 'Suggested order',
+  'Mở bản PDF đầy đủ': 'Open the full PDF',
+  'Tháng {from} đến {to}': 'Months {from} to {to}',
+  'Song song': 'In parallel',
+  'Sản phẩm kết giai đoạn: {outcome}': 'End-of-stage deliverable: {outcome}',
 
-  // Handbook registry (lib/books.ts): titles, descriptions, tracks
+  // First-run blocks, before the first handbook and without a roadmap file (components/handbooks-start.tsx,
+  // components/brain/content-empty.tsx)
+  'Chưa có sổ tay nào': 'No handbooks yet',
+  'Nhập sổ tay đầu tiên từ file zip GitBook hoặc một file HTML. Bài đang học và tiến độ sẽ hiện ở đây.':
+    'Import your first handbook from a GitBook zip or a single HTML file. The lesson you are on and your progress will show here.',
+  'Xem cách nhập sổ tay': 'See how to import a handbook',
+  'Sổ tay được nhập bằng một lệnh, từ file zip GitBook hoặc một file HTML: <code>node web/scripts/import-gitbook.mjs</code>. Nhập xong, sổ tay hiện ở đây cùng tiến độ học.':
+    'A handbook comes in with one command, from a GitBook zip or a single HTML file: <code>node web/scripts/import-gitbook.mjs</code>. Once imported, it shows here with its progress.',
+  'Chưa có lộ trình': 'No roadmap yet',
+  'Lộ trình là dữ liệu của bạn: một file <code>web/content/roadmap.json</code> với các giai đoạn, số tháng và những gì học trong từng giai đoạn. Tạo file theo mẫu trong README rồi tải lại trang.':
+    'The roadmap is your own data: a file <code>web/content/roadmap.json</code> with the phases, their months and what to study in each. Create it from the sample in the README, then reload the page.',
+  'Mở Sổ tay': 'Open Handbooks',
+
+  // Handbook registry (lib/books.ts): the tracks, then the title and description of every imported handbook
+  // (add both after an import: lib/i18n/coverage.test.ts asks for them)
   'Kinh doanh': 'Business',
-  'Vận hành doanh nghiệp: nền tảng, tiếng Anh, dữ liệu, marketing, kế toán.':
-    'Running a business: foundations, English, data, marketing, accounting.',
+  'Kinh doanh và vận hành doanh nghiệp.': 'Business and running a company.',
   IT: 'IT',
-  'Đi sâu kỹ thuật: AI, an ninh mạng, dữ liệu, DevOps, web.': 'Going deep on tech: AI, cybersecurity, data, DevOps, web.',
-  'Học cách học và quản lý dự án.': 'Learning how to learn, and project management.',
-  'Sổ tay 1 – Nền tảng kinh doanh': 'Handbook 1 – Business foundations',
-  'Marketing, kế toán, tài chính, vận hành, khởi nghiệp, chiến lược và Excel: 19 khóa của Wharton, Darden và Macquarie.':
-    'Marketing, accounting, finance, operations, entrepreneurship, strategy and Excel: 19 courses from Wharton, Darden and Macquarie.',
-  'Sổ tay 2 – Tiếng Anh thương mại': 'Handbook 2 – Business English',
-  'Tiếng Anh giao tiếp công việc: networking, họp, đàm phán, thuyết trình, viết email và tiếng Anh chuyên ngành.':
-    'English for work: networking, meetings, negotiation, presentations, emails and English for your field.',
-  'Sổ tay 3 – Phân tích dữ liệu': 'Handbook 3 – Data analysis',
-  'Phân tích dữ liệu từ Google, IBM và Microsoft: bảng tính, SQL, Python, Power BI, thống kê và machine learning.':
-    'Data analysis from Google, IBM and Microsoft: spreadsheets, SQL, Python, Power BI, statistics and machine learning.',
-  'Sổ tay 4 – Marketing & bán hàng': 'Handbook 4 – Marketing & sales',
-  'Digital marketing, thương mại điện tử, mạng xã hội, marketing analytics và bán hàng với CRM.':
-    'Digital marketing, e-commerce, social media, marketing analytics and selling with a CRM.',
-  'Sổ tay 5 – Kế toán & tài chính': 'Handbook 5 – Accounting & finance',
-  'Kế toán sổ sách, báo cáo tài chính, tài chính doanh nghiệp và kế toán quản trị.':
-    'Bookkeeping, financial statements, corporate finance and management accounting.',
-  'Sổ tay AI Engineering': 'AI Engineering handbook',
-  'Machine learning, deep learning, generative AI, RAG và agent, đưa mô hình vào production.':
-    'Machine learning, deep learning, generative AI, RAG and agents, taking models to production.',
-  'Sổ tay AI & tự động hóa': 'AI & automation handbook',
-  'AI cho mọi người và cho doanh nghiệp, prompting, agent, tự động hóa với Python, Git và Power Automate.':
-    'AI for everyone and for business, prompting, agents, automation with Python, Git and Power Automate.',
-  'Sổ tay An ninh mạng': 'Cybersecurity handbook',
-  'An ninh mạng từ nền tảng tới chuyên sâu: Google, IBM và Microsoft Cybersecurity Analyst.':
-    'Cybersecurity from the basics to an advanced level: Google, IBM and Microsoft Cybersecurity Analyst.',
-  'Sổ tay Data Engineering & Robotics': 'Data Engineering & Robotics handbook',
-  'Data engineering trên AWS và Google Cloud, cùng robotics và xe tự lái.':
-    'Data engineering on AWS and Google Cloud, plus robotics and self-driving cars.',
-  'Sổ tay DevOps, Cloud & IT': 'DevOps, Cloud & IT handbook',
-  'DevOps và kỹ nghệ phần mềm, cloud (Google Cloud, AWS) và IT support.':
-    'DevOps and software engineering, cloud (Google Cloud, AWS) and IT support.',
-  'Sổ tay Fullstack Web (F8)': 'Fullstack Web handbook (F8)',
-  'Lộ trình Fullstack Web của F8: HTML, CSS, JavaScript và các bài thực hành.':
-    "F8's Fullstack Web path: HTML, CSS, JavaScript and hands-on exercises.",
-  'Sổ tay Meta Front-End': 'Meta Front-End handbook',
-  'Front-end với HTML, CSS, JavaScript, React và UX/UI theo chương trình của Meta.':
-    "Front-end with HTML, CSS, JavaScript, React and UX/UI, following Meta's programme.",
-  'Sổ tay Meta Full-Stack': 'Meta Full-Stack handbook',
-  'Front-end và back-end theo Meta: React, Python, Django, API và cơ sở dữ liệu.':
-    'Front-end and back-end the Meta way: React, Python, Django, APIs and databases.',
-  'Sổ tay Learning How to Learn': 'Learning How to Learn handbook',
-  'Kỹ thuật học hiệu quả: tập trung và phân tán, chunking, chống trì hoãn, ghi nhớ.':
-    'Techniques for learning well: focused and diffuse modes, chunking, beating procrastination, memory.',
-  'Sổ tay Google Project Management': 'Google Project Management handbook',
-  'Quản lý dự án theo Google: khởi tạo, lập kế hoạch, thực thi, Agile và Scrum.':
-    'Project management the Google way: initiation, planning, execution, Agile and Scrum.',
+  'Kỹ thuật: lập trình, dữ liệu, hạ tầng.': 'Technical: programming, data, infrastructure.',
+  'Cách học và kỹ năng làm việc.': 'Learning how to learn, and working skills.',
 } satisfies Dictionary;

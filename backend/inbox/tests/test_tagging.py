@@ -104,7 +104,7 @@ def test_invalid_output_falls_back_to_no_tags(client: Client, fake: Fake, reply:
 
 def test_prompt_file_has_a_version() -> None:
     prompt = tagging.prompt()
-    assert prompt.version == "1" and "ai, programming" in prompt.system and "{" not in prompt.system
+    assert prompt.version == "2" and "ai, programming" in prompt.system and "{" not in prompt.system
 
 
 def test_eval_command(fake: Fake, settings: Any, tmp_path: Any) -> None:

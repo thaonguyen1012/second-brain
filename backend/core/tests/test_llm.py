@@ -137,3 +137,16 @@ def test_gemini_quota_and_overload_are_retryable(code: int, status: str) -> None
     exc = errors.APIError(code, {"error": {"code": code, "status": status, "message": "m"}})
     assert isinstance(llm._error(exc), llm.RateLimited)
     assert not isinstance(llm._error(errors.APIError(400, {"error": {"code": 400}})), llm.RateLimited)
+
+
+def test_reader_profile_comes_from_settings_or_a_neutral_default(settings: Any) -> None:
+    settings.READER_PROFILE = ""
+    assert llm.reader_profile() == llm.DEFAULT_READER_PROFILE
+    settings.READER_PROFILE = "  a nurse in Lyon\nwho studies data analysis. "
+    assert llm.reader_profile() == "a nurse in Lyon who studies data analysis"
+
+
+def test_prompt_files_name_no_reader_of_their_own(settings: Any) -> None:
+    """The owner is described by READER_PROFILE only: every prompt file marks the place with {reader}."""
+    for file in sorted((settings.BASE_DIR / "prompts").glob("*.md")):
+        assert file.read_text().count("{reader}") == 1, file.name

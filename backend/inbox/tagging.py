@@ -75,7 +75,9 @@ def prompt() -> llm.Prompt:
     """backend/prompts/inbox_tag.md: a `version: N` line, `---`, then the provider-neutral system prompt."""
     header, _, body = (settings.BASE_DIR / "prompts" / "inbox_tag.md").read_text().partition("\n---\n")
     version = header.removeprefix("version:").strip()
-    return llm.Prompt(PURPOSE, version, body.replace("{controlled_tags}", ", ".join(CONTROLLED_TAGS)).strip())
+    body = body.replace("{controlled_tags}", ", ".join(CONTROLLED_TAGS))
+    body = body.replace("{reader}", llm.reader_profile())
+    return llm.Prompt(PURPOSE, version, body.strip())
 
 
 def item_text(title: str, site: str, text: str) -> str:

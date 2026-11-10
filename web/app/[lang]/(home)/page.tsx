@@ -1,7 +1,8 @@
 import { books, tracks } from '@/lib/books';
-import { businessPhases, itStages } from '@/lib/roadmap';
+import { loadRoadmap, roadmapText, type RoadmapText } from '@/lib/content/roadmap';
 import { trackFill } from '@/lib/track-colors';
-import { ContinueReading, type HeroBook } from '@/components/progress';
+import { HandbooksStart } from '@/components/handbooks-start';
+import { ContinueReading, type HeroBook, type HeroStart } from '@/components/progress';
 import { ProgressMigrationOffer } from '@/components/progress-migration';
 import { PageHeader } from '@/components/brain/page-header';
 import {
@@ -21,7 +22,8 @@ import type { T } from '@/lib/i18n/translate';
 
 /**
  * Resolved here on the server, in the page's language, so the client blocks get plain strings and no registry,
- * roadmap or colour map ships to them.
+ * roadmap or colour map ships to them. The roadmap is the file as it is when this shell is prerendered
+ * (lib/content/roadmap.ts); without one the page has no roadmap block and the hero suggests the first handbook.
  */
 function homeData(t: T) {
   const homeBooks: HeroBook[] = books.map((b) => ({
@@ -30,22 +32,38 @@ function homeData(t: T) {
     track: b.track,
     lessonCount: b.lessonCount,
     fill: trackFill[b.track],
+    cover: b.cover ?? null,
   }));
-  const groups = tracks.map(({ slug, title }) => ({ slug, title: t(title), fill: trackFill[slug] }));
+  // Only the groups that have a handbook: an empty group is no bar on the Sổ tay tile
+  const groups = tracks
+    .filter(({ slug }) => books.some((b) => b.track === slug))
+    .map(({ slug, title }) => ({ slug, title: t(title), fill: trackFill[slug] }));
+  const roadmap = loadRoadmap();
+  const text = (x: RoadmapText) => roadmapText(x, t.locale);
   // "Giai đoạn 1, nền · tháng 0–5"
-  const business: RoadmapStep[] = businessPhases.map((p) => ({
-    label: t('{phase} · tháng {from}–{to}', { phase: t(p.name), from: p.months[0], to: p.months[1] }),
-    rows: p.items.map(({ text, books }) => ({ text: t(text), books })),
+  const business: RoadmapStep[] = (roadmap?.businessPhases ?? []).map((p) => ({
+    label: t('{phase} · tháng {from}–{to}', { phase: text(p.name), from: p.months[0], to: p.months[1] }),
+    rows: p.items.map(({ text: label, books }) => ({ text: text(label), books })),
   }));
-  const it: RoadmapStep[] = itStages.map((s) => {
+  const it: RoadmapStep[] = (roadmap?.itStages ?? []).map((s) => {
     const months = s.months ? t('tháng {from}–{to}', { from: s.months[0], to: s.months[1] }) : t('Song song');
     return {
       label: t('Lộ trình IT · {months}', { months: months.toLowerCase() }),
-      rows: [{ text: t(s.study), books: s.books, meta: months }],
+      rows: [{ text: text(s.study), books: s.books, meta: months }],
     };
   });
-  // The hero's first-run suggestion: the first book of roadmap phase 1, named by that phase ("Giai đoạn 1").
-  const start = { slug: businessPhases[0].items[0].books[0], phase: t(businessPhases[0].name).split(',')[0] };
+  // The hero's first-run suggestion: the first handbook the roadmap names, said with its phase ("Giai đoạn 1");
+  // with no roadmap (or none of its handbooks imported), the first handbook of the registry.
+  const known = new Set(books.map((b) => b.slug));
+  let start: HeroStart | undefined;
+  for (const phase of roadmap?.businessPhases ?? []) {
+    const slug = phase.items.flatMap((i) => i.books).find((s) => known.has(s));
+    if (slug) {
+      start = { slug, lead: t('Gợi ý từ lộ trình'), detail: text(phase.name).split(',')[0] };
+      break;
+    }
+  }
+  if (!start && homeBooks.length > 0) start = { slug: homeBooks[0].slug, lead: t('Bắt đầu từ đây'), detail: '' };
   return { homeBooks, groups, business, it, start };
 }
 
@@ -56,7 +74,8 @@ function homeData(t: T) {
  * computed in the browser. DOM order is the phone order and the tab order (hero, setup, rail, roadmap, brief: the
  * checklist under the hero, §9a); the rail spans the five rows, so its extra height lands in the last `1fr` row and
  * the main column keeps no gaps. Between lg and xl the rail is two columns; below lg one (beside the 224px sidebar
- * at md, a half-width tile cannot hold the week strip).
+ * at md, a half-width tile cannot hold the week strip). Before the first import the hero's place says how handbooks
+ * get in and the Sổ tay tile is left out; without a roadmap file its block is left out.
  */
 export default async function HomePage() {
   const t = await getT();
@@ -68,7 +87,11 @@ export default async function HomePage() {
       </PageHeader>
 
       <div className="grid w-full max-w-7xl gap-6 px-4 pb-8 sm:px-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:grid-rows-[auto_auto_auto_auto_1fr] xl:items-start">
-        <ContinueReading books={homeBooks} start={start} className="xl:col-start-1" />
+        {homeBooks.length > 0 ? (
+          <ContinueReading books={homeBooks} start={start} className="xl:col-start-1" />
+        ) : (
+          <HandbooksStart t={t} className="xl:col-start-1" />
+        )}
         <TodaySetup className="xl:col-start-1" />
         <aside
           aria-label={t('Tuần, inbox và sổ tay')}
@@ -77,10 +100,12 @@ export default async function HomePage() {
           <TodayRhythm />
           <TodayWeek />
           <TodayInbox />
-          <TodayBooks books={homeBooks} groups={groups} />
+          {homeBooks.length > 0 && <TodayBooks books={homeBooks} groups={groups} />}
           <TodayPredictions className="lg:col-span-2 xl:col-span-1" />
         </aside>
-        <TodayRoadmap books={homeBooks} business={business} it={it} className="xl:col-start-1" />
+        {business.length + it.length > 0 && (
+          <TodayRoadmap books={homeBooks} business={business} it={it} className="xl:col-start-1" />
+        )}
         <TodayBrief className="xl:col-start-1" />
       </div>
 

@@ -84,9 +84,9 @@ def test_fetch_needs_an_http_link(client: Client, net: FakeNet) -> None:
     item = book(client, source="Frank Herbert")
     response = fetch(client, item)
     assert response.status_code == 400 and response.json() == {"url": ["Item chưa có link http(s)."]}
-    for url in ("ftp://a.test/x.png", "javascript:alert(1)", "/docs/it/handbook-08/"):
+    for url in ("ftp://a.test/x.png", "javascript:alert(1)", "/docs/ky-nang/garden-notes/"):
         assert fetch(client, item, url=url).status_code == 400
-    course = book(client, source="/docs/it/handbook-08/")
+    course = book(client, source="/docs/ky-nang/garden-notes/")
     assert fetch(client, course).status_code == 400
     assert not Job.objects.exists()
 
@@ -357,7 +357,7 @@ def test_no_automatic_fetch_for_projects_or_sources_without_a_link(client: Clien
     headers = csrf(client)
     for body in (
         {"type": "project", "title": "Repo", "source": "https://github.test/alex/shop"},
-        {"type": "course", "title": "An ninh mạng", "source": "/docs/it/handbook-08/"},
+        {"type": "course", "title": "Làm vườn", "source": "/docs/ky-nang/garden-notes/"},
         {"type": "book", "title": "Dune", "source": "Frank Herbert"},
         {"type": "film", "title": "No source"},
     ):

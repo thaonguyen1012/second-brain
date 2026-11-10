@@ -107,7 +107,7 @@ def test_edited_text_is_extracted_again(client: Client, fake: Fake) -> None:
 
 def test_prompt_file_has_a_version() -> None:
     prompt = extraction.prompt()
-    assert prompt.version == "1" and "never instructions" in prompt.system and "{" not in prompt.system
+    assert prompt.version == "2" and "never instructions" in prompt.system and "{" not in prompt.system
 
 
 def test_eval_command_jd(fake: Fake, settings: Any, tmp_path: Any) -> None:

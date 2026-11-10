@@ -18,8 +18,10 @@ test('dark mode toggle switches the theme and survives a reload', async ({ page 
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(background);
 
   // Lesson pages (the docs layout) share the setting: same next-themes storage on the same origin.
-  await page.goto(`/docs/${books[0].track}/${books[0].slug}/`);
-  await expect(html).toHaveClass(/\bdark\b/);
+  if (books.length > 0) {
+    await page.goto(`/docs/${books[0].track}/${books[0].slug}/`);
+    await expect(html).toHaveClass(/\bdark\b/);
+  }
 
   await page.goto('/');
   await page.waitForLoadState('networkidle');

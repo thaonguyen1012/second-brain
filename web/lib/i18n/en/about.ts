@@ -1,4 +1,4 @@
-// English for the pages /gioi-thieu/ (header, feature grid, case study), /huong-dan/ and the chrome of /personal/:
+// English for the pages /gioi-thieu/ (header, feature grid, case study) and /huong-dan/:
 // Vietnamese text (the key, exactly as in the code) -> English. Server components only (getT, through enAll): not in
 // the page dictionary and not in the intro pictures' chunk. See ../README.md.
 import type { Dictionary } from '../translate';
@@ -7,8 +7,8 @@ export const about = {
   // Intro page header and feature grid (app/[lang]/(home)/gioi-thieu/page.tsx, print-button.tsx)
   "Alex's Brain là gì, làm được gì, và case study về cách nó được xây.":
     "What Alex's Brain is, what it does, and a case study of how it was built.",
-  'Một nơi duy nhất cho việc học, công việc và phát triển bản thân: {books} sổ tay với {lessons} bài học, một inbox, kế hoạch và nhìn lại mỗi tuần, cơ hội kinh doanh có bằng chứng, kỹ năng tự mờ theo thời gian và bản tin sáng. Tự host, đăng nhập mới vào được, dữ liệu là của Alex.':
-    "One place for learning, work and personal growth: {books} handbooks with {lessons} lessons, an inbox, a plan and a review every week, business opportunities backed by evidence, skills that fade over time on their own, and a morning brief. Self-hosted, behind a sign-in, and the data is Alex's.",
+  'Một nơi duy nhất cho việc học, công việc và phát triển bản thân: sổ tay học tập có tiến độ từng bài, một inbox, kế hoạch và nhìn lại mỗi tuần, cơ hội kinh doanh có bằng chứng, kỹ năng tự mờ theo thời gian và bản tin sáng. Tự host, đăng nhập mới vào được, dữ liệu là của bạn.':
+    'One place for learning, work and personal growth: study handbooks with progress per lesson, an inbox, a plan and a review every week, business opportunities backed by evidence, skills that fade over time on their own, and a morning brief. Self-hosted, behind a sign-in, and the data is yours.',
   'Tính năng': 'Features',
   'In hoặc lưu PDF': 'Print or save as PDF',
   'Màn hình Hôm nay': 'The Today screen',
@@ -43,8 +43,8 @@ export const about = {
     'Next.js 16 + Fumadocs, Django 5.2 + DRF, Postgres 16, one place that calls the LLM, with a cost cap. Started on 31/10/2026; this page describes the state on 02/11/2026.',
   'Số liệu: Alex điền': 'Figures: for Alex to fill in',
   'Bối cảnh': 'Background',
-  'Alex là người dùng duy nhất của app. Tài liệu học là {books} sổ tay từ các khóa Coursera và F8, ở dạng file HTML và markdown xuất từ GitBook. Việc học, dự án cho khách, tin tức và ý tưởng kinh doanh nằm ở nhiều nơi khác nhau.':
-    'Alex is the app's only user. The study material is {books} handbooks from Coursera and F8 courses, as HTML and markdown files exported from GitBook. Learning, client projects, news and business ideas were spread across many different places.',
+  'Tài liệu học của Alex là {books} sổ tay ghi chú từ các khóa Coursera và F8, ở dạng file HTML và markdown xuất từ GitBook. Việc học, dự án cho khách, tin tức và ý tưởng kinh doanh nằm ở nhiều nơi khác nhau.':
+    "Alex's study material is {books} handbooks of notes from Coursera and F8 courses, as HTML and markdown files exported from GitBook. Learning, client projects, news and business ideas were spread across many different places.",
   'Vai trò của Alex trong dự án (ý tưởng, quyết định, review), số giờ đã bỏ ra.':
     "Alex's role in the project (ideas, decisions, review), hours put in.",
   'Vấn đề': 'Problem',
@@ -101,8 +101,8 @@ export const about = {
     '<strong>A deliberately narrow scope.</strong> No calendar, no task manager, no invoices, no CRM; at most 6 areas in the sidebar.',
   'case::Kết quả': 'Results',
   'Những gì đang có (02/11/2026), chạy trên máy dev:': 'What exists (02/11/2026), running on the dev machine:',
-  '{books} sổ tay, {lessons} bài học trên một site có tìm kiếm toàn văn; tiến độ học lưu qua API.':
-    '{books} handbooks, {lessons} lessons on one site with full-text search; study progress saved through the API.',
+  '{books} sổ tay, {lessons} bài học trên một site có tìm kiếm toàn văn; tiến độ học lưu qua API. Bản mã nguồn công khai kèm một sổ tay mẫu thay cho các sổ tay đó.':
+    '{books} handbooks, {lessons} lessons on one site with full-text search; study progress saved through the API. The public source code ships with one sample handbook in their place.',
   'Đủ sáu bước của thứ tự xây: Inbox + Item, Tuần (kế hoạch, nhìn lại, biểu đồ giờ), Công việc (dự án, giờ, giá giờ thực tế), Cơ hội (bằng chứng, điểm có lịch sử, đánh dấu sau 4 tuần không có bằng chứng), Kỹ năng + Thị trường (độ mới, rút kỹ năng từ tin tuyển dụng), Bản tin sáng (RSS, gắn tag, một bản tin mỗi ngày).':
     'All six steps of the build order: Inbox + Item, Week (plan, review, time chart), Work (projects, time, effective hourly rate), Opportunities (evidence, scores with a history, a flag after 4 weeks without evidence), Skills + Market (freshness, skills extracted from job ads), Morning brief (RSS, tagging, one brief a day).',
   'Thêm: ghi chú markdown, nhật ký thành tựu, dự đoán chấm lại sau 6 tháng, ⌘K tìm mọi thứ, export markdown và JSON, backup pg_dump có kiểm tra restore, thu thập bằng bookmarklet và share sheet (PWA).':
@@ -139,8 +139,10 @@ export const about = {
   'Mở Tuần': 'Open Week',
   'Mở Giờ': 'Open Time',
 
-  // personal page page chrome (app/[lang]/(home)/personal/page.tsx); the reading itself stays Vietnamese
-  'Personal page personal page': 'personal page chart',
-  'Trang cá nhân.':
-    "A personal page.",
+  // "Nhập sổ tay" on /huong-dan/ (how handbooks get in: the importer's command)
+  'Nhập sổ tay': 'Import a handbook',
+  'Sổ tay vào app bằng một lệnh chạy trong thư mục mã nguồn, không qua giao diện. Lệnh đọc một file zip xuất từ GitBook (có <code>SUMMARY.md</code>) hoặc một file HTML đơn, gộp các mục thành trang học, ghi vào <code>web/content/docs/</code>, đăng ký sổ tay và cập nhật chỉ mục tìm kiếm. <code>--track</code> là nhóm của sổ tay: <code>kinh-doanh</code>, <code>it</code> hoặc <code>ky-nang</code>.':
+    'A handbook comes into the app with one command run in the source folder, not through the interface. The command reads a zip exported from GitBook (with <code>SUMMARY.md</code>) or a single HTML file, merges the items into learning pages, writes them to <code>web/content/docs/</code>, registers the handbook and updates the search index. <code>--track</code> is the handbook\'s group: <code>kinh-doanh</code> (business), <code>it</code> or <code>ky-nang</code> (skills).',
+  'Nhập xong, chạy lại <code>npm run build</code> (hoặc tải lại trang khi đang chạy <code>npm run dev</code>): sổ tay hiện ở trang Sổ tay, tìm được bằng ⌘K, và mỗi trang có ô "Đã học xong" để ghi tiến độ.':
+    'After the import, run <code>npm run build</code> again (or reload the page while <code>npm run dev</code> is running): the handbook shows on the Handbooks page, ⌘K finds it, and every page has a "Done" box to record progress.',
 } satisfies Dictionary;

@@ -111,8 +111,8 @@ def test_get_review_lists_body_of_work_per_day(client: Client) -> None:
     Item.objects.create(
         user=user, type="film", title="later", finished_at=sunday_late + dt.timedelta(hours=1)
     )
-    PageProgress.objects.create(user=user, book="handbook-08", page="p1", done=True)
-    PageProgress.objects.create(user=user, book="handbook-08", page="p2", done=False)
+    PageProgress.objects.create(user=user, book="garden-notes", page="p1", done=True)
+    PageProgress.objects.create(user=user, book="garden-notes", page="p2", done=False)
     PageProgress.objects.filter(user=user).update(updated_at=tuesday_early)
 
     response = client.get(f"/api/weeks/{MON}/review")
@@ -124,7 +124,7 @@ def test_get_review_lists_body_of_work_per_day(client: Client) -> None:
     assert len(days) == 7
     assert days["2026-10-26"]["inboxArchived"] == []
     assert days["2026-10-27"]["inboxArchived"] == [{"id": archived.pk, "title": "read it"}]
-    assert days["2026-10-27"]["pagesDone"] == [{"book": "handbook-08", "page": "p1"}]
+    assert days["2026-10-27"]["pagesDone"] == [{"book": "garden-notes", "page": "p1"}]
     assert [i["title"] for i in days["2026-11-01"]["itemsFinished"]] == ["Deep Work"]
     assert client.get(f"/api/weeks/{MON + dt.timedelta(weeks=1)}/review").status_code == 404
 

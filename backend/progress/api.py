@@ -36,7 +36,7 @@ class PageProgressView(APIView):
         ],
     )
     def put(self, request: Request, book: str, page: str) -> Response:
-        if book not in services.known_books():
+        if not services.is_known_book(book):
             return Response({"detail": "Unknown book."}, status=status.HTTP_400_BAD_REQUEST)
         body = SetDoneSerializer(data=request.data)
         body.is_valid(raise_exception=True)

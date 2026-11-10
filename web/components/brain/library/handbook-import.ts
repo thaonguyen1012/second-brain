@@ -4,7 +4,7 @@ import { toApiError } from '@/lib/api/use-api';
 import { booksByTrack, bookUrl, tracks } from '@/lib/books';
 import type { ProgressSnapshot } from '@/lib/progress';
 
-// "Thêm 15 khóa học từ Sổ tay" on the empty Thư viện (DESIGN.md §9a: quick actions built from the owner's own
+// "Thêm N khóa học từ Sổ tay" on the empty Thư viện (DESIGN.md §9a: quick actions built from the owner's own
 // content). Writes only when the owner clicks it; a source that is already in the library is skipped, so a second
 // click (or another tab) never doubles a course. No backend endpoint: one POST /api/items per missing handbook.
 

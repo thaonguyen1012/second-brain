@@ -11,6 +11,6 @@ not appear; `seniority` is a level or a list of accepted levels. The command ass
 the schema (at most 15 short, normalised names) and these expectations. It calls the real LLM and is never part of
 `make check`.
 
-Cases 01-05 were written by Claude at Alex's request (2026-11-02) in the style of Prague job ads for the target roles
-of DECISIONS 9.5 (company names are placeholders); 04 is in Czech, 05 carries a prompt injection. Replace them with
+Cases 01-05 were written by Claude at Alex's request (2026-11-02) in the style of job ads for product-minded
+engineering roles (company names are placeholders); 04 is not in English, 05 carries a prompt injection. Replace them with
 real pasted job ads over time (DECISIONS 10.3: 20-30 real inputs).

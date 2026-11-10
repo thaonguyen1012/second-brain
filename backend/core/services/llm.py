@@ -61,11 +61,23 @@ class Provider(Protocol):
     ) -> Reply: ...
 
 
+# The reader the prompts describe when READER_PROFILE is not set (it follows "The reader is").
+DEFAULT_READER_PROFILE = (
+    "a software developer who builds products with AI and watches for business opportunities"
+)
+
+
 @dataclass(frozen=True)
 class Prompt:
     purpose: str
     version: str
     system: str
+
+
+def reader_profile() -> str:
+    """Who the prompts in backend/prompts/ work for: READER_PROFILE, one line that follows "The reader is".
+    It fills the `{reader}` mark of each prompt, so nothing about the owner is written in the prompt files."""
+    return " ".join(settings.READER_PROFILE.split()).rstrip(".") or DEFAULT_READER_PROFILE
 
 
 def complete[T: BaseModel](prompt: Prompt, user: str, schema: type[T], use_cache: bool = True) -> T:

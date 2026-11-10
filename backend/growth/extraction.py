@@ -49,6 +49,7 @@ def prompt() -> llm.Prompt:
     header, _, body = (settings.BASE_DIR / "prompts" / "jd_skills.md").read_text().partition("\n---\n")
     version = header.removeprefix("version:").strip()
     body = body.replace("{max_skills}", str(MAX_SKILLS)).replace("{max_chars}", str(MAX_SENT_CHARS))
+    body = body.replace("{reader}", llm.reader_profile())
     return llm.Prompt(PURPOSE, version, body.strip())
 
 

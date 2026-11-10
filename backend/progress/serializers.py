@@ -1,10 +1,10 @@
 from rest_framework import serializers
 
-from progress.services import known_books
+from progress.services import is_known_book
 
 
 def validate_book(value: str) -> None:
-    if value not in known_books():
+    if not is_known_book(value):
         raise serializers.ValidationError("Unknown book.")
 
 

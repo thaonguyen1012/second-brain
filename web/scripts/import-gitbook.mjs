@@ -3,7 +3,9 @@
 // write web/content/docs/<track>/<slug>/, register in lib/books.ts, re-index search.
 //
 //   node web/scripts/import-gitbook.mjs <zip|html> --track <track> --slug <slug> --title "<title>"
-//        [--description "..."] [--merge auto|m2|module|m1|none] [--replace] [--no-register]
+//        [--description "..."] [--merge auto|m2|module|m1|none] [--cover <name>] [--replace] [--no-register]
+//
+// --cover names a drawing of web/public/covers/ (without ".svg"); without it a new book gets one by its slug.
 //
 // A .zip is a GitBook markdown export (SUMMARY.md); a .html is a single-file handbook with an
 // embedded book-data block.
@@ -12,7 +14,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { readGitbookZip, readHtmlBook, parseSummary, writeBook, CONTENT_DIR, WEB_DIR } from './lib/book-import.mjs';
 import { mergeBook, readmeGroups } from './lib/merge.mjs';
-import { registerBook } from './lib/registry.mjs';
+import { coverNames, registerBook, trackSlugs } from './lib/registry.mjs';
 import { rebuildSearch } from './lib/search-db.mjs';
 
 const { values, positionals } = parseArgs({
@@ -23,6 +25,7 @@ const { values, positionals } = parseArgs({
     title: { type: 'string' },
     description: { type: 'string', default: '' },
     merge: { type: 'string', default: 'auto' },
+    cover: { type: 'string' },
     replace: { type: 'boolean', default: false },
     'no-register': { type: 'boolean', default: false },
   },
@@ -36,6 +39,14 @@ if (!input || !track || !slug || !title) {
 }
 if (!/^[a-z0-9-]+$/.test(slug) || !/^[a-z0-9-]+$/.test(track)) {
   console.error('track and slug must be lowercase ASCII (a-z, 0-9, -)');
+  process.exit(1);
+}
+if (!trackSlugs().includes(track)) {
+  console.error(`--track must be one of: ${trackSlugs().join(', ')} (the groups of lib/books.ts)`);
+  process.exit(1);
+}
+if (values.cover !== undefined && !coverNames().includes(values.cover)) {
+  console.error(`--cover must be one of: ${coverNames().join(', ')}`);
   process.exit(1);
 }
 
@@ -82,7 +93,9 @@ const stats = writeBook({
   fileUrl: (name) => `/files/${slug}/${name}`,
 });
 
-const entry = values['no-register'] ? null : registerBook({ slug, title, description: values.description, track, originalHtml });
+const entry = values['no-register']
+  ? null
+  : registerBook({ slug, title, description: values.description, track, originalHtml, cover: values.cover });
 const search = rebuildSearch([slug]);
 
 console.log(
@@ -93,6 +106,7 @@ console.log(
       itemsInSource: itemsBefore,
       pagesWritten: stats.pages,
       lessonCount: entry?.lessonCount,
+      cover: entry?.cover,
       merge: report,
       hints: stats.hints ?? 0,
       attachments: stats.files ?? 0,

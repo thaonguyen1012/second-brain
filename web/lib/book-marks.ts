@@ -3,10 +3,10 @@
 // client chunk can call coverName() without pulling in every book.
 
 /**
- * "Sổ tay 1 – Nền tảng kinh doanh" -> "Nền tảng kinh doanh", "Sổ tay AI Engineering" -> "AI Engineering": drops the
+ * "Sổ tay 1 – Làm vườn cơ bản" -> "Làm vườn cơ bản", "Sổ tay Machine Learning" -> "Machine Learning": drops the
  * "Sổ tay" prefix and any "N –" number after it, first letter upper case. A title that is only the prefix stays as is.
- * The English titles (lib/i18n/en/shell.ts) work the same: "Handbook 1 – Business foundations" -> "Business
- * foundations", "AI Engineering handbook" -> "AI Engineering".
+ * The English titles (lib/i18n/en/shell.ts) work the same: "Handbook 1 – Gardening basics" -> "Gardening basics",
+ * "Machine Learning handbook" -> "Machine Learning".
  */
 export function coverName(title: string): string {
   const full = title.normalize('NFC').trim();

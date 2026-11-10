@@ -164,7 +164,7 @@ export const navAreas: readonly NavLink[] = appNav.flatMap((g: NavGroup): NavLin
 
 /**
  * The row a path belongs to: the longest row href that starts it ('/' only matches itself), so /phat-trien/ky-nang/
- * is Kỹ năng, not Sổ tay. A query or hash is ignored. Undefined for pages without a row (Inbox, personal page).
+ * is Kỹ năng, not Sổ tay. A query or hash is ignored. Undefined for pages without a row (Inbox, Giới thiệu).
  */
 export function navMatch<T extends NavLink>(links: readonly T[], path: string): T | undefined {
   const pathname = path.replace(/[?#].*$/, '');

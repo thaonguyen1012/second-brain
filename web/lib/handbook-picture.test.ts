@@ -1,6 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { books, bookUrl } from './books';
 import { handbookForSource, itemPicture } from './handbook-picture';
+
+// Fixture handbooks: the real registry is the owner's data and may be empty
+vi.mock('./books', async (importOriginal) => {
+  const { mockRegistry } = await import('./books.fixture');
+  return mockRegistry(await importOriginal<typeof import('./books')>());
+});
 
 const book = books[0];
 

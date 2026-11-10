@@ -35,6 +35,8 @@ import { useAppPathname } from '@/lib/use-app-pathname';
 import { LanguageSwitch } from '@/components/language-switch';
 
 const [daily, ...areas] = appNav;
+/** The one row that depends on a file of the owner: hidden while there is no roadmap (AppShell `roadmap`). */
+const ROADMAP_HREF = '/lo-trinh/';
 
 /**
  * The current row is a darker grey (owner, 06/11/2026, DESIGN.md §4): `--sidebar-current`, one step past the hover
@@ -124,7 +126,7 @@ function focusLater(selector: string) {
  * hides the sidebar, then the groups of lib/app-nav.ts, each row with its icon and, where it has one, its count.
  * Hidden on desktop, it is inert, so its links leave the tab order.
  */
-function AppSidebar() {
+function AppSidebar({ roadmap }: { roadmap: boolean }) {
   const t = useT();
   const raw = useAppPathname();
   const pathname = raw.endsWith('/') ? raw : `${raw}/`;
@@ -198,9 +200,11 @@ function AppSidebar() {
               <SidebarGroupContent>
                 {/* The label names its list, so "Item" is heard as part of Thư viện */}
                 <SidebarMenu aria-labelledby={`nav-group-${i}`}>
-                  {group.rows.map((row: NavRow) => (
-                    <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts, t)} />
-                  ))}
+                  {group.rows
+                    .filter((row: NavRow) => roadmap || row.href !== ROADMAP_HREF)
+                    .map((row: NavRow) => (
+                      <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts, t)} />
+                    ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -292,11 +296,14 @@ function ThemeToggle() {
   );
 }
 
-/** App frame for non-lesson pages: sidebar (drawer on mobile) and a sticky top bar with search, inbox and theme. */
-export function AppShell({ children }: { children: ReactNode }) {
+/**
+ * App frame for non-lesson pages: sidebar (drawer on mobile) and a sticky top bar with search, inbox and theme.
+ * `roadmap`: false hides the Lộ trình row (no content/roadmap.json; the layouts read lib/content/roadmap.ts).
+ */
+export function AppShell({ children, roadmap = true }: { children: ReactNode; roadmap?: boolean }) {
   return (
     <SidebarProvider style={{ '--sidebar-width': '14rem' } as React.CSSProperties}>
-      <AppSidebar />
+      <AppSidebar roadmap={roadmap} />
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur sm:px-8">
           <MenuTrigger />

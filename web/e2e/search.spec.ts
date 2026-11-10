@@ -1,7 +1,16 @@
 import { expect, test } from './fixtures';
+import { books } from '@/lib/books';
 
-// A phrase that appears throughout the business handbooks.
-const QUERY = 'khách hàng';
+interface TreeNode {
+  type: 'page' | 'folder' | 'separator';
+  name: string;
+  index?: TreeNode;
+  children?: TreeNode[];
+}
+
+/** Page names of a book's sidebar tree, in order. */
+const names = (node: TreeNode): string[] =>
+  node.type === 'page' ? [node.name] : [...(node.index ? names(node.index) : []), ...(node.children ?? []).flatMap(names)];
 
 interface SearchResult {
   type: 'page' | 'heading' | 'text';
@@ -9,7 +18,17 @@ interface SearchResult {
   content: string;
 }
 
-test('Cmd+K finds handbook pages and opens the chosen one', async ({ page }) => {
+// Searches for a word of a page title of the first handbook, whichever it is: a title is always in the index.
+test('Cmd+K finds handbook pages and opens the chosen one', async ({ page, request }) => {
+  test.skip(books.length === 0, 'no handbook is imported');
+  const tree = await request.get(`/trees/${books[0].slug}`);
+  expect(tree.ok()).toBe(true);
+  const word = names((await tree.json()) as TreeNode)
+    .slice(1)
+    .flatMap((name) => name.match(/\p{L}{5,}/gu) ?? [])[0];
+  expect(word, 'a word of five letters or more in a page title').toBeTruthy();
+  const QUERY = word!;
+
   await page.goto('/');
   await page.waitForLoadState('networkidle'); // the hot key listener is attached on hydration
 

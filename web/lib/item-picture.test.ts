@@ -60,15 +60,15 @@ describe('isWebLink', () => {
 
 describe('handbookPath', () => {
   it('reads a handbook page, with or without the trailing slash', () => {
-    expect(handbookPath('/docs/it/handbook-06/')).toEqual({ track: 'it', slug: 'handbook-06' });
-    expect(handbookPath(' /docs/kinh-doanh/handbook-01 ')).toEqual({
+    expect(handbookPath('/docs/it/machine-learning/')).toEqual({ track: 'it', slug: 'machine-learning' });
+    expect(handbookPath(' /docs/kinh-doanh/bread-notes ')).toEqual({
       track: 'kinh-doanh',
-      slug: 'handbook-01',
+      slug: 'bread-notes',
     });
   });
 
   it('is null for anything else', () => {
-    expect(handbookPath('/docs/it/handbook-06/m01/')).toBeNull();
+    expect(handbookPath('/docs/it/machine-learning/m01/')).toBeNull();
     expect(handbookPath('https://example.com/docs/it/x/')).toBeNull();
     expect(handbookPath('Udemy')).toBeNull();
     expect(handbookPath(null)).toBeNull();

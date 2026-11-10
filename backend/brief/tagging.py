@@ -81,7 +81,7 @@ class BriefIntro(BaseModel):
 def _load(name: str, purpose: str, **values: str) -> llm.Prompt:
     """backend/prompts/<name>.md: a `version: N` line, `---`, then the provider-neutral system prompt."""
     header, _, body = (settings.BASE_DIR / "prompts" / f"{name}.md").read_text().partition("\n---\n")
-    for key, value in values.items():
+    for key, value in {"reader": llm.reader_profile(), **values}.items():
         body = body.replace("{" + key + "}", value)
     return llm.Prompt(purpose, header.removeprefix("version:").strip(), body.strip())
 

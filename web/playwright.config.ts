@@ -1,7 +1,8 @@
 // Browser flows of DECISIONS.md 10.3 (home, lesson, search, dark mode), run with `npm run e2e` / `make e2e`.
 // They need the whole stack on one origin (make dev: proxy :8080 -> Django + Next) and only read: no flow creates,
 // changes or deletes data. Uses the installed Google Chrome (channel 'chrome'); Playwright never downloads a browser
-// here (PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 when installing).
+// here (PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 when installing). A machine without Chrome names its own Chromium:
+// E2E_BROWSER=/path/to/chromium npm run e2e.
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
@@ -16,7 +17,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   use: {
     baseURL: process.env.E2E_BASE ?? 'http://127.0.0.1:8080',
-    channel: 'chrome',
+    ...(process.env.E2E_BROWSER ? { launchOptions: { executablePath: process.env.E2E_BROWSER } } : { channel: 'chrome' }),
     headless: true,
     locale: 'vi-VN',
     timezoneId: 'Europe/Prague',

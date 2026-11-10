@@ -1,15 +1,16 @@
 #!/usr/bin/env node
-// Contact sheet for the handbook covers (web/public/covers/<slug>.svg, rules in web/components/book-cover.md).
+// Contact sheet for the handbook covers (web/public/covers/<name>.svg, rules in web/components/book-cover.md).
 //
-//   node web/scripts/cover-sheet.mjs [slug ...] [--out <dir>] [--web <path to web/>]   (default out: <tmp>/cover-sheet)
+//   node web/scripts/cover-sheet.mjs [name ...] [--out <dir>] [--web <path to web/>]   (default out: <tmp>/cover-sheet)
 //
-// No slugs = every handbook in the registry. For each slug it lints the SVG (size, viewBox, palette, forbidden
+// No names = every drawing in public/covers/. For each one it lints the SVG (size, viewBox, palette, forbidden
 // elements) and renders, at device scale 2, the cover the way components/book-cover.tsx shows it: the Sổ tay card
 // band at 320 and 236 px wide (name in HTML over the calm left part), the band on a dark card, the Hôm nay hero
 // column from sm (224x168, no name) and its phone band (358 wide, 16:7, with the name), the 64 px square crop, the
 // 80x56 shelf row thumb, the 72x82 phone card thumb (every crop object-position right) and the raw SVG at 640x280.
-// A missing SVG shows the fallback (ground + name), as the app does. Output: <out>/<slug>.png per cover, <out>/sheet.png for all, lint report on
-// stdout (exit 1 when a cover fails a hard rule). Uses the installed Google Chrome (channel 'chrome'); no network.
+// A missing SVG shows the fallback (ground + name), as the app does. The name printed over a drawing is the title of
+// the handbook that uses it (lib/books.ts `cover`), else the drawing's own name. Output: <out>/<name>.png per cover,
+// <out>/sheet.png for all, lint report on stdout (exit 1 when a cover fails a hard rule). Uses the installed Google Chrome (channel 'chrome'); no network.
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
@@ -23,24 +24,29 @@ for (let i = 2; i < process.argv.length; i++) {
   if (a === '--out') args.out = path.resolve(process.argv[++i]);
   else if (a === '--web') args.web = path.resolve(process.argv[++i]);
   else if (a === '-h' || a === '--help') {
-    console.log('usage: node web/scripts/cover-sheet.mjs [slug ...] [--out <dir>] [--web <path to web/>]');
+    console.log('usage: node web/scripts/cover-sheet.mjs [name ...] [--out <dir>] [--web <path to web/>]');
     process.exit(0);
   } else args.slugs.push(a);
 }
 
 const { chromium } = createRequire(path.join(args.web, 'package.json'))('@playwright/test');
 
-// Registry titles -> cover names, the same rule as coverName() in web/lib/book-marks.ts.
+// Drawing -> the title of the handbook that uses it (the registry block of lib/books.ts); the printed name follows
+// the same rule as coverName() in web/lib/book-marks.ts.
 const registry = readFileSync(path.join(args.web, 'lib/books.ts'), 'utf8');
+const block = registry.slice(registry.indexOf('// BOOKS:START') + '// BOOKS:START'.length, registry.indexOf('// BOOKS:END'));
 const titles = new Map();
-for (const m of registry.matchAll(/"slug": "([^"]+)",\s*"title": "([^"]+)"/g)) titles.set(m[1], m[2]);
-const coverName = (title) => title.replace(/^sổ tay\s*/iu, '').replace(/^\d+\s*[–-]\s*/u, '').trim() || title;
-const slugs = args.slugs.length ? args.slugs : [...titles.keys()];
-for (const s of slugs) if (!titles.has(s)) console.warn(`warn: ${s} is not in lib/books.ts`);
+for (const b of JSON.parse(block.replace(/^\s*export const books: Book\[\] =/, '').replace(/;\s*$/, '').trim()))
+  if (b.cover && !titles.has(b.cover)) titles.set(b.cover, b.title);
+const coverName = (title) => title.replace(/^(?:sổ tay|handbook)\s*/iu, '').replace(/^\d+\s*[–-]\s*/u, '').trim() || title;
+const coversDir = path.join(args.web, 'public/covers');
+const drawings = existsSync(coversDir)
+  ? readdirSync(coversDir).filter((f) => f.endsWith('.svg')).map((f) => f.slice(0, -4)).sort()
+  : [];
+const slugs = args.slugs.length ? args.slugs : drawings;
 
 // ---- lint ---------------------------------------------------------------------------------------------------
 const PALETTE = new Set(['#141413', '#faf9f5', '#e3dacc', '#ebdbbc', '#d4a27f', '#d97757', '#cc785c', '#6a9bcc', '#788c5d']);
-const coversDir = path.join(args.web, 'public/covers');
 let failed = false;
 function lint(slug) {
   const file = path.join(coversDir, `${slug}.svg`);

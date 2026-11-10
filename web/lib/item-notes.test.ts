@@ -73,7 +73,7 @@ describe('markdownHref', () => {
   it('keeps API and file addresses out of the Next router', () => {
     expect(markdownHref('/api/export')).toEqual({ kind: 'file', href: '/api/export' });
     expect(markdownHref('/files/so-tay/de-cuong.pdf').kind).toBe('file');
-    expect(markdownHref('/docs/it/handbook-08/').kind).toBe('internal');
+    expect(markdownHref('/docs/ky-nang/garden-notes/').kind).toBe('internal');
   });
 
   it('shows every other target as text', () => {
@@ -111,7 +111,7 @@ describe('noteImageSrc', () => {
   it('loads only same-origin pictures', () => {
     expect(noteImageSrc('/api/items/12/image?v=3f2a9c1e')).toBe('/api/items/12/image?v=3f2a9c1e');
     expect(noteImageSrc('/img/so-do.png')).toBe('/img/so-do.png');
-    expect(noteImageSrc('/files/handbook-08/chmod.JPG')).toBe('/files/handbook-08/chmod.JPG');
+    expect(noteImageSrc('/files/garden-notes/chmod.JPG')).toBe('/files/garden-notes/chmod.JPG');
   });
 
   it('refuses other sites and API addresses that are not an Item image', () => {

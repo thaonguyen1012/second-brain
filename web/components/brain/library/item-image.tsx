@@ -36,7 +36,7 @@ export function RowPicture({ picture, className }: { picture: ItemPicture | null
   return (
     <span aria-hidden className={cn('relative -my-2 block w-14 self-stretch overflow-hidden', className)}>
       {picture?.kind === 'handbook' ? (
-        <BookCover slug={picture.book.slug} title={picture.book.title} variant="thumb" className="absolute inset-0" />
+        <BookCover cover={picture.book.cover} title={picture.book.title} variant="thumb" className="absolute inset-0" />
       ) : picture?.shape === 'logo' ? (
         <Logo url={picture.url} className="absolute inset-0 p-2" />
       ) : picture ? (
@@ -57,7 +57,7 @@ export function DetailPicture({ picture, className }: { picture: ItemPicture | n
   if (picture.kind === 'handbook')
     return (
       <BookCover
-        slug={picture.book.slug}
+        cover={picture.book.cover}
         title={picture.book.title}
         variant="thumb"
         className={cn(box, 'size-16 sm:size-20', className)}
@@ -91,7 +91,7 @@ export function boardMedia(picture: ItemPicture | null, t: T): BoardMedia | null
   if (picture.kind === 'handbook')
     return {
       placement: 'top',
-      node: <BookCover slug={picture.book.slug} title={t(picture.book.title)} variant="band" />,
+      node: <BookCover cover={picture.book.cover} title={t(picture.book.title)} variant="band" />,
     };
   if (picture.shape === 'logo')
     return { placement: 'inline', node: <Logo url={picture.url} className="size-10 overflow-hidden rounded-md p-1" /> };

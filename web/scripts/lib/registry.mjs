@@ -13,6 +13,12 @@ export function readRegistry() {
   return JSON.parse(block.replace(/^\s*export const books: Book\[\] =/, '').replace(/;\s*$/, '').trim());
 }
 
+/** The tracks a handbook can be filed under: the slugs of `TrackSlug` in lib/books.ts. */
+export function trackSlugs() {
+  const type = fs.readFileSync(BOOKS_TS, 'utf8').match(/export type TrackSlug =([^;]+);/);
+  return type ? [...type[1].matchAll(/'([a-z0-9-]+)'/g)].map((m) => m[1]) : [];
+}
+
 /** Keep each book's index.md frontmatter in sync with its registry entry (text below untouched). */
 function syncFrontmatter(book) {
   const file = path.join(CONTENT_DIR, book.track, book.slug, 'index.md');
@@ -45,7 +51,29 @@ export function countBook(track, slug) {
   return { lessonCount: lessons };
 }
 
-export function registerBook({ slug, title, description = '', track, originalHtml = null, courseraUrls = [], order }) {
+/** Names of the cover drawings (web/public/covers/<name>.svg, rules in components/book-cover.md), sorted. */
+export function coverNames() {
+  const dir = path.join(WEB_DIR, 'public/covers');
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.svg'))
+    .map((f) => f.slice(0, -'.svg'.length))
+    .sort();
+}
+
+/**
+ * The drawing a book gets when none is named: one of `names`, picked by a hash of the slug (FNV-1a), so the same
+ * slug keeps its cover on every import and on every machine. Null when there is no drawing to pick from.
+ */
+export function pickCover(slug, names = coverNames()) {
+  if (names.length === 0) return null;
+  let h = 0x811c9dc5;
+  for (const ch of Buffer.from(slug, 'utf8')) h = Math.imul(h ^ ch, 0x01000193) >>> 0;
+  return names[h % names.length];
+}
+
+export function registerBook({ slug, title, description = '', track, originalHtml = null, courseraUrls = [], order, cover }) {
   const books = readRegistry();
   const existing = books.find((b) => b.slug === slug);
   const counts = countBook(track, slug);
@@ -58,6 +86,8 @@ export function registerBook({ slug, title, description = '', track, originalHtm
     ...counts,
     courseraUrls: existing?.courseraUrls ?? courseraUrls,
     originalHtml,
+    // a named cover wins, a re-import keeps the book's cover, a new book gets one by its slug
+    cover: cover ?? existing?.cover ?? pickCover(slug),
   };
   if (existing) Object.assign(existing, entry);
   else books.push(entry);

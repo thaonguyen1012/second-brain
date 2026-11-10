@@ -7,8 +7,8 @@ from django.test import Client
 
 pytestmark = pytest.mark.django_db
 
-BOOK = "handbook-08"
-PAGE = "c5-m3-linux-commands-in-the-bash-shell/001-navigate-the-linux-file-system"
+BOOK = "garden-notes"
+PAGE = "01-soil-and-water/001-what-plants-need"
 PAGE_URL = PAGE.replace("/", "%2F")
 
 
@@ -59,7 +59,7 @@ def test_put_page_rejects_unknown_book_and_bad_body(client: Client) -> None:
 
 def test_put_last_visited(client: Client) -> None:
     headers = csrf(client)
-    body = {"book": BOOK, "page": PAGE, "title": "Navigate the Linux file system"}
+    body = {"book": BOOK, "page": PAGE, "title": "What plants need"}
     response = put(client, "/api/progress/last-visited", body, headers)
     assert response.status_code == 200
     data = response.json()
@@ -91,3 +91,19 @@ def test_openapi_schema(client: Client) -> None:
     text = response.content.decode()
     for op in ("getMe", "getProgress", "setPageDone", "setLastVisited"):
         assert op in text
+
+
+def test_a_handbook_imported_while_the_server_runs_is_accepted(client: Client, handbooks: Any) -> None:
+    headers = csrf(client)
+    url = "/api/progress/bread-notes/01-flour"
+    assert put(client, url, {"done": True}, headers).status_code == 400  # not on disk yet
+    (handbooks / "kinh-doanh" / "bread-notes").mkdir(parents=True)
+    assert put(client, url, {"done": True}, headers).status_code == 200  # found without a restart
+
+
+def test_no_content_folder_means_no_known_book(client: Client, settings: Any, handbooks: Any) -> None:
+    from progress import services
+
+    settings.CONTENT_DIR = handbooks / "missing"
+    services.known_books.cache_clear()
+    assert put(client, f"/api/progress/{BOOK}/{PAGE_URL}", {"done": True}, csrf(client)).status_code == 400

@@ -120,6 +120,19 @@ export interface HeroBook {
   lessonCount: number;
   /** Progress fill of the book's Sổ tay group (`trackFill`). */
   fill: string;
+  /** The drawing of its cover (a name of public/covers/), or null for the plain ground. */
+  cover: string | null;
+}
+
+/**
+ * What the hero suggests before any page was visited: a handbook, and the line above its title, resolved on the
+ * server ("Gợi ý từ lộ trình" and the phase's name, or "Bắt đầu từ đây" with no roadmap).
+ */
+export interface HeroStart {
+  slug: string;
+  lead: string;
+  /** After the lead, " · " between them; may be empty. */
+  detail: string;
 }
 
 /** The hero's lead before the book title, by the state of the last visited book. */
@@ -144,7 +157,8 @@ export const coverLinkFocus =
  * 07/11/2026: "chia hẳn 1 phần là ảnh của sổ tay, một bên là title", no tile inside the card), the last visited page,
  * the book's progress and the page's one filled button on the other; below a divider, up to two other books with
  * lessons done. From sm the cover is a 14rem column the card's height, clipped by its corners; below sm a 16:7 band
- * on top. With no last visited page it suggests the first book of the roadmap (`start`). Lead and verb follow the
+ * on top. With no last visited page it suggests the handbook the server picked (`start`: the roadmap's first, else
+ * the registry's first; the page renders no hero while there is no handbook at all). Lead and verb follow the
  * book's state as the Sổ tay card does (`bookState`): a visit with no lesson done is "Xem gần nhất" and "Học ngay",
  * never "Tiếp tục học". A skeleton of the same geometry holds the place until the store has loaded, so the
  * suggestion never flashes before the stored pointer arrives.
@@ -155,8 +169,7 @@ export function ContinueReading({
   className,
 }: {
   books: HeroBook[];
-  /** First book of roadmap phase 1 and that phase's name. */
-  start: { slug: string; phase: string };
+  start?: HeroStart;
   className?: string;
 }) {
   const t = useT();
@@ -187,10 +200,11 @@ export function ContinueReading({
     );
   }
   const resumed = last && books.find((b) => b.slug === last.bookSlug);
-  const book = resumed || books.find((b) => b.slug === start.slug);
+  const book = resumed || (start && books.find((b) => b.slug === start.slug));
   if (!book) return null;
   const state = bookState(done, book.slug, book.lessonCount);
-  const lead = t(resumed ? heroLead[state] : 'Gợi ý từ lộ trình');
+  const lead = resumed ? t(heroLead[state]) : (start?.lead ?? '');
+  const detail = resumed ? book.title : start?.detail;
   const others = books
     .filter((b) => b !== book && doneIn(done, b.slug) > 0)
     .sort((a, b) => doneIn(done, b.slug) - doneIn(done, a.slug))
@@ -206,11 +220,11 @@ export function ContinueReading({
         href={resumed && last ? bookHref(book, last.pageSlug) : bookHref(book)}
         className={cn(frame, 'transition-colors duration-150 hover:bg-accent', coverLinkFocus)}
       >
-        <BookCover slug={book.slug} title={book.title} variant="side" />
+        <BookCover cover={book.cover} title={book.title} variant="side" />
         <span className={body}>
           <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="truncate text-xs text-muted-foreground">
-              {lead} · {resumed ? book.title : start.phase}
+              {detail ? `${lead} · ${detail}` : lead}
             </span>
             <span className="line-clamp-2 font-heading text-lg font-semibold tracking-tight">
               {/* the book's own root page (empty pageSlug; its stored title is the untranslated book title) is

@@ -6,7 +6,7 @@ import { itemDateLabel, itemDraftFromEntry, itemSourceLabel, itemTypeForEntry, n
 
 describe('itemSourceLabel', () => {
   it('names a handbook "Sổ tay", a link by its host, and keeps free text', () => {
-    expect(itemSourceLabel('/docs/kinh-doanh/handbook-01/', tVi)).toBe('Sổ tay');
+    expect(itemSourceLabel('/docs/kinh-doanh/bread-notes/', tVi)).toBe('Sổ tay');
     expect(itemSourceLabel('https://www.goodreads.com/book/show/1', tVi)).toBe('goodreads.com');
     expect(itemSourceLabel('HTTP://Example.com/x', tVi)).toBe('example.com');
     expect(itemSourceLabel('James Clear', tVi)).toBe('James Clear');

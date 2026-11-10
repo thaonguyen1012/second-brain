@@ -94,7 +94,7 @@ so the near pairs that remain are listed under the palette, not hidden.
   its sidebar row's lucide icon in the ink colour, without a tile (§5); every area page sits on the same neutral band
   (§9a); a Hôm nay tile heading's icon and a first-run empty panel's glyph are `muted-foreground`. The `--area-<key>`
   hues live on only as the handbook group hues below (and inside Stageshow pictures); `AreaKey` in `lib/app-nav.ts`
-  still groups the rows. Pages outside the six areas (Inbox, capture, Giới thiệu, Hướng dẫn, personal page) get no title
+  still groups the rows. Pages outside the six areas (Inbox, capture, Giới thiệu, Hướng dẫn) get no title
   icon; the Inbox's colour stays the `warning` tone of its count.
 - **Group colours** (`--track-<slug>`; `trackFill` in `lib/track-colors.ts`): a Sổ tay group wears
   the hue of the area its handbooks feed, so the hue keeps one meaning: Kinh doanh -> Cơ hội (orange: business
@@ -260,7 +260,7 @@ so the near pairs that remain are listed under the palette, not hidden.
 
 - **Buttons** (`components/ui/button`): `default` (filled blue) = the one primary action per view region (page
   toolbar, dialog footer, empty state). One exception: "Học ngay" on every Sổ tay book card is filled (owner,
-  03/11/2026, knowing it puts 15 blue buttons on that page); its "Liên kết" stays ghost. `outline` = secondary
+  03/11/2026, knowing it puts one blue button per book on that page); its "Liên kết" stays ghost. `outline` = secondary
   actions, at most 2-3 visible together; `ghost` =
   toolbar, row and icon actions; `link` = inline navigation, blue (`text-primary`, set once in the variant;
   a deliberately quiet jump-link row may override it with `text-muted-foreground`); `destructive-outline`/`DeleteButton` = delete
@@ -485,7 +485,7 @@ second note the same day), and empty pages show what they will become. Where thi
 wins.
 
 - **Header band.** An area page's `PageHeader` sits on a full-bleed `bg-well` band with `border-b`, the same on every
-  area (no hue per area, §4). Hôm nay, Inbox, capture, Giới thiệu, Hướng dẫn and personal page have none.
+  area (no hue per area, §4). Hôm nay, Inbox, capture, Giới thiệu and Hướng dẫn have none.
 - **Well.** The second container type: `rounded-xl bg-well`, no border, only for secondary, passive regions (Hôm
   nay rail tiles, the right slot of a first-run empty panel, help rails). Never inside a card, and no card inside a
   well, except a board's lanes (§6 "Board"): the lane is the grey ground the white cards are moved across, so the

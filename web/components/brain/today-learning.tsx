@@ -351,6 +351,7 @@ export interface RoadmapStep {
 /**
  * "Tiếp theo trong lộ trình": three rows from the current phase on, the first phase whose handbooks are not all
  * done. The track follows the last visited book: an IT book shows the IT stages, anything else the business phases.
+ * The page renders it only when the roadmap file has a phase or a stage (app/[lang]/(home)/page.tsx).
  */
 export function TodayRoadmap({
   books,
@@ -366,7 +367,9 @@ export function TodayRoadmap({
   const t = useT();
   const { done, lastVisited: last, loaded } = useProgress();
   const bySlug = new Map(books.map((b) => [b.slug, b]));
-  const steps = (last && bySlug.get(last.bookSlug)?.track) === 'it' ? it : business;
+  // A roadmap may have only one of the two timelines: the other one then stands for both
+  const wantsIt = (last && bySlug.get(last.bookSlug)?.track) === 'it';
+  const steps = (wantsIt && it.length > 0) || business.length === 0 ? it : business;
   const sums = (slugs: string[]) => {
     let n = 0;
     let total = 0;

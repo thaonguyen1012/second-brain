@@ -1,40 +1,59 @@
 #!/usr/bin/env node
-// Make attachment links (/files/<book>/<name>) work: clone each referenced file from
-// raw/tai-lieu-so-tay-N/ into web/public/files/<book>/ with `cp -c` (APFS clone, no extra disk).
-// public/files/ is gitignored; in production /files/ is served separately behind login.
+// Make attachment links (/files/<book>/<name>) work on a dev machine: copy every file a handbook's markdown links
+// to from a folder of attachments into web/public/files/<book>/ (gitignored; in production /files/ is served
+// separately, behind the login).
+//
+//   node web/scripts/prepare-assets.mjs <book-slug> <folder> [<book-slug> <folder> ...]
+//
+// A linked file is looked up in the folder (and its subfolders) by its exact name, then by its GitBook asset id:
+// the importer writes attachment names as <course>__<id>__<file>, an export folder holds them as <id>__<file>.
+// Copies are clones where the file system supports them (APFS, btrfs, XFS), so they take no extra disk.
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { WEB_DIR, CONTENT_DIR } from './lib/book-import.mjs';
 
-const RAW = path.resolve(WEB_DIR, '../raw');
-const SOURCES = {
-  'handbook-01': 'tai-lieu-so-tay-1',
-  'handbook-02': 'tai-lieu-so-tay-2',
-  'handbook-03': 'tai-lieu-so-tay-3',
-  'handbook-04': 'tai-lieu-so-tay-4',
-  'handbook-05': 'tai-lieu-so-tay-5',
-};
+const args = process.argv.slice(2);
+if (args.length === 0 || args.length % 2 !== 0) {
+  console.error('Usage: prepare-assets.mjs <book-slug> <folder> [<book-slug> <folder> ...]');
+  process.exit(1);
+}
 
 function index(dir) {
+  const byName = new Map();
   const byId = new Map();
   (function walk(d) {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) walk(p);
-      else if (e.name.includes('__')) byId.set(e.name.split('__')[0], p);
+      else {
+        byName.set(e.name, p);
+        if (e.name.includes('__')) byId.set(e.name.split('__')[0], p);
+      }
     }
   })(dir);
-  return byId;
+  return { byName, byId };
 }
 
 let copied = 0;
 let present = 0;
 const missing = [];
-for (const [book, folder] of Object.entries(SOURCES)) {
-  const bookDir = fs.readdirSync(CONTENT_DIR).map((t) => path.join(CONTENT_DIR, t, book)).find((d) => fs.existsSync(d));
-  if (!bookDir || !fs.existsSync(path.join(RAW, folder))) continue;
-  const byId = index(path.join(RAW, folder));
+for (let i = 0; i < args.length; i += 2) {
+  const book = args[i];
+  const folder = path.resolve(args[i + 1]);
+  const bookDir = fs
+    .readdirSync(CONTENT_DIR, { withFileTypes: true })
+    .filter((t) => t.isDirectory())
+    .map((t) => path.join(CONTENT_DIR, t.name, book))
+    .find((d) => fs.existsSync(d));
+  if (!bookDir) {
+    console.error(`${book}: no such handbook under ${CONTENT_DIR}`);
+    process.exit(1);
+  }
+  if (!fs.existsSync(folder)) {
+    console.error(`${folder}: no such folder`);
+    process.exit(1);
+  }
+  const { byName, byId } = index(folder);
   const names = new Set();
   (function walk(d) {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -53,15 +72,14 @@ for (const [book, folder] of Object.entries(SOURCES)) {
       present++;
       continue;
     }
-    // GitBook asset name: <course>__<id>__<file>
-    const src = byId.get(name.split('__')[1]);
+    const src = byName.get(name) ?? byId.get(name.split('__')[1]);
     if (!src) {
       missing.push(`${book}/${name}`);
       continue;
     }
-    execFileSync('cp', ['-c', src, dest]);
+    fs.copyFileSync(src, dest, fs.constants.COPYFILE_FICLONE);
     copied++;
   }
 }
-console.log(`attachments: ${copied} cloned, ${present} already present, ${missing.length} missing`);
+console.log(`attachments: ${copied} copied, ${present} already present, ${missing.length} missing`);
 for (const m of missing) console.log(`  missing: ${m}`);

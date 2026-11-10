@@ -19,7 +19,9 @@ function flatten(node: TreeNode): { name: string; url: string }[] {
 const withSlash = (url: string) => (url.endsWith('/') ? url : `${url}/`);
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// Runs on the first handbook of the registry, whichever it is (a clone ships with the sample handbook).
 test('a lesson page renders its headings and prev/next links within the book', async ({ page, request }) => {
+  test.skip(books.length === 0, 'no handbook is imported');
   const book = books[0];
   const tree = await request.get(`/trees/${book.slug}`);
   expect(tree.ok()).toBe(true);

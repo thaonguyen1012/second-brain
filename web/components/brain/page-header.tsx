@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 /**
  * Pages that sit on the header band (DESIGN.md §9a): the five areas with sidebar groups. Owner 07/11/2026: one
  * neutral band (the well) for all of them, no colour per area. Hôm nay has none (it gathers every area), nor do pages
- * without a row (Inbox, capture, Giới thiệu, Hướng dẫn, personal page).
+ * without a row (Inbox, capture, Giới thiệu, Hướng dẫn).
  */
 const banded: ReadonlySet<AreaKey> = new Set(['week', 'growth', 'library', 'opportunity', 'work']);
 

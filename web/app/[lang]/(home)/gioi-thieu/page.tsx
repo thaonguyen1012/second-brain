@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { ArrowDown, CircleAlert } from 'lucide-react';
-import { books } from '@/lib/books';
 import { getT } from '@/lib/i18n/server';
 import type { T } from '@/lib/i18n/translate';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -102,17 +101,22 @@ function Arrow({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * The case study tells the story of the author's own instance as it was on 02/11/2026: these are its numbers, not
+ * a count of the handbooks imported here (a clone ships with one sample handbook).
+ */
+const CASE_BOOKS = 15;
+const CASE_LESSONS = 4746;
+
 export default async function IntroPage() {
   const t = await getT();
-  const lessons = books.reduce((n, b) => n + b.lessonCount, 0);
 
   return (
     <div className="intro-page flex w-full flex-col">
       <PageHeader
         title="Alex's Brain"
         description={t(
-          'Một nơi duy nhất cho việc học, công việc và phát triển bản thân: {books} sổ tay với {lessons} bài học, một inbox, kế hoạch và nhìn lại mỗi tuần, cơ hội kinh doanh có bằng chứng, kỹ năng tự mờ theo thời gian và bản tin sáng. Tự host, đăng nhập mới vào được, dữ liệu là của Alex.',
-          { books: books.length, lessons: t.num(lessons) },
+          'Một nơi duy nhất cho việc học, công việc và phát triển bản thân: sổ tay học tập có tiến độ từng bài, một inbox, kế hoạch và nhìn lại mỗi tuần, cơ hội kinh doanh có bằng chứng, kỹ năng tự mờ theo thời gian và bản tin sáng. Tự host, đăng nhập mới vào được, dữ liệu là của bạn.',
         )}
       >
         <div className="intro-noprint flex flex-wrap gap-2">
@@ -202,8 +206,8 @@ export default async function IntroPage() {
         <CaseSection id="cs-boi-canh" title={t('Bối cảnh')}>
           <p className={p}>
             {t(
-              'Alex là người dùng duy nhất của app. Tài liệu học là {books} sổ tay từ các khóa Coursera và F8, ở dạng file HTML và markdown xuất từ GitBook. Việc học, dự án cho khách, tin tức và ý tưởng kinh doanh nằm ở nhiều nơi khác nhau.',
-              { books: books.length },
+              'Tài liệu học của Alex là {books} sổ tay ghi chú từ các khóa Coursera và F8, ở dạng file HTML và markdown xuất từ GitBook. Việc học, dự án cho khách, tin tức và ý tưởng kinh doanh nằm ở nhiều nơi khác nhau.',
+              { books: CASE_BOOKS },
             )}
           </p>
           <Todo t={t}>{t('Vai trò của Alex trong dự án (ý tưởng, quyết định, review), số giờ đã bỏ ra.')}</Todo>
@@ -347,10 +351,10 @@ export default async function IntroPage() {
           <p className={p}>{t('Những gì đang có (02/11/2026), chạy trên máy dev:')}</p>
           <ul className={list}>
             <li>
-              {t('{books} sổ tay, {lessons} bài học trên một site có tìm kiếm toàn văn; tiến độ học lưu qua API.', {
-                books: books.length,
-                lessons: t.num(lessons),
-              })}
+              {t(
+                '{books} sổ tay, {lessons} bài học trên một site có tìm kiếm toàn văn; tiến độ học lưu qua API. Bản mã nguồn công khai kèm một sổ tay mẫu thay cho các sổ tay đó.',
+                { books: CASE_BOOKS, lessons: t.num(CASE_LESSONS) },
+              )}
             </li>
             <li>
               {t(

@@ -17,10 +17,12 @@ test('the language switch turns the app English and back, lesson pages included'
   await expect(page.getByRole('navigation', { name: 'Menu' }).getByRole('link', { name: /^Today/ })).toBeVisible();
   expect((await context.cookies()).find((c) => c.name === 'lang')?.value).toBe('en');
 
-  // A lesson keeps its Vietnamese content but its frame speaks English.
-  await page.goto(`/docs/${books[0].track}/${books[0].slug}/`);
-  await expect(html).toHaveAttribute('lang', 'en');
-  await expect(page.getByText(/min read/).first()).toBeVisible();
+  // A lesson keeps its own content but its frame speaks English (skipped while no handbook is imported).
+  if (books.length > 0) {
+    await page.goto(`/docs/${books[0].track}/${books[0].slug}/`);
+    await expect(html).toHaveAttribute('lang', 'en');
+    await expect(page.getByText(/min read/).first()).toBeVisible();
+  }
 
   await page.goto('/tuan/');
   await page.waitForLoadState('networkidle');

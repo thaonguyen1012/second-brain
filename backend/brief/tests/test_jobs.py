@@ -288,7 +288,7 @@ def test_run_jobs_calls_the_scheduler(owner: User, monkeypatch: pytest.MonkeyPat
 
 def test_prompts_have_a_version() -> None:
     for prompt in (tagging.tag_prompt(), tagging.intro_prompt()):
-        assert prompt.version == "1" and "never" in prompt.system and "{" not in prompt.system
+        assert prompt.version == "2" and "never" in prompt.system and "{" not in prompt.system
 
 
 def test_brief_sources_command() -> None:

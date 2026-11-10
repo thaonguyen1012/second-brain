@@ -43,7 +43,7 @@ and LLM output are not translated.
 
 Then add the English to the area file (`common.ts` for words that several areas share, `shell.ts`, `today.ts`,
 `inbox.ts`, `library.ts`, `week.ts`, `work.ts`, `opportunities.ts`, `growth.ts`, `about.ts` for the text of
-/gioi-thieu/, /huong-dan/ and /personal/, `intro.ts` for the intro pictures only, `guides.ts`): the key is the Vietnamese
+/gioi-thieu/ and /huong-dan/, `intro.ts` for the intro pictures only, `guides.ts`): the key is the Vietnamese
 exactly as in the code, including its punctuation. One key lives in one file.
 
 `lib/i18n/coverage.test.ts` (part of `make check`) fails on Vietnamese shown without `t()`, a key without English, an

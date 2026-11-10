@@ -21,13 +21,13 @@ import { BookProgress } from './progress';
 import type { T } from '@/lib/i18n/translate';
 
 const searchUrl = (title: string) => `https://www.coursera.org/search?query=${encodeURIComponent(title)}`;
-const linkOf = (c: CourseLink) => c.url ?? searchUrl(c.title);
+/** A program's page; without an exact URL, a search on its site when that site is Coursera, else no link. */
+const linkOf = (c: CourseLink) => c.url ?? (c.provider === 'Coursera' ? searchUrl(c.title) : null);
 
-/** The source line under the title: "Coursera · 4 khóa", or "F8" for the F8 book, which lists no programs. */
+/** The source line under the title: "Coursera · 4 khóa"; none for a book that lists no programs. */
 function sourceOf(book: Book, t: T): string | null {
   const links = book.courseraUrls;
-  if (links.length > 0) return t('{provider} · {n} khóa', { provider: links[0].provider, n: links.length });
-  return /\bF8\b/.test(book.title) ? 'F8' : null;
+  return links.length > 0 ? t('{provider} · {n} khóa', { provider: links[0].provider, n: links.length }) : null;
 }
 
 /**
@@ -35,7 +35,7 @@ function sourceOf(book: Book, t: T): string | null {
  * the card keeps one action row (DESIGN.md D22). `icon`: the ghost ⋯ of the phone card, with its tooltip (D21).
  */
 function BookLinks({ book, t, icon = false, className }: { book: Book; t: T; icon?: boolean; className?: string }) {
-  const links = book.courseraUrls;
+  const links = book.courseraUrls.filter((c) => linkOf(c));
   if (links.length === 0 && !book.originalHtml) return null;
   const label = t('Liên kết khác của {title}', { title: t(book.title) });
   const popup = (
@@ -43,12 +43,16 @@ function BookLinks({ book, t, icon = false, className }: { book: Book; t: T; ico
       {links.length > 0 && (
         <MenuGroup>
           <MenuGroupLabel>{t('Khóa học gốc · {provider}', { provider: links[0].provider })}</MenuGroupLabel>
-          {links.map((c) => (
-            <MenuLinkItem key={c.title} render={<a href={linkOf(c)} target="_blank" rel="noreferrer" />}>
-              <span className="flex-1">{c.title}</span>
-              {!c.url && <span className="shrink-0 text-xs text-muted-foreground">{t('tìm kiếm')}</span>}
-            </MenuLinkItem>
-          ))}
+          {links.flatMap((c) => {
+            const href = linkOf(c);
+            if (!href) return [];
+            return [
+              <MenuLinkItem key={c.title} render={<a href={href} target="_blank" rel="noreferrer" />}>
+                <span className="flex-1">{c.title}</span>
+                {!c.url && <span className="shrink-0 text-xs text-muted-foreground">{t('tìm kiếm')}</span>}
+              </MenuLinkItem>,
+            ];
+          })}
         </MenuGroup>
       )}
       {links.length > 0 && book.originalHtml && <MenuSeparator />}
@@ -90,7 +94,7 @@ function BookLinks({ book, t, icon = false, className }: { book: Book; t: T; ico
 /**
  * Book card (DESIGN.md §9a): the illustrated cover as a full-bleed 16:7 band (its name printed on it), the title as
  * the link to the book, the source and the description, progress in the group colour, one action row. The button is
- * filled on every card: the owner's call (03/11/2026), made knowing it puts 15 blue buttons on the page (§6, D2).
+ * filled on every card: a deliberate choice, made knowing it puts one blue button per book on the page (§6, D2).
  * Below sm the card turns horizontal to keep the page short: the cover becomes a flush left column the card's height
  * (its subject, no name), source and description go, and the button, with "Liên kết" as a ⋯ after it, sits beside
  * the progress.
@@ -103,8 +107,8 @@ export function BookCard({ book, t }: { book: Book; t: T }) {
       render={<article />}
       className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-0 overflow-hidden border p-0 sm:flex sm:flex-col"
     >
-      <BookCover slug={book.slug} title={title} variant="thumb" className="sm:hidden" />
-      <BookCover slug={book.slug} title={title} variant="band" className="max-sm:hidden" />
+      <BookCover cover={book.cover} title={title} variant="thumb" className="sm:hidden" />
+      <BookCover cover={book.cover} title={title} variant="band" className="max-sm:hidden" />
       <div className="flex min-w-0 flex-col gap-1 p-3 sm:flex-1 sm:gap-4 sm:p-4">
         <div className="flex flex-col gap-1">
           {/* The clamp sits on the link: on the h3 its overflow would cut the link's focus ring. */}
