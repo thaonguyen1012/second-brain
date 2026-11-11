@@ -206,4 +206,7 @@ LOGGING = {
     "formatters": {"json": {"()": "config.logging.JsonFormatter"}},
     "handlers": {"stdout": {"class": "logging.StreamHandler", "formatter": "json"}},
     "root": {"handlers": ["stdout"], "level": env.str("LOG_LEVEL", default="INFO")},
+    # httpx logs every request's full URL at INFO (query strings, tokens); safe_fetch logs host and IP itself
+    # (security audit S-01).
+    "loggers": {name: {"level": "WARNING"} for name in ("httpx", "httpcore")},
 }

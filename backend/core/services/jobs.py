@@ -2,11 +2,15 @@
 used by run_jobs."""
 
 import logging
-from collections.abc import Callable
+import signal
+import threading
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Any
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from core.models import Job
@@ -16,11 +20,37 @@ logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 3
 RETRY_DELAY = timedelta(minutes=10)
 STALE_AFTER = timedelta(minutes=30)  # a RUNNING job this old was interrupted (crash, kill)
+# Wall-clock limit of one job (security audit S-03): a fetch has its own 10 s deadline, a feeds run fetches
+# each source in turn; this is the backstop for anything else that hangs, so one job never holds the queue.
+JOB_TIME_LIMIT = 600
 
 Handler = Callable[[dict[str, Any]], None]
 Scheduler = Callable[[datetime], None]
 _handlers: dict[str, Handler] = {}
 _schedulers: list[Scheduler] = []
+
+
+class JobTimeout(Exception):
+    """The job ran past JOB_TIME_LIMIT; counted as a failed attempt."""
+
+
+@contextmanager
+def _time_limit(seconds: int) -> Iterator[None]:
+    """SIGALRM-based limit, in the main thread of a Unix process only (run_jobs); elsewhere no limit."""
+    if not hasattr(signal, "SIGALRM") or threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def expire(signum: int, frame: object) -> None:
+        raise JobTimeout(f"ran longer than {seconds} s")
+
+    previous = signal.signal(signal.SIGALRM, expire)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, previous)
 
 
 class RetryLater(Exception):
@@ -69,9 +99,18 @@ def _claim(skip_kinds: set[str], kinds: set[str] | None) -> Job | None:
 
 
 def run_pending(limit: int = 100, kinds: set[str] | None = None) -> dict[str, int]:
-    """Run due jobs one by one; returns counts by outcome."""
-    Job.objects.filter(status=Job.Status.RUNNING, updated_at__lt=timezone.now() - STALE_AFTER).update(
-        status=Job.Status.PENDING
+    """Run due jobs one by one; returns counts by outcome. A job left RUNNING by a killed process counts as a
+    failed attempt (S-03), so a job that kills its runner every time ends FAILED instead of looping."""
+    stale = Job.objects.filter(status=Job.Status.RUNNING, updated_at__lt=timezone.now() - STALE_AFTER)
+    stale.filter(attempts__gte=MAX_ATTEMPTS - 1).update(
+        status=Job.Status.FAILED,
+        attempts=F("attempts") + 1,
+        last_error="interrupted (process killed or hung)",
+    )
+    stale.update(
+        status=Job.Status.PENDING,
+        attempts=F("attempts") + 1,
+        last_error="interrupted (process killed or hung)",
     )
     counts = {"done": 0, "retry": 0, "deferred": 0, "failed": 0}
     deferred: set[str] = set()
@@ -92,7 +131,8 @@ def _run(job: Job) -> str:
         if fn is None:
             raise LookupError(f"no handler for job kind {job.kind!r}")
         logger.info("job start", extra={"job": job.key})
-        fn(job.payload)
+        with _time_limit(JOB_TIME_LIMIT):
+            fn(job.payload)
     except RetryLater as exc:
         logger.warning("job deferred", extra={"job": job.key, "reason": str(exc)})
         job.status, job.last_error = Job.Status.PENDING, str(exc)[:500]

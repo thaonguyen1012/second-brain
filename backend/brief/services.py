@@ -138,8 +138,16 @@ def queue_tagging(item: NewsItem, now: dt.datetime) -> bool:
 
 @jobs.handler(FEEDS_JOB)
 def fetch_feeds(payload: dict[str, Any]) -> None:
+    """Every active source in turn; one source that fails in an unexpected way is logged and marked, and the
+    others still run (security audit S-14)."""
     for source in Source.objects.filter(active=True).order_by("id"):
-        fetch_source(source)
+        try:
+            fetch_source(source)
+        except Exception as exc:
+            logger.exception("feed crashed", extra={"source": source.pk})
+            source.last_error = f"{type(exc).__name__}: {exc}"[:500]
+            source.last_fetched_at = timezone.now()
+            source.save(update_fields=["last_error", "last_fetched_at", "updated_at"])
 
 
 # --- Brief -------------------------------------------------------------------------------------------

@@ -47,13 +47,7 @@ def to_webp(data: bytes, sizes: tuple[int, ...] = SIZES) -> bytes:
                 source.draft("RGB", (largest, largest))  # JPEG: decode at reduced scale
                 source.thumbnail((largest, largest))  # shrink before any full-size copy
                 image = ImageOps.exif_transpose(source).convert("RGBA")
-    except (
-        OSError,
-        ValueError,
-        SyntaxError,
-        Image.DecompressionBombError,
-        Image.DecompressionBombWarning,
-    ) as exc:
+    except Exception as exc:  # third-party bytes: Pillow raises many types (struct.error on bad EXIF, S-06)
         raise ThumbnailError(f"cannot decode image: {type(exc).__name__}") from exc
     for size in sizes:
         frame = image.copy()

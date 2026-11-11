@@ -335,3 +335,27 @@ def test_eval_command_brief(fake: Fake, settings: Any, tmp_path: Any) -> None:
             call_command("eval", "brief", stdout=io.StringIO())
     finally:
         tagging.tag_prompt.cache_clear()
+
+
+@pytest.mark.django_db
+def test_one_crashing_source_does_not_stop_the_others(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Security audit S-14: an unexpected error in one feed is logged on that source; the next one runs."""
+    from brief import services
+    from brief.models import Area, Source
+
+    user = User.objects.create(username="feeds-owner")
+    bad = Source.objects.create(user=user, name="bad", feed_url="https://bad.test/feed", area=Area.AI)
+    good = Source.objects.create(user=user, name="good", feed_url="https://good.test/feed", area=Area.AI)
+    seen: list[int] = []
+
+    def fake(source: Source) -> int:
+        seen.append(source.pk)
+        if source.pk == bad.pk:
+            raise LookupError("unknown encoding: nonsense")
+        return 0
+
+    monkeypatch.setattr(services, "fetch_source", fake)
+    services.fetch_feeds({})
+    assert seen == [bad.pk, good.pk]
+    bad.refresh_from_db()
+    assert bad.last_error.startswith("LookupError")

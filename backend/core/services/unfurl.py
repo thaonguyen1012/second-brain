@@ -1,6 +1,12 @@
 """OpenGraph card data for a link (DECISIONS 10.7): og:title, og:description, og:site_name, og:image,
-falling back to <title> and meta description. Stored values are plain text cleaned by nh3."""
+falling back to <title> and meta description. Stored values are plain text cleaned by nh3.
 
+The page is third-party input (security audit S-07, S-08): only the charsets browsers use are decoded
+(punycode or idna from a Content-Type header would be slow or raise), each value is cut before nh3 sees it,
+and a malformed character reference ends as an empty field, never as an exception."""
+
+import codecs
+import contextlib
 import html
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -14,6 +20,35 @@ from core.services import safe_fetch
 MAX_TITLE = 500
 MAX_DESCRIPTION = 2000
 MAX_SITE = 200
+# What nh3 and the entity decoder get of a raw value: a small multiple of the longest field (tags and
+# entities shrink when stripped). nh3 is superlinear in nesting depth, so the 2 MiB page cap is too much.
+MAX_RAW = 4 * MAX_DESCRIPTION
+# Codec names (codecs.lookup(...).name) of the charsets a page may declare; anything else reads as UTF-8.
+CHARSETS = frozenset(
+    {
+        "utf-8",
+        "utf-8-sig",
+        "ascii",
+        "latin-1",
+        "koi8-r",
+        "koi8-u",
+        "shift_jis",
+        "euc_jp",
+        "iso2022_jp",
+        "gb2312",
+        "gbk",
+        "gb18030",
+        "big5",
+        "euc_kr",
+        "cp949",
+        "cp874",
+        "utf-16",
+        "utf-16-le",
+        "utf-16-be",
+    }
+    | {f"iso8859-{n}" for n in range(2, 17)}
+    | {f"cp125{n}" for n in range(9)}
+)
 
 
 @dataclass(frozen=True)
@@ -52,13 +87,18 @@ class _MetaParser(HTMLParser):
 
 def plain_text(value: str, limit: int) -> str:
     """Strip every tag (nh3), decode entities, collapse whitespace. The result is text, escaped at render."""
-    text = html.unescape(nh3.clean(value, tags=set()))
+    try:
+        text = html.unescape(nh3.clean(value[:MAX_RAW], tags=set()))
+    except ValueError:  # a character reference too long to convert
+        return ""
     return " ".join(text.split())[:limit]
 
 
 def parse(page: safe_fetch.Fetched) -> Card:
     parser = _MetaParser()
-    parser.feed(page.body.decode(_charset(page), errors="replace"))
+    # a malformed character reference raises ValueError: keep what was read before it
+    with contextlib.suppress(ValueError):
+        parser.feed(page.body.decode(_charset(page), errors="replace"))
     meta = parser.meta
     image = meta.get("og:image") or meta.get("og:image:url") or meta.get("twitter:image") or ""
     try:
@@ -77,12 +117,11 @@ def parse(page: safe_fetch.Fetched) -> Card:
 
 
 def _charset(page: safe_fetch.Fetched) -> str:
-    candidate = (page.charset or "utf-8").lower()
     try:
-        "".encode(candidate)
-    except LookupError:
+        name = codecs.lookup((page.charset or "utf-8").strip()).name
+    except (LookupError, ValueError):
         return "utf-8"
-    return candidate
+    return name if name in CHARSETS else "utf-8"
 
 
 def unfurl(url: str) -> Card:

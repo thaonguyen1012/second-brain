@@ -104,8 +104,9 @@ def parse(body: bytes, base_url: str) -> list[Entry]:
     try:
         scan.Parse(body, True)
         root = ET.fromstring(body)  # noqa: S314  no DOCTYPE or ENTITY declaration got this far
-    except (expat.ExpatError, ET.ParseError) as exc:
-        raise FeedError(f"malformed XML: {exc}") from exc
+    except (expat.ExpatError, ET.ParseError, ValueError, LookupError, UnicodeError) as exc:
+        # an unknown or multi-byte XML encoding raises ValueError/LookupError (security audit S-14)
+        raise FeedError(f"malformed XML: {type(exc).__name__}: {exc}") from exc
     if _local(root.tag) not in ("rss", "rdf", "feed"):
         raise FeedError(f"not a feed: <{_local(root.tag)}>")
     entries: list[Entry] = []
