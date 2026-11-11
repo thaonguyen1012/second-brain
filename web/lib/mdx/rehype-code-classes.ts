@@ -12,6 +12,13 @@ interface AnyNode {
   children?: AnyNode[];
 }
 
+/**
+ * Only Shiki's own declarations are lifted into the page's stylesheet (security audit P-02): its colour variables with
+ * a hex value. Anything else, also a content style that merely contains `--shiki`, is left where it is (and
+ * rehype-safe-html has already dropped custom properties from content).
+ */
+export const SHIKI_STYLE = /^\s*(--shiki-(light|dark)(-bg|-font-style|-font-weight|-text-decoration)?\s*:\s*(#[0-9a-fA-F]{3,8}|italic|bold|normal|underline|none|inherit)\s*;?\s*)+$/;
+
 const className = (style: string) => `sk-${createHash('md5').update(style).digest('hex').slice(0, 7)}`;
 
 export function rehypeCodeClasses() {
@@ -20,7 +27,7 @@ export function rehypeCodeClasses() {
     const visit = (node: AnyNode) => {
       // hast elements (token spans)
       const style = node.properties?.style;
-      if (node.type === 'element' && typeof style === 'string' && style.includes('--shiki')) {
+      if (node.type === 'element' && typeof style === 'string' && SHIKI_STYLE.test(style)) {
         const name = className(style);
         rules.set(name, style);
         delete node.properties!.style;
@@ -30,7 +37,7 @@ export function rehypeCodeClasses() {
       // MDX JSX wrappers (Fumadocs code block) carry the pre background as a style attribute
       if (node.type.startsWith('mdxJsx') && node.attributes) {
         const attr = node.attributes.find((a) => a.type === 'mdxJsxAttribute' && a.name === 'style');
-        if (attr && typeof attr.value === 'string' && attr.value.includes('--shiki')) {
+        if (attr && typeof attr.value === 'string' && SHIKI_STYLE.test(attr.value)) {
           const name = className(attr.value);
           rules.set(name, attr.value);
           node.attributes = node.attributes.filter((a) => a !== attr);

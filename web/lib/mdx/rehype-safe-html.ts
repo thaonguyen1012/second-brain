@@ -3,7 +3,10 @@
 //   signed Coursera URLs that have expired), with the alt text and a link to the lesson on Coursera,
 // - iframes/video/audio/embeds become a plain link,
 // - unknown or unsafe raw HTML tags are shown as literal text (content often mentions tags like <script>),
-// - event-handler attributes and javascript: URLs are dropped.
+// - event-handler attributes and javascript: URLs are dropped, inline styles keep only a few layout and text
+//   properties (no url(), no custom properties: a `--shiki` style would be lifted into the page's stylesheet),
+// - every node with children is walked, also the MDX Callouts of `:::` blocks and raw <pre>/<code> (security audit
+//   P-01): this runs before Shiki, so a markdown code block is only pre > code > text here and its text is untouched.
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Element, ElementContent, Root, Text } from 'hast';
@@ -113,32 +116,69 @@ function literal(node: Element, file: VFile): Text {
   return text(`<${node.tagName}>`);
 }
 
+/** Inline style properties content may keep (handbooks use them for widths, colours and alignment). */
+const STYLE_PROPS = new Set(
+  (
+    'color background-color text-align font-weight font-style font-size text-decoration vertical-align width ' +
+    'max-width min-width height max-height border border-radius margin-left margin-right display gap float'
+  ).split(' '),
+);
+
+/** The declarations of `style` whose property is allowed and whose value cannot fetch or escape: or null. */
+export function safeStyle(style: string): string | null {
+  const kept = style
+    .split(';')
+    .map((d) => d.trim())
+    .filter((d) => {
+      const i = d.indexOf(':');
+      if (i < 1) return false;
+      const prop = d.slice(0, i).trim().toLowerCase();
+      const value = d.slice(i + 1).trim().toLowerCase();
+      return STYLE_PROPS.has(prop) && value.length > 0 && !/url\(|expression|image|var\(|[\\@<>{}]|\/\*/.test(value);
+    });
+  return kept.length ? kept.join('; ') : null;
+}
+
 function clean(node: Element) {
   const props = node.properties ?? {};
   for (const key of Object.keys(props)) {
     if (/^on/i.test(key)) delete props[key];
     if ((key === 'href' || key === 'src') && /^\s*javascript:/i.test(String(props[key]))) delete props[key];
+    if (key === 'style') {
+      const style = safeStyle(String(props[key]));
+      if (style) props[key] = style;
+      else delete props[key];
+    }
   }
 }
+
+type Parent = { children: ElementContent[] | Root['children'] };
+const hasChildren = (node: unknown): node is Parent =>
+  typeof node === 'object' && node !== null && Array.isArray((node as Parent).children);
 
 /** `t`: the language of the placeholders' words (lib/content/compile.ts compiles once per language). */
 export function rehypeSafeHtml({ t = tVi }: { t?: T } = {}) {
   return (tree: Root, file: VFile) => {
-    const visit = (parent: Root | Element) => {
-      parent.children = parent.children.map((child) => {
-        if (child.type !== 'element') return child;
-        // local images (backfilled into public/img/) are kept, everything else becomes a placeholder
-        if (child.tagName === 'img' && String(child.properties?.src ?? '').startsWith('/img/')) {
-          child.properties = { src: child.properties.src, alt: child.properties.alt ?? '', loading: 'lazy' };
-          return child;
+    const visit = (parent: Parent) => {
+      parent.children = (parent.children as unknown[]).map((child) => {
+        if (typeof child !== 'object' || child === null) return child;
+        const node = child as Element;
+        if (node.type !== 'element') {
+          // MDX nodes (a `:::` Callout, mdxJsxTextElement) and anything else with children: clean what is inside
+          if (hasChildren(node)) visit(node);
+          return node;
         }
-        if (child.tagName === 'img') return imagePlaceholder(child, file, t);
-        if (EMBEDS.has(child.tagName)) return embedPlaceholder(child, t);
-        // <pre>/<code> come from markdown code blocks too; never touch their content
-        if (!ALLOWED.has(child.tagName)) return literal(child, file);
-        clean(child);
-        if (child.tagName !== 'pre' && child.tagName !== 'code') visit(child);
-        return child;
+        // local images (backfilled into public/img/) are kept, everything else becomes a placeholder
+        if (node.tagName === 'img' && String(node.properties?.src ?? '').startsWith('/img/')) {
+          node.properties = { src: node.properties.src, alt: node.properties.alt ?? '', loading: 'lazy' };
+          return node;
+        }
+        if (node.tagName === 'img') return imagePlaceholder(node, file, t);
+        if (EMBEDS.has(node.tagName)) return embedPlaceholder(node, t);
+        if (!ALLOWED.has(node.tagName)) return literal(node, file);
+        clean(node);
+        visit(node);
+        return node;
       }) as typeof parent.children;
     };
     visit(tree);

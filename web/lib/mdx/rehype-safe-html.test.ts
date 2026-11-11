@@ -72,10 +72,20 @@ describe('attributes', () => {
     expect(c.properties).toEqual({ href: '/docs/it/' });
   });
 
-  it('never touches the content of code blocks', () => {
-    const code = h('code', { className: ['language-html'] }, [h('script', {}, [t('x')])]);
-    const tree = run([h('pre', {}, [code])]);
-    expect(elements(tree).map((e) => e.tagName)).toEqual(['pre', 'code', 'script']);
+  it('keeps the text of code blocks and cleans elements inside them (security audit P-01)', () => {
+    // a markdown code block reaches this plugin as pre > code > text (before Shiki): its text is untouched
+    const fenced = run([h('pre', {}, [h('code', { className: ['language-html'] }, [t('<script>x</script>')])])]);
+    expect(elements(fenced).map((e) => e.tagName)).toEqual(['pre', 'code']);
+    expect(textOf(fenced)).toBe('<script>x</script>');
+    // a raw <script> element inside raw <pre><code> is shown as text, like anywhere else
+    const raw = run([h('pre', {}, [h('code', {}, [h('script', {}, [t('x')])])])]);
+    expect(elements(raw).map((e) => e.tagName)).toEqual(['pre', 'code']);
+  });
+
+  it('walks into MDX nodes with children (a ::: Callout)', () => {
+    const callout = { type: 'mdxJsxFlowElement', name: 'Callout', attributes: [], children: [h('script', {}, [t('x')])] };
+    const tree = run([callout as unknown as ElementContent]);
+    expect(elements(tree).some((e) => e.tagName === 'script')).toBe(false);
   });
 });
 
