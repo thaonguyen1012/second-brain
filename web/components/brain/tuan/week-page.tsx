@@ -87,9 +87,9 @@ interface WeekData {
 }
 
 /**
- * Current and future weeks are opened (created) on first view, as GET /plan does. A past week is only read:
- * GET /review answers 404 for a week that was never opened, and opening it is an explicit choice, so browsing
- * history never creates empty weeks (which would change what the next week offers to carry over).
+ * No GET creates a week (security audit P-04): GET /plan and GET /review answer an empty week (`id` null) for this
+ * week and later ones until the first write (an objective, the journal, a review answer) opens it. A past week that
+ * was never opened answers 404 on /review, so browsing history shows it as never opened.
  */
 async function loadWeek(start: string, create: boolean): Promise<WeekData> {
   if (!create) {
@@ -97,9 +97,8 @@ async function loadWeek(start: string, create: boolean): Promise<WeekData> {
     if (!review) return { start, plan: null, review: null };
     return { start, plan: await weeksApi.getPlan(start), review };
   }
-  // Both at once; GET /review answers 404 (null) only the first time, before GET /plan has opened the week.
   const [plan, review] = await Promise.all([weeksApi.getPlan(start), weeksApi.getReview(start)]);
-  return { start, plan, review: review ?? (await weeksApi.getReview(start)) };
+  return { start, plan, review };
 }
 
 /** Planning early in the week, review from Friday; past weeks open on the review. */

@@ -32,6 +32,11 @@ class Week(models.Model):
     def __str__(self) -> str:
         return f"Week of {self.start_date.isoformat()}"
 
+    @property
+    def objective_list(self) -> "list[Objective] | models.QuerySet[Objective]":
+        """The objectives; none for an unsaved week (weeks.services.find_week answers one to a GET)."""
+        return self.objectives.all() if self.pk else []
+
 
 class Objective(models.Model):
     """A weekly priority; 3-5 per week is a UI guideline, not a constraint."""

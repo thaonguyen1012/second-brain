@@ -66,6 +66,8 @@ export function planLayout(tree) {
   const used = new Set();
 
   function claim(p) {
+    // a `..` or empty segment in an export's paths would write outside the book folder (security audit S-22)
+    if (p.split('/').some((seg) => seg === '' || seg === '.' || seg === '..')) throw new Error(`Unsafe output path: ${p}`);
     if (used.has(p)) throw new Error(`Output path collision: ${p}`);
     used.add(p);
     return p;
@@ -228,6 +230,14 @@ export function writeBook({ pages, tree, track, slug, title, bookFrontmatter = {
   const bookDir = path.join(CONTENT_DIR, track, slug);
   if (fs.existsSync(bookDir)) throw new Error(`${bookDir} already exists, remove it first`);
 
+  const inside = (p) => {
+    const resolved = path.resolve(p);
+    if (!resolved.startsWith(path.resolve(bookDir) + path.sep)) throw new Error(`Refusing to write outside ${bookDir}: ${p}`);
+    return resolved;
+  };
+  for (const dir of folders.keys()) {
+    if (dir && dir.split('/').some((seg) => seg === '' || seg === '.' || seg === '..')) throw new Error(`Unsafe folder: ${dir}`);
+  }
   const base = `/docs/${track}/${slug}`;
   const urlBySrc = new Map(
     files.map((f) => [f.src, `${base}/${f.out.replace(/(^|\/)index\.md$/, '').replace(/\.md$/, '')}`.replace(/\/$/, '') + '/']),
@@ -257,7 +267,7 @@ export function writeBook({ pages, tree, track, slug, title, bookFrontmatter = {
       f.out === 'index.md'
         ? { title: title ?? h1 ?? f.title, ...bookFrontmatter }
         : { title: h1 ?? f.title };
-    const outPath = path.join(bookDir, f.out);
+    const outPath = inside(path.join(bookDir, f.out));
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, frontmatter(fm) + body);
     stats.pages++;
@@ -269,7 +279,7 @@ export function writeBook({ pages, tree, track, slug, title, bookFrontmatter = {
   for (const [dir, meta] of folders) {
     const data = dir === '' ? { title, root: true, pages: meta.pages } : { title: meta.title, pages: meta.pages };
     fs.mkdirSync(path.join(bookDir, dir), { recursive: true });
-    fs.writeFileSync(path.join(bookDir, dir, 'meta.json'), JSON.stringify(data, null, 2) + '\n');
+    fs.writeFileSync(inside(path.join(bookDir, dir, 'meta.json')), JSON.stringify(data, null, 2) + '\n');
   }
   stats.folders = folders.size;
   return stats;

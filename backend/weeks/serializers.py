@@ -37,7 +37,8 @@ class WeekSerializer(serializers.ModelSerializer[Week]):
     reviewChangedMind = serializers.CharField(source="review_changed_mind", read_only=True)
     reviewOpportunityEvidence = serializers.CharField(source="review_opportunity_evidence", read_only=True)
     reviewedAt = serializers.DateTimeField(source="reviewed_at", read_only=True, allow_null=True)
-    objectives = ObjectiveSerializer(many=True, read_only=True)
+    id = serializers.IntegerField(read_only=True, allow_null=True, help_text="null: a week never written to")
+    objectives = ObjectiveSerializer(many=True, read_only=True, source="objective_list")
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
     updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
 

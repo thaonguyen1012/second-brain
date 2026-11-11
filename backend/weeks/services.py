@@ -42,6 +42,17 @@ def current_start() -> dt.date:
     return monday_of(timezone.localdate())
 
 
+def find_week(user: User, start: dt.date) -> Week:
+    """The saved week, or an unsaved empty one (pk None) for a week never opened: what a GET answers, since
+    a GET never writes (security audit P-04: a cross-site navigation could create weeks and empty the
+    carry-over)."""
+    week = Week.objects.filter(user=user, start_date=start).prefetch_related("objectives").first()
+    if week is None:
+        now = timezone.now()
+        week = Week(user=user, start_date=start, created_at=now, updated_at=now)
+    return week
+
+
 def get_or_create_week(user: User, start: dt.date) -> Week:
     """`start` must be a Monday (the API checks it, the DB constraint enforces it)."""
     week, _ = Week.objects.get_or_create(user=user, start_date=start)
@@ -62,8 +73,10 @@ def carry_candidates(week: Week) -> list[dict[str, Any]]:
     previous = previous_week(week)
     if previous is None:
         return []
-    carried = set(
-        week.objectives.filter(carried_from__isnull=False).values_list("carried_from_id", flat=True)
+    carried = (
+        set(week.objectives.filter(carried_from__isnull=False).values_list("carried_from_id", flat=True))
+        if week.pk
+        else set()
     )
     return [
         {"id": o.pk, "title": o.title, "weekStart": previous.start_date, "carried": o.pk in carried}
@@ -172,7 +185,7 @@ def review(week: Week) -> dict[str, Any]:
     time = objective_time(user_id, week.pk, week.start_date)
     counts = dict.fromkeys(Objective.Status.values, 0)
     by_objective = []
-    for objective in week.objectives.all():
+    for objective in week.objective_list:
         counts[objective.status] += 1
         minutes = time["byObjective"].get(objective.pk, 0)
         by_objective.append({"id": objective.pk, "title": objective.title, "minutes": minutes})

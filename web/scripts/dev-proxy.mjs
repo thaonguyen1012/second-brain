@@ -10,6 +10,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import { parseArgs } from 'node:util';
+import { isLocalHost } from './lib/dev-host.mjs';
 
 const { values } = parseArgs({
   options: {
@@ -24,6 +25,11 @@ const DJANGO = /^\/(api\/(me|progress|schema|inbox|items|notes|weeks|projects|ti
 const upstreamFor = (url) => new URL(DJANGO.test(url ?? '') ? values.api : values.web);
 
 const server = http.createServer((req, res) => {
+  if (!isLocalHost(req.headers.host, values.port)) {
+    res.writeHead(421, { 'content-type': 'text/plain' });
+    res.end('misdirected request: open the app at http://localhost:' + values.port + '\n');
+    return;
+  }
   const target = upstreamFor(req.url);
   const upstream = http.request(
     {
@@ -47,6 +53,10 @@ const server = http.createServer((req, res) => {
 
 // WebSocket (Next's HMR): replay the upgrade request on a raw socket to the upstream, then pipe both ways.
 server.on('upgrade', (req, socket, head) => {
+  if (!isLocalHost(req.headers.host, values.port)) {
+    socket.end('HTTP/1.1 421 Misdirected Request\r\nConnection: close\r\n\r\n');
+    return;
+  }
   const target = upstreamFor(req.url);
   const upstream = net.connect(Number(target.port || 80), target.hostname, () => {
     const lines = [`${req.method} ${req.url} HTTP/${req.httpVersion}`];

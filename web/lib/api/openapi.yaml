@@ -2111,8 +2111,8 @@ paths:
   /api/weeks/{start}/plan:
     get:
       operationId: getWeekPlan
-      description: The week (created on first access) and the previous week's open
-        objectives.
+      description: The week (empty, `id` null, until it is first written to) and the
+        previous week's open objectives.
       parameters:
       - in: path
         name: start
@@ -2161,8 +2161,9 @@ paths:
   /api/weeks/{start}/review:
     get:
       operationId: getWeekReview
-      description: Objective progress and body of work per day; 404 for a week that
-        was never opened.
+      description: |-
+        Objective progress and body of work per day. A past week that was never opened answers 404; this week
+        and later ones answer even before they are written to (computed, nothing saved: a GET never writes).
       parameters:
       - in: path
         name: start
@@ -2211,7 +2212,8 @@ paths:
   /api/weeks/current:
     get:
       operationId: getCurrentWeek
-      description: This week (Europe/Prague), created empty on first access.
+      description: This week (Europe/Prague); an empty one with `id` null until it
+        is first written to.
       tags:
       - weeks
       security:
@@ -5381,6 +5383,8 @@ components:
         id:
           type: integer
           readOnly: true
+          nullable: true
+          description: null for a week never written to
         startDate:
           type: string
           format: date

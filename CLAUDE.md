@@ -53,6 +53,8 @@ web/
                                  no "Tiếp theo trong lộ trình" on Hôm nay
   app/[lang]/docs/[[...slug]]/   lesson pages (rendered on request, ISR cached, once per language)
   app/trees/[book]/route.ts      full sidebar tree JSON (lazy sidebar, R1)
+  proxy.ts                       answers unknown /docs/ paths 404 before they render (lib/content/known-path.ts:
+                                 they would be cached forever otherwise)
   app/api/search/route.ts        SQLite FTS5 search (lib/search/fts.ts)
   app/manifest.ts                PWA manifest (icons in public/icons/: icon.svg + PNGs from scripts/make-icons.mjs,
                                  share_target GET /inbox/them/); no service worker

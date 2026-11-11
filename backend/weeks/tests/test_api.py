@@ -25,14 +25,31 @@ def owner(client: Client) -> User:
     return User.objects.get(username="dev@localhost")
 
 
-def test_current_week_is_created_once(client: Client) -> None:
+def test_reading_a_week_never_creates_it(client: Client) -> None:
+    """Security audit P-04: a GET is what a cross-site navigation sends, so it must not write."""
     first = client.get("/api/weeks/current")
     assert first.status_code == 200
     data = first.json()
     today = timezone.localdate()
-    assert data["startDate"] == (today - dt.timedelta(days=today.weekday())).isoformat()
+    start = (today - dt.timedelta(days=today.weekday())).isoformat()
+    assert data["startDate"] == start
+    assert data["id"] is None
     assert data["objectives"] == [] and data["plannedAt"] is None and data["reviewWin"] == ""
-    assert client.get("/api/weeks/current").json()["id"] == data["id"]
+    assert client.get(f"/api/weeks/{start}/plan").json()["week"]["id"] is None
+    assert client.get(f"/api/weeks/{start}/review").status_code == 200  # this week: computed
+    assert client.get("/api/weeks/1999-01-04/plan").status_code == 200
+    assert client.get("/api/weeks/2099-12-28/plan").status_code == 200
+    assert client.get("/api/weeks/1999-01-04/review").status_code == 404  # a past week never opened
+    assert Week.objects.count() == 0
+
+
+def test_writing_opens_the_week_once(client: Client) -> None:
+    headers = csrf(client)
+    start = client.get("/api/weeks/current").json()["startDate"]
+    send(client, "post", f"/api/weeks/{start}/objectives", {"title": "Ship"}, headers)
+    send(client, "post", f"/api/weeks/{start}/objectives", {"title": "Write"}, headers)
+    week = client.get("/api/weeks/current").json()
+    assert week["id"] is not None and [o["title"] for o in week["objectives"]] == ["Ship", "Write"]
     assert Week.objects.count() == 1
 
 

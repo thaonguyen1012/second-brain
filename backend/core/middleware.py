@@ -36,6 +36,21 @@ class LanguageMiddleware:
         return response
 
 
+class ResourcePolicyMiddleware:
+    """`Cross-Origin-Resource-Policy: same-origin` on every answer (security audit S-02): another site's <img>
+    or <script> pointing at /api/items/<id>/image or /files/... gets nothing, so it cannot tell a private row
+    exists from whether the request loads. nginx sets the same header in production;
+    this covers `make dev`."""
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        response = self.get_response(request)
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+        return response
+
+
 class AccessAuthMiddleware:
     """Maps the request to the single owner user and keeps a Django session for it.
 

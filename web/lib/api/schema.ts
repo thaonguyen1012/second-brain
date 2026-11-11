@@ -961,7 +961,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description The week (created on first access) and the previous week's open objectives. */
+        /** @description The week (empty, `id` null, until it is first written to) and the previous week's open objectives. */
         get: operations["getWeekPlan"];
         put?: never;
         post: operations["planWeek"];
@@ -978,7 +978,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Objective progress and body of work per day; 404 for a week that was never opened. */
+        /**
+         * @description Objective progress and body of work per day. A past week that was never opened answers 404; this week
+         *     and later ones answer even before they are written to (computed, nothing saved: a GET never writes).
+         */
         get: operations["getWeekReview"];
         put?: never;
         post?: never;
@@ -995,7 +998,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description This week (Europe/Prague), created empty on first access. */
+        /** @description This week (Europe/Prague); an empty one with `id` null until it is first written to. */
         get: operations["getCurrentWeek"];
         put?: never;
         post?: never;
@@ -2299,7 +2302,8 @@ export interface components {
          */
         TypeEnum: "course" | "book" | "film" | "article" | "project";
         Week: {
-            readonly id: number;
+            /** @description null for a week never written to */
+            readonly id: number | null;
             /** Format: date */
             readonly startDate: string;
             readonly planningJournal: string;

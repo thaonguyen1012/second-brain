@@ -65,16 +65,16 @@ class WeekListView(generics.ListAPIView[Week]):
 class CurrentWeekView(APIView):
     @extend_schema(responses=WeekSerializer, operation_id="getCurrentWeek")
     def get(self, request: Request) -> Response:
-        """This week (Europe/Prague), created empty on first access."""
-        week = services.get_or_create_week(request_user(request), services.current_start())
+        """This week (Europe/Prague); an empty one with `id` null until it is first written to."""
+        week = services.find_week(request_user(request), services.current_start())
         return Response(WeekSerializer(week).data)
 
 
 class WeekPlanView(APIView):
     @extend_schema(responses=PlanViewSerializer, operation_id="getWeekPlan", parameters=[START])
     def get(self, request: Request, start: dt.date) -> Response:
-        """The week (created on first access) and the previous week's open objectives."""
-        week = _open_week(request, start)
+        """The week (empty, `id` null, until first written to) and the previous week's open objectives."""
+        week = services.find_week(request_user(request), _monday(start))
         return Response(
             PlanViewSerializer({"week": week, "carryCandidates": services.carry_candidates(week)}).data
         )
@@ -97,8 +97,12 @@ class WeekPlanView(APIView):
 class WeekReviewView(APIView):
     @extend_schema(responses=ReviewViewSerializer, operation_id="getWeekReview", parameters=[START])
     def get(self, request: Request, start: dt.date) -> Response:
-        """Objective progress and body of work per day; 404 for a week that was never opened."""
-        week = _existing_week(request, start)
+        """Objective progress and body of work per day. A past week never opened answers 404; this week and
+        later ones answer before they are written to (computed, nothing saved: a GET never writes)."""
+        monday = _monday(start)
+        week = services.find_week(request_user(request), monday)
+        if week.pk is None and monday < services.current_start():
+            week = _existing_week(request, start)  # 404
         return Response(ReviewViewSerializer(services.review(week)).data)
 
     @extend_schema(

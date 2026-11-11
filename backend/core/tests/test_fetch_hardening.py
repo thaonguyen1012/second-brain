@@ -143,3 +143,16 @@ def test_an_interrupted_job_counts_an_attempt_and_ends_failed() -> None:
     last.refresh_from_db()
     assert (once.status, once.attempts) == (Job.Status.PENDING, 1)
     assert (last.status, last.attempts) == (Job.Status.FAILED, jobs.MAX_ATTEMPTS)
+
+
+@pytest.mark.django_db
+def test_every_answer_is_same_origin_only(client: Any) -> None:
+    """Security audit S-02: another site cannot use our images or files as subresources."""
+    for path in ("/healthz", "/api/me", "/api/items/999999/image"):
+        assert client.get(path).headers["Cross-Origin-Resource-Policy"] == "same-origin", path
+
+
+@pytest.mark.django_db
+def test_the_schema_needs_a_login(anon_client: Any) -> None:
+    """Security audit P-03 (the signed-in owner gets it: progress/tests/test_api.py::test_openapi_schema)."""
+    assert anon_client.get("/api/schema/").status_code in (401, 403)

@@ -108,6 +108,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "core.middleware.LanguageMiddleware",
+    "core.middleware.ResourcePolicyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.http.ConditionalGetMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -181,6 +182,8 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Alex's Brain API",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # the schema describes the API only to the signed-in owner (security audit P-03)
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
     "COMPONENT_SPLIT_REQUEST": True,
     "ENUM_NAME_OVERRIDES": {
         "ItemStatusEnum": "library.models.Item.Status",
