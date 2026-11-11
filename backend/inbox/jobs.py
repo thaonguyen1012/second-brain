@@ -3,6 +3,7 @@
 import logging
 from typing import Any
 
+from django.db import transaction
 from django.utils import timezone
 
 from core.services import jobs, safe_fetch, thumbnails, unfurl
@@ -34,11 +35,14 @@ def unfurl_entry(payload: dict[str, Any]) -> None:
             raise  # transient: the job runner retries
         return
     entry.og_title, entry.og_description, entry.og_site_name = card.title, card.description, card.site_name
-    entry.og_image_path = _thumbnail(entry, card.image_url)
+    entry.og_image_path, webp = _thumbnail(entry, card.image_url)
     entry.unfurled_at, entry.error = timezone.now(), ""
-    if not _save(
-        entry, "og_title", "og_description", "og_site_name", "og_image_path", "unfurled_at", "error"
-    ):
+    with transaction.atomic():
+        thumbnails.claim(entry.og_image_path, webp)
+        saved = _save(
+            entry, "og_title", "og_description", "og_site_name", "og_image_path", "unfurled_at", "error"
+        )
+    if not saved:
         # deleted while the page or image was fetched: the new file may have no row to refer to it
         thumbnails.discard_if_unused(entry.og_image_path)
         return
@@ -63,13 +67,15 @@ def _save(entry: InboxEntry, *fields: str) -> bool:
     return InboxEntry.objects.filter(pk=entry.pk).update(**values, updated_at=timezone.now()) > 0
 
 
-def _thumbnail(entry: InboxEntry, image_url: str) -> str:
-    """A missing or broken image never fails the unfurl."""
+def _thumbnail(entry: InboxEntry, image_url: str) -> tuple[str, bytes]:
+    """The stored file name and its bytes ("" and b"" without one). A missing or broken image never fails
+    the unfurl."""
     if not image_url:
-        return ""
+        return "", b""
     try:
         image = safe_fetch.fetch(image_url, safe_fetch.IMAGE_TYPES)
-        return thumbnails.store(thumbnails.to_webp(image.body))
+        webp = thumbnails.to_webp(image.body)
+        return thumbnails.store(webp), webp
     except (safe_fetch.FetchError, thumbnails.ThumbnailError) as exc:
         logger.info("no thumbnail", extra={"entry": entry.pk, "reason": str(exc)})
-        return ""
+        return "", b""

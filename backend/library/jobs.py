@@ -33,8 +33,9 @@ def fetch_item_image(payload: dict[str, Any]) -> None:
         else:
             logger.info("no item image", extra={"item": item_id, "reason": "page without og:image"})
             return
-        name = thumbnails.store(thumbnails.to_webp(body, thumbnails.ITEM_SIZES))
+        webp = thumbnails.to_webp(body, thumbnails.ITEM_SIZES)
+        name = thumbnails.store(webp)
     except (safe_fetch.FetchBlocked, thumbnails.ThumbnailError) as exc:
         logger.warning("item image refused", extra={"item": item_id, "reason": str(exc)})
         return
-    services.set_image(item_id, name, expect=expect, fetched=True)
+    services.set_image(item_id, name, expect=expect, fetched=True, webp=webp)

@@ -223,7 +223,9 @@ def image_url(item: Item) -> str | None:
     return f"/api/items/{item.pk}/image?v={item.image_path[:8]}" if item.image_path else None
 
 
-def set_image(item_id: int, name: str, expect: str | None = None, *, fetched: bool = False) -> bool:
+def set_image(
+    item_id: int, name: str, expect: str | None = None, *, fetched: bool = False, webp: bytes = b""
+) -> bool:
     """Point the Item at the stored file `name` ("" removes the image); the file it replaces is discarded
     after the commit unless another row uses it. Callers: upload, remove (name ""), inbox links (expect ""),
     and the item_image job run by run_jobs (fetched=True).
@@ -236,8 +238,13 @@ def set_image(item_id: int, name: str, expect: str | None = None, *, fetched: bo
     fetch in the same transaction (_end_fetch): the newer change always wins, also when the image is back to
     what the fetch expects (an inbox copy removed again is "" once more, which comparing names alone would
     miss). The job's own call applies only while its fetch has not been ended since the job started.
+
+    `webp` is the image `name` was stored from: the file is written again if a discard removed it meanwhile
+    (thumbnails.claim).
     """
     with transaction.atomic():
+        if webp:
+            thumbnails.claim(name, webp)
         locked = Item.objects.select_for_update().filter(pk=item_id)
         current = locked.values_list("image_path", flat=True).first()
         moved = expect is not None and current != expect
@@ -292,7 +299,8 @@ def upload_image(item: Item, upload: UploadedFile[bytes]) -> None:
     data = upload.read(limit + 1)
     if len(data) > limit:
         raise ImageTooLarge
-    set_image(item.pk, thumbnails.store(thumbnails.to_webp(data, thumbnails.ITEM_SIZES)))
+    webp = thumbnails.to_webp(data, thumbnails.ITEM_SIZES)
+    set_image(item.pk, thumbnails.store(webp), webp=webp)
 
 
 def image_from_thumbnail(item_id: int, thumbnail: str) -> bool:
@@ -303,10 +311,10 @@ def image_from_thumbnail(item_id: int, thumbnail: str) -> bool:
     if path is None:
         return False
     try:
-        name = thumbnails.store(thumbnails.to_webp(path.read_bytes(), thumbnails.ITEM_SIZES))
+        webp = thumbnails.to_webp(path.read_bytes(), thumbnails.ITEM_SIZES)
     except (OSError, thumbnails.ThumbnailError):
         return False
-    return set_image(item_id, name, expect="")
+    return set_image(item_id, thumbnails.store(webp), expect="", webp=webp)
 
 
 def is_http_url(value: str) -> bool:

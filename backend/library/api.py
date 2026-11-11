@@ -240,6 +240,8 @@ class NoteListView(generics.ListAPIView[Note]):
         try:
             note = services.save_note(Note(user=user, client_id=client_id), data)
         except IntegrityError:
+            if client_id is None:
+                raise  # only a crossed POST with the same clientId is answered with that note (audit S-10)
             # a POST with the same client id crossed this one and made the note first
             made = Note.objects.filter(user=user, client_id=client_id).first()
             if made is None:

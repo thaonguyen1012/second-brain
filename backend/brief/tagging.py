@@ -6,7 +6,6 @@ topic tags, a one-line summary, a "new tool/skill" flag and a relevance score 1-
 summaries. Feed text is data, never instructions (10.5).
 """
 
-import json
 from functools import cache
 from typing import Any
 
@@ -99,12 +98,12 @@ def intro_prompt() -> llm.Prompt:
 def news_text(title: str, source: str, excerpt: str) -> str:
     """The user message: the item as JSON data inside <news> tags."""
     data = {"title": title[:300], "source": source[:100], "text": excerpt[:500]}
-    return "<news>\n" + json.dumps(data, ensure_ascii=False) + "\n</news>"
+    return llm.tagged("news", data)
 
 
 def brief_text(items: list[NewsItem]) -> str:
     data = [{"title": i.title[:300], "summary": i.summary, "tags": i.tags} for i in items]
-    return "<brief>\n" + json.dumps(data, ensure_ascii=False) + "\n</brief>"
+    return llm.tagged("brief", data)
 
 
 def suggest(user_text: str, use_cache: bool = True) -> NewsTags:

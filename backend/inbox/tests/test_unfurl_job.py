@@ -115,11 +115,11 @@ def test_entry_deleted_during_unfurl_leaves_no_thumbnail(
     entry_id = send(client, "post", "/api/inbox", {"url": "https://blog.test/p"}, csrf(client)).json()["id"]
     real = inbox_jobs._thumbnail
 
-    def thumbnail_then_delete(entry: InboxEntry, image_url: str) -> str:
-        name = real(entry, image_url)
+    def thumbnail_then_delete(entry: InboxEntry, image_url: str) -> tuple[str, bytes]:
+        name, webp = real(entry, image_url)
         assert (tmp_path / name).is_file()
         assert send(client, "delete", f"/api/inbox/{entry_id}", None, csrf(client)).status_code == 204
-        return name
+        return name, webp
 
     monkeypatch.setattr(inbox_jobs, "_thumbnail", thumbnail_then_delete)
     call_command("run_jobs", stdout=io.StringIO())
@@ -139,12 +139,12 @@ def test_entry_deleted_during_unfurl_keeps_a_thumbnail_an_item_uses(
     real = inbox_jobs._thumbnail
     other = User.objects.get_or_create(username="other@x", email="other@x")[0]
 
-    def thumbnail_then_delete(entry: InboxEntry, image_url: str) -> str:
-        name = real(entry, image_url)
+    def thumbnail_then_delete(entry: InboxEntry, image_url: str) -> tuple[str, bytes]:
+        name, webp = real(entry, image_url)
         # Content addressed: a small og:image encodes alike for an Item, so another owner's Item names it.
         Item.objects.create(user=other, type="article", title="theirs", image_path=name)
         assert send(client, "delete", f"/api/inbox/{entry_id}", None, csrf(client)).status_code == 204
-        return name
+        return name, webp
 
     monkeypatch.setattr(inbox_jobs, "_thumbnail", thumbnail_then_delete)
     call_command("run_jobs", stdout=io.StringIO())

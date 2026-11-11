@@ -73,7 +73,10 @@ Ingest returns at once; `POST /api/inbox` with a URL enqueues an `unfurl` Job. `
 `jobs` service in deploy/) fetches the page through `core/services/safe_fetch.py` (SSRF guard), stores the OG
 card as plain text and the og:image as a re-encoded webp in `THUMBS_DIR`, served by
 `/api/inbox/{id}/thumbnail` through X-Accel-Redirect to nginx `/internal/thumbs/` (Django streams it in DEBUG;
-`core/views.thumbnail_response`, shared with the Item image, below).
+`core/views.thumbnail_response`, shared with the Item image, below). Every content request (pages, images, feeds, the LLM) is made
+by `run_jobs`, never inside a request; the one outbound call of the web process is the Cloudflare Access key set
+(JWKS, `core/services/cf_access.py`, cached 1 h) with `AUTH_MODE=cf_access`, so its host must be reachable from
+the web process and an outage of it is a login outage once the cache expires (security audit P-06).
 After the unfurl (or at once for text), a `tag` job asks the LLM for tags, a one-line summary and a destination
 through `core/services/llm.py`, the only LLM caller: it counts tokens, refuses the call when the month's cost plus
 the estimate passes `LLM_MONTHLY_BUDGET_USD`, calls the provider with a JSON schema, validates the reply with

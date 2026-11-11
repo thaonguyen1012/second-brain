@@ -4,11 +4,11 @@ Job ads are public text, so up to MAX_SENT_CHARS of the description is sent (not
 private inbox content). Runs only in the `jd_skills` background job, never inside a request.
 """
 
-import json
 from functools import cache
 from typing import Any, Literal
 
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -56,7 +56,7 @@ def prompt() -> llm.Prompt:
 def ad_text(title: str, company: str, text: str) -> str:
     """The user message: the ad as JSON data inside <job_ad> tags (never the URL)."""
     data = {"title": title[:200], "company": company[:200], "text": text[:MAX_SENT_CHARS]}
-    return "<job_ad>\n" + json.dumps(data, ensure_ascii=False) + "\n</job_ad>"
+    return llm.tagged("job_ad", data)
 
 
 def extract(user_text: str, use_cache: bool = True) -> JdSkills:
@@ -76,6 +76,11 @@ def extract_skills(payload: dict[str, Any]) -> None:
         ad.error = f"extraction: {exc}"[:500]
         ad.save(update_fields=["error", "updated_at"])
         return
-    ad.skills, ad.seniority = result.skills, result.seniority
-    ad.processed, ad.processed_at, ad.error = True, timezone.now(), ""
-    ad.save(update_fields=["skills", "seniority", "processed", "processed_at", "error", "updated_at"])
+    with transaction.atomic():
+        # read again under a row lock: an edit or a hand correction made during the call wins (audit S-15)
+        ad = JobAd.objects.select_for_update().filter(pk=ad.pk).first()
+        if ad is None or ad.processed or services.digest(ad) != payload["digest"]:
+            return
+        ad.skills, ad.seniority = result.skills, result.seniority
+        ad.processed, ad.processed_at, ad.error = True, timezone.now(), ""
+        ad.save(update_fields=["skills", "seniority", "processed", "processed_at", "error", "updated_at"])

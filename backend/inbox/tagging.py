@@ -1,7 +1,6 @@
 """AI tagging of inbox entries: tags, a one-line summary and a destination (DECISIONS 9.2), through the
 LLM seam. Only the title, site name and the first 500 characters are sent (DECISIONS 10.4)."""
 
-import json
 import logging
 from functools import cache
 from typing import Any, Literal
@@ -83,7 +82,7 @@ def prompt() -> llm.Prompt:
 def item_text(title: str, site: str, text: str) -> str:
     """The user message: the item as JSON data inside <item> tags."""
     data = {"title": title[:300], "site": site[:100], "text": text[:MAX_SENT_CHARS]}
-    return "<item>\n" + json.dumps(data, ensure_ascii=False) + "\n</item>"
+    return llm.tagged("item", data)
 
 
 def entry_text(entry: InboxEntry) -> str:

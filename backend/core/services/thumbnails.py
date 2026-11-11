@@ -3,7 +3,9 @@ with Pillow (decompression-bomb limit), re-encode as webp <= MAX_BYTES, store un
 web root; served through X-Accel-Redirect).
 
 A file's name is the hash of its bytes, so rows of either table and of any owner can share one file: a file
-goes only through discard_if_unused, never while a row still names it.
+goes only through discard_if_unused, never while a row still names it. store() skips a file that exists,
+so a row that names a file is saved in a transaction that first calls claim(): it waits for a running
+discard of the same name and writes the file again if that discard removed it (security audit S-16).
 """
 
 import hashlib
@@ -14,6 +16,7 @@ import warnings
 from pathlib import Path
 
 from django.conf import settings
+from django.db import connection, transaction
 from PIL import Image, ImageOps
 
 from inbox.models import InboxEntry
@@ -96,11 +99,34 @@ def in_use(name: str) -> bool:
     )
 
 
+def _lock(name: str) -> None:
+    """A Postgres advisory lock on the file name until the transaction ends (the name is hex: its first 15
+    digits fit a bigint)."""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_advisory_xact_lock(%s)", [int(name[:15], 16)])
+
+
+def claim(name: str, webp: bytes) -> None:
+    """Inside the transaction that saves a row naming `name` (the result of store(webp)): wait for a discard
+    of the same file, then make sure the file is there. "" does nothing."""
+    if not name:
+        return
+    _lock(name)
+    if path_of(name) is None:
+        store(webp)
+
+
 def discard_if_unused(name: str) -> None:
     """Remove the file unless a row still names it ("" does nothing). Call it once the change that dropped the
-    reference is committed (transaction.on_commit), so the check sees it."""
-    if name and not in_use(name):
-        _unlink(name)
+    reference is committed (transaction.on_commit), so the check sees it. The check and the removal hold the
+    file's lock, so a row being saved with the same file (claim) either is seen or finds the file gone and
+    writes it again."""
+    if not name or path_of(name) is None:
+        return
+    with transaction.atomic():
+        _lock(name)
+        if not in_use(name):
+            _unlink(name)
 
 
 def _unlink(name: str) -> None:

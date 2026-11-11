@@ -80,6 +80,13 @@ def reader_profile() -> str:
     return " ".join(settings.READER_PROFILE.split()).rstrip(".") or DEFAULT_READER_PROFILE
 
 
+def tagged(tag: str, data: object) -> str:
+    """The user message: `data` as one line of JSON between <tag> and </tag>. `</` inside the text is written
+    `<\\/` (the same JSON string), so the material never shows the model a closing tag of its own
+    (audit P-10)."""
+    return f"<{tag}>\n" + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + f"\n</{tag}>"
+
+
 def complete[T: BaseModel](prompt: Prompt, user: str, schema: type[T], use_cache: bool = True) -> T:
     model = settings.LLM_MODEL
     key = _cache_key(prompt, model, user)
