@@ -1,0 +1,15 @@
+# Loopback ports of Alex's Brain, by local user (security audit S-12): a TCP connection to 127.0.0.1 carries no
+# identity, so without this any process on the machine (the other app, or whoever compromises it) could read the
+# handbooks from Next or nginx past Cloudflare Access. Only nginx (www-data) talks to Next (3001) and Gunicorn
+# (8001); only the tunnel (brain-tunnel) and root (health checks) talk to nginx (8080). Loaded by
+# /etc/nftables.conf (deploy/README.md); check with `sudo nft -c -f brain.nft`.
+table inet brain_loopback {
+  chain output {
+    type filter hook output priority 0; policy accept;
+    ip daddr 127.0.0.1 tcp dport { 3001, 8001 } meta skuid "www-data" accept
+    ip daddr 127.0.0.1 tcp dport { 3001, 8001 } reject with tcp reset
+    ip daddr 127.0.0.1 tcp dport 8080 meta skuid "brain-tunnel" accept
+    ip daddr 127.0.0.1 tcp dport 8080 meta skuid 0 accept
+    ip daddr 127.0.0.1 tcp dport 8080 reject with tcp reset
+  }
+}

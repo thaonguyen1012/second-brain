@@ -178,14 +178,53 @@ for the jobs agent apply (placeholder paths, Full Disk Access for `uv` when the 
 `brain-backup.service` + `.timer` (nightly), `brain-restore-check.service` + `.timer` (monthly), `brain-cloudflared`,
 all in `brain.slice` (memory cap, lower CPU and IO weight, for a small shared server); `nginx/brain.conf` (nginx on
 127.0.0.1:8080 only, Cloudflare Tunnel in front); `postgresql-brain.slice.conf` (a drop-in that puts a Postgres
-cluster on port 5433 in the same slice); `backend.env.example` and `cloudflared.env.example`; `release.sh` (as root:
+cluster on port 5433 in the same slice); `backend.env.example` and `cloudflared.env.example`; `release.sh` (as root, from a root-owned copy:
 `uv sync`, `npm ci` and `next build` in a capped transient slice, restart the units, check `/healthz`).
 
-The units assume a system user `brain`, the app checked out in `/srv/brain/app` and data folders under
+The units assume three system users and the app checked out in `/srv/brain/app`, with data folders under
 `/srv/brain/` (`content`, `files`, `thumbs`, `staticfiles`, `backups`); change the paths in the units if yours
-differ. Order: create the user and folders, the Postgres cluster and role, `backend/.env` from the example, copy the
-units to `/etc/systemd/system/` and the nginx file to `/etc/nginx/sites-enabled/`, the tunnel token into
-`/etc/brain/cloudflared.env`, then run `sudo BRAIN_HOST=brain.example.com /srv/brain/app/deploy/systemd/release.sh`.
+differ. `brain` runs Django, the jobs and the backups; `brain-web` runs Next with no secret and no database login
+(it compiles handbook text, which may come from anyone); `brain-tunnel` runs cloudflared. No file those users can
+read holds a secret: Django's settings live in `/etc/brain/backend.env` (root, 0600), which systemd hands to the
+units (`EnvironmentFile`).
+
+```bash
+sudo useradd --system --home /var/lib/brain --create-home --shell /usr/sbin/nologin brain
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin brain-web
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin brain-tunnel
+sudo install -d -o brain -g brain -m 0750 /srv/brain /srv/brain/app /srv/brain/content /srv/brain/files /srv/brain/thumbs /srv/brain/staticfiles /var/lib/brain/uv-cache /var/lib/brain/npm-cache
+sudo install -d -o brain -g brain -m 0700 /srv/brain/backups
+sudo install -d -m 0755 /etc/brain
+sudo install -m 0600 -o root -g root /srv/brain/app/deploy/systemd/backend.env.example /etc/brain/backend.env   # then fill it in
+```
+
+Every folder and owner is set here, once: the release script runs as root and never creates, chowns or chmods
+anything under `/srv/brain`, a tree `brain` can write. For the same reason it runs from a root-owned copy and
+refuses to run from the checkout; read the diff before installing a changed version:
+
+```bash
+sudo install -o root -g root -m 0755 /srv/brain/app/deploy/systemd/release.sh /usr/local/sbin/brain-release
+```
+
+Then: the Postgres cluster and role, with the local socket asking for a password too (by default OS user `brain`
+gets in by peer authentication):
+
+```bash
+sudo sed -i -E 's/^(local[[:space:]]+all[[:space:]]+all[[:space:]]+)peer/\1scram-sha-256/' /etc/postgresql/16/brain/pg_hba.conf
+```
+
+A TCP connection to 127.0.0.1 carries no login, so `brain.nft` lets only nginx (`www-data`) reach Next and
+Gunicorn and only the tunnel and root reach nginx; keep the include after any `flush ruleset` line:
+
+```bash
+sudo install -m 0644 /srv/brain/app/deploy/systemd/brain.nft /etc/nftables.d-brain.nft
+echo 'include "/etc/nftables.d-brain.nft"' | sudo tee -a /etc/nftables.conf
+sudo nft -c -f /etc/nftables.d-brain.nft && sudo systemctl enable --now nftables
+```
+
+Copy the units to `/etc/systemd/system/` and the nginx file to `/etc/nginx/sites-enabled/`, the tunnel token into
+`/etc/brain/cloudflared.env` (root, 0600), then run `sudo BRAIN_HOST=brain.example.com brain-release`
+(`--backend` skips the Next build). `sudo -u nobody curl -sS http://127.0.0.1:8080/healthz` must fail with a reset.
 The Cloudflare steps above are the same, with the tunnel's public hostname pointing at `http://localhost:8080`.
 
 ## Not validated yet

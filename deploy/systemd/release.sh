@@ -1,43 +1,46 @@
 #!/usr/bin/env bash
-# Put a copy of Alex's Brain in /srv/brain/app into service (deploy/README.md, "systemd"). As root:
-#   sudo BRAIN_HOST=brain.example.com /srv/brain/app/deploy/systemd/release.sh            backend and web
-#   sudo BRAIN_HOST=brain.example.com /srv/brain/app/deploy/systemd/release.sh --backend  backend only (no Next build)
-# The Next build runs as brain in a transient slice of its own (brain-build.slice) with a memory cap and a low CPU
-# and IO weight, so other services on the same machine keep their memory and most of the CPU, and the running site of the
-# Brain keeps its own slice; a build that passes the cap is killed, nothing else is.
+# Put a copy of Alex's Brain in /srv/brain/app into service (deploy/README.md, "systemd"). Installed once as
+# root-owned /usr/local/sbin/brain-release (0755) and run from there, never from the synced tree, which the user
+# brain can write (security audit S-13):
+#   sudo BRAIN_HOST=brain.example.com brain-release            backend and web
+#   sudo BRAIN_HOST=brain.example.com brain-release --backend  backend only (no Next build)
+# Root does no chown, chmod, install or write on any path under /srv/brain (brain could plant a link there): the
+# folders and their owners are set once at provisioning (deploy/README.md), the secrets live in /etc/brain (root).
+# uv sync, npm ci and the Next build run as brain in transient units with a filesystem sandbox (only the app's own
+# folders and caches writable) and resource caps, so other services on the same machine keep its memory and most of the
+# CPU; root only restarts units and reads the health check.
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "run as root (sudo)"; exit 1; }
 host=${BRAIN_HOST:-brain.example.com}
+case "$(readlink -f "$0")" in /srv/*) echo "run the root-owned copy (/usr/local/sbin/brain-release), not $0"; exit 1;; esac
 app=/srv/brain/app
-uv=/srv/brain/tools/bin/uv
 web=${1:---all}
+for f in /etc/brain/backend.env /etc/brain/cloudflared.env; do
+  [ "$(stat -c '%U %a' "$f")" = "root 600" ] || { echo "$f must be root, 0600 (deploy/README.md)"; exit 1; }
+done
 
-install -d -o brain -g brain -m 0750 /srv/brain /srv/brain/thumbs /srv/brain/staticfiles /srv/brain/backups \
-  /srv/brain/content /srv/brain/files
-install -d -o brain -g brain -m 0750 /var/lib/brain /var/lib/brain/uv-cache /var/lib/brain/npm-cache
-chown brain:brain "$app" && chmod 0750 "$app"
+sandbox=(systemd-run --wait --pipe --collect --quiet --uid=brain --gid=brain --slice=brain-build.slice
+  -p NoNewPrivileges=yes -p PrivateTmp=yes -p ProtectSystem=strict -p ProtectHome=yes -p PrivateDevices=yes
+  -p ReadWritePaths=/var/lib/brain -p MemoryHigh=1800M -p MemoryMax=2300M -p MemorySwapMax=2G
+  -p CPUWeight=20 -p IOWeight=20 -p Nice=15 -p OOMScoreAdjust=800 --setenv=HOME=/var/lib/brain)
 
 echo "== backend: uv sync (locked, no dev)"
-sudo -u brain env UV_CACHE_DIR=/var/lib/brain/uv-cache UV_PYTHON=/usr/bin/python3.13 UV_PYTHON_DOWNLOADS=never \
-  "$uv" sync --frozen --no-dev --project "$app/backend"
-test -f "$app/backend/.env" || { echo "missing $app/backend/.env (deploy/README.md)"; exit 1; }
-chown brain:brain "$app/backend/.env" && chmod 0600 "$app/backend/.env"
+"${sandbox[@]}" -p ReadWritePaths="$app/backend" -p ReadOnlyPaths=/srv/brain/tools \
+  --setenv=UV_CACHE_DIR=/var/lib/brain/uv-cache --setenv=UV_PYTHON=/usr/bin/python3.13 \
+  --setenv=UV_PYTHON_DOWNLOADS=never --working-directory="$app/backend" \
+  /srv/brain/tools/bin/uv sync --frozen --no-dev --project "$app/backend"
 
 if [ "$web" != --backend ]; then
-  echo "== web: npm ci and next build in brain-build.slice (MemoryMax 2300M, CPUWeight 20); 10 to 20 minutes on 1 OCPU"
-  run=(systemd-run --wait --pipe --collect --quiet --uid=brain --gid=brain --slice=brain-build.slice
-       -p MemoryHigh=1800M -p MemoryMax=2300M -p MemorySwapMax=2G -p CPUWeight=20 -p IOWeight=20 -p Nice=15
-       -p OOMScoreAdjust=800
-       --setenv=HOME=/var/lib/brain --setenv=npm_config_cache=/var/lib/brain/npm-cache
-       --setenv=NEXT_TELEMETRY_DISABLED=1 --setenv=NEXT_PUBLIC_PROGRESS_STORE=api
-       --setenv=CONTENT_DIR=/srv/brain/content --setenv=SEARCH_DB=/srv/brain/search.sqlite
-       --setenv=ROADMAP_FILE=/srv/brain/roadmap.json
-       --setenv=NODE_OPTIONS=--max-old-space-size=1536
-       --working-directory="$app/web")
-  "${run[@]}" /usr/bin/npm ci --no-audit --no-fund
-  "${run[@]}" /usr/bin/npm run build
-  test -f "$app/web/.next/standalone/server.js"
-  install -d -o brain -g brain -m 0750 "$app/web/.next/standalone/.next/cache"
+  echo "== web: npm ci and next build as brain (MemoryMax 2300M, CPUWeight 20); 10 to 20 minutes on 1 OCPU"
+  build=("${sandbox[@]}" -p ReadWritePaths="$app/web" -p ReadOnlyPaths=/srv/brain/content
+    --setenv=npm_config_cache=/var/lib/brain/npm-cache --setenv=NEXT_TELEMETRY_DISABLED=1
+    --setenv=NEXT_PUBLIC_PROGRESS_STORE=api --setenv=CONTENT_DIR=/srv/brain/content
+    --setenv=SEARCH_DB=/srv/brain/search.sqlite --setenv=ROADMAP_FILE=/srv/brain/roadmap.json --setenv=NODE_OPTIONS=--max-old-space-size=1536
+    --working-directory="$app/web")
+  "${build[@]}" /usr/bin/npm ci --no-audit --no-fund
+  "${build[@]}" /usr/bin/npm run build
+  # the ISR cache of brain-web (group brain, setgid so new files stay in the group)
+  "${build[@]}" /usr/bin/install -d -m 2770 "$app/web/.next/standalone/.next/cache"
 fi
 
 echo "== units"

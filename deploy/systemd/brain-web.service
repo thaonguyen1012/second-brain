@@ -7,16 +7,19 @@ Wants=network-online.target
 [Service]
 Type=simple
 Slice=brain.slice
-User=brain
-Group=brain
+# Its own user (security audit P-08): Next compiles third-party handbook text, so it gets no secret and no
+# database login. Group brain to read the app, the content and the search index; nothing of brain's is secret.
+User=brain-web
+Group=brain-web
+SupplementaryGroups=brain
 WorkingDirectory=/srv/brain/app/web/.next/standalone
 Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1
 Environment=HOSTNAME=127.0.0.1
+Environment=ROADMAP_FILE=/srv/brain/roadmap.json
 Environment=PORT=3001
 Environment=CONTENT_DIR=/srv/brain/content
 Environment=SEARCH_DB=/srv/brain/search.sqlite
-Environment=ROADMAP_FILE=/srv/brain/roadmap.json
 ExecStart=/usr/bin/node server.js
 Restart=on-failure
 RestartSec=5
@@ -32,7 +35,8 @@ ProtectHome=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictAddressFamilies=AF_INET AF_INET6
+InaccessiblePaths=-/srv/brain/backups -/etc/brain
 RestrictNamespaces=true
 LockPersonality=true
 SystemCallArchitectures=native

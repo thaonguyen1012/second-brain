@@ -1,5 +1,4 @@
 # Django API of Alex's Brain (Gunicorn). Install as /etc/systemd/system/brain-django.service.
-# No EnvironmentFile: Django reads backend/.env itself (config/settings.py).
 [Unit]
 Description=Alex's Brain API (Gunicorn + Django)
 After=network-online.target postgresql@16-brain.service
@@ -12,6 +11,9 @@ Slice=brain.slice
 User=brain
 Group=brain
 WorkingDirectory=/srv/brain/app/backend
+# Django's settings, secrets included (root, 0600): systemd reads it before dropping to brain, so no file the
+# services' users can read holds a secret (security audit P-08). backend/.env does not exist here.
+EnvironmentFile=/etc/brain/backend.env
 Environment=PYTHONUNBUFFERED=1
 ExecStartPre=/srv/brain/app/backend/.venv/bin/python manage.py migrate --noinput
 ExecStartPre=/srv/brain/app/backend/.venv/bin/python manage.py collectstatic --noinput

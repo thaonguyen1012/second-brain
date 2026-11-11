@@ -11,6 +11,9 @@ Slice=brain.slice
 User=brain
 Group=brain
 WorkingDirectory=/srv/brain/app/backend
+# Django's settings, secrets included (root, 0600): systemd reads it before dropping to brain, so no file the
+# services' users can read holds a secret (security audit P-08). backend/.env does not exist here.
+EnvironmentFile=/etc/brain/backend.env
 ExecStart=/srv/brain/app/backend/.venv/bin/python manage.py restore_check
 Nice=15
 IOSchedulingClass=idle

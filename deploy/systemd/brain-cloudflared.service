@@ -9,7 +9,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 Slice=brain.slice
-DynamicUser=yes
+# A fixed system user (deploy/README.md), so brain.nft can let only it reach nginx on 127.0.0.1:8080 (S-12)
+User=brain-tunnel
+Group=brain-tunnel
 EnvironmentFile=/etc/brain/cloudflared.env
 ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel run
 Restart=always
