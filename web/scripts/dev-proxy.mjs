@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Development stand-in for deploy/nginx.conf: one origin that routes like production.
 // Pages such as /inbox/them/ (capture), /manifest.webmanifest and /icons/ go to Next like any non-Django path.
-// /api/me, /api/progress*, /api/{inbox,items,notes,weeks,projects,time-entries,opportunities,skills,market,news,brief,achievements,predictions,status,export}*, /api/schema/, /admin*, /admin-static/*, /healthz -> Django; everything else -> Next.
+// /api/me, /api/progress*, /api/{inbox,items,notes,weeks,projects,time-entries,opportunities,skills,market,news,brief,achievements,predictions,status,export}*, /api/schema/, /admin*, /admin-static/*, /healthz, /files/* -> Django; everything else -> Next.
 // WebSocket upgrades are piped too, so `next dev` behind the proxy keeps hot reload.
 // The web upstream decides which progress store the pages use (NEXT_PUBLIC_PROGRESS_STORE is inlined at build
 // time): `make dev` builds the :3100 server with =api, `make dev-hot` starts `next dev` with =api behind the
@@ -10,7 +10,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import { parseArgs } from 'node:util';
-import { isLocalHost } from './lib/dev-host.mjs';
+import { DJANGO, isLocalHost } from './lib/dev-host.mjs';
 
 const { values } = parseArgs({
   options: {
@@ -19,8 +19,6 @@ const { values } = parseArgs({
     api: { type: 'string', default: 'http://127.0.0.1:8000' },
   },
 });
-
-const DJANGO = /^\/(api\/(me|progress|schema|inbox|items|notes|weeks|projects|time-entries|opportunities|skills|market|news|brief|achievements|predictions|status|counts|export)(\/|$|\?)|admin(\/|$)|admin-static\/|healthz$)/;
 
 const upstreamFor = (url) => new URL(DJANGO.test(url ?? '') ? values.api : values.web);
 

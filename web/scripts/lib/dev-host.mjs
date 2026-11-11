@@ -10,3 +10,11 @@ export function isLocalHost(host, port) {
   const given = m[2] === undefined ? 80 : Number(m[2]);
   return given === Number(port);
 }
+
+/**
+ * The paths Django answers, as nginx routes them (deploy/nginx/site.conf). /files/ goes to Django like there: it
+ * checks the login and sends HTML or SVG attachments as downloads, where Next's public/ would show them inline
+ * (security audit P-11). A new /api/<prefix> is added here.
+ */
+export const DJANGO =
+  /^\/(api\/(me|progress|schema|inbox|items|notes|weeks|projects|time-entries|opportunities|skills|market|news|brief|achievements|predictions|status|counts|export)(\/|$|\?)|admin(\/|$)|admin-static\/|files\/|healthz$)/;

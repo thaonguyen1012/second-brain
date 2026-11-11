@@ -152,7 +152,7 @@ web/
   scripts/                       import-gitbook, build-search, prepare-assets, extract-courses,
                                  backfill-images, smoke-test, prepare-vendor, postbuild-standalone, make-icons,
                                  dev-proxy (:8080, routes like nginx: Django paths -> :8000, rest -> Next; add new
-                                 /api/<prefix> to its DJANGO regex)
+                                 /api/<prefix> to DJANGO in scripts/lib/dev-host.mjs)
   data/search.sqlite             search index (gitignored, rebuild with npm run search:rebuild)
   public/covers/ (the cover drawings, named by subject; rules in components/book-cover.md), files/ (gitignored
                                  attachments), vendor/ (gitignored mermaid copy)

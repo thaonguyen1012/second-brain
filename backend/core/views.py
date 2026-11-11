@@ -108,17 +108,22 @@ INLINE_TYPES = frozenset(
 
 
 @require_safe
-def attachment(request: HttpRequest, path: str) -> HttpResponse:
-    """Authorise /files/<path>; nginx serves the bytes from its internal /internal/files/ location."""
+def attachment(request: HttpRequest, path: str) -> HttpResponseBase:
+    """Authorise /files/<path>; nginx serves the bytes from its internal /internal/files/ location. In
+    DEBUG Django streams them itself, so the dev proxy can route /files/ here as nginx does (audit P-11)."""
     if not request.user.is_authenticated:
         return JsonResponse({"detail": "Authentication credentials were not provided."}, status=401)
     target = resolve_attachment(path)
     if target is None:
         return JsonResponse({"detail": "Not found."}, status=404)
     rel = target.relative_to(attachments_root()).as_posix()
-    response = HttpResponse()
-    response["X-Accel-Redirect"] = "/internal/files/" + quote(rel)
-    response["Content-Type"] = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+    content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+    if settings.DEBUG:
+        response: HttpResponseBase = FileResponse(target.open("rb"), content_type=content_type)
+    else:
+        response = HttpResponse()
+        response["X-Accel-Redirect"] = "/internal/files/" + quote(rel)
+    response["Content-Type"] = content_type
     response["X-Content-Type-Options"] = "nosniff"
     if response["Content-Type"] not in INLINE_TYPES:
         response["Content-Disposition"] = "attachment"  # never render HTML/SVG/XML same-origin

@@ -47,3 +47,17 @@ def test_files_require_auth(anon_client: Client, files_dir: Path) -> None:
     response = anon_client.get("/files/book%20one/slides.pdf")
     assert response.status_code == 401
     assert "X-Accel-Redirect" not in response
+
+
+def test_debug_streams_the_file_itself(client: Client, files_dir: Path, settings: Any) -> None:
+    """`make dev` has no nginx: the dev proxy routes /files/ here and Django sends the bytes (audit P-11)."""
+    settings.DEBUG = True
+    response = client.get("/files/book%20one/slides.pdf")
+    assert response.status_code == 200
+    assert b"".join(response.streaming_content) == b"%PDF-1.4"  # type: ignore[attr-defined]
+    assert "X-Accel-Redirect" not in response
+    (files_dir / "page.html").write_text("<script>alert(1)</script>")
+    page = client.get("/files/page.html")
+    assert page["Content-Disposition"] == "attachment"
+    page.close()
+    response.close()
