@@ -259,7 +259,9 @@ so the near pairs that remain are listed under the palette, not hidden.
   The same icon stands in for a tool's missing logo (§9a "Item images"). An empty state's
   glyph names the missing object (BookPlus, FlaskConical, FolderPlus...), never a nav icon, so it does not repeat the
   title icon. Nothing else.
-- **No emoji as icons** (emoji are user content only). Icon-only buttons have `aria-label` and a `Tooltip`.
+- **No emoji as icons** (emoji are user content only). Icon-only buttons have `aria-label` and a `Tooltip`. Base UI
+  tooltips are for the eye only: a definition that matters also reaches screen readers as the trigger's description
+  (`aria-describedby` on a `hidden` copy of the same text; accessibility pass 13/11/2026).
 
 ## 6. Components (which one for what)
 
@@ -273,7 +275,14 @@ so the near pairs that remain are listed under the palette, not hidden.
   page toolbars, `sm` in cards and dialogs, `xs` / `icon-sm` in rows. Label = verb + object (Vietnamese; the
   English through `t()`, `lib/i18n/README.md`).
 - **Row actions:** at most 3 visible (primary verb first); the rest go in a `Menu` behind a ghost `icon-sm`
-  `MoreHorizontal` with `MenuShortcut` for keys. Hover-revealed actions must also show on focus and on touch.
+  `MoreHorizontal` with `MenuShortcut` for keys. Hover-revealed actions must also show on focus and on touch. A row's
+  or card's `RowMenu` is named after its record (`Thao tác cho "{title}"`), never a bare "Thao tác khác" repeated
+  down the list.
+- **Notices and loading** (accessibility pass 13/11/2026, the `fixing-accessibility` skill in
+  `.claude/skills/`): a page's notice line is one `<p role="status">` that stays mounted, `empty:sr-only` while it
+  is empty (out of the flow, so nothing moves), so the first notice of a visit is read out too; a loading
+  placeholder named "Đang tải" carries `role="status"` (a name on a plain div is never read); a form field's hint has
+  an id the field names in `aria-describedby`.
 - **Badges:** status via `StatusBadge` + `lib/labels.ts`; tags as `outline` badges or plain muted `#tag` text,
   one style app-wide; at most 3 badges before the title. Badges are labels, never buttons or tabs.
 - **View switches:** `Tabs` (`components/ui/tabs`, default segmented or `underline`) for in-page views and for
