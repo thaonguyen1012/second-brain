@@ -10,6 +10,7 @@ import {
 } from '@/lib/api/opportunities';
 import { toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate } from '@/lib/labels';
+import { tabPanelProps, tabProps } from '@/lib/tab-panel';
 import { useT } from '@/lib/i18n/client';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
@@ -30,6 +31,9 @@ import { ScoreHistoryChart } from './score-history-chart';
 import { useShortcuts } from './use-shortcuts';
 
 type StanceFilter = 'all' | 'supports' | 'contradicts';
+
+/** The evidence the stance tabs filter (lib/tab-panel.ts). */
+const EVIDENCE_PANEL = 'evidence-list';
 
 function Section({
   id,
@@ -416,32 +420,34 @@ export function OpportunityDetail({ id }: { id: number }) {
             <Tabs value={stanceFilter} onValueChange={(v) => setStanceFilter(v as StanceFilter)}>
               <TabsList variant="underline" aria-label={t('Lọc bằng chứng')}>
                 {stanceTabs.map((tab) => (
-                  <TabsTab key={tab.value} value={tab.value}>
+                  <TabsTab key={tab.value} value={tab.value} {...tabProps(EVIDENCE_PANEL, tab.value)}>
                     {tab.label}
                   </TabsTab>
                 ))}
               </TabsList>
             </Tabs>
-            {shown.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('Không có bằng chứng nào loại này.')}</p>
-            ) : (
-              <ul className="flex flex-col divide-y">
-                {shown.map((e) => (
-                  <EvidenceRow
-                    key={e.id}
-                    e={e}
-                    opportunityId={o.id}
-                    onEdit={() => setEvidence({ mode: 'edit', evidence: e })}
-                    onDeleted={() => {
-                      opp.mutate((d) => d && { ...d, evidence: d.evidence.filter((x) => x.id !== e.id) });
-                      setNotice(t('Đã xóa bằng chứng'));
-                      // counts, last evidence date and "stale" are computed by the server
-                      opp.reload();
-                    }}
-                  />
-                ))}
-              </ul>
-            )}
+            <div {...tabPanelProps(EVIDENCE_PANEL, stanceFilter)}>
+              {shown.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('Không có bằng chứng nào loại này.')}</p>
+              ) : (
+                <ul className="flex flex-col divide-y">
+                  {shown.map((e) => (
+                    <EvidenceRow
+                      key={e.id}
+                      e={e}
+                      opportunityId={o.id}
+                      onEdit={() => setEvidence({ mode: 'edit', evidence: e })}
+                      onDeleted={() => {
+                        opp.mutate((d) => d && { ...d, evidence: d.evidence.filter((x) => x.id !== e.id) });
+                        setNotice(t('Đã xóa bằng chứng'));
+                        // counts, last evidence date and "stale" are computed by the server
+                        opp.reload();
+                      }}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
           </>
         )}
       </Section>

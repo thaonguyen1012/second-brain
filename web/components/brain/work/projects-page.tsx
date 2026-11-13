@@ -10,6 +10,7 @@ import { itemStatusOf, itemStatuses } from '@/lib/labels';
 import { PROJECT_BOARD } from '@/lib/status-board';
 import { ownPicture } from '@/lib/item-picture';
 import { useBoardView } from '@/lib/use-board-view';
+import { tabPanelProps } from '@/lib/tab-panel';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
@@ -52,6 +53,9 @@ const rowGrid = (withLogo: boolean) =>
 
 /** A project's logo as an Item picture (lib/item-picture.ts). */
 const logoOf = (p: ApiProject) => ownPicture({ type: 'project', imageUrl: p.imageUrl });
+
+/** The region the view switch changes (lib/tab-panel.ts). */
+const VIEW_PANEL = 'projects-view';
 
 /** Every project (all cursor pages, at most 20 of 100), newest first: one list for both views. */
 const loadProjects = () =>
@@ -315,7 +319,7 @@ export function ProjectsPage() {
       {toolbar !== 'hide' && (
         // At 390 px the view switch and "Thêm dự án" keep the first row; the list's filter takes the second
         <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
-          <ViewSwitch view={view} onChange={setView} />
+          <ViewSwitch view={view} onChange={setView} panel={VIEW_PANEL} />
           {view === 'list' && (
             <ChoiceSelect
               label={t('Trạng thái')}
@@ -339,67 +343,70 @@ export function ProjectsPage() {
       )}
       <BoardStatus moves={moves} />
 
-      <ApiStaleAlert result={projects} />
-      {projects.error && !projects.data ? (
-        <ApiErrorState error={projects.error} onRetry={projects.reload} />
-      ) : !projects.data ? (
-        view === 'board' ? (
-          <BoardSkeleton />
-        ) : (
-          <RowsSkeleton />
-        )
-      ) : all.length === 0 && !filtered ? (
-        <EmptyPanel
-          glyph={FolderPlus}
-          title={t('Chưa có dự án nào')}
-          text={t('Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế.')}
-          action={
-            <Button onClick={() => openNew()}>
-              <Plus aria-hidden />
-              {t('Thêm dự án')}
-            </Button>
-          }
-          guide="work"
-        />
-      ) : list.length === 0 && filtered ? (
-        <p className="text-sm text-muted-foreground">
-          {t('Không có mục nào khớp bộ lọc.')}{' '}
-          <Button variant="link" size="sm" className="px-0 underline" onClick={() => setStatus('all')}>
-            {t('Xóa bộ lọc')}
-          </Button>
-        </p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {anyMinutes && <BillableLegend className="justify-end" />}
-          {view === 'board' ? (
-            <StatusBoard
-              kind={PROJECT_BOARD}
-              records={all}
-              moves={moves}
-              onOpen={openEdit}
-              onAdd={openNew}
-              renderBody={(p) => <ProjectCardBody project={p} running={runningId === p.id} />}
-              renderMenu={(p) => (
-                <ProjectCardMenu
-                  project={p}
-                  running={runningId === p.id}
-                  onEdit={() => openEdit(p)}
-                  onStart={() => void startFor(p)}
-                />
-              )}
-              renderMedia={(p) => boardMedia(logoOf(p), t)}
-            />
+      {/* The view switch's panel while the toolbar shows (lib/tab-panel.ts); the page's own gap inside */}
+      <div {...(toolbar !== 'hide' && tabPanelProps(VIEW_PANEL, view))} className="flex flex-col gap-6">
+        <ApiStaleAlert result={projects} />
+        {projects.error && !projects.data ? (
+          <ApiErrorState error={projects.error} onRetry={projects.reload} />
+        ) : !projects.data ? (
+          view === 'board' ? (
+            <BoardSkeleton />
           ) : (
-            <ProjectList projects={list} runningId={runningId} onEdit={openEdit} onStart={(p) => void startFor(p)} />
-          )}
-        </div>
-      )}
-      {/* Only past the 20-page cap of loadProjects */}
-      {projects.data?.next && (
-        <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-          {t('Tải thêm')}
-        </Button>
-      )}
+            <RowsSkeleton />
+          )
+        ) : all.length === 0 && !filtered ? (
+          <EmptyPanel
+            glyph={FolderPlus}
+            title={t('Chưa có dự án nào')}
+            text={t('Thêm dự án freelance với khách và giá; giờ làm sẽ cho ra giá giờ thực tế.')}
+            action={
+              <Button onClick={() => openNew()}>
+                <Plus aria-hidden />
+                {t('Thêm dự án')}
+              </Button>
+            }
+            guide="work"
+          />
+        ) : list.length === 0 && filtered ? (
+          <p className="text-sm text-muted-foreground">
+            {t('Không có mục nào khớp bộ lọc.')}{' '}
+            <Button variant="link" size="sm" className="px-0 underline" onClick={() => setStatus('all')}>
+              {t('Xóa bộ lọc')}
+            </Button>
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {anyMinutes && <BillableLegend className="justify-end" />}
+            {view === 'board' ? (
+              <StatusBoard
+                kind={PROJECT_BOARD}
+                records={all}
+                moves={moves}
+                onOpen={openEdit}
+                onAdd={openNew}
+                renderBody={(p) => <ProjectCardBody project={p} running={runningId === p.id} />}
+                renderMenu={(p) => (
+                  <ProjectCardMenu
+                    project={p}
+                    running={runningId === p.id}
+                    onEdit={() => openEdit(p)}
+                    onStart={() => void startFor(p)}
+                  />
+                )}
+                renderMedia={(p) => boardMedia(logoOf(p), t)}
+              />
+            ) : (
+              <ProjectList projects={list} runningId={runningId} onEdit={openEdit} onStart={(p) => void startFor(p)} />
+            )}
+          </div>
+        )}
+        {/* Only past the 20-page cap of loadProjects */}
+        {projects.data?.next && (
+          <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
+            {t('Tải thêm')}
+          </Button>
+        )}
+      </div>
 
       <ProjectDialog
         open={dialogOpen}

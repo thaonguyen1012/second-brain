@@ -17,6 +17,7 @@ import { destinations, formatDate, hostOf, inboxStatuses, inboxStatusOf } from '
 import { itemDraftFromEntry, noteTitle } from '@/lib/library-labels';
 import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
+import { tabPanelProps, tabProps } from '@/lib/tab-panel';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +43,8 @@ import { SaveKeys } from './save-keys';
 const PAGE = 100;
 /** A Cmd+K deep link pages through at most this many pages of a tab to find its entry. */
 const FOCUS_MAX_PAGES = 10;
+/** The region the status tabs switch: the entries of the selected status (lib/tab-panel.ts). */
+const STATUS_PANEL = 'inbox-entries';
 
 function titleOf(e: ApiInboxEntry, t: T): string {
   return e.ogTitle || e.url || (e.text ?? '').split('\n')[0].slice(0, 140) || t('Mục #{id}', { id: e.id });
@@ -595,7 +598,7 @@ export function InboxPage() {
         >
           <TabsList aria-label={t('Trạng thái')}>
             {inboxStatuses.map((s) => (
-              <TabsTab key={s.value} value={s.value}>
+              <TabsTab key={s.value} value={s.value} {...tabProps(STATUS_PANEL, s.value)}>
                 {t(s.label)}
                 {/* The backlog as plain muted text, like the Thư viện tabs (the top bar's badge says the same) */}
                 {s.value === 'inbox' && inboxCount !== null && (
@@ -620,55 +623,58 @@ export function InboxPage() {
         {notice}
       </p>
 
-      <ApiStaleAlert result={inbox} />
-      {inbox.error && !inbox.data ? (
-        <ApiErrorState error={inbox.error} onRetry={inbox.reload} />
-      ) : inbox.loading && shown.length === 0 ? (
-        <LoadingCards />
-      ) : firstRun ? (
-        <EmptyPanel
-          glyph={Inbox}
-          title={t('Chưa có mục nào trong Inbox')}
-          text={t(
-            'Dán một link hoặc ghi một ý tưởng vào ô ở trên; mỗi mục sẽ hiện ở đây thành một thẻ để xử lý bằng phím.',
-          )}
-        />
-      ) : shown.length === 0 ? (
-        // Cleared, or a tab with nothing in it: one line, no action (DESIGN.md §9a). Blank while the counts answer.
-        status !== 'inbox' ? (
-          <p className="text-sm text-muted-foreground">
-            {t('Không có mục nào ở “{status}”.', { status: t(inboxStatusOf(status).label) })}
-          </p>
-        ) : handled || (elsewhere.data !== undefined && !elsewhere.loading) || elsewhere.error ? (
-          <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{t('Đã xử lý hết.')}</span> {t('Mục mới sẽ hiện ở đây.')}
-          </p>
-        ) : null
-      ) : (
-        <div className="flex flex-col gap-3">
-          {/* The cards' titles are h3: the tab's name heads them, so the outline does not jump from the h1 */}
-          <h2 className="sr-only">{t(inboxStatusOf(status).label)}</h2>
-          {shown.map((e, i) => (
-            <EntryCard
-              key={e.id}
-              entry={e}
-              selected={i === selected}
-              onSelect={() => setCursor(i)}
-              onTriage={(next) => void triage(e, next)}
-              onOpportunity={() => setPickFor(e)}
-              linkedItem={e.item && e.itemTitle !== null ? { title: e.itemTitle, type: e.itemType ?? '' } : undefined}
-              onItem={() => setItemFor(e)}
-              onNote={() => setNoteFor(e)}
-              onDelete={() => setDeleteFor(e)}
-            />
-          ))}
-          {inbox.data?.next && (
-            <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-              {t('Tải thêm')}
-            </Button>
-          )}
-        </div>
-      )}
+      {/* The status tabs' panel (lib/tab-panel.ts); the page's own gap inside */}
+      <div {...tabPanelProps(STATUS_PANEL, status)} className="flex flex-col gap-6">
+        <ApiStaleAlert result={inbox} />
+        {inbox.error && !inbox.data ? (
+          <ApiErrorState error={inbox.error} onRetry={inbox.reload} />
+        ) : inbox.loading && shown.length === 0 ? (
+          <LoadingCards />
+        ) : firstRun ? (
+          <EmptyPanel
+            glyph={Inbox}
+            title={t('Chưa có mục nào trong Inbox')}
+            text={t(
+              'Dán một link hoặc ghi một ý tưởng vào ô ở trên; mỗi mục sẽ hiện ở đây thành một thẻ để xử lý bằng phím.',
+            )}
+          />
+        ) : shown.length === 0 ? (
+          // Cleared, or a tab with nothing in it: one line, no action (DESIGN.md §9a). Blank while the counts answer.
+          status !== 'inbox' ? (
+            <p className="text-sm text-muted-foreground">
+              {t('Không có mục nào ở “{status}”.', { status: t(inboxStatusOf(status).label) })}
+            </p>
+          ) : handled || (elsewhere.data !== undefined && !elsewhere.loading) || elsewhere.error ? (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{t('Đã xử lý hết.')}</span> {t('Mục mới sẽ hiện ở đây.')}
+            </p>
+          ) : null
+        ) : (
+          <div className="flex flex-col gap-3">
+            {/* The cards' titles are h3: the tab's name heads them, so the outline does not jump from the h1 */}
+            <h2 className="sr-only">{t(inboxStatusOf(status).label)}</h2>
+            {shown.map((e, i) => (
+              <EntryCard
+                key={e.id}
+                entry={e}
+                selected={i === selected}
+                onSelect={() => setCursor(i)}
+                onTriage={(next) => void triage(e, next)}
+                onOpportunity={() => setPickFor(e)}
+                linkedItem={e.item && e.itemTitle !== null ? { title: e.itemTitle, type: e.itemType ?? '' } : undefined}
+                onItem={() => setItemFor(e)}
+                onNote={() => setNoteFor(e)}
+                onDelete={() => setDeleteFor(e)}
+              />
+            ))}
+            {inbox.data?.next && (
+              <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
+                {t('Tải thêm')}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
 
       <ConfirmDelete
         open={deleteFor !== null}

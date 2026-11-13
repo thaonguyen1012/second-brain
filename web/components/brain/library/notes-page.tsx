@@ -14,6 +14,7 @@ import { itemTypeLabel } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { singleKeyShortcutsOn } from '@/lib/single-key-shortcuts';
 import { useListView } from '@/lib/use-board-view';
+import { tabPanelProps, tabProps } from '@/lib/tab-panel';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
@@ -43,6 +44,9 @@ const templates = [
 ] as const;
 
 type NotesView = 'list' | 'items';
+
+/** The region the "Danh sách / Theo item" switch changes (lib/tab-panel.ts). */
+const VIEW_PANEL = 'notes-view';
 
 function isTyping(el: EventTarget | null): boolean {
   const t = el as HTMLElement | null;
@@ -415,8 +419,8 @@ export function NotesPage() {
         <div className={cn('flex flex-wrap items-center gap-2', toolbar === 'wait' && 'invisible')}>
           <Tabs value={view} onValueChange={(v) => setView(v as NotesView)}>
             <TabsList aria-label={t('Kiểu xem')}>
-              <TabsTab value="list">{t('Danh sách')}</TabsTab>
-              <TabsTab value="items">{t('Theo item')}</TabsTab>
+              <TabsTab value="list" {...tabProps(VIEW_PANEL, 'list')}>{t('Danh sách')}</TabsTab>
+              <TabsTab value="items" {...tabProps(VIEW_PANEL, 'items')}>{t('Theo item')}</TabsTab>
             </TabsList>
           </Tabs>
           <div className="relative min-w-0 max-sm:order-last max-sm:basis-full sm:w-72">
@@ -502,74 +506,77 @@ export function NotesPage() {
         {notice}
       </p>
 
-      <ApiStaleAlert result={notes} />
-      {failed && notes.error ? (
-        <ApiErrorState error={notes.error} onRetry={notes.reload} />
-      ) : firstLoad ? (
-        <RowsSkeleton />
-      ) : shown.length === 0 && filtered ? (
-        <FilteredEmpty onClear={clearFilters}>{t('Không có ghi chú nào khớp bộ lọc.')}</FilteredEmpty>
-      ) : shown.length === 0 ? (
-        <EmptyPanel
-          glyph={NotebookPen}
-          title={t('Chưa có ghi chú nào')}
-          text={t('Ghi lại điều đáng nhớ và gắn vào item.')}
-          action={
-            <Button onClick={() => newNote()}>
-              <Plus aria-hidden />
-              {t('Viết ghi chú')}
-            </Button>
-          }
-          quick={templates.map((tpl) => (
-            <Button
-              key={tpl.label.msgid}
-              variant="outline"
-              size="sm"
-              onClick={() => newNote(tpl.type)}
-            >
-              <Plus aria-hidden />
-              {t(tpl.label)}
-            </Button>
-          ))}
-          guide={notes.error ? undefined : 'library'}
-        />
-      ) : view === 'items' ? (
-        <div className="flex flex-col gap-6">
-          {groups.map((g) => (
-            <NoteGroupSection
-              key={g.item ?? 'loose'}
-              group={g}
-              item={g.item === null ? undefined : index.byId.get(g.item)}
-              label={g.item === null ? { title: t('Ghi chú rời') } : itemTitle(g.item)}
-              withPicture={groupPictures}
-              itemTitle={itemTitle}
-              onOpen={openNote}
-              onEdit={openNote}
-              onDelete={setDeleting}
-            />
-          ))}
-        </div>
-      ) : (
-        <ul aria-label={t('Ghi chú', null, 'nav')} className="divide-y overflow-hidden rounded-xl border bg-card">
-          {shown.map((n, i) => (
-            <NoteRow
-              key={n.id}
-              note={n}
-              itemTitle={itemTitle}
-              selected={i === selected}
-              onSelect={() => setCursor(i)}
-              onOpen={() => openNote(n)}
-              onEdit={() => openNote(n)}
-              onDelete={() => setDeleting(n)}
-            />
-          ))}
-        </ul>
-      )}
-      {view === 'list' && notes.data?.next && !notes.loading && (
-        <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-          {t('Tải thêm')}
-        </Button>
-      )}
+      {/* The view switch's panel while the toolbar shows (lib/tab-panel.ts); the page's own gap inside */}
+      <div {...(toolbar !== 'hide' && tabPanelProps(VIEW_PANEL, view))} className="flex flex-col gap-6">
+        <ApiStaleAlert result={notes} />
+        {failed && notes.error ? (
+          <ApiErrorState error={notes.error} onRetry={notes.reload} />
+        ) : firstLoad ? (
+          <RowsSkeleton />
+        ) : shown.length === 0 && filtered ? (
+          <FilteredEmpty onClear={clearFilters}>{t('Không có ghi chú nào khớp bộ lọc.')}</FilteredEmpty>
+        ) : shown.length === 0 ? (
+          <EmptyPanel
+            glyph={NotebookPen}
+            title={t('Chưa có ghi chú nào')}
+            text={t('Ghi lại điều đáng nhớ và gắn vào item.')}
+            action={
+              <Button onClick={() => newNote()}>
+                <Plus aria-hidden />
+                {t('Viết ghi chú')}
+              </Button>
+            }
+            quick={templates.map((tpl) => (
+              <Button
+                key={tpl.label.msgid}
+                variant="outline"
+                size="sm"
+                onClick={() => newNote(tpl.type)}
+              >
+                <Plus aria-hidden />
+                {t(tpl.label)}
+              </Button>
+            ))}
+            guide={notes.error ? undefined : 'library'}
+          />
+        ) : view === 'items' ? (
+          <div className="flex flex-col gap-6">
+            {groups.map((g) => (
+              <NoteGroupSection
+                key={g.item ?? 'loose'}
+                group={g}
+                item={g.item === null ? undefined : index.byId.get(g.item)}
+                label={g.item === null ? { title: t('Ghi chú rời') } : itemTitle(g.item)}
+                withPicture={groupPictures}
+                itemTitle={itemTitle}
+                onOpen={openNote}
+                onEdit={openNote}
+                onDelete={setDeleting}
+              />
+            ))}
+          </div>
+        ) : (
+          <ul aria-label={t('Ghi chú', null, 'nav')} className="divide-y overflow-hidden rounded-xl border bg-card">
+            {shown.map((n, i) => (
+              <NoteRow
+                key={n.id}
+                note={n}
+                itemTitle={itemTitle}
+                selected={i === selected}
+                onSelect={() => setCursor(i)}
+                onOpen={() => openNote(n)}
+                onEdit={() => openNote(n)}
+                onDelete={() => setDeleting(n)}
+              />
+            ))}
+          </ul>
+        )}
+        {view === 'list' && notes.data?.next && !notes.loading && (
+          <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
+            {t('Tải thêm')}
+          </Button>
+        )}
+      </div>
 
       <ConfirmDelete
         open={deleting !== null}

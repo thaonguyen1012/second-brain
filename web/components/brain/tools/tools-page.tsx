@@ -18,6 +18,7 @@ import {
 } from '@/lib/tools';
 import { useListView } from '@/lib/use-board-view';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
+import { tabPanelProps } from '@/lib/tab-panel';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuSeparator } from '@/components/ui/menu';
@@ -59,6 +60,9 @@ const rowGrid = 'grid-cols-[3.5rem_minmax(0,1fr)_auto] md:grid-cols-[3.5rem_auto
 
 /** The grid view's cards: as many 15rem columns as fit (one at 390 px, four beside the sidebar at 1440 px). */
 const cardGrid = 'grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-3';
+
+/** The region the view switch changes (lib/tab-panel.ts). */
+const VIEW_PANEL = 'tools-view';
 
 /** Where the focus goes back after the Sheet or a dialog: the row it was opened from, else that tool's first row. */
 function rowFocusTarget(target: { id: number; group: ToolGroupKey } | null): HTMLElement | null {
@@ -360,7 +364,7 @@ export function ToolsPage() {
       {toolbar !== 'hide' && (
         <div className={cn('@container', toolbar === 'wait' && 'invisible')}>
           <div className="flex flex-wrap items-center gap-2">
-            <ViewSwitch view={view} onChange={setView} alt="grid" textOnlyWhenNarrow />
+            <ViewSwitch view={view} onChange={setView} panel={VIEW_PANEL} alt="grid" textOnlyWhenNarrow />
             <div className="order-last grid w-full grid-cols-2 gap-2 @3xl:order-none @3xl:flex @3xl:w-auto @3xl:items-center">
               <ChoiceSelect
                 label={t('Trạng thái')}
@@ -389,93 +393,96 @@ export function ToolsPage() {
         {notice}
       </p>
 
-      <ApiStaleAlert result={tools} />
-      {failed && tools.error ? (
-        <ApiErrorState error={tools.error} onRetry={tools.reload} />
-      ) : !ready ? (
-        view === 'grid' ? (
-          <CardsSkeleton />
+      {/* The view switch's panel while the toolbar shows (lib/tab-panel.ts); the page's own gap inside */}
+      <div {...(toolbar !== 'hide' && tabPanelProps(VIEW_PANEL, view))} className="flex flex-col gap-6">
+        <ApiStaleAlert result={tools} />
+        {failed && tools.error ? (
+          <ApiErrorState error={tools.error} onRetry={tools.reload} />
+        ) : !ready ? (
+          view === 'grid' ? (
+            <CardsSkeleton />
+          ) : (
+            <RowsSkeleton picture />
+          )
+        ) : groups.length === 0 && filtered ? (
+          <FilteredEmpty
+            onClear={() => {
+              setStatus('all');
+              setStage('all');
+            }}
+          >
+            {t('Không có công cụ nào khớp bộ lọc.')}
+          </FilteredEmpty>
+        ) : all.length === 0 ? (
+          <EmptyPanel
+            glyph={ToolCase}
+            title={t('Chưa có công cụ nào')}
+            text={t.rich(
+              'Lưu công cụ bạn dùng hoặc muốn thử, kèm một dòng dùng để làm gì; hoặc chạy <code>manage.py seed_tools</code> một lần để có sẵn danh sách gợi ý.',
+              { code: (chunks) => <code className="font-mono text-xs text-foreground">{chunks}</code> },
+            )}
+            action={
+              <Button onClick={openNew}>
+                <Plus aria-hidden />
+                {t('Thêm công cụ')}
+              </Button>
+            }
+            ghost={<GhostRows />}
+          />
         ) : (
-          <RowsSkeleton picture />
-        )
-      ) : groups.length === 0 && filtered ? (
-        <FilteredEmpty
-          onClear={() => {
-            setStatus('all');
-            setStage('all');
-          }}
-        >
-          {t('Không có công cụ nào khớp bộ lọc.')}
-        </FilteredEmpty>
-      ) : all.length === 0 ? (
-        <EmptyPanel
-          glyph={ToolCase}
-          title={t('Chưa có công cụ nào')}
-          text={t.rich(
-            'Lưu công cụ bạn dùng hoặc muốn thử, kèm một dòng dùng để làm gì; hoặc chạy <code>manage.py seed_tools</code> một lần để có sẵn danh sách gợi ý.',
-            { code: (chunks) => <code className="font-mono text-xs text-foreground">{chunks}</code> },
-          )}
-          action={
-            <Button onClick={openNew}>
-              <Plus aria-hidden />
-              {t('Thêm công cụ')}
-            </Button>
-          }
-          ghost={<GhostRows />}
-        />
-      ) : (
-        <div className="flex flex-col gap-8">
-          {groups.map(({ key, tools: list }) => {
-            const Icon = toolStageIcons[key];
-            const Entry = view === 'grid' ? ToolCard : ToolRow;
-            return (
-              <section key={key} aria-labelledby={`tools-${key}`} className="flex flex-col gap-3">
-                {/* The stage's icon before its name (owner 13/11/2026), ink and the title icon's line, no tile */}
-                <h2
-                  id={`tools-${key}`}
-                  className="flex items-center gap-2 font-heading text-lg font-semibold tracking-tight"
-                >
-                  <Icon
-                    aria-hidden
-                    className="size-5 shrink-0 forced-colors:text-inherit"
-                    strokeWidth={1.5}
-                    absoluteStrokeWidth
-                  />
-                  {t(toolGroupLabel(key))}
-                  <span className="text-sm font-normal text-muted-foreground tabular-nums">{list.length}</span>
-                </h2>
-                <ul
-                  aria-labelledby={`tools-${key}`}
-                  className={
-                    view === 'grid'
-                      ? cardGrid
-                      : cn('grid gap-x-3 divide-y overflow-hidden rounded-xl border bg-card', rowGrid)
-                  }
-                >
-                  {list.map((tool) => (
-                    <Entry
-                      key={tool.id}
-                      tool={tool}
-                      group={key}
-                      onOpen={() => openSheet(tool, key)}
-                      onEdit={() => openEdit(tool, key)}
-                      onWriteNote={() => openSheet(tool, key, true)}
-                      onRate={() => openEdit(tool, key, true)}
-                      onMove={(to) => void move(tool, to)}
+          <div className="flex flex-col gap-8">
+            {groups.map(({ key, tools: list }) => {
+              const Icon = toolStageIcons[key];
+              const Entry = view === 'grid' ? ToolCard : ToolRow;
+              return (
+                <section key={key} aria-labelledby={`tools-${key}`} className="flex flex-col gap-3">
+                  {/* The stage's icon before its name (owner 13/11/2026), ink and the title icon's line, no tile */}
+                  <h2
+                    id={`tools-${key}`}
+                    className="flex items-center gap-2 font-heading text-lg font-semibold tracking-tight"
+                  >
+                    <Icon
+                      aria-hidden
+                      className="size-5 shrink-0 forced-colors:text-inherit"
+                      strokeWidth={1.5}
+                      absoluteStrokeWidth
                     />
-                  ))}
-                </ul>
-              </section>
-            );
-          })}
-        </div>
-      )}
-      {/* Only past the 20-page cap of loadTools */}
-      {ready && tools.data?.next && (
-        <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-          {t('Tải thêm')}
-        </Button>
-      )}
+                    {t(toolGroupLabel(key))}
+                    <span className="text-sm font-normal text-muted-foreground tabular-nums">{list.length}</span>
+                  </h2>
+                  <ul
+                    aria-labelledby={`tools-${key}`}
+                    className={
+                      view === 'grid'
+                        ? cardGrid
+                        : cn('grid gap-x-3 divide-y overflow-hidden rounded-xl border bg-card', rowGrid)
+                    }
+                  >
+                    {list.map((tool) => (
+                      <Entry
+                        key={tool.id}
+                        tool={tool}
+                        group={key}
+                        onOpen={() => openSheet(tool, key)}
+                        onEdit={() => openEdit(tool, key)}
+                        onWriteNote={() => openSheet(tool, key, true)}
+                        onRate={() => openEdit(tool, key, true)}
+                        onMove={(to) => void move(tool, to)}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              );
+            })}
+          </div>
+        )}
+        {/* Only past the 20-page cap of loadTools */}
+        {ready && tools.data?.next && (
+          <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
+            {t('Tải thêm')}
+          </Button>
+        )}
+      </div>
 
       <ItemDialog
         open={dialogOpen}

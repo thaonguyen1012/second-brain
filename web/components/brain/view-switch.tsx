@@ -3,6 +3,7 @@ import { LayoutGrid, List, SquareKanban, type LucideIcon } from 'lucide-react';
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
+import { tabProps } from '@/lib/tab-panel';
 
 /** The one view a page offers beside its list: the board (Dự án, Thư viện) or the grid of cards (Công cụ). */
 const ALT_VIEWS = {
@@ -15,15 +16,19 @@ export type AltView = keyof typeof ALT_VIEWS;
 /**
  * The List/Board switch of a page with a board, or List/Grid on Công cụ (DESIGN.md §6 "View switch"): first in the
  * toolbar, at the Tabs' own icon size. The view itself lives in the URL and the remembered choice (useListView).
+ * The page's region below the toolbar is the tabs' panel: give it `tabPanelProps(panel, view)`.
  */
 export function ViewSwitch<A extends AltView = 'board'>({
   view,
   onChange,
+  panel,
   alt = 'board' as A,
   textOnlyWhenNarrow = false,
 }: {
   view: 'list' | A;
   onChange: (view: 'list' | A) => void;
+  /** The id of the region the view switch changes (lib/tab-panel.ts). */
+  panel: string;
   alt?: A;
   /**
    * In a toolbar (its `@container`) narrower than 28rem the tabs drop their icons and keep their names, like Ghi chú's
@@ -37,11 +42,11 @@ export function ViewSwitch<A extends AltView = 'board'>({
   return (
     <Tabs value={view} onValueChange={(v) => onChange(v as 'list' | A)}>
       <TabsList aria-label={t('Kiểu xem')}>
-        <TabsTab value="list">
+        <TabsTab value="list" {...tabProps(panel, 'list')}>
           <List aria-hidden className={iconClass} />
           {t('Danh sách')}
         </TabsTab>
-        <TabsTab value={alt}>
+        <TabsTab value={alt} {...tabProps(panel, alt)}>
           <Icon aria-hidden className={iconClass} />
           {t(label)}
         </TabsTab>

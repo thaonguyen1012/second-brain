@@ -18,6 +18,7 @@ import { ITEM_BOARD, laneOf } from '@/lib/status-board';
 import { useBoardView } from '@/lib/use-board-view';
 import { useRememberedFlag } from '@/lib/use-remembered-flag';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
+import { tabPanelProps } from '@/lib/tab-panel';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
 import { msg } from '@/lib/i18n/translate';
@@ -40,6 +41,9 @@ type StatusFilter = ApiItemStatus | 'all';
 
 const typeChoices = [{ value: 'all' as const, label: msg('Mọi loại') }, ...itemTypes];
 const statusChoices = [{ value: 'all' as const, label: msg('Mọi trạng thái') }, ...itemStatuses];
+
+/** The region the view switch changes (lib/tab-panel.ts). */
+const VIEW_PANEL = 'items-view';
 
 /** Every Item of one type (all cursor pages, at most 20 of 100), newest first: one list for both views. */
 const loadItems = (type: TypeFilter) => () =>
@@ -226,7 +230,7 @@ export function LibraryPage() {
       {toolbar !== 'hide' && (
         <div className={cn('@container', toolbar === 'wait' && 'invisible')}>
           <div className="flex flex-wrap items-center gap-2">
-            <ViewSwitch view={view} onChange={setView} />
+            <ViewSwitch view={view} onChange={setView} panel={VIEW_PANEL} />
             <div
               className={cn(
                 'order-last grid w-full gap-2 @xl:order-none @xl:flex @xl:w-auto @xl:items-center',
@@ -263,104 +267,107 @@ export function LibraryPage() {
       </p>
       <BoardStatus moves={moves} />
 
-      <ApiStaleAlert result={items} />
-      {failed && items.error ? (
-        <ApiErrorState error={items.error} onRetry={items.reload} />
-      ) : !ready ? (
-        view === 'board' ? (
-          <BoardSkeleton media={skeletonPictures} />
-        ) : (
-          <RowsSkeleton picture={skeletonPictures} />
-        )
-      ) : shown.length === 0 && filtered ? (
-        <FilteredEmpty
-          onClear={() => {
-            setType('all');
-            setStatus('all');
-          }}
-        >
-          {t('Không có mục nào khớp bộ lọc.')}
-        </FilteredEmpty>
-      ) : all.length === 0 ? (
-        <EmptyPanel
-          glyph={BookPlus}
-          title={t('Chưa có item nào')}
-          text={t('Thêm sách, phim, khóa học, bài viết hoặc dự án; mục từ inbox cũng có thể thành item.')}
-          action={
-            <Button onClick={() => openNew()}>
-              <Plus aria-hidden />
-              {t('Thêm item')}
-            </Button>
-          }
-          // Built from the owner's own content: offered only once a handbook is imported
-          quick={
-            handbooks.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void addHandbooks()}
-                disabled={importing !== null || loaded === false}
-              >
-                {importing ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Plus aria-hidden />}
-                {importing
-                  ? t('Đang thêm {sent}/{n} khóa học…', { sent: importing.sent, n: importing.total })
-                  : t('Thêm {n} khóa học từ Sổ tay', { n: handbooks.length })}
+      {/* The view switch's panel while the toolbar shows (lib/tab-panel.ts); the page's own gap inside */}
+      <div {...(toolbar !== 'hide' && tabPanelProps(VIEW_PANEL, view))} className="flex flex-col gap-6">
+        <ApiStaleAlert result={items} />
+        {failed && items.error ? (
+          <ApiErrorState error={items.error} onRetry={items.reload} />
+        ) : !ready ? (
+          view === 'board' ? (
+            <BoardSkeleton media={skeletonPictures} />
+          ) : (
+            <RowsSkeleton picture={skeletonPictures} />
+          )
+        ) : shown.length === 0 && filtered ? (
+          <FilteredEmpty
+            onClear={() => {
+              setType('all');
+              setStatus('all');
+            }}
+          >
+            {t('Không có mục nào khớp bộ lọc.')}
+          </FilteredEmpty>
+        ) : all.length === 0 ? (
+          <EmptyPanel
+            glyph={BookPlus}
+            title={t('Chưa có item nào')}
+            text={t('Thêm sách, phim, khóa học, bài viết hoặc dự án; mục từ inbox cũng có thể thành item.')}
+            action={
+              <Button onClick={() => openNew()}>
+                <Plus aria-hidden />
+                {t('Thêm item')}
               </Button>
-            )
-          }
-          guide={items.error ? undefined : 'library'}
-        />
-      ) : view === 'board' ? (
-        <StatusBoard
-          kind={ITEM_BOARD}
-          records={all}
-          moves={moves}
-          onOpen={(item) => openSheet(item)}
-          onAdd={(lane) => openNew({ status: lane })}
-          renderBody={(item) => (
-            <ItemCardBody
-              item={item}
-              showType={type === 'all'}
-              onWriteNote={() => writeNote(item)}
-              onRate={() => openEdit(item, true)}
-            />
-          )}
-          renderMenu={(item) => (
-            <ItemMenuItems
-              item={item}
-              onEdit={() => openEdit(item)}
-              onWriteNote={() => writeNote(item)}
-              onRate={() => openEdit(item, true)}
-            />
-          )}
-          renderMedia={(item) => boardMedia(itemPicture(item), t)}
-        />
-      ) : (
-        // One container, rows on a shared subgrid so status, rating and actions line up (DESIGN.md §3 Columns)
-        <ul
-          aria-label={t('Item', null, 'nav')}
-          className={cn('grid gap-x-3 divide-y overflow-hidden rounded-xl border bg-card', itemListGrid(withPicture))}
-        >
-          {list.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              withPicture={withPicture}
-              onOpen={() => openSheet(item)}
-              onEdit={() => openEdit(item)}
-              onRate={() => openEdit(item, true)}
-              onStep={(to) => void step(item, to)}
-              onWriteNote={() => writeNote(item)}
-            />
-          ))}
-        </ul>
-      )}
-      {/* Only past the 20-page cap of loadItems */}
-      {ready && items.data?.next && (
-        <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
-          {t('Tải thêm')}
-        </Button>
-      )}
+            }
+            quick={
+              // Built from the owner's own content: offered only once a handbook is imported
+              handbooks.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void addHandbooks()}
+                  disabled={importing !== null || loaded === false}
+                >
+                  {importing ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Plus aria-hidden />}
+                  {importing
+                    ? t('Đang thêm {sent}/{n} khóa học…', { sent: importing.sent, n: importing.total })
+                    : t('Thêm {n} khóa học từ Sổ tay', { n: handbooks.length })}
+                </Button>
+              )
+            }
+            guide={items.error ? undefined : 'library'}
+          />
+        ) : view === 'board' ? (
+          <StatusBoard
+            kind={ITEM_BOARD}
+            records={all}
+            moves={moves}
+            onOpen={(item) => openSheet(item)}
+            onAdd={(lane) => openNew({ status: lane })}
+            renderBody={(item) => (
+              <ItemCardBody
+                item={item}
+                showType={type === 'all'}
+                onWriteNote={() => writeNote(item)}
+                onRate={() => openEdit(item, true)}
+              />
+            )}
+            renderMenu={(item) => (
+              <ItemMenuItems
+                item={item}
+                onEdit={() => openEdit(item)}
+                onWriteNote={() => writeNote(item)}
+                onRate={() => openEdit(item, true)}
+              />
+            )}
+            renderMedia={(item) => boardMedia(itemPicture(item), t)}
+          />
+        ) : (
+          // One container, rows on a shared subgrid so status, rating and actions line up (DESIGN.md §3 Columns)
+          <ul
+            aria-label={t('Item', null, 'nav')}
+            className={cn('grid gap-x-3 divide-y overflow-hidden rounded-xl border bg-card', itemListGrid(withPicture))}
+          >
+            {list.map((item) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                withPicture={withPicture}
+                onOpen={() => openSheet(item)}
+                onEdit={() => openEdit(item)}
+                onRate={() => openEdit(item, true)}
+                onStep={(to) => void step(item, to)}
+                onWriteNote={() => writeNote(item)}
+              />
+            ))}
+          </ul>
+        )}
+        {/* Only past the 20-page cap of loadItems */}
+        {ready && items.data?.next && (
+          <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
+            {t('Tải thêm')}
+          </Button>
+        )}
+      </div>
 
       <ItemDialog
         open={dialogOpen}
