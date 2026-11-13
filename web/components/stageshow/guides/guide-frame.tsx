@@ -59,18 +59,28 @@ function subscribe(fn: () => void) {
 /** "Xem lại" etc.: a labelled ghost xs button from sm, an icon-only one with a tooltip below sm. */
 function FrameControl({
   label,
+  name,
   icon,
   onClick,
   expanded,
 }: {
   label: string;
+  /** The accessible name when `label` alone repeats on a page of guides (/huong-dan/): it starts with `label`. */
+  name?: string;
   icon: ReactNode;
   onClick: () => void;
   expanded?: boolean;
 }) {
   return (
     <>
-      <Button size="xs" variant="ghost" aria-expanded={expanded} onClick={onClick} className="max-sm:hidden">
+      <Button
+        size="xs"
+        variant="ghost"
+        aria-label={name}
+        aria-expanded={expanded}
+        onClick={onClick}
+        className="max-sm:hidden"
+      >
         {icon}
         {label}
       </Button>
@@ -80,7 +90,7 @@ function FrameControl({
             <Button
               size="icon-xs"
               variant="ghost"
-              aria-label={label}
+              aria-label={name ?? label}
               aria-expanded={expanded}
               onClick={onClick}
               className="sm:hidden"
@@ -177,7 +187,12 @@ export function GuideFrame({
         </h2>
         <div className="flex shrink-0 items-center gap-1">
           {!hidden && replay && (
-            <FrameControl label={t('Xem lại')} icon={<RotateCcw aria-hidden />} onClick={() => setRun((r) => r + 1)} />
+            <FrameControl
+              label={t('Xem lại')}
+              name={t('Xem lại hướng dẫn: {title}', { title: t(title) })}
+              icon={<RotateCcw aria-hidden />}
+              onClick={() => setRun((r) => r + 1)}
+            />
           )}
           {stoppable && (
             <FrameControl

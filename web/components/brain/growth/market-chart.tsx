@@ -96,7 +96,20 @@ export function MarketSkillTable({ lines, processed }: { lines: ApiMarketSkill[]
                   <div className="flex flex-col gap-0.5">
                     <span className="font-medium break-words">{l.name}</span>
                     {l.skill ? (
-                      <Link href={`/phat-trien/ky-nang/?id=${l.skill.id}`} className="w-fit hover:underline">
+                      <Link
+                        href={`/phat-trien/ky-nang/?id=${l.skill.id}`}
+                        className="w-fit hover:underline"
+                        // when the skill has the row's name the link shows only its freshness word, which repeats
+                        // down the table: the name adds the skill it opens (the shown word first)
+                        aria-label={
+                          l.skill.name.toLowerCase() === l.name.toLowerCase()
+                            ? t('{freshness}: {name}', {
+                                freshness: t(freshness[l.skill.freshness].label),
+                                name: l.skill.name,
+                              })
+                            : undefined
+                        }
+                      >
                         <MatchedSkill line={l} />
                       </Link>
                     ) : (

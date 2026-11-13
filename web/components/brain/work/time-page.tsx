@@ -77,7 +77,8 @@ function EntryRow({
             size="icon-sm"
             variant="ghost"
             onClick={onEdit}
-            aria-label={t('Sửa giờ của {title}', { title: e.projectTitle })}
+            // a project has many entries: the day tells this one apart
+            aria-label={t('Sửa giờ của {title} ngày {day}', { title: e.projectTitle, day: formatDay(e.date, t) })}
           >
             <Pencil aria-hidden />
           </Button>
@@ -111,7 +112,10 @@ function EntryRow({
                   <DeleteButton
                     size="icon-sm"
                     label=""
-                    aria-label={t('Xóa giờ của {title}', { title: e.projectTitle })}
+                    aria-label={t('Xóa giờ của {title} ngày {day}', {
+                      title: e.projectTitle,
+                      day: formatDay(e.date, t),
+                    })}
                   />
                 }
               />

@@ -92,12 +92,12 @@ export const work = {
   // Time page: entries, filters and notices (work/time-page.tsx)
   'Mục tiêu: {title}': 'Objective: {title}',
   'mục tiêu tuần': 'week objective',
-  'Sửa giờ của {title}': 'Edit time for {title}',
+  'Sửa giờ của {title} ngày {day}': 'Edit time for {title} on {day}',
   'Xóa mục giờ này?': 'Delete this time entry?',
   'Bộ bấm giờ của "{title}" đang chạy sẽ bị hủy, không ghi phút nào.':
     'The running timer for "{title}" will be cancelled without logging any minutes.',
   '{time} cho "{title}" ngày {day}. Không hoàn tác được.': '{time} for "{title}" on {day}. This cannot be undone.',
-  'Xóa giờ của {title}': 'Delete time for {title}',
+  'Xóa giờ của {title} ngày {day}': 'Delete time for {title} on {day}',
   'Mọi dự án': 'All projects',
   'Dự án #{id}': 'Project #{id}',
   'Đã xóa mục giờ của "{title}"': 'Deleted the time entry for "{title}"',

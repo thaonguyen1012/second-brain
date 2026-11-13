@@ -125,13 +125,15 @@ function ToInbox({ item }: { item: ApiNewsItem }) {
   );
 }
 
+/** `name`: the toggle's accessible name, its tooltip's word and then the story ({title}): every card has the pair. */
 const ratings: {
   value: ApiNewsFeedback;
   label: Msg;
+  name: Msg;
   icon: typeof ThumbsUp;
 }[] = [
-  { value: 'useful', label: msg('Hữu ích'), icon: ThumbsUp },
-  { value: 'not_useful', label: msg('Không hữu ích'), icon: ThumbsDown },
+  { value: 'useful', label: msg('Hữu ích'), name: msg('Hữu ích: {title}'), icon: ThumbsUp },
+  { value: 'not_useful', label: msg('Không hữu ích'), name: msg('Không hữu ích: {title}'), icon: ThumbsDown },
 ];
 
 /**
@@ -175,7 +177,7 @@ function Feedback({
         aria-label={t('Tin "{title}" có hữu ích không?', { title: item.title })}
         className="flex items-center gap-0.5"
       >
-        {ratings.map(({ value, label, icon: Icon }) => {
+        {ratings.map(({ value, label, name, icon: Icon }) => {
           const on = current === value;
           return (
             <Tooltip key={value}>
@@ -184,7 +186,7 @@ function Feedback({
                   <Button
                     size="icon-sm"
                     variant={on ? 'secondary' : 'ghost'}
-                    aria-label={t(label)}
+                    aria-label={t(name, { title: item.title })}
                     aria-pressed={on}
                     aria-busy={busy || undefined}
                     onClick={() => void rate(value)}

@@ -123,6 +123,7 @@ export const shell = {
   'thêm item, xong thì viết ghi chú': 'add an item, write a note when done',
   'Hướng dẫn: {title}': 'Guide: {title}',
   'Xem lại': 'Replay',
+  'Xem lại hướng dẫn: {title}': 'Replay the guide: {title}',
   'Xem hướng dẫn': 'Show the guide',
   'Ẩn hướng dẫn': 'Hide the guide',
 

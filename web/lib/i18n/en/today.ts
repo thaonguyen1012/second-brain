@@ -31,6 +31,8 @@ export const today = {
   'Đưa vào Inbox': 'Send to Inbox',
   'Hữu ích': 'Useful',
   'Không hữu ích': 'Not useful',
+  'Hữu ích: {title}': 'Useful: {title}',
+  'Không hữu ích: {title}': 'Not useful: {title}',
   'Tin "{title}" có hữu ích không?': 'Is the story "{title}" useful?',
   '{label} (bấm lần nữa để bỏ)': '{label} (press again to clear)',
 

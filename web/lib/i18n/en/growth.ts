@@ -103,6 +103,8 @@ export const growth = {
 
   // Market chart (growth/market-chart.tsx)
   'Chưa có trong ma trận': 'Not in the matrix yet',
+  // a table row's link to its skill, which shows only the freshness word (growth/market-chart.tsx)
+  '{freshness}: {name}': '{freshness}: {name}',
   'không đổi': 'no change',
   tăng: 'up',
   giảm: 'down',
