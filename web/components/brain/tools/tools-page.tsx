@@ -274,9 +274,14 @@ export function ToolsPage() {
     afterDelete.current = null;
     return focusTarget(next) ?? rowFocusTarget(returnTo.current) ?? null;
   };
-  /** Before a tool leaves the list: where the focus goes when its dialog or Sheet closes. */
-  const leaving = () => {
-    afterDelete.current = focusCandidates(rowFocusTarget(returnTo.current));
+  /**
+   * Before a tool leaves the list: where the focus goes when its dialog or Sheet closes. From the row it was opened
+   * from, else (the Sheet of ?item=N) from the tool's first row.
+   */
+  const leaving = (id: number) => {
+    afterDelete.current = focusCandidates(
+      rowFocusTarget(returnTo.current) ?? document.querySelector(`[data-tool-id="${id}"]`),
+    );
     returnTo.current = null;
   };
 
@@ -521,7 +526,7 @@ export function ToolsPage() {
           );
         }}
         onDeleted={(deleted) => {
-          leaving();
+          leaving(deleted.id);
           remove(deleted.id);
           setDialogOpen(false);
           setEditing(null);
@@ -556,7 +561,7 @@ export function ToolsPage() {
           )
         }
         onDeleted={(deleted) => {
-          leaving();
+          leaving(deleted.id);
           remove(deleted.id);
           setSheetOpen(false);
           setNotice(t('Đã xóa "{title}"', { title: deleted.title }));
