@@ -10,6 +10,7 @@ import { navAreas } from '@/lib/app-nav';
 import { locales, localeNames, type Locale } from '@/lib/i18n/config';
 import { I18nProvider, switchLocale, useT } from '@/lib/i18n/client';
 import type { Dictionary } from '@/lib/i18n/translate';
+import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 import { useAppPathname } from '@/lib/use-app-pathname';
 
 /** Handbooks + second brain (Cmd+K "find everything"); lazy like Fumadocs' default dialog, so off the first load. */
@@ -19,17 +20,16 @@ const SearchDialog = lazy(() => import('./search-dialog'));
 const fumadocsLocales = locales.map((locale) => ({ locale, name: localeNames[locale] }));
 
 /**
- * "/" opens search (in addition to ⌘K / Ctrl+K), unless the user is typing, another handler took the key, or
- * the page has its own search box marked `data-local-search` (Ghi chú, Kỹ năng: "/" focuses that box).
+ * "/" opens search (in addition to ⌘K / Ctrl+K), unless the user is typing, another handler took the key,
+ * single-key shortcuts are off (⌘K still opens it), or the page has its own search box marked `data-local-search`
+ * (Ghi chú, Kỹ năng: "/" focuses that box).
  */
 function SlashToSearch() {
   const { setOpenSearch } = useSearchContext();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== '/' || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key !== '/' || e.defaultPrevented || !singleKeyShortcut(e)) return;
       if (document.querySelector('[data-local-search]')) return;
-      const el = e.target as HTMLElement | null;
-      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
       e.preventDefault();
       setOpenSearch(true);
     };

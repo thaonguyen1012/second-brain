@@ -15,6 +15,7 @@ import { linkInboxItem } from '@/lib/api/library';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { destinations, formatDate, hostOf, inboxStatuses, inboxStatusOf } from '@/lib/labels';
 import { itemDraftFromEntry, noteTitle } from '@/lib/library-labels';
+import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
@@ -60,11 +61,6 @@ function noteDraftOf(e: ApiInboxEntry, t: T): NoteDraft {
     markdown: [e.url, about, e.url ? '' : e.text].filter(Boolean).join('\n\n') + '\n\n',
     items: e.item ? [e.item] : [],
   };
-}
-
-function isTyping(el: EventTarget | null): boolean {
-  const t = el as HTMLElement | null;
-  return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 }
 
 /** Key hint on a row's visible verbs: hidden on touch screens and at phone width (DESIGN.md D24). */
@@ -533,7 +529,7 @@ export function InboxPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (dialogOpen || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (dialogOpen || !singleKeyShortcut(e)) return;
       // The key legend dialog and a row's overflow menu handle their own keys
       if (document.querySelector('[role="dialog"], [role="menu"]')) return;
       const k = e.key.toLowerCase();

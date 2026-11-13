@@ -111,8 +111,3 @@ const fieldNames: Record<string, Msg> = {
   note: msg('Ghi chú'),
 };
 export const fieldErrors = (body: unknown, t: T) => sharedFieldErrors(body, t, fieldNames);
-
-export function isTyping(el: EventTarget | null): boolean {
-  const t = el as HTMLElement | null;
-  return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
-}

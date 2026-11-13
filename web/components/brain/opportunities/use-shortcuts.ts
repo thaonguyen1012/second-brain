@@ -1,14 +1,10 @@
 'use client';
 import { useEffect, useRef } from 'react';
-
-function isTyping(el: EventTarget | null): boolean {
-  const t = el as HTMLElement | null;
-  return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
-}
+import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 
 /**
- * Single-letter page shortcuts (lower case keys). Ignored while typing, with a modifier, or when `enabled` is
- * false (a dialog is open).
+ * Single-letter page shortcuts (lower case keys). Ignored while typing, with a modifier, with single-key shortcuts
+ * off, or when `enabled` is false (a dialog is open).
  */
 export function useShortcuts(map: Record<string, () => void>, enabled: boolean) {
   const ref = useRef(map);
@@ -18,7 +14,7 @@ export function useShortcuts(map: Record<string, () => void>, enabled: boolean) 
   useEffect(() => {
     if (!enabled) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || isTyping(e.target)) return;
+      if (e.shiftKey || !singleKeyShortcut(e)) return;
       if (document.querySelector('[role="dialog"]')) return;
       const run = ref.current[e.key.toLowerCase()];
       if (!run) return;

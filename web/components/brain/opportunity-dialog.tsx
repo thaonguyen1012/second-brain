@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { ApiOpportunity, ApiStance } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
+import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -42,7 +43,7 @@ export function OpportunityDialog({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       const m = e.code.match(/^Digit([1-9])$/);
-      if (!m || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!m || !singleKeyShortcut(e)) return;
       const o = list[Number(m[1]) - 1];
       if (!o) return;
       e.preventDefault();

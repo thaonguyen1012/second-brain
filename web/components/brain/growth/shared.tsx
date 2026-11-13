@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useT } from '@/lib/i18n/client';
+import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 import { cn } from '@/lib/utils';
 
 function isTyping(target: EventTarget | null): boolean {
@@ -15,7 +16,7 @@ function isTyping(target: EventTarget | null): boolean {
   );
 }
 
-/** Single-key page shortcuts (no modifier), ignored while typing or inside a dialog. */
+/** Single-key page shortcuts (no modifier), ignored while typing, inside a dialog or with single-key shortcuts off. */
 export function useShortcuts(keys: Record<string, () => void>) {
   const ref = useRef(keys);
   useEffect(() => {
@@ -23,7 +24,7 @@ export function useShortcuts(keys: Record<string, () => void>) {
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (!singleKeyShortcut(e) || isTyping(e.target)) return;
       if (document.querySelector('[role="dialog"]')) return;
       const fn = ref.current[e.key.toLowerCase()];
       if (!fn) return;

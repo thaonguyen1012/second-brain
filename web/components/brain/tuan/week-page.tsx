@@ -20,6 +20,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
+import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 import { cn } from '@/lib/utils';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards } from '../api-state';
 import { useInboxCount } from '../inbox-count';
@@ -172,10 +173,10 @@ export function WeekPage({ books }: { books: BookIndex }) {
     router.replace(`${pathname}?${q.toString()}`, { scroll: false });
   }
 
-  // Keys: [ previous week, ] next week, T this week, P plan, R review (never while typing).
+  // Keys: [ previous week, ] next week, T this week, P plan, R review (never while typing or with single keys off).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (e.defaultPrevented || !singleKeyShortcut(e) || isTyping(e.target)) return;
       const k = e.key.toLowerCase();
       let handled = true;
       if (k === '[') go(addDays(start, -7));

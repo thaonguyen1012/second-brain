@@ -7,6 +7,7 @@ import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiTimeEntry } from '@/lib/api/work';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
+import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
@@ -20,7 +21,7 @@ import { ChoiceSelect } from '../choice-select';
 import { ConfirmDelete, DeleteButton } from '../confirm-delete';
 import { useToolbarState } from '../empty-panel';
 import { PAGE_WIDTH } from '../layout';
-import { addDays, formatDay, formatMinutes, isTyping } from './format';
+import { addDays, formatDay, formatMinutes } from './format';
 import { ProjectDialog } from './project-dialog';
 import { RowsSkeleton } from './rows-skeleton';
 import { TimeEntryDialog } from './time-entry-dialog';
@@ -235,7 +236,7 @@ export function TimePage() {
   useEffect(() => {
     if (noProjects) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || e.key.toLowerCase() !== 'n') return;
+      if (!singleKeyShortcut(e) || e.key.toLowerCase() !== 'n') return;
       if (document.querySelector('[role="dialog"]')) return;
       e.preventDefault();
       setEditing(null);

@@ -133,6 +133,10 @@ export const common = {
   // Menus, dialogs, views
   'Thao tác khác': 'More actions',
   'Phím tắt': 'Keyboard shortcuts',
+  // The switch at the end of every key legend (components/brain/key-legend.tsx, lib/single-key-shortcuts.ts)
+  'Phím tắt một phím': 'Single-key shortcuts',
+  'Bỏ chọn để các phím bấm riêng như N, J, / hay ? không còn tác dụng trong trình duyệt này. Phím tắt có ⌘, Ctrl hoặc Alt vẫn chạy.':
+    'Untick to make keys pressed on their own, such as N, J, / or ?, do nothing in this browser. Shortcuts with ⌘, Ctrl or Alt still work.',
   Đóng: 'Close',
   'Kiểu xem': 'View',
   'Danh sách': 'List',

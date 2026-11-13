@@ -20,6 +20,7 @@ import { Radio, RadioGroup } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
+import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 import { describeApiError } from '../api-state';
 import { useInvalidFields } from '../invalid-fields';
 import { fieldErrors, formatDay, outcomeOf, today } from './labels';
@@ -193,9 +194,7 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
   const inFlight = useRef(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const el = e.target as HTMLElement | null;
-      if (el && ['INPUT', 'TEXTAREA'].includes(el.tagName)) return;
+      if (!singleKeyShortcut(e)) return;
       const hit = keyed.find(([k]) => k === e.key);
       if (!hit) return;
       e.preventDefault();

@@ -1,26 +1,34 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from '@/components/ui/dialog';
 import { Kbd } from '@/components/ui/kbd';
 import { useT } from '@/lib/i18n/client';
+import {
+  setSingleKeyShortcuts,
+  singleKeyShortcut,
+  singleKeyShortcutsOn,
+  subscribeSingleKeyShortcuts,
+} from '@/lib/single-key-shortcuts';
 
-function isTyping(el: EventTarget | null): boolean {
-  const t = el as HTMLElement | null;
-  return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
-}
+const onAtFirst = () => true;
 
 /**
  * The full keyboard legend of a keyboard-driven page behind one "Phím tắt" control (DESIGN.md §6, D24): a small
- * dialog, also opened with "?". Hidden on touch screens and below md, where the keys do not apply.
+ * dialog, also opened with "?". Hidden on touch screens and below md, where the keys do not apply. It ends with the
+ * switch for every single-key shortcut of the app (WCAG 2.1.4), remembered in this browser.
  */
 export function KeyLegend({ keys, title }: { keys: [string, string][]; title?: string }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const on = useSyncExternalStore(subscribeSingleKeyShortcuts, singleKeyShortcutsOn, onAtFirst);
+  const hintId = useId();
+  const closeRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== '?' || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (e.key !== '?' || !singleKeyShortcut(e)) return;
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
       e.preventDefault();
       setOpen(true);
@@ -38,10 +46,15 @@ export function KeyLegend({ keys, title }: { keys: [string, string][]; title?: s
       >
         <Keyboard aria-hidden />
         {t('Phím tắt')}
-        <Kbd>?</Kbd>
+        {on && <Kbd>?</Kbd>}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogPopup className="max-w-sm" closeProps={{ 'aria-label': t('Đóng') }}>
+        {/* The focus starts on "Đóng" as before the switch, so Space or Enter after "?" never flips it */}
+        <DialogPopup
+          className="max-w-sm"
+          closeProps={{ 'aria-label': t('Đóng'), ref: closeRef }}
+          initialFocus={closeRef}
+        >
           <DialogHeader>
             <DialogTitle>{title ?? t('Phím tắt')}</DialogTitle>
           </DialogHeader>
@@ -56,6 +69,17 @@ export function KeyLegend({ keys, title }: { keys: [string, string][]; title?: s
                 </div>
               ))}
             </dl>
+            <div className="mt-4 flex flex-col gap-1 border-t pt-4">
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                <Checkbox checked={on} onCheckedChange={setSingleKeyShortcuts} aria-describedby={hintId} />
+                {t('Phím tắt một phím')}
+              </label>
+              <p id={hintId} className="ps-6.5 text-xs text-muted-foreground sm:ps-6">
+                {t(
+                  'Bỏ chọn để các phím bấm riêng như N, J, / hay ? không còn tác dụng trong trình duyệt này. Phím tắt có ⌘, Ctrl hoặc Alt vẫn chạy.',
+                )}
+              </p>
+            </div>
           </DialogPanel>
         </DialogPopup>
       </Dialog>

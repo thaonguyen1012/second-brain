@@ -5,6 +5,7 @@ import type { ApiObjective } from '@/lib/api/client';
 import { type ApiObjectiveStatus, weeksApi } from '@/lib/api/weeks';
 import { useT } from '@/lib/i18n/client';
 import { objectiveStatuses } from '@/lib/labels';
+import { singleKeyShortcutsOn } from '@/lib/single-key-shortcuts';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,10 @@ const statusChoices = (['open', 'done', 'dropped'] as const).map((value) => ({
   label: objectiveStatuses[value].label,
 }));
 
-/** Row keys: one key, one decision (same idea as the inbox triage). */
+/**
+ * Row keys: one key, one decision (same idea as the inbox triage); off with the other single-key shortcuts. The
+ * focused row's arrows, Enter and Del are its own keys and stay.
+ */
 const statusKeys: Record<string, ApiObjectiveStatus> = { d: 'done', x: 'dropped', o: 'open' };
 
 /** Status picker whose value is the coloured status badge (lib/labels.ts), as everywhere else. */
@@ -231,7 +235,7 @@ export function ObjectivesEditor({
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       setDeleting(o);
-    } else if (!e.altKey && !e.shiftKey && statusKeys[e.key]) {
+    } else if (!e.altKey && !e.shiftKey && statusKeys[e.key] && singleKeyShortcutsOn()) {
       e.preventDefault();
       if (o.status !== statusKeys[e.key]) patch(o, { status: statusKeys[e.key] });
     }
