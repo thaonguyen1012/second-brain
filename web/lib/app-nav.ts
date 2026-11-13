@@ -19,6 +19,7 @@ import {
   Sun,
   TrendingUp,
   Trophy,
+  Wrench,
 } from 'lucide-react';
 import type { ApiCounts } from '@/lib/api/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
@@ -77,6 +78,14 @@ export const appNav = [
         area: 'growth',
         icon: Dumbbell,
         count: { key: 'skills', label: msg('{n} kỹ năng') },
+      },
+      {
+        // owner 13/11/2026: the tools engineers use at each stage, and tools to learn by doing
+        title: msg('Công cụ', 'nav'),
+        href: '/phat-trien/cong-cu/',
+        area: 'growth',
+        icon: Wrench,
+        count: { key: 'tools', label: msg('{n} công cụ') },
       },
       {
         title: msg('Thị trường'),

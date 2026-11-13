@@ -177,8 +177,10 @@ Web UI, part B: every sidebar link is a real page. `/tuan/` (`?w=<monday>&tab=ke
 objectives, planning journal; review with time chart, body of work, opportunities, achievements, six questions),
 `/co-hoi/` (list + topic heatmap; `?id=N` detail with decision, scores history, evidence), `/cong-viec/` (projects,
 timer) and `/cong-viec/gio/` (timer, week summary, entries), `/phat-trien/ky-nang/` (skills matrix by freshness,
-evidence), `/phat-trien/thi-truong/` (job ads, monthly report), `/phat-trien/thanh-tuu/` (brag document,
-predictions), `/thu-vien/ghi-chu/` (notes, `?item=N`); the inbox can turn an entry into an Item or a note.
+evidence), `/phat-trien/cong-cu/` (tools: Items of type tool grouped by their stage tags, `web/lib/tools.ts`;
+`manage.py seed_tools` adds a starter list from `backend/library/tools.json`), `/phat-trien/thi-truong/` (job ads,
+monthly report), `/phat-trien/thanh-tuu/` (brag document, predictions), `/thu-vien/ghi-chu/` (notes, `?item=N`);
+the inbox can turn an entry into an Item or a note.
 Detail views use query parameters, not dynamic segments, so every route stays static. Components live in
 `web/components/brain/<area>/`; each area has its typed calls in `web/lib/api/<area>.ts` (weeks, opportunities,
 work, growth, library), all going through the one exported `request()` of `client.ts`. Shared helpers:

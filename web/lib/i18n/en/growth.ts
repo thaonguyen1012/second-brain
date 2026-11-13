@@ -275,4 +275,14 @@ export const growth = {
   'AI & LLM': 'AI & LLMs',
   'Tài liệu & sơ đồ': 'Docs & diagrams',
   'Thêm công cụ': 'Add tool',
+
+  // Công cụ page (app/[lang]/(home)/phat-trien/cong-cu, components/brain/tools/tools-page.tsx)
+  'Công cụ engineer giỏi dùng ở từng công đoạn, và công cụ để học bằng cách mổ xẻ code thật.':
+    'Tools good engineers use at each stage of the work, and tools to learn by dissecting real code.',
+  'Mọi công đoạn': 'All stages',
+  'Mở {site} (tab mới)': 'Open {site} (new tab)',
+  'Không có công cụ nào khớp bộ lọc.': 'No tools match the filters.',
+  'Chưa có công cụ nào': 'No tools yet',
+  'Lưu công cụ bạn dùng hoặc muốn thử, kèm một dòng dùng để làm gì; hoặc chạy <code>manage.py seed_tools</code> một lần để có sẵn danh sách gợi ý.':
+    'Keep the tools you use or want to try, each with a line on what it is for; or run <code>manage.py seed_tools</code> once for a starter list.',
 } satisfies Dictionary;

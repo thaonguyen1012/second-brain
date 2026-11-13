@@ -12,6 +12,8 @@ export const shell = {
   'Lộ trình': 'Roadmap',
   'Kỹ năng': 'Skills',
   '{n} kỹ năng': { one: '{n} skill', other: '{n} skills' },
+  'nav::Công cụ': 'Tools',
+  '{n} công cụ': { one: '{n} tool', other: '{n} tools' },
   'Thị trường': 'Market',
   '{n} tin tuyển dụng tháng này': { one: '{n} job ad this month', other: '{n} job ads this month' },
   'Nhật ký thành tựu': 'Achievement log',

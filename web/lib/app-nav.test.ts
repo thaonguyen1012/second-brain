@@ -19,6 +19,7 @@ describe('navMatch', () => {
   it('picks the longest row href, so a sub-page is not its parent', () => {
     expect(navRow('/phat-trien/')?.title.msgid).toBe('Sổ tay');
     expect(navRow('/phat-trien/ky-nang/')?.title.msgid).toBe('Kỹ năng');
+    expect(navRow('/phat-trien/cong-cu/?item=4')?.title.msgid).toBe('Công cụ');
     expect(navRow('/thu-vien/ghi-chu/')?.title.msgid).toBe('Ghi chú');
     expect(navRow('/cong-viec/gio/')?.title.msgid).toBe('Giờ');
   });

@@ -251,7 +251,11 @@ so the near pairs that remain are listed under the palette, not hidden.
   tile, centred on the title's first line, `aria-hidden`; server-rendered, except on /co-hoi/ where the client list
   and detail views render the header) and the heading of a Hôm nay tile, which starts with the icon of where its link
   leads (that row's icon from `lib/app-nav.ts`, or the Inbox glyph), 16px in `muted-foreground`, and the section
-  title of a Sổ tay group on the Sổ tay page, which starts with that group's mark (20px, §4). An empty state's
+  title of a Sổ tay group on the Sổ tay page, which starts with that group's mark (20px, §4), and the section title of
+  a stage on Công cụ, which starts with that stage's lucide icon (owner 13/11/2026: "mỗi nhóm bạn làm 1 cái icon tương
+  ứng để dễ hình dung"; `lib/tool-icons.ts`, defined once beside the stage list; 20px, ink, the title icon's 1.5 line,
+  no tile, no colour per stage; the AI & LLM stage's `Bot` names a kind of tool, not an AI result, so D18 still holds).
+  The same icon stands in for a tool's missing logo (§9a "Item images"). An empty state's
   glyph names the missing object (BookPlus, FlaskConical, FolderPlus...), never a nav icon, so it does not repeat the
   title icon. Nothing else.
 - **No emoji as icons** (emoji are user content only). Icon-only buttons have `aria-label` and a `Tooltip`.
@@ -401,6 +405,20 @@ so the near pairs that remain are listed under the palette, not hidden.
   ("Đang mở trình soạn thảo", IME included) and are typed into it; when ready it takes the focus only from that field or
   where nothing holds it, never from the title or the Item picker. Pages that can open an editor fetch its chunk when
   idle. A picture from another site inside a link shows as the link's text "[Ảnh: alt]" in both views.
+- **Công cụ** (`/phat-trien/cong-cu/`, owner 13/11/2026: the tools senior engineers use at each stage, and tools to
+  learn by dissecting codebases and by doing; `components/brain/tools/tools-page.tsx`): tools are Items of type tool,
+  their stages are tags (`lib/tools.ts`: learning first, Đọc & mổ xẻ codebase and Học qua thực hành, then the stages
+  of the work). The toolbar has two filters, "Trạng thái" (a tool's words: Muốn thử, Đang dùng, Đã thành thạo, Bỏ)
+  and "Công đoạn", and the primary "Thêm công cụ" (the Item dialog with the tool type, and the chosen stage, picked);
+  below 36rem the filters share the first row and the button takes the second. Then one section per stage in the
+  list's order and "Khác" (no stage) last, 32px apart: an 18px h2 with the stage icon (§5) and the tool count in muted
+  `text-sm`, over the rows in one container; a tool with several stages is a row in each. A row: the picture track
+  (its logo, or its first stage's icon), the status badge from md (in the meta line below md, as on Thư viện), the
+  title over its summary ("dùng để làm gì", two lines on phones, one from sm; the host when there is none), then the
+  site as an icon-only ghost link (new tab, `rel="noopener noreferrer"`, named and tooltipped "Mở <host> (tab mới)")
+  and the `RowMenu` (the Item entries, then "Chuyển sang ..." for each other status). A row or its title opens the
+  Item page in the Sheet (`?item=N` too), as on Thư viện. Groups sort by title. First run: the §9a panel
+  (`ToolCase` glyph, the `manage.py seed_tools` hint, ghost rows); filtered empty: "Xóa bộ lọc".
 - **Tables** for numeric or time data (Giờ, thị trường): header `text-xs font-medium text-muted-foreground`,
   rows `h-10` with `divide-y`, no vertical cell borders, numbers right-aligned `tabular-nums`. Add the Space UI
   table component from the registry when first needed rather than styling `<table>` by hand.
@@ -631,9 +649,11 @@ Icons
   on the Sổ tay jump row, 20px before a group's section title, 16px in the Hôm nay hero's rows, no tile, ink in
   `currentColor`, §4; covers are images, not icons), one stroke width, 16px in
   controls/rows/nav, 14px in badges/meta, 28px for the title icon and 32px for the empty-panel glyph (both with a 1.5px absolute
-  line); no emoji as icons.
+  line; so are a Công cụ stage's icon, 20px before its section title, and a tool's stage icon in its logo's place, 24px
+  in a row, 20px on a card, 28px on the Item page); no emoji as icons.
 - **D21** No decorative icon beside headings or card titles (an area page's title icon, the icon of a Hôm nay
-  tile heading and the group mark before a Sổ tay group's section title excepted, §5); no nav icon as an empty state glyph; icon-only buttons have a
+  tile heading, the group mark before a Sổ tay group's section title and the stage icon before a Công cụ stage's
+  section title excepted, §5); no nav icon as an empty state glyph; icon-only buttons have a
   tooltip; icons in tabs only on a view switch that changes the layout (List / Board, §5).
 
 Components

@@ -42,6 +42,7 @@ const PAGES = [
   ['thu-vien-ghi-chu', '/thu-vien/ghi-chu/'],
   ['phat-trien', '/phat-trien/'],
   ['phat-trien-ky-nang', '/phat-trien/ky-nang/'],
+  ['phat-trien-cong-cu', '/phat-trien/cong-cu/'],
   ['phat-trien-thi-truong', '/phat-trien/thi-truong/'],
   ['phat-trien-thanh-tuu', '/phat-trien/thanh-tuu/'],
   ['tuan', '/tuan/'], // opens Kế hoạch, the same view as ?tab=ke-hoach

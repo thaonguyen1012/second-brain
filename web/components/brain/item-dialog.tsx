@@ -1,6 +1,6 @@
 'use client';
 import { useId, useMemo, useState, type ComponentProps } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Check, Loader2, Trash2 } from 'lucide-react';
 import { api, type ApiItem, type ApiItemRequest, type ApiItemStatus, type ApiItemType } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
 import { fieldErrors, itemStatusesFor, itemTypes } from '@/lib/labels';
@@ -258,7 +258,8 @@ function ItemForm({
                     aria-pressed={on}
                     onClick={() => toggleStage(s.slug)}
                   >
-                    <Icon aria-hidden />
+                    {/* a picked stage shows a check, not only a fill */}
+                    {on ? <Check aria-hidden /> : <Icon aria-hidden />}
                     {t(s.label)}
                   </Button>
                 );
