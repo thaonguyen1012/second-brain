@@ -16,10 +16,12 @@ import {
   type ToolGroupKey,
   type ToolStatusFilter,
 } from '@/lib/tools';
+import { useListView } from '@/lib/use-board-view';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuSeparator } from '@/components/ui/menu';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, describeApiError, openError } from '../api-state';
 import { StatusBadge } from '../brain-card';
@@ -28,16 +30,19 @@ import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { GhostRows } from '../ghost-rows';
 import { ItemDialog } from '../item-dialog';
 import { PAGE_WIDTH } from '../layout';
-import { RowPicture } from '../library/item-image';
+import { RowPicture, boardMedia } from '../library/item-image';
 import { ItemMenuItems } from '../library/item-parts';
 import { ItemSheet } from '../library/item-sheet';
 import { FilteredEmpty, RowsSkeleton, onRowClick } from '../library/list-rows';
 import { RowMenu } from '../row-menu';
+import { ViewSwitch } from '../view-switch';
 
 // Công cụ (owner 13/11/2026): the tools a senior engineer uses at each stage of the work, and tools for learning by
 // reading real codebases and by doing. A tool is an Item of type tool (its notes, Cmd+K, [[ ]] links, logo and status
 // come with it); its stages are tags (lib/tools.ts), and the page groups the tools by them, a tool under each of its
-// stages. A row opens the Item page in the Sheet, as on Thư viện (?item=N too).
+// stages. A row opens the Item page in the Sheet, as on Thư viện (?item=N too). Two views (owner, the same day:
+// "tools dạng list và dạng grid nữa", with haidave-com.vercel.app/resources as the reference): the rows, and a grid of
+// cards (?view=grid); the same sections and filters in both.
 
 /** Every tool (all cursor pages, at most 20 of 100), newest first; the groups sort them by title. */
 const loadTools = () =>
@@ -51,6 +56,9 @@ const ALL_STAGES = msg('Mọi công đoạn');
 
 /** The rows of one group share these tracks: picture, status (from md; below it the status is in the meta line), title over summary, actions. */
 const rowGrid = 'grid-cols-[3.5rem_minmax(0,1fr)_auto] md:grid-cols-[3.5rem_auto_minmax(0,1fr)_auto]';
+
+/** The grid view's cards: as many 15rem columns as fit (one at 390 px, four beside the sidebar at 1440 px). */
+const cardGrid = 'grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-3';
 
 /** Where the focus goes back after the Sheet or a dialog: the row it was opened from, else that tool's first row. */
 function rowFocusTarget(target: { id: number; group: ToolGroupKey } | null): HTMLElement | null {
@@ -84,29 +92,119 @@ function SourceLink({ url }: { url: string }) {
   );
 }
 
-function ToolRow({
-  tool,
-  group,
-  onOpen,
-  onEdit,
-  onWriteNote,
-  onRate,
-  onMove,
-}: {
+interface ToolEntryProps {
   tool: ApiItem;
+  /** The section the tool is listed under: its picture falls back to that section's icon. */
   group: ToolGroupKey;
   onOpen: () => void;
   onEdit: () => void;
   onWriteNote: () => void;
   onRate: () => void;
   onMove: (to: ApiItemStatus) => void;
-}) {
-  const t = useT();
-  const s = itemStatusOf(tool.status, 'tool');
+}
+
+/** The tool's site when its source is a web address, and the line under its title: the summary (what it is for), else where it lives. */
+function toolLines(tool: ApiItem): { link: string | null; meta: string } {
   const source = tool.source?.trim() ?? '';
   const link = /^https?:\/\/\S+$/i.test(source) ? source : null;
-  // the summary says what it is for; without one, where it lives
-  const meta = tool.summary?.trim() || (link ? hostOf(link) : source);
+  return { link, meta: tool.summary?.trim() || (link ? hostOf(link) : source) };
+}
+
+/** A tool's menu, the same on a row and a card: the Item's own entries, then a move to each other status. */
+function ToolMenu({ tool, onEdit, onWriteNote, onRate, onMove }: Omit<ToolEntryProps, 'group' | 'onOpen'>) {
+  const t = useT();
+  return (
+    <RowMenu label={t('Thao tác cho "{title}"', { title: tool.title })}>
+      <ItemMenuItems item={tool} onEdit={onEdit} onWriteNote={onWriteNote} onRate={onRate} />
+      <MenuSeparator />
+      {itemStatusesFor('tool')
+        .filter((other) => other.value !== tool.status)
+        .map((other) => (
+          <MenuItem key={other.value} onClick={() => onMove(other.value)}>
+            {t('Chuyển sang {status}', { status: t(other.label) })}
+          </MenuItem>
+        ))}
+    </RowMenu>
+  );
+}
+
+/**
+ * A tool as a card of the grid view (DESIGN.md §6 "View switches"): the board card's white surface, the logo or the
+ * section's icon in the 40px place before the title, the summary in up to 2 lines, then the status and the site link
+ * at the foot, so the cards of one grid row end on one line. The whole card opens the Item page, like a row.
+ */
+function ToolCard({ tool, group, onOpen, ...menu }: ToolEntryProps) {
+  const t = useT();
+  const s = itemStatusOf(tool.status, 'tool');
+  const { link, meta } = toolLines(tool);
+  const media = boardMedia(toolRowPicture(tool, group), t);
+  return (
+    <li
+      data-tool-row={`${group}:${tool.id}`}
+      data-tool-id={tool.id}
+      className="flex flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-accent has-focus-visible:bg-accent"
+      onClick={(e) => onRowClick(e, onOpen)}
+    >
+      <div className="flex items-center gap-2">
+        {media && (
+          <span aria-hidden className="shrink-0">
+            {media.node}
+          </span>
+        )}
+        <button
+          type="button"
+          className="min-w-0 flex-1 rounded-sm py-0.5 text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={onOpen}
+        >
+          <span className="line-clamp-2 break-words">{tool.title}</span>
+        </button>
+        <span className="-me-1.5 shrink-0">
+          <ToolMenu tool={tool} {...menu} />
+        </span>
+      </div>
+      {meta && <p className="line-clamp-2 text-xs break-words text-muted-foreground">{meta}</p>}
+      <div className="mt-auto flex min-h-8 items-center justify-between gap-2">
+        <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>
+        {link && (
+          <span className="-me-1.5">
+            <SourceLink url={link} />
+          </span>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/** Loading cards at the grid's geometry (DESIGN.md D27): a section heading over six card placeholders. */
+function CardsSkeleton() {
+  const t = useT();
+  const bar = 'motion-reduce:animate-none';
+  return (
+    <div className="flex flex-col gap-3" role="status" aria-busy="true" aria-label={t('Đang tải')}>
+      <Skeleton aria-hidden className={cn('h-7 w-48', bar)} />
+      <ul aria-hidden className={cardGrid}>
+        {Array.from({ length: 6 }, (_, i) => (
+          <li key={i} className="flex flex-col gap-2 rounded-lg border bg-card p-3">
+            <span className="flex items-center gap-2">
+              <Skeleton className={cn('size-10 shrink-0', bar)} />
+              <Skeleton className={cn('h-4 w-2/3', bar)} />
+            </span>
+            <Skeleton className={cn('h-3 w-full', bar)} />
+            <Skeleton className={cn('h-3 w-1/2', bar)} />
+            <span className="flex min-h-8 items-center">
+              <Skeleton className={cn('h-5 w-20', bar)} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ToolRow({ tool, group, onOpen, ...menu }: ToolEntryProps) {
+  const t = useT();
+  const s = itemStatusOf(tool.status, 'tool');
+  const { link, meta } = toolLines(tool);
   return (
     <li
       data-tool-row={`${group}:${tool.id}`}
@@ -136,17 +234,7 @@ function ToolRow({
       </div>
       <div className="flex items-center justify-end gap-1">
         {link && <SourceLink url={link} />}
-        <RowMenu>
-          <ItemMenuItems item={tool} onEdit={onEdit} onWriteNote={onWriteNote} onRate={onRate} />
-          <MenuSeparator />
-          {itemStatusesFor('tool')
-            .filter((other) => other.value !== tool.status)
-            .map((other) => (
-              <MenuItem key={other.value} onClick={() => onMove(other.value)}>
-                {t('Chuyển sang {status}', { status: t(other.label) })}
-              </MenuItem>
-            ))}
-        </RowMenu>
+        <ToolMenu tool={tool} {...menu} />
       </div>
     </li>
   );
@@ -154,6 +242,9 @@ function ToolRow({
 
 export function ToolsPage() {
   const t = useT();
+  // Danh sách, or Lưới (?view=grid; the last choice is remembered in this browser, and a remembered grid waits until
+  // useOpenFromUrl has dropped ?item=, so the two URL changes never undo each other)
+  const [view, setView] = useListView<'grid'>('alex-brain:tools-view', 'grid', 'item');
   const [status, setStatus] = useState<ToolStatusFilter>('all');
   const [stage, setStage] = useState<ToolGroupKey | 'all'>('all');
   const [editing, setEditing] = useState<ApiItem | null>(null);
@@ -255,37 +346,37 @@ export function ToolsPage() {
   const failed = !!tools.error && !ready;
   // The toolbar waits for a first tool or a filter (DESIGN.md §9a); the sidebar count decides while the list loads
   const toolbar = useToolbarState({ rows: all.length, filtered, loading: !ready, failed, count: 'tools' });
-  const addButton = (
-    <Button className="w-full @xl:ms-auto @xl:w-auto" onClick={openNew}>
-      <Plus aria-hidden />
-      {t('Thêm công cụ')}
-    </Button>
-  );
 
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
-      {/* Narrower than one row (36rem): the two filters share the first row, "Thêm công cụ" takes the full width of
-          the second, never an orphaned button (DESIGN.md §6 Toolbar). */}
+      {/* Narrower than one row (48rem: the longest stage name fits beside the switch and "Thêm công cụ"): the view
+          switch and "Thêm công cụ" keep the first row, the two filters share the second, never an orphaned button
+          (DESIGN.md §6 Toolbar), as on Thư viện; below 28rem the switch drops its icons, or the button would wrap
+          alone at 390 px. Both filters apply to both views. */}
       {toolbar !== 'hide' && (
         <div className={cn('@container', toolbar === 'wait' && 'invisible')}>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="grid w-full grid-cols-2 gap-2 @xl:flex @xl:w-auto @xl:items-center">
+            <ViewSwitch view={view} onChange={setView} alt="grid" textOnlyWhenNarrow />
+            <div className="order-last grid w-full grid-cols-2 gap-2 @3xl:order-none @3xl:flex @3xl:w-auto @3xl:items-center">
               <ChoiceSelect
                 label={t('Trạng thái')}
                 value={status}
                 onChange={setStatus}
                 choices={statusOptions}
-                className="min-w-0 @xl:w-auto"
+                className="min-w-0 @3xl:w-auto"
               />
               <ChoiceSelect
                 label={t('Công đoạn')}
                 value={stage}
                 onChange={setStage}
                 choices={stageOptions}
-                className="min-w-0 @xl:w-auto"
+                className="min-w-0 @3xl:w-auto"
               />
             </div>
-            {addButton}
+            <Button className="ms-auto shrink-0" onClick={openNew}>
+              <Plus aria-hidden />
+              {t('Thêm công cụ')}
+            </Button>
           </div>
         </div>
       )}
@@ -300,7 +391,11 @@ export function ToolsPage() {
       {failed && tools.error ? (
         <ApiErrorState error={tools.error} onRetry={tools.reload} />
       ) : !ready ? (
-        <RowsSkeleton picture />
+        view === 'grid' ? (
+          <CardsSkeleton />
+        ) : (
+          <RowsSkeleton picture />
+        )
       ) : groups.length === 0 && filtered ? (
         <FilteredEmpty
           onClear={() => {
@@ -330,6 +425,7 @@ export function ToolsPage() {
         <div className="flex flex-col gap-8">
           {groups.map(({ key, tools: list }) => {
             const Icon = toolStageIcons[key];
+            const Entry = view === 'grid' ? ToolCard : ToolRow;
             return (
               <section key={key} aria-labelledby={`tools-${key}`} className="flex flex-col gap-3">
                 {/* The stage's icon before its name (owner 13/11/2026), ink and the title icon's line, no tile */}
@@ -348,10 +444,14 @@ export function ToolsPage() {
                 </h2>
                 <ul
                   aria-labelledby={`tools-${key}`}
-                  className={cn('grid gap-x-3 divide-y overflow-hidden rounded-xl border bg-card', rowGrid)}
+                  className={
+                    view === 'grid'
+                      ? cardGrid
+                      : cn('grid gap-x-3 divide-y overflow-hidden rounded-xl border bg-card', rowGrid)
+                  }
                 >
                   {list.map((tool) => (
-                    <ToolRow
+                    <Entry
                       key={tool.id}
                       tool={tool}
                       group={key}

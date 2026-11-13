@@ -65,7 +65,8 @@ Numbers that line up or change in place get `tabular-nums`. Dates are `formatDat
   `hover:bg-accent`, selection `bg-accent` + `aria-selected`. **Card** only when the record carries an image or an
   excerpt worth reading in place (inbox entry, brief story) or it is a dashboard tile on Hôm nay; cards stack with
   `gap-3`. Never a card per row of a list of more than ~5 plain records, except in a board view (§6 "Board"), where
-  the cards are the thing moved; the same records keep their rows in the list view beside it.
+  the cards are the thing moved, and in Công cụ's grid (§6 "View switches"), whose records each carry a logo or icon
+  and a summary; the same records keep their rows in the list view beside it.
 - **Radii:** containers `rounded-xl`, controls `rounded-lg` (Button default), row and hover fills `rounded-md`,
   badges `rounded-sm`, avatars/dots `rounded-full`. `rounded-2xl`/`rounded-3xl` are legacy: do not add more.
   Nested shapes: inner radius = outer radius - padding.
@@ -282,7 +283,16 @@ so the near pairs that remain are listed under the palette, not hidden.
   `router.replace` without scrolling. Ghi chú's switch is "Danh sách" / "Theo item" (`?view=items`, DECISIONS 9.8;
   text only, since the rows stay rows): every matching note under each Item it is linked to, one container per group
   whose first row is the heading (the Item's picture flush at its start, its title a link to the Item page, type and
-  note count as meta), "Ghi chú rời" (notes without an Item) last.
+  note count as meta), "Ghi chú rời" (notes without an Item) last. Công cụ's switch is "Danh sách" / "Lưới"
+  (`?view=grid`, owner 13/11/2026: "tools dạng list và dạng grid nữa", after haidave-com.vercel.app/resources;
+  `ViewSwitch alt="grid"`, LayoutGrid icon): the same stage sections, headings and filters, each section a grid of
+  cards (`repeat(auto-fill, minmax(15rem, 1fr))`, `gap-3`: one column at 390 px, four beside the sidebar at 1440 px).
+  A card is the board card's surface (`rounded-lg border bg-card p-3 gap-2`) with the row's hover fill: the logo or
+  the section's icon in the 40px place before the title (2 lines, opens the Item page in the Sheet) and the `RowMenu`
+  at its end, the summary (up to 2 lines; without one, the site's host), then a foot with the `StatusBadge` and the
+  site link (`mt-auto`, so the cards of a grid row end on one line); a click anywhere else on the card opens the Item
+  too. Its toolbar keeps the switch and "Thêm công cụ" on the first row below 48rem; below 28rem the switch drops
+  its icons (`textOnlyWhenNarrow`), or the button would wrap alone at 390 px.
 - **Board** (Dự án, owner 07/11/2026: "như page All task trên ClickUp, có dạng list và board"; Thư viện the same
   day, DECISIONS 9.6; the shared `components/brain/status-board.tsx`, card parts in `work/project-card.tsx` and
   `library/item-parts.tsx`, pure logic in `lib/status-board.ts`, the view in `lib/use-board-view.ts`): one lane per
@@ -537,7 +547,8 @@ wins.
   the status leaves its badge for the meta line below `md` so the title keeps its room at 390 px; a Công việc row gets
   the track from `md` only (its status is already in the meta line on phones, so the track would only take the
   title's room); a board card shows a cover or a handbook band flush on top (16:7), a poster as a flush 4rem start
-  column (2:3 at the card's minimum height), a logo as a 40px square before the title. On the Item page (the Sheet
+  column (2:3 at the card's minimum height), a logo as a 40px square before the title (a Công cụ grid card the
+  same, through `boardMedia`). On the Item page (the Sheet
   and /thu-vien/item/, §6) no container holds the picture, so it stands beside the title as the record's own object
   (`DetailPicture`): a 2:3 poster 4rem wide (5rem from sm), a 16:7 cover 7rem (9rem), the handbook's cover thumb in
   a 4rem (5rem) square, a 48px (56px) logo on its ground, `rounded-md`, no frame or shadow. A logo is the one inset

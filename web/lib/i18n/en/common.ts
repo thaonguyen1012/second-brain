@@ -129,6 +129,7 @@ export const common = {
   'Kiểu xem': 'View',
   'Danh sách': 'List',
   Bảng: 'Board',
+  Lưới: 'Grid',
 
   // Status boards (lib/status-board.ts, components/brain/status-board.tsx)
   'Đã chuyển “{title}” sang {status}': 'Moved “{title}” to {status}',
