@@ -200,14 +200,17 @@ logo is uploaded, and offers it as "Lấy logo từ trang" for tools).
 
 For a tool the fetch takes the logo of its site instead of an `og:image` (a page's banner makes a poor logo;
 DECISIONS 9.10, `backend/library/logos.py`, `backend/core/services/site_icon.py`): the icons the page declares
-(`<link rel>` apple-touch-icon, icon, shortcut icon; the raster icons of its web app manifest) and the site's
-`/apple-touch-icon.png` and `/favicon.ico` (not on Read the Docs, which answers them with its own icon), ranked by
-declared size (128-512 px first), at most 5 of them tried; the first raster image (PNG, JPEG, GIF, WebP or an ICO's
-largest frame) whose smaller side is at least 32 px is kept, never enlarged, with its transparency. SVG is never
-fetched. A `url` that answers with an image is that logo itself. Hosts whose pages carry their own icon:
+(`<link rel>` apple-touch-icon, icon, shortcut icon, also inline as a `data:` URL; the raster icons of its web
+app manifest) and the site's `/apple-touch-icon.png` and `/favicon.ico` (not on Read the Docs, which answers them
+with its own icon), ranked by declared size (128-512 px first), at most 5 of them tried. The first raster image
+(PNG, JPEG, GIF, WebP or an ICO's largest frame) of 64 px or more on its smaller side is kept, else the largest of
+at least 32 px; never enlarged, with its transparency. SVG is never fetched, and the default icons of Read the
+Docs and mdBook are never taken. A small page that only redirects with `<meta http-equiv="refresh">` is followed
+once. A `url` that answers with an image is that logo itself. Hosts whose pages carry their own icon:
 `github.com/<owner>/<repo>` asks the GitHub API (no token) for the repository's homepage and takes that site's
-icon, else the owner's avatar (256 px) when the owner is an organisation; a person's account gives none, and
-GitHub's own pages (`/features/...`, `/search`) keep GitHub's icon. The Visual Studio Marketplace, the Chrome Web
+icon; with no homepage, or a homepage icon under 64 px, the owner's avatar (256 px) when the owner is an
+organisation; a person's account gives no avatar, and GitHub's own pages (`/features/...`, `/search`) keep GitHub's
+icon. The Visual Studio Marketplace, the Chrome Web
 Store and GitLab give the item's own icon (the page's `og:image`, only when it is the store's icon URL); npm, PyPI,
 Bitbucket, Codeberg, SourceForge, addons.mozilla.org, the App Store and Google Play give none. A GitHub API limit
 (403 or 429) defers the job 15 minutes without counting an attempt; a repository that is gone (404) ends without a
