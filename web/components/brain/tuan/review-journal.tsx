@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import type { ApiWeek } from '@/lib/api/client';
 import { type ApiReviewField, type ApiReviewPatch, type ApiWeekOpportunities, weeksApi } from '@/lib/api/weeks';
+import { toApiError } from '@/lib/api/use-api';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n/client';
@@ -40,8 +41,14 @@ export function ReviewJournal({
   const invalid = useInvalidFields();
   const [reviewedAt, setReviewedAt] = useState(week.reviewedAt);
   const busy = useRef(false);
-  // A blur while a save is running queues its fields; they are sent with the latest text right after.
+  // A blur while a save is running queues its fields; they are sent with the latest text right after. A save asked for
+  // (Cmd/Ctrl+Enter, the button) that has to wait keeps its focus request.
   const queued = useRef(new Set<ApiReviewField>());
+  const queuedFocus = useRef(false);
+  // Answers the server refused (400), and that refusal: they stay marked, and the alert stays, until they are sent
+  // again or put back as saved, also while other answers save (on blur, like the one the focus leaves for them).
+  const refused = useRef(new Set<ApiReviewField>());
+  const refusal = useRef<unknown>(null);
   const latest = useRef(answers);
   useEffect(() => {
     latest.current = answers;
@@ -63,13 +70,23 @@ export function ReviewJournal({
     if (fields.length === 0) return;
     if (busy.current) {
       for (const f of fields) queued.current.add(f);
+      if (focus) queuedFocus.current = true;
       return;
     }
     busy.current = true;
     setState('saving');
-    setError(null);
-    invalid.clear();
+    const settled = [...refused.current].filter((f) => fields.includes(f) || latest.current[f] === saved[f]);
+    for (const f of settled) refused.current.delete(f);
+    if (!refused.current.size) {
+      setError(null);
+      invalid.clear();
+    } else {
+      setError(refusal.current);
+      // only what changes: a clear in the tick of a refusal would drop the focus it asked for
+      if (settled.length) invalid.clear(...settled);
+    }
     const body: ApiReviewPatch = Object.fromEntries(fields.map((f) => [f, latest.current[f]]));
+    let refusedNow: ApiReviewField[] = [];
     try {
       const next = await weeksApi.saveReview(start, body);
       setSaved((s) => ({ ...s, ...body }));
@@ -78,14 +95,25 @@ export function ReviewJournal({
       onSaved(next);
     } catch (err) {
       setError(err);
-      invalid.fromError(err, t, undefined, { focus });
+      const e = toApiError(err);
+      if (e.status === 400 && e.body && typeof e.body === 'object') {
+        refusedNow = fields.filter((f) => Object.hasOwn(e.body as object, f));
+        for (const f of refusedNow) refused.current.add(f);
+        if (refusedNow.length) refusal.current = err;
+      }
+      // A save asked for while this one ran waits behind it (the button pressed right after typing blurs the answer):
+      // this refusal takes the focus for it.
+      invalid.fromError(err, t, undefined, { focus: focus || queuedFocus.current, keep: true });
       setState('error');
     } finally {
       busy.current = false;
     }
-    const rest = [...queued.current];
+    // An answer just refused and unchanged since would only be refused again: it waits, marked, for the next save.
+    const rest = [...queued.current].filter((f) => !(refusedNow.includes(f) && latest.current[f] === body[f]));
+    const restFocus = queuedFocus.current;
     queued.current.clear();
-    if (rest.length) void save(rest);
+    queuedFocus.current = false;
+    if (rest.length) void save(rest, restFocus);
   }
 
   const suggestion = opportunities.withEvidence
@@ -184,7 +212,15 @@ export function ReviewJournal({
           field also saves on blur and with Cmd/Ctrl+Enter, so nothing blue sits idle at the end of the journal. */}
       {(dirty || state === 'saving') && (
         <div className="flex">
-          <Button variant="outline" size="sm" onClick={() => void save(dirtyFields, true)} loading={state === 'saving'}>
+          <Button
+            variant="outline"
+            size="sm"
+            // A press leaves the focus in the answer: its blur would start a save on blur, which disables this button
+            // before the click lands, and the click (a save asked for: it takes the focus to a refused answer) is lost.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => void save(dirtyFields, true)}
+            loading={state === 'saving'}
+          >
             {t('Lưu nhìn lại')}
           </Button>
         </div>

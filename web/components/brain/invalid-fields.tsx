@@ -62,15 +62,31 @@ export function useInvalidFields() {
     },
     /**
      * A request failed: marks the fields its 400 body names, with their own messages (none for any other failure).
-     * `focus: false` for a save the user did not ask for (on blur), which must not pull the focus back.
+     * `focus: false` for a save the user did not ask for (on blur), which must not pull the focus back. `keep: true`
+     * keeps the marks of fields the request did not send, in a form whose fields save one by one.
      */
-    fromError(err: unknown, t: T, names?: Record<string, Msg>, { focus = true }: { focus?: boolean } = {}) {
+    fromError(
+      err: unknown,
+      t: T,
+      names?: Record<string, Msg>,
+      { focus = true, keep = false }: { focus?: boolean; keep?: boolean } = {},
+    ) {
       const e = toApiError(err);
-      setState(e.status === 400 ? { fields: errorsByField(e.body, t, names), focus } : NONE);
+      const fields = e.status === 400 ? errorsByField(e.body, t, names) : {};
+      if (!keep) setState(e.status === 400 ? { fields, focus } : NONE);
+      else setState((s) => ({ fields: { ...s.fields, ...fields }, focus: focus && Object.keys(fields).length > 0 }));
     },
-    /** Before a new save, or when the form goes back to its saved state. */
-    clear() {
-      setState(NONE);
+    /**
+     * Before a new save, or when the form goes back to its saved state. With `keys`, only those fields: the ones a
+     * save sends again, in a form whose fields save one by one.
+     */
+    clear(...keys: string[]) {
+      if (!keys.length) setState(NONE);
+      else
+        setState((s) => ({
+          fields: Object.fromEntries(Object.entries(s.fields).filter(([k]) => !keys.includes(k))),
+          focus: false,
+        }));
     },
     /** The control's aria-invalid and aria-describedby: its hint id (if any), then its own error. */
     field(key: string, hint?: string): InvalidFieldProps {
