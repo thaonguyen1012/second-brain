@@ -18,10 +18,12 @@ const shared: LookTokens = {
   // Lines: Space UI draws hairlines with --border (black or white at 8%)
   '--ss-line': 'var(--border)',
   '--ss-line-faint': 'color-mix(in srgb, var(--border) 60%, transparent)',
-  // Text: foreground, muted-foreground, and a faint step between muted and the card
+  // Text: foreground, muted-foreground, and a faint step between muted and the card (placeholders, a window's
+  // address). The faint step keeps 4.5:1 on every stage ground (card, well, panel, window bar; WCAG 1.4.3), so it is
+  // darker than the app's own placeholders (muted at 60%): text in a picture has no "inactive control" exemption.
   '--ss-text-strong': 'var(--foreground)',
   '--ss-text': 'var(--muted-foreground)',
-  '--ss-text-faint': 'color-mix(in srgb, var(--muted-foreground) 62%, var(--card))',
+  '--ss-text-faint': 'color-mix(in srgb, var(--muted-foreground) 90%, var(--card))',
   '--ss-icon': 'var(--muted-foreground)',
   '--ss-icon-faint': 'color-mix(in srgb, var(--muted-foreground) 40%, var(--card))',
   // One accent: the app's blue primary (#1f6ae0 light, #6aa5ff dark)

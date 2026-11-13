@@ -166,6 +166,11 @@
   border-color: transparent;
 }
 
+/* Muted text at 80% on the faded tile is 4.1:1; the alias keeps full muted (6.5:1), smaller than the name */
+.ssg-skill .ss-stage .sk-tile[data-fresh='faded'] .sk-tile__alias {
+  opacity: 1;
+}
+
 /* The legend swatch never changes, so it can be dashed itself */
 .ssg-skill .ss-stage .sk-swatch[data-fresh='faded'] {
   border-style: dashed;

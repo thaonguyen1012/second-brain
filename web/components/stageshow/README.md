@@ -93,6 +93,11 @@ product (a time-lapse, "3 tháng sau") are `.g-note` pills, never app UI.
   motion shows (the kit's `reduced-motion.ts`) and what most people see.
 * **Compact design.** Every guide ships a `compact` layout for a 358 px column (a redesign, not a squeeze).
 * **Accessible.** Wrap the stage in `role="img"` with an `aria-label` (through `t()`) that says what the loop shows.
+  Text in a guide is text in a picture: 4.5:1 in every frame that holds still, light and dark, also where the app
+  draws it lighter (a placeholder, a disabled button). `--ss-text-faint` keeps 4.5:1 on every stage ground; a
+  "not yet" primary is a pale primary with a deep label (`.ib-button[data-off]`), never 64% opacity; blue text on
+  the grey well or a tint is deepened toward `--ss-text-strong`. Check with axe color-contrast on `/huong-dan/`
+  with reduced motion (the posters) and while the guides play.
 * **The look comes from `brain-look.ts`.** Tokens point at the app's CSS variables, so a change in
   `app/global.css` reaches the guides. Use `--ss-*` tokens in guide CSS, not raw colors (a drawn thumbnail is
   the exception).
