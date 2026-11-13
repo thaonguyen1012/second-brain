@@ -41,16 +41,19 @@ interface Form {
   rating: string;
 }
 
-/** A refused save's summary names each field as its label does, never by the API's key ("source:"). */
-const fieldNames: Record<string, Msg> = {
+/**
+ * A refused save's summary names each field as its label does (a tool's summary and tags have labels of their own),
+ * never by the API's key ("source:").
+ */
+const fieldNamesFor = (tool: boolean): Record<string, Msg> => ({
   title: msg('Tiêu đề'),
-  summary: msg('Tóm tắt'),
+  summary: tool ? msg('Dùng để làm gì') : msg('Tóm tắt'),
   type: msg('Loại'),
   status: msg('Trạng thái'),
-  tags: msg('Tag'),
+  tags: tool ? msg('Tag khác') : msg('Tag'),
   source: msg('Nguồn'),
   rating: msg('Điểm 1–10'),
-};
+});
 
 const typedTags = (text: string) =>
   text
@@ -191,7 +194,7 @@ function ItemForm({
       return { saved: final, imageError };
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body, t, fieldNames)) || describeApiError(e, t).title);
+      setError((e.status === 400 && fieldErrors(e.body, t, fieldNamesFor(tool))) || describeApiError(e, t).title);
       invalid.fromError(e, t);
       setBusy(false);
       return null;

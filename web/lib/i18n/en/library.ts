@@ -49,6 +49,8 @@ export const library = {
   'Tóm tắt': 'Summary',
   'Công đoạn': 'Stages',
   'Tag khác (cách nhau bằng dấu phẩy)': 'Other tags (separated by commas)',
+  // a tool's tags field, as a refused save's summary names it
+  'Tag khác': 'Other tags',
   'Sửa công cụ': 'Edit tool',
 
   // A done Item needs an output (components/brain/library/done-output.tsx); "rating" = an Item's 1-10 rating
