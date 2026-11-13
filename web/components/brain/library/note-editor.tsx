@@ -420,7 +420,8 @@ const taskKeymap = $useKeymap('noteTask', {
   },
 });
 
-function taskItemView(boxLabel: string) {
+/** `boxLabel(task)`: the box's name from its task's own text, so a note's boxes are told apart in a list of controls. */
+function taskItemView(boxLabel: (task: string) => string) {
   return $view(
     listItemSchema.node,
     (): NodeViewConstructor => (initial, view, getPos) => {
@@ -447,7 +448,6 @@ function taskItemView(boxLabel: string) {
       contentDOM.className = 'task-content';
       checkbox.type = 'checkbox';
       checkbox.tabIndex = -1; // one tab stop for the editor; the keyboard ticks with Cmd/Ctrl+Enter
-      checkbox.setAttribute('aria-label', boxLabel);
       const render = () => {
         dom.dataset.itemType = 'task';
         dom.dataset.checked = String(node.attrs.checked);
@@ -455,6 +455,8 @@ function taskItemView(boxLabel: string) {
         dom.dataset.label = String(node.attrs.label);
         dom.dataset.spread = String(node.attrs.spread);
         checkbox.checked = node.attrs.checked === true;
+        // the task's own line (its first block; a nested list under it is not its name), again as it is typed
+        checkbox.setAttribute('aria-label', boxLabel(node.firstChild?.textContent.trim() ?? ''));
       };
       render();
       checkbox.addEventListener('mousedown', (event) => event.preventDefault()); // keep the focus and caret in the text
@@ -1057,7 +1059,7 @@ export default function NoteEditor({
     label,
     placeholder: placeholder ?? '',
     items: slashItems(t),
-    taskLabel: t('Đã xong'),
+    taskLabel: (task: string) => (task ? t('Đã xong: {task}', { task }) : t('Đã xong')),
     imageText: (alt: string) => (alt ? t('Ảnh: {alt}', { alt }) : t('Ảnh')),
   }));
   // The text as last reported: an effect that runs again on this component (Fast Refresh, <Activity>) makes its editor

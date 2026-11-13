@@ -236,6 +236,7 @@ export const library = {
   'Không tìm thấy “{query}”': 'Nothing found for “{query}”',
   'Gõ để tìm item, ghi chú, cơ hội, kỹ năng': 'Type to find items, notes, opportunities, skills',
   'Đã xong': 'Done',
+  'Đã xong: {task}': 'Done: {task}',
   // The notes page's "Theo item" view (notes-page.tsx)
   'Theo item': 'By item',
   'Ghi chú rời': 'Loose notes',
