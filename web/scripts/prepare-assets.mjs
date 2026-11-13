@@ -12,6 +12,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { WEB_DIR, CONTENT_DIR } from './lib/book-import.mjs';
 
+// The book slug goes into a RegExp: its special characters are matched as text (CodeQL js/regex-injection)
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const args = process.argv.slice(2);
 if (args.length === 0 || args.length % 2 !== 0) {
   console.error('Usage: prepare-assets.mjs <book-slug> <folder> [<book-slug> <folder> ...]');
@@ -60,7 +63,7 @@ for (let i = 0; i < args.length; i += 2) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) walk(p);
       else if (e.name.endsWith('.md'))
-        for (const m of fs.readFileSync(p, 'utf8').matchAll(new RegExp(`\\(/files/${book}/([^)\\s]+)\\)`, 'g')))
+        for (const m of fs.readFileSync(p, 'utf8').matchAll(new RegExp(`\\(/files/${escapeRegExp(book)}/([^)\\s]+)\\)`, 'g')))
           names.add(decodeURI(m[1]));
     }
   })(bookDir);

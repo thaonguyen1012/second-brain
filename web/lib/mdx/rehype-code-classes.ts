@@ -15,9 +15,11 @@ interface AnyNode {
 /**
  * Only Shiki's own declarations are lifted into the page's stylesheet (security audit P-02): its colour variables with
  * a hex value. Anything else, also a content style that merely contains `--shiki`, is left where it is (and
- * rehype-safe-html has already dropped custom properties from content).
+ * rehype-safe-html has already dropped custom properties from content). Each declaration ends at a `;` or the end, so
+ * no run of spaces can be split two ways between declarations (CodeQL js/redos).
  */
-export const SHIKI_STYLE = /^\s*(--shiki-(light|dark)(-bg|-font-style|-font-weight|-text-decoration)?\s*:\s*(#[0-9a-fA-F]{3,8}|italic|bold|normal|underline|none|inherit)\s*;?\s*)+$/;
+export const SHIKI_STYLE =
+  /^\s*(?:--shiki-(?:light|dark)(?:-bg|-font-style|-font-weight|-text-decoration)?\s*:\s*(?:#[0-9a-fA-F]{3,8}|italic|bold|normal|underline|none|inherit)\s*(?:;\s*|$))+$/;
 
 const className = (style: string) => `sk-${createHash('md5').update(style).digest('hex').slice(0, 7)}`;
 

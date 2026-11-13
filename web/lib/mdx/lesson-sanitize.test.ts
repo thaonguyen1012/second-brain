@@ -88,5 +88,13 @@ describe('style attributes in content', () => {
     expect(SHIKI_STYLE.test('--shiki-light-font-style:italic;--shiki-dark-font-style:italic')).toBe(true);
     expect(SHIKI_STYLE.test('--shiki-x: red; } body { color: red } .x {')).toBe(false);
     expect(SHIKI_STYLE.test('--shiki-light:#fff;background:url(x)')).toBe(false);
+    expect(SHIKI_STYLE.test(' --shiki-light: #fff ; --shiki-dark: #000; ')).toBe(true);
+  });
+
+  it('SHIKI_STYLE answers fast on a long run of spaces (no backtracking blow-up)', () => {
+    const started = performance.now();
+    expect(SHIKI_STYLE.test(`--shiki-light:#fff${' '.repeat(50_000)}!`)).toBe(false);
+    expect(SHIKI_STYLE.test(`${'--shiki-light:#fff '.repeat(5_000)}!`)).toBe(false);
+    expect(performance.now() - started).toBeLessThan(200);
   });
 });

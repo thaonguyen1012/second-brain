@@ -78,7 +78,8 @@ for (const track of fs.readdirSync(CONTENT_DIR, { withFileTypes: true })) {
 const n = Math.min(Number(values.sample), pages.length);
 const picked = [...pages].sort(() => Math.random() - 0.5).slice(0, n);
 const decode = (s) =>
-  s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'");
+  // &amp; last, so "&amp;lt;" stays the text "&lt;" (CodeQL js/double-escaping)
+  s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, '&');
 
 let ok = 0;
 const failures = [];
