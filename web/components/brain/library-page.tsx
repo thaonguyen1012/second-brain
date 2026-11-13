@@ -25,6 +25,7 @@ import { msg } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { ApiErrorState, ApiStaleAlert, describeApiError, openError } from './api-state';
 import { ChoiceSelect } from './choice-select';
+import { focusCandidates, focusTarget } from './confirm-delete';
 import { EmptyPanel, useToolbarState } from './empty-panel';
 import { ItemDialog } from './item-dialog';
 import { PAGE_WIDTH } from './layout';
@@ -82,7 +83,18 @@ export function LibraryPage() {
   // The Item whose dialog or Sheet is open or was just saved: its card or row takes the focus back when it closes, even
   // when the control that opened it is gone ("Viết ghi chú" once the note exists, a card moved to another lane).
   const returnTo = useRef<number | null>(null);
-  const finalFocus = () => recordFocusTarget(returnTo.current) ?? null;
+  // A deleted Item's row or card is gone: its neighbour's, read while it was still there (confirm-delete.tsx)
+  const afterDelete = useRef<HTMLElement[] | null>(null);
+  const finalFocus = () => {
+    const next = afterDelete.current;
+    afterDelete.current = null;
+    return focusTarget(next) ?? recordFocusTarget(returnTo.current) ?? null;
+  };
+  /** Before an Item leaves the list: where the focus goes when its dialog or Sheet closes. */
+  const leaving = (id: number) => {
+    afterDelete.current = focusCandidates(document.querySelector(`[data-card-id="${id}"]`));
+    returnTo.current = null;
+  };
 
   const key = `items:all:${type}`;
   const items = useApi<Page<ApiItem>>(key, loadItems(type));
@@ -396,6 +408,7 @@ export function LibraryPage() {
           );
         }}
         onDeleted={(deleted) => {
+          leaving(deleted.id);
           removeItem(deleted.id);
           setDialogOpen(false);
           setEditing(null);
@@ -427,9 +440,9 @@ export function LibraryPage() {
           )
         }
         onDeleted={(deleted) => {
+          leaving(deleted.id);
           removeItem(deleted.id);
           setSheetOpen(false);
-          returnTo.current = null;
           setNotice(t('Đã xóa "{title}"', { title: deleted.title }));
         }}
       />

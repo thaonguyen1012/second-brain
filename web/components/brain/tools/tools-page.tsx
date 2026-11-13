@@ -27,6 +27,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, describeApiError, openError } from '../api-state';
 import { StatusBadge } from '../brain-card';
 import { ChoiceSelect } from '../choice-select';
+import { focusCandidates, focusTarget } from '../confirm-delete';
 import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { GhostRows } from '../ghost-rows';
 import { ItemDialog } from '../item-dialog';
@@ -266,7 +267,18 @@ export function ToolsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   // The row a dialog or the Sheet was opened from: it takes the focus back when they close
   const returnTo = useRef<{ id: number; group: ToolGroupKey } | null>(null);
-  const finalFocus = () => rowFocusTarget(returnTo.current) ?? null;
+  // A deleted tool's rows are gone: the neighbour of the row it was opened from (confirm-delete.tsx)
+  const afterDelete = useRef<HTMLElement[] | null>(null);
+  const finalFocus = () => {
+    const next = afterDelete.current;
+    afterDelete.current = null;
+    return focusTarget(next) ?? rowFocusTarget(returnTo.current) ?? null;
+  };
+  /** Before a tool leaves the list: where the focus goes when its dialog or Sheet closes. */
+  const leaving = () => {
+    afterDelete.current = focusCandidates(rowFocusTarget(returnTo.current));
+    returnTo.current = null;
+  };
 
   const tools = useApi<Page<ApiItem>>('items:tool', loadTools);
   const ready = tools.data !== undefined;
@@ -430,7 +442,8 @@ export function ToolsPage() {
             ghost={<GhostRows />}
           />
         ) : (
-          <div className="flex flex-col gap-8">
+          // data-row-groups: a stage goes with its last tool, so a delete moves the focus on to the next stage's tool
+          <div data-row-groups className="flex flex-col gap-8">
             {groups.map(({ key, tools: list }) => {
               const Icon = toolStageIcons[key];
               const Entry = view === 'grid' ? ToolCard : ToolRow;
@@ -508,6 +521,7 @@ export function ToolsPage() {
           );
         }}
         onDeleted={(deleted) => {
+          leaving();
           remove(deleted.id);
           setDialogOpen(false);
           setEditing(null);
@@ -542,9 +556,9 @@ export function ToolsPage() {
           )
         }
         onDeleted={(deleted) => {
+          leaving();
           remove(deleted.id);
           setSheetOpen(false);
-          returnTo.current = null;
           setNotice(t('Đã xóa "{title}"', { title: deleted.title }));
         }}
       />

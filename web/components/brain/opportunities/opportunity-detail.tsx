@@ -131,7 +131,6 @@ function EvidenceRow({
             )}
             action={() => opportunitiesApi.deleteEvidence(opportunityId, e.id)}
             onDeleted={onDeleted}
-            focusNeighbour
             trigger={
               <TooltipTrigger
                 render={

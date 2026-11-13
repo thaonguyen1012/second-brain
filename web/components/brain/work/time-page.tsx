@@ -113,7 +113,6 @@ function EntryRow({
               }
             }}
             onDeleted={onDeleted}
-            focusNeighbour
             trigger={
               <TooltipTrigger
                 render={
@@ -420,7 +419,8 @@ export function TimePage() {
               </Button>
             </p>
           ) : (
-            <div className="flex flex-col divide-y rounded-xl border bg-card">
+            // data-row-groups: a day goes with its last entry, so a delete moves the focus on to the next day's entry
+            <div data-row-groups className="flex flex-col divide-y rounded-xl border bg-card">
               {days.map((d) => (
                 <section key={d.date} aria-label={formatDay(d.date, t)} className="flex flex-col">
                   <div className="flex h-8 items-center justify-between px-3 text-xs font-medium text-muted-foreground">

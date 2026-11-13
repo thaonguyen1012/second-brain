@@ -540,7 +540,8 @@ export function NotesPage() {
             guide={notes.error ? undefined : 'library'}
           />
         ) : view === 'items' ? (
-          <div className="flex flex-col gap-6">
+          // data-row-groups: a group goes with its last note, so a delete moves the focus on to the next group's note
+          <div data-row-groups className="flex flex-col gap-6">
             {groups.map((g) => (
               <NoteGroupSection
                 key={g.item ?? 'loose'}
