@@ -163,6 +163,26 @@ export function fieldErrors(body: unknown, t: T, names: Record<string, Msg> = {}
   return lines.length ? lines.join('\n') : null;
 }
 
+/**
+ * DRF 400 body -> each field's own messages, keyed by the body's top-level field (the API name the form sends), for
+ * that field's description (DESIGN.md §6 "Form errors"). Translated like fieldErrors but without the field's own
+ * name, which its label already says; list positions and nested fields keep theirs ("#2: ..."). Empty for anything that
+ * is not a DRF error object.
+ */
+export function errorsByField(body: unknown, t: T, names: Record<string, Msg> = {}): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!body || typeof body !== 'object') return out;
+  const all: Record<string, Msg> = { ...defaultFieldNames, ...names };
+  const name = (key: string) => (all[key] ? t(all[key]) : key);
+  for (const { path, text } of flattenErrors(body, t)) {
+    const [field, ...rest] = path;
+    if (field === undefined) continue;
+    const line = rest.length ? `${rest.map(name).join(' ')}: ${text}` : text;
+    out[field] = out[field] ? `${out[field]} ${line}` : line;
+  }
+  return out;
+}
+
 /** The first message of a DRF 400 body (translated like fieldErrors), for one-line error boxes. */
 export function firstFieldError(body: unknown, t: T): string | null {
   if (!body || typeof body !== 'object') return null;

@@ -461,6 +461,17 @@ html > body[data-scroll-locked] {
   opacity: 0.6;
 }
 
+/* A field a failed save marked invalid (aria-invalid, DESIGN.md §6 "Form errors") keeps components/ui's destructive
+   border at rest and takes the app's focus ring when focused: components/ui gives a focused invalid control a 1px ring
+   of destructive at 20%, which reads as no focus at all next to the opaque ring above (D29). Dark needs nothing: there
+   components/ui already gives an invalid control the usual focus look. */
+html:not(.dark) [data-slot='input-control']:has([aria-invalid='true']):focus-within,
+html:not(.dark) [data-slot='textarea-control']:has([aria-invalid='true']):focus-within,
+html:not(.dark) [data-slot='select-trigger'][aria-invalid='true']:focus-visible {
+  border-color: var(--ring);
+  --tw-ring-color: var(--ring);
+}
+
 /* Looping animations stop under reduced motion (DESIGN.md D28): Loader2 spinners, the Space UI Spinner and
    skeleton pulses, so pages need no per-instance motion-reduce classes. */
 @media (prefers-reduced-motion: reduce) {

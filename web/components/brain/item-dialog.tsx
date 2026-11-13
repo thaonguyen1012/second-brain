@@ -19,9 +19,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useT } from '@/lib/i18n/client';
+import { msg, type Msg } from '@/lib/i18n/translate';
 import { describeApiError } from './api-state';
 import { ChoiceSelect } from './choice-select';
 import { ConfirmDelete } from './confirm-delete';
+import { useInvalidFields } from './invalid-fields';
 import { effectiveImageChange, handbookPath, isLocalImage, willFetchOnSave } from '@/lib/item-picture';
 import { DoneOutputHint, missingOutput } from './library/done-output';
 import { ItemImageField, KEEP_IMAGE, applyImageChange, imageErrorText, type ImageChange } from './library/item-image-field';
@@ -38,6 +40,17 @@ interface Form {
   source: string;
   rating: string;
 }
+
+/** A refused save's summary names each field as its label does, never by the API's key ("source:"). */
+const fieldNames: Record<string, Msg> = {
+  title: msg('Tiêu đề'),
+  summary: msg('Tóm tắt'),
+  type: msg('Loại'),
+  status: msg('Trạng thái'),
+  tags: msg('Tag'),
+  source: msg('Nguồn'),
+  rating: msg('Điểm 1–10'),
+};
 
 const typedTags = (text: string) =>
   text
@@ -105,6 +118,7 @@ function ItemForm({
   const [image, setImage] = useState<ImageChange>(KEEP_IMAGE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
   const toggleStage = (stage: ToolStage) =>
     setForm((f) => ({
@@ -140,12 +154,12 @@ function ItemForm({
    */
   const submit = async (): Promise<{ saved: ApiItem; imageError?: string } | null> => {
     if (!form.title.trim()) {
-      setError(t('Cần có tiêu đề.'));
+      setError(invalid.mark(t('Cần có tiêu đề.'), 'title'));
       return null;
     }
     const rating = form.rating.trim() ? Number(form.rating) : null;
     if (rating !== null && !(Number.isInteger(rating) && rating >= 1 && rating <= 10)) {
-      setError(t('Điểm là số nguyên từ 1 đến 10, hoặc để trống.'));
+      setError(invalid.mark(t('Điểm là số nguyên từ 1 đến 10, hoặc để trống.'), 'rating'));
       return null;
     }
     const body = {
@@ -160,6 +174,7 @@ function ItemForm({
     };
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const saved = item ? await api.updateItem(item.id, body) : await api.createItem(body);
       // The picture goes after the record (a new Item needs its id). If only the picture fails, the record is saved
@@ -176,7 +191,8 @@ function ItemForm({
       return { saved: final, imageError };
     } catch (err) {
       const e = toApiError(err);
-      setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
+      setError((e.status === 400 && fieldErrors(e.body, t, fieldNames)) || describeApiError(e, t).title);
+      invalid.fromError(e, t);
       setBusy(false);
       return null;
     }
@@ -206,6 +222,8 @@ function ItemForm({
           <Label htmlFor="item-title">{t('Tiêu đề')}</Label>
           <Input
             id="item-title"
+            aria-required
+            {...invalid.field('title')}
             value={form.title} onChange={(e) => set('title', e.target.value)}
             autoFocus={!focusRating}
           />
@@ -214,6 +232,7 @@ function ItemForm({
           <Label htmlFor="item-summary">{tool ? t('Dùng để làm gì') : t('Tóm tắt một dòng')}</Label>
           <Input
             id="item-summary"
+            {...invalid.field('summary')}
             value={form.summary}
             maxLength={300}
             onChange={(e) => set('summary', e.target.value)}
@@ -224,6 +243,7 @@ function ItemForm({
             <Label htmlFor="item-type">{t('Loại')}</Label>
             <ChoiceSelect
               id="item-type"
+              {...invalid.field('type')}
               label={t('Loại')}
               value={form.type}
               onChange={(v) => setForm((f) => withType(f, v))}
@@ -234,6 +254,7 @@ function ItemForm({
             <Label htmlFor="item-status">{t('Trạng thái')}</Label>
             <ChoiceSelect
               id="item-status"
+              {...invalid.field('status')}
               label={t('Trạng thái')}
               value={form.status}
               onChange={(v) => set('status', v)}
@@ -269,7 +290,12 @@ function ItemForm({
         )}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="item-source">{t('Nguồn (tác giả, nền tảng, link)')}</Label>
-          <Input id="item-source" value={form.source} onChange={(e) => set('source', e.target.value)} />
+          <Input
+            id="item-source"
+            {...invalid.field('source')}
+            value={form.source}
+            onChange={(e) => set('source', e.target.value)}
+          />
         </div>
         {(!handbook || hasOwnImage) && (
           <ItemImageField
@@ -288,12 +314,18 @@ function ItemForm({
             <Label htmlFor="item-tags">
               {tool ? t('Tag khác (cách nhau bằng dấu phẩy)') : t('Tag (cách nhau bằng dấu phẩy)')}
             </Label>
-            <Input id="item-tags" value={form.tags} onChange={(e) => set('tags', e.target.value)} />
+            <Input
+              id="item-tags"
+              {...invalid.field('tags')}
+              value={form.tags}
+              onChange={(e) => set('tags', e.target.value)}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="item-rating">{t('Điểm 1–10')}</Label>
             <Input
               id="item-rating"
+              {...invalid.field('rating')}
               inputMode="numeric"
               value={form.rating}
               onChange={(e) => set('rating', e.target.value)}
@@ -314,6 +346,7 @@ function ItemForm({
             {error}
           </p>
         )}
+        {invalid.copies}
       </DialogPanel>
       <DialogFooter>
         {item && onDeleted && (

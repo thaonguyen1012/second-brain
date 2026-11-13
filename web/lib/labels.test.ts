@@ -5,6 +5,7 @@ import {
   decisionOf,
   decisions,
   destinations,
+  errorsByField,
   fieldErrors,
   firstFieldError,
   formatDate,
@@ -224,6 +225,47 @@ describe('fieldErrors in English', () => {
     expect(firstFieldError({ x: ['Ensure this field has at least 3 characters.'] }, tEn)).toBe(
       'Ensure this field has at least 3 characters.',
     );
+  });
+});
+
+describe('errorsByField', () => {
+  it('gives each field its own translated messages, without the field name', () => {
+    expect(
+      errorsByField(
+        { title: ['This field may not be blank.', 'Ensure this field has no more than 300 characters.'], rating: ['A valid integer is required.'] },
+        tVi,
+        { title: msg('Tiêu đề') },
+      ),
+    ).toEqual({ title: 'Trường này không được bỏ trống. Tối đa 300 ký tự.', rating: 'Cần một số nguyên.' });
+  });
+
+  it('keeps list positions and nested names, joined on one field', () => {
+    expect(
+      errorsByField({ tags: { '0': ['Ensure this field has no more than 50 characters.'], '2': ['This field may not be blank.'] } }, tVi),
+    ).toEqual({ tags: '#1: Tối đa 50 ký tự. #3: Trường này không được bỏ trống.' });
+    expect(
+      errorsByField({ scores: [{}, { value: ['Ensure this value is less than or equal to 10.'] }] }, tVi, {
+        value: msg('giá trị'),
+      }),
+    ).toEqual({ scores: '#2 giá trị: Giá trị phải nhỏ hơn hoặc bằng 10.' });
+  });
+
+  it('keys errors that belong to no field by their own name, so no field claims them', () => {
+    expect(errorsByField({ non_field_errors: ['Nope.'], detail: 'Not found.' }, tVi)).toEqual({
+      non_field_errors: 'Nope.',
+      detail: 'Not found.',
+    });
+  });
+
+  it('is empty for anything that is not a DRF error object', () => {
+    for (const body of [null, undefined, '', 'Bad Request', 400, {}, [], ['Top-level message.'], { a: null, b: '' }])
+      expect(errorsByField(body, tVi)).toEqual({});
+  });
+
+  it('passes English messages through on English pages', () => {
+    expect(errorsByField({ title: ['This field is required.'] }, makeT('en', null))).toEqual({
+      title: 'This field is required.',
+    });
   });
 });
 
