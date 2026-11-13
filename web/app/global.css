@@ -462,13 +462,13 @@ html > body[data-scroll-locked] {
 }
 
 /* A field a failed save marked invalid (aria-invalid, DESIGN.md §6 "Form errors") keeps components/ui's destructive
-   border at rest and takes the app's focus ring when focused: components/ui gives a focused invalid control a 1px ring
-   of destructive at 20%, which reads as no focus at all next to the opaque ring above (D29). Dark needs nothing: there
-   components/ui already gives an invalid control the usual focus look. */
+   border, also while it holds the focus (a failed save moves the focus to it, and the message may be out of view), and
+   takes the app's opaque focus colour for the 1px ring outside that border: components/ui's ring there is destructive
+   at 20%, which reads as no focus at all next to the opaque ring above (D29). Dark needs nothing: there components/ui
+   already gives an invalid control the usual focus look. */
 html:not(.dark) [data-slot='input-control']:has([aria-invalid='true']):focus-within,
 html:not(.dark) [data-slot='textarea-control']:has([aria-invalid='true']):focus-within,
 html:not(.dark) [data-slot='select-trigger'][aria-invalid='true']:focus-visible {
-  border-color: var(--ring);
   --tw-ring-color: var(--ring);
 }
 
