@@ -14,8 +14,9 @@ const tabs = [
 /**
  * Switch between the two halves of Thư viện (DECISIONS 9.3: item + ghi chú): two links to two routes, so a navigation
  * with `aria-current="page"` on the half shown, not tabs (no panel of theirs is on the page; WCAG 1.3.1, 4.1.2).
- * Drawn as the segmented Tabs of Tuần and Inbox (DESIGN.md §6, D23) with TabsList's and TabsTab's own classes, the
- * current half in the indicator's colours (plain classes, as weak as `data-active:`, so hover mutes it the same);
+ * Drawn as the segmented Tabs of Tuần and Inbox (DESIGN.md §6, D23) with TabsList's and TabsTab's own classes (copies:
+ * lib/registry-copies.test.ts fails when the registry's change), the current half in the indicator's colours (plain
+ * classes, as weak as `data-active:`, so hover mutes it the same);
  * each ends in its count as plain muted text (GET /api/counts, the sidebar's numbers; 0 included, nothing while
  * unknown).
  */
