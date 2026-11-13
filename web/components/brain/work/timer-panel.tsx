@@ -12,8 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
 import { ApiErrorState, describeApiError } from '../api-state';
-import { ChoiceSelect } from '../choice-select';
 import { useInvalidFields } from '../invalid-fields';
+import { ChoiceSelect } from '../choice-select';
 import { fieldErrors, formatClock, formatMinutes, isTyping } from './format';
 import type { TimerState } from './use-work';
 
