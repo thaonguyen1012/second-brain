@@ -4,7 +4,7 @@
 // in item-picture.test.ts; components/brain/library/item-image.tsx draws a picture.
 import type { Book } from '@/lib/books';
 import type { T } from '@/lib/i18n/translate';
-import { firstToolStage, type ToolStage } from '@/lib/tools';
+import { firstToolStage, type ToolGroupKey, type ToolStage } from '@/lib/tools';
 
 export type ImageShape = 'poster' | 'cover' | 'logo';
 
@@ -86,6 +86,14 @@ export function ownPicture(item: { type: string; imageUrl?: string | null }): It
  */
 export function stagePicture(item: { type: string; tags?: readonly string[] | null }): ItemPicture | null {
   return item.type === 'tool' ? { kind: 'stage', stage: firstToolStage(item.tags) } : null;
+}
+
+/**
+ * A tool's picture in a Công cụ group: its own logo, else the icon of the group the row stands under, so a tool listed
+ * under Bảo mật shows the shield even when its first stage is Review code (a tool appears in each of its groups).
+ */
+export function toolRowPicture(item: { type: string; imageUrl?: string | null }, group: ToolGroupKey): ItemPicture {
+  return ownPicture(item) ?? { kind: 'stage', stage: group === 'other' ? null : group };
 }
 
 /**

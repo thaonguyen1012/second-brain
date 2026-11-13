@@ -13,6 +13,7 @@ import {
   shrinkTarget,
   stagePicture,
   takesLogo,
+  toolRowPicture,
   willFetchOnSave,
 } from './item-picture';
 
@@ -125,6 +126,18 @@ describe('stagePicture', () => {
     expect(stagePicture({ type: 'tool', tags: ['cli'] })).toEqual({ kind: 'stage', stage: null });
     expect(stagePicture({ type: 'tool' })).toEqual({ kind: 'stage', stage: null });
     expect(stagePicture({ type: 'book', tags: ['security'] })).toBeNull();
+  });
+});
+
+describe('toolRowPicture', () => {
+  it('shows the icon of the group the row stands under, not the first stage', () => {
+    expect(toolRowPicture({ type: 'tool' }, 'security')).toEqual({ kind: 'stage', stage: 'security' });
+    expect(toolRowPicture({ type: 'tool', imageUrl: null }, 'other')).toEqual({ kind: 'stage', stage: null });
+  });
+
+  it('keeps the tool’s own logo in every group', () => {
+    const imageUrl = '/thumbs/ab12cd34.webp';
+    expect(toolRowPicture({ type: 'tool', imageUrl }, 'review')).toEqual(ownPicture({ type: 'tool', imageUrl }));
   });
 });
 

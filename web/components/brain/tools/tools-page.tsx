@@ -6,7 +6,7 @@ import { loadAllPages } from '@/lib/api/pages';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
 import { msg } from '@/lib/i18n/translate';
-import { ownPicture, stagePicture } from '@/lib/item-picture';
+import { toolRowPicture } from '@/lib/item-picture';
 import { hostOf, itemStatusOf, itemStatusesFor } from '@/lib/labels';
 import { toolStageIcons } from '@/lib/tool-icons';
 import {
@@ -114,7 +114,7 @@ function ToolRow({
       className="col-span-full grid min-h-14 grid-cols-subgrid items-center py-2 ps-0 pe-3 transition-colors hover:bg-accent has-focus-visible:bg-accent"
       onClick={(e) => onRowClick(e, onOpen)}
     >
-      <RowPicture picture={ownPicture(tool) ?? stagePicture(tool)} />
+      <RowPicture picture={toolRowPicture(tool, group)} />
       <span className="flex max-md:hidden">
         <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>
       </span>
