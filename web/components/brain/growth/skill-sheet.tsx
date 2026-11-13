@@ -26,10 +26,12 @@ function EvidenceRow({
   evidence,
   skillId,
   onChanged,
+  onDeleted,
 }: {
   evidence: ApiSkillEvidence;
   skillId: number;
   onChanged: () => void;
+  onDeleted: () => void;
 }) {
   const t = useT();
   const [editing, setEditing] = useState(false);
@@ -98,7 +100,7 @@ function EvidenceRow({
           title: evidence.title,
         })}
         action={() => growthApi.deleteSkillEvidence(skillId, evidence.id)}
-        onDeleted={onChanged}
+        onDeleted={onDeleted}
       />
     </li>
   );
@@ -209,7 +211,17 @@ function SkillBody({
           ) : (
             <ul className="flex flex-col divide-y rounded-xl border">
               {skill.evidence.map((e) => (
-                <EvidenceRow key={e.id} evidence={e} skillId={skill.id} onChanged={changed} />
+                <EvidenceRow
+                  key={e.id}
+                  evidence={e}
+                  skillId={skill.id}
+                  onChanged={changed}
+                  onDeleted={() => {
+                    // the row leaves at once, as in every list, so the focus goes to its neighbour (confirm-delete.tsx)
+                    detail.mutate((d) => d && { ...d, evidence: d.evidence.filter((x) => x.id !== e.id) });
+                    changed();
+                  }}
+                />
               ))}
             </ul>
           )}

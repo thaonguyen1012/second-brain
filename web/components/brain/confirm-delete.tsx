@@ -79,9 +79,9 @@ export function focusTarget(candidates: readonly HTMLElement[] | null | undefine
  * closes. Errors stay in the dialog. Either controlled (`open`/`onOpenChange`, for keyboard shortcuts) or with a
  * `trigger` element that opens it. Cancel has the initial focus, so Enter alone never deletes.
  * After a delete the control the dialog came from has gone with its row: the focus goes to the row's neighbour
- * (`focusCandidates`) as the dialog closes, unless the page has placed it already (Tuần's objectives, the Item page's
- * notes). The row is found from the trigger, or (controlled) from what held the focus as the dialog opened: a row
- * menu's item stands for that menu's trigger.
+ * (`focusCandidates`) as the dialog closes (back to the control when its row stays), unless the page has placed it
+ * already (Tuần's objectives, the Item page's notes). The row is found from the trigger, or (controlled) from what
+ * held the focus as the dialog opened: a row menu's item stands for that menu's trigger.
  */
 export function ConfirmDelete({
   title,
@@ -187,8 +187,11 @@ export function ConfirmDelete({
       }
     }
     setBusy(false);
-    // the row goes with onDeleted: its neighbours are read while it is still there
-    after.current = focusCandidates(controlled ? origin.current : triggerRef.current);
+    // The row goes with onDeleted: its neighbours are read while it is still there. The control itself comes first:
+    // a delete by key (Del on Ghi chú's cursor row) may have left the focus in a row that stays.
+    const from = controlled ? origin.current : triggerRef.current;
+    const near = focusCandidates(from);
+    after.current = from && near.length > 0 ? [from, ...near] : near;
     onDeleted();
     close();
   };
