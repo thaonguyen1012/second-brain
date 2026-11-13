@@ -69,10 +69,14 @@ function rowFocusTarget(target: { id: number; group: ToolGroupKey } | null): HTM
   );
 }
 
-/** The official site of the tool, in a new tab: an icon button named after the site. */
-function SourceLink({ url }: { url: string }) {
+/**
+ * The official site of the tool, in a new tab: an icon button tooltipped with the site. Many tools share a site
+ * (github.com), so the name also says which tool, after the tooltip's words.
+ */
+function SourceLink({ url, title }: { url: string; title: string }) {
   const t = useT();
-  const label = t('Mở {site} (tab mới)', { site: hostOf(url) || url });
+  const site = hostOf(url) || url;
+  const label = t('Mở {site} (tab mới)', { site });
   return (
     <Tooltip>
       <TooltipTrigger
@@ -80,7 +84,7 @@ function SourceLink({ url }: { url: string }) {
           <Button
             size="icon-sm"
             variant="ghost"
-            aria-label={label}
+            aria-label={t('Mở {site}: "{title}" (tab mới)', { site, title })}
             render={<a href={url} target="_blank" rel="noopener noreferrer" />}
           />
         }
@@ -167,7 +171,7 @@ function ToolCard({ tool, group, onOpen, ...menu }: ToolEntryProps) {
         <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>
         {link && (
           <span className="-me-1.5">
-            <SourceLink url={link} />
+            <SourceLink url={link} title={tool.title} />
           </span>
         )}
       </div>
@@ -233,7 +237,7 @@ function ToolRow({ tool, group, onOpen, ...menu }: ToolEntryProps) {
         </p>
       </div>
       <div className="flex items-center justify-end gap-1">
-        {link && <SourceLink url={link} />}
+        {link && <SourceLink url={link} title={tool.title} />}
         <ToolMenu tool={tool} {...menu} />
       </div>
     </li>

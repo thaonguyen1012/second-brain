@@ -148,13 +148,24 @@ function Gaps({ gaps, onAdd }: { gaps: ApiMarketSkill[]; onAdd: (name: string) =
               <span className="min-w-0 max-sm:hidden">
                 <MatchedSkill line={g} />
               </span>
+              {/* every row shows one of these verbs: the name says which skill (the visible words first) */}
               <span className="justify-self-end">
                 {g.skill ? (
-                  <Button size="xs" variant="outline" render={<Link href={`/phat-trien/ky-nang/?id=${g.skill.id}`} />}>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    aria-label={t('Thêm bằng chứng cho "{name}"', { name: g.name })}
+                    render={<Link href={`/phat-trien/ky-nang/?id=${g.skill.id}`} />}
+                  >
                     {t('Thêm bằng chứng')}
                   </Button>
                 ) : (
-                  <Button size="xs" variant="outline" onClick={() => onAdd(g.name)}>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    aria-label={t('Thêm vào ma trận "{name}"', { name: g.name })}
+                    onClick={() => onAdd(g.name)}
+                  >
                     <Plus aria-hidden />
                     {t('Thêm vào ma trận')}
                   </Button>

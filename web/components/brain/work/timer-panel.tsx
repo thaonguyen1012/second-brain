@@ -333,7 +333,22 @@ export function TimerPanel({
               ) : (
                 <span className="hidden xl:block" />
               )}
-              <Button ref={startButton} type="submit" disabled={busy || projectId === null} aria-keyshortcuts="t">
+              <Button
+                ref={startButton}
+                type="submit"
+                disabled={busy || projectId === null}
+                aria-keyshortcuts="t"
+                // says what it starts: the visible word, then the project picked beside it
+                aria-label={
+                  projectId === null
+                    ? undefined
+                    : t(
+                        'Bắt đầu bấm giờ cho "{title}"',
+                        { title: projects.find((p) => p.id === projectId)?.title ?? '' },
+                        'button',
+                      )
+                }
+              >
                 {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
                 {t('Bắt đầu')}
                 <KeyHint k="T" />

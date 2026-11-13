@@ -60,15 +60,18 @@ export function SaveStatus({
 /**
  * The reading view's word that this browser keeps unsaved text of a note (or of a new one, `text` null): the editor
  * offers it back. Shown until the copy is restored, dropped or saved. A copy written over a version the note was saved
- * after since (`text.updatedAt`) is not called unsaved: it may be on the server already.
+ * after since (`text.updatedAt`) is not called unsaved: it may be on the server already. `name`: the note's, where
+ * several notes can each show this line (the Item page); the link's name then ends with it.
  */
 export function UnsavedCopyHint({
   copyKey,
   text,
+  name,
   onOpen,
 }: {
   copyKey: string;
   text: (NoteText & { updatedAt?: string }) | null;
+  name?: string;
   onOpen: () => void;
 }) {
   const t = useT();
@@ -80,7 +83,19 @@ export function UnsavedCopyHint({
       {offer === 'older'
         ? t('Có bản nháp viết trên bản cũ hơn của ghi chú')
         : t('Có bản nháp chưa lưu trong trình duyệt này')}
-      <Button variant="link" size="xs" className="h-auto p-0 text-xs" onClick={onOpen}>
+      <Button
+        variant="link"
+        size="xs"
+        className="h-auto p-0 text-xs"
+        aria-label={
+          name === undefined
+            ? undefined
+            : offer === 'older'
+              ? t('Mở để xem “{title}”', { title: name })
+              : t('Mở để khôi phục “{title}”', { title: name })
+        }
+        onClick={onOpen}
+      >
         {offer === 'older' ? t('Mở để xem') : t('Mở để khôi phục')}
       </Button>
     </p>

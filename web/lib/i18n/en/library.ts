@@ -175,6 +175,9 @@ export const library = {
   ' · cũng gắn với {items}': ' · also linked to {items}',
   'Sửa ghi chú “{title}”': 'Edit the note “{title}”',
   'Thao tác cho ghi chú “{title}”': 'Actions for the note “{title}”',
+  'Xong ghi chú “{title}”': 'Done editing “{title}”',
+  'Mở để khôi phục “{title}”': 'Open to restore “{title}”',
+  'Mở để xem “{title}”': 'Open to review “{title}”',
   'Mở ở trang Ghi chú': 'Open on the Notes page',
   '"{title}" bị xóa hẳn, cả ở các item khác nó gắn với. Không hoàn tác được.':
     '"{title}" is deleted for good, also from the other items it is linked to. This cannot be undone.',

@@ -34,14 +34,18 @@ const toolStatuses: typeof itemStatuses = itemStatuses.map((s) => ({
 /** The statuses as an Item of `type` names them (a tool's own words, else the shared ones). */
 export const itemStatusesFor = (type?: string) => (type === 'tool' ? toolStatuses : itemStatuses);
 
-/** The one-click next step of the lifecycle on a row and the Item page (DECISIONS 4.2: "done" still needs a note). */
-const nextSteps: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: Msg }>> = {
-  planned: { to: 'active', label: msg('Bắt đầu') },
-  active: { to: 'done', label: msg('Xong') },
+/**
+ * The one-click next step of the lifecycle on a row and the Item page (DECISIONS 4.2: "done" still needs a note).
+ * `name`: the row button's accessible name, the visible words and then the Item ({title}), since every row of a list
+ * shows the same verb.
+ */
+const nextSteps: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: Msg; name: Msg }>> = {
+  planned: { to: 'active', label: msg('Bắt đầu'), name: msg('Bắt đầu "{title}"') },
+  active: { to: 'done', label: msg('Xong'), name: msg('Xong "{title}"') },
 };
 const toolNextSteps: typeof nextSteps = {
-  planned: { to: 'active', label: msg('Bắt đầu dùng') },
-  active: { to: 'done', label: msg('Đã thành thạo', 'step') },
+  planned: { to: 'active', label: msg('Bắt đầu dùng'), name: msg('Bắt đầu dùng "{title}"') },
+  active: { to: 'done', label: msg('Đã thành thạo', 'step'), name: msg('Đã thành thạo "{title}"') },
 };
 
 /** The next step from `status` for an Item of `type`, or undefined (done, dropped). */

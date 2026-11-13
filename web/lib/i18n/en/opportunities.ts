@@ -154,7 +154,7 @@ export const opportunities = {
     '<k>1</k>–<k>9</k> for · <k>Shift</k>+number against · the Inbox entry is archived once attached',
   'Đã thêm vào "{title}"': 'Added to "{title}"',
   'Đã có trong "{title}"': 'Already in "{title}"',
-  'Thêm làm bằng chứng cho cơ hội': 'Add as evidence for an opportunity',
+  'Thêm làm bằng chứng cho cơ hội: {title}': 'Add as evidence for an opportunity: {title}',
   'Thêm làm bằng chứng': 'Add as evidence',
   'Cơ hội đang mở': 'Open opportunities',
   'Chưa có cơ hội nào, tạo ở trang Cơ hội': 'No opportunities yet; create one on the Opportunities page',

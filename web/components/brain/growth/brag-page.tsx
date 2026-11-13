@@ -350,7 +350,17 @@ function PredictionRow({
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <Button size="xs" variant="outline" onClick={onScore}>
+        <Button
+          size="xs"
+          variant="outline"
+          // every row shows this verb: the name says which prediction (the visible word first)
+          aria-label={
+            p.outcome === 'open'
+              ? t('Chấm "{title}"', { title: p.statement })
+              : t('Chấm lại "{title}"', { title: p.statement })
+          }
+          onClick={onScore}
+        >
           <Scale aria-hidden />
           {p.outcome === 'open' ? t('Chấm') : t('Chấm lại')}
         </Button>

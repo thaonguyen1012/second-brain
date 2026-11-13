@@ -245,29 +245,55 @@ function EntryCard({
         ))
       }
       actions={
+        // Every card shows these verbs: each name says whose (the visible words first, then the entry)
         <>
           {entry.status === 'inbox' && (
-            <Button size="xs" variant="outline" onClick={() => onTriage('later')}>
+            <Button
+              size="xs"
+              variant="outline"
+              aria-label={t('Đọc sau "{title}"', { title: titleOf(entry, t) })}
+              onClick={() => onTriage('later')}
+            >
               {t('Đọc sau')} <RowKey>L</RowKey>
             </Button>
           )}
           {entry.status !== 'archived' && (
-            <Button size="xs" variant="outline" onClick={() => onTriage('archived')}>
+            <Button
+              size="xs"
+              variant="outline"
+              aria-label={t('Lưu trữ "{title}"', { title: titleOf(entry, t) })}
+              onClick={() => onTriage('archived')}
+            >
               {t('Lưu trữ', null, 'verb')} <RowKey>A</RowKey>
             </Button>
           )}
           {entry.status !== 'inbox' && (
-            <Button size="xs" variant="outline" onClick={() => onTriage('inbox')}>
+            <Button
+              size="xs"
+              variant="outline"
+              aria-label={t('Về inbox "{title}"', { title: titleOf(entry, t) })}
+              onClick={() => onTriage('inbox')}
+            >
               {t('Về inbox')} <RowKey>U</RowKey>
             </Button>
           )}
           {entry.url ? (
-            <Button size="xs" variant="ghost" render={<a href={entry.url} target="_blank" rel="noreferrer" />}>
+            <Button
+              size="xs"
+              variant="ghost"
+              aria-label={t('Mở "{title}"', { title: titleOf(entry, t) })}
+              render={<a href={entry.url} target="_blank" rel="noreferrer" />}
+            >
               <ExternalLink aria-hidden />
               {t('Mở')} <RowKey>I</RowKey>
             </Button>
           ) : (
-            <Button size="xs" variant="ghost" onClick={onNote}>
+            <Button
+              size="xs"
+              variant="ghost"
+              aria-label={t('Ghi chú về "{title}"', { title: titleOf(entry, t) })}
+              onClick={onNote}
+            >
               <NotebookPen aria-hidden />
               {t('Ghi chú')} <RowKey>N</RowKey>
             </Button>

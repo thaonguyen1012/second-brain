@@ -80,10 +80,20 @@ export function OpportunityDialog({
                 <li key={o.id} className="flex items-center gap-2 rounded-xl border px-3 py-2">
                   {i < 9 && <Kbd>{i + 1}</Kbd>}
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{o.title}</span>
-                  <Button size="xs" onClick={() => onPick(o, 'supports')}>
+                  {/* every row shows both verbs: each name says which opportunity (the visible word first) */}
+                  <Button
+                    size="xs"
+                    aria-label={t('Ủng hộ "{title}"', { title: o.title })}
+                    onClick={() => onPick(o, 'supports')}
+                  >
                     {t('Ủng hộ')}
                   </Button>
-                  <Button size="xs" variant="outline" onClick={() => onPick(o, 'contradicts')}>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    aria-label={t('Phản bác "{title}"', { title: o.title })}
+                    onClick={() => onPick(o, 'contradicts')}
+                  >
                     {t('Phản bác')}
                   </Button>
                 </li>

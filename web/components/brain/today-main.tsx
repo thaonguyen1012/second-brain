@@ -270,7 +270,7 @@ export function TodayBrief({ className }: { className?: string }) {
                 actions={
                   <>
                     <BriefActions item={n} onRated={onRated} />
-                    <EvidenceMenu newsItem={n.id} />
+                    <EvidenceMenu newsItem={n.id} title={n.title} />
                   </>
                 }
               >

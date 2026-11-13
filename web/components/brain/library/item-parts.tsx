@@ -152,7 +152,13 @@ export function ItemRow({
       </span>
       <div className="flex items-center justify-end gap-1">
         {step && (
-          <Button size="xs" variant="outline" onClick={() => onStep(step.to)}>
+          <Button
+            size="xs"
+            variant="outline"
+            // every row shows this verb: the name says whose (it starts with the visible words)
+            aria-label={t(step.name, { title: item.title })}
+            onClick={() => onStep(step.to)}
+          >
             {t(step.label)}
           </Button>
         )}

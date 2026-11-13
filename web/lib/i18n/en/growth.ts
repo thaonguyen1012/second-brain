@@ -134,6 +134,8 @@ export const growth = {
   'Không có khoảng trống: mọi kỹ năng được đòi đều có trong ma trận và chưa mờ.':
     'No gaps: every skill asked for is in the matrix and has not faded.',
   'ad::{n} tin': { one: '{n} ad', other: '{n} ads' },
+  'Thêm bằng chứng cho "{name}"': 'Add evidence for "{name}"',
+  'Thêm vào ma trận "{name}"': 'Add to the matrix: "{name}"',
   'Công cụ và kỹ năng mới từ bản tin sáng': 'New tools and skills from the morning brief',
   'Tháng này bản tin chưa gắn tin nào là công cụ hay kỹ năng mới.':
     'This month the brief has not tagged any story as a new tool or skill.',
@@ -215,6 +217,8 @@ export const growth = {
   'tự tin {confidence}/10': 'confidence {confidence}/10',
   Chấm: 'Score',
   'Chấm lại': 'Score again',
+  'Chấm "{title}"': 'Score "{title}"',
+  'Chấm lại "{title}"': 'Score again: "{title}"',
   'Xóa dự đoán?': 'Delete this prediction?',
   '"{statement}" bị xóa, kể cả kết quả đã chấm. Không hoàn tác được.':
     '"{statement}" is deleted, including its score. This cannot be undone.',
@@ -281,6 +285,7 @@ export const growth = {
     'Tools good engineers use at each stage of the work, and tools to learn by dissecting real code.',
   'Mọi công đoạn': 'All stages',
   'Mở {site} (tab mới)': 'Open {site} (new tab)',
+  'Mở {site}: "{title}" (tab mới)': 'Open {site}: "{title}" (new tab)',
   'Không có công cụ nào khớp bộ lọc.': 'No tools match the filters.',
   'Chưa có công cụ nào': 'No tools yet',
   'Lưu công cụ bạn dùng hoặc muốn thử, kèm một dòng dùng để làm gì; hoặc chạy <code>manage.py seed_tools</code> một lần để có sẵn danh sách gợi ý.':

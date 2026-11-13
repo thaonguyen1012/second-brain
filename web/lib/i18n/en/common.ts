@@ -20,6 +20,11 @@ export const common = {
   'Đã thành thạo': 'Mastered',
   'Bắt đầu dùng': 'Start using',
   'step::Đã thành thạo': 'Mark as mastered',
+  // The same steps on a list row, named after the row's Item (itemNextStep's `name`)
+  'Bắt đầu "{title}"': 'Start "{title}"',
+  'Xong "{title}"': 'Done with "{title}"',
+  'Bắt đầu dùng "{title}"': 'Start using "{title}"',
+  'Đã thành thạo "{title}"': 'Mark as mastered: "{title}"',
   Inbox: 'Inbox',
   'Đọc sau': 'Read later',
   'Lưu trữ': 'Archived',
@@ -85,6 +90,9 @@ export const common = {
   'Chưa có bằng chứng': 'No evidence yet',
   'Ủng hộ': 'For',
   'Phản bác': 'Against',
+  // the same, on a row of opportunities (the Inbox dialog, the brief card's menu): the word, then the opportunity
+  'Ủng hộ "{title}"': 'For "{title}"',
+  'Phản bác "{title}"': 'Against "{title}"',
   'Chấm điểm': 'Score',
   'Chưa chấm điểm': 'Not scored yet',
   'Viết ghi chú': 'Write a note',

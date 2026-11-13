@@ -25,6 +25,12 @@ export const inbox = {
   'verb::Lưu trữ': 'Archive',
   'Về inbox': 'Back to inbox',
   'Thành item': 'Turn into item',
+  // the card's verbs as named for screen readers: the visible words, then the entry
+  'Đọc sau "{title}"': 'Read later: "{title}"',
+  'Lưu trữ "{title}"': 'Archive "{title}"',
+  'Về inbox "{title}"': 'Back to inbox: "{title}"',
+  'Mở "{title}"': 'Open "{title}"',
+  'Ghi chú về "{title}"': 'Note on "{title}"',
 
   // Keyboard legend (components/brain/inbox-page.tsx)
   'Phím tắt của Inbox': 'Inbox keyboard shortcuts',

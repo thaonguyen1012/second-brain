@@ -22,16 +22,18 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { describeApiError } from './api-state';
 import { loadOpenOpportunities } from './open-opportunities';
 
-const stances: { value: ApiStance; label: Msg }[] = [
-  { value: 'supports', label: msg('Ủng hộ') },
-  { value: 'contradicts', label: msg('Phản bác') },
+/** `name`: the entry's accessible name, the visible word and then the opportunity ({title}), shown under each one. */
+const stances: { value: ApiStance; label: Msg; name: Msg }[] = [
+  { value: 'supports', label: msg('Ủng hộ'), name: msg('Ủng hộ "{title}"') },
+  { value: 'contradicts', label: msg('Phản bác'), name: msg('Phản bác "{title}"') },
 ];
 
 /**
  * Overflow of a morning-brief card (DESIGN.md §6 "Row actions": ghost icon-sm MoreHorizontal + tooltip): records
- * the news item as evidence for an open opportunity (DECISIONS 9.2). Sits at the end of the card's action row.
+ * the news item as evidence for an open opportunity (DECISIONS 9.2). Sits at the end of the card's action row; every
+ * card has one, so its name ends with the story's `title`.
  */
-export default function EvidenceMenu({ newsItem }: { newsItem: number }) {
+export default function EvidenceMenu({ newsItem, title }: { newsItem: number; title: string }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -57,7 +59,13 @@ export default function EvidenceMenu({ newsItem }: { newsItem: number }) {
           <TooltipTrigger
             render={
               <MenuTrigger
-                render={<Button size="icon-sm" variant="ghost" aria-label={t('Thêm làm bằng chứng cho cơ hội')} />}
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={t('Thêm làm bằng chứng cho cơ hội: {title}', { title })}
+                  />
+                }
               />
             }
           >
@@ -80,7 +88,11 @@ export default function EvidenceMenu({ newsItem }: { newsItem: number }) {
                 </MenuSubTrigger>
                 <MenuSubPopup>
                   {stances.map((s) => (
-                    <MenuItem key={s.value} onClick={() => void attach(o.id, o.title, s.value)}>
+                    <MenuItem
+                      key={s.value}
+                      aria-label={t(s.name, { title: o.title })}
+                      onClick={() => void attach(o.id, o.title, s.value)}
+                    >
                       {t(s.label)}
                     </MenuItem>
                   ))}

@@ -268,7 +268,17 @@ function NoteInPlace({
             )
           }
         />
-        <Button type="button" variant="outline" size="sm" onClick={() => void done()}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          // several notes can be open at once: the name says which (the visible word first; a new note without a title
+          // goes by its Item)
+          aria-label={t('Xong ghi chú “{title}”', {
+            title: title.trim() || (note ? noteTitle(note, t) : item.title),
+          })}
+          onClick={() => void done()}
+        >
           <Check aria-hidden />
           {t('Xong')}
         </Button>
@@ -514,6 +524,7 @@ export function ItemNotes({
                       <UnsavedCopyHint
                         copyKey={noteKey(note.id)}
                         text={note}
+                        name={name}
                         onOpen={() => setNoteEditing(note.id, true)}
                       />
                     )}
