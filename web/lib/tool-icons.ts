@@ -16,6 +16,7 @@ import {
   GitPullRequest,
   GraduationCap,
   Microscope,
+  PanelsTopLeft,
   Rocket,
   ShieldCheck,
   Wrench,
@@ -27,6 +28,8 @@ export const toolStageIcons: Readonly<Record<ToolGroupKey, LucideIcon>> = {
   practice: GraduationCap,
   plan: DraftingCompass,
   code: CodeXml,
+  // an app window: the interface itself
+  ui: PanelsTopLeft,
   review: GitPullRequest,
   test: FlaskConical,
   security: ShieldCheck,

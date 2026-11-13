@@ -11,6 +11,8 @@ export const TOOL_STAGES = [
   { slug: 'practice', label: msg('Học qua thực hành') },
   { slug: 'plan', label: msg('Lên kế hoạch & thiết kế') },
   { slug: 'code', label: msg('Viết code') },
+  // UI and animation libraries, UI tools and design references (owner 13/11/2026, from haidave-com.vercel.app/resources)
+  { slug: 'ui', label: msg('Giao diện & thư viện UI') },
   { slug: 'review', label: msg('Review code') },
   { slug: 'test', label: msg('Kiểm thử') },
   { slug: 'security', label: msg('Bảo mật') },

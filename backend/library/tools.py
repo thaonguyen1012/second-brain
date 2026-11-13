@@ -16,6 +16,7 @@ STAGES = (
     "practice",  # learning by doing
     "plan",  # planning and design
     "code",
+    "ui",  # interfaces: UI and animation libraries, UI tools, design references
     "review",
     "test",
     "security",

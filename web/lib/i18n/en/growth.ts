@@ -264,6 +264,7 @@ export const growth = {
   'Học qua thực hành': 'Learning by doing',
   'Lên kế hoạch & thiết kế': 'Planning & design',
   'Viết code': 'Writing code',
+  'Giao diện & thư viện UI': 'Interfaces & UI libraries',
   'Review code': 'Code review',
   'Kiểm thử': 'Testing',
   'Bảo mật': 'Security',

@@ -42,6 +42,14 @@ ASKED = {
     "Docker",
     "Claude Code",
 }
+# Courses the owner asked for with the "Giao diện & thư viện UI" stage (13/11/2026): under "Học qua thực hành"
+ASKED_COURSES = {
+    "Build UI",
+    "CSS for JavaScript Developers",
+    "The Joy of React",
+    "Whimsical Animations",
+    "Three.js Journey",
+}
 
 
 def seed(*args: str) -> str:
@@ -56,10 +64,10 @@ def owner() -> User:
 
 def test_the_starter_list_is_well_formed() -> None:
     tools = seed_tools()
-    assert 75 <= len(tools) <= 90
+    assert 100 <= len(tools) <= 130
     titles = [tool["title"].casefold() for tool in tools]
     assert len(set(titles)) == len(titles)  # one entry per tool, whatever the case
-    assert {tool["title"] for tool in tools} >= ASKED
+    assert {tool["title"] for tool in tools} >= ASKED | ASKED_COURSES
     for tool in tools:
         assert set(tool) == {"title", "summary", "source", "stages"}, tool["title"]
         assert 0 < len(tool["summary"]) <= 300 and " ".join(tool["summary"].split()) == tool["summary"]
@@ -72,6 +80,8 @@ def test_the_starter_list_is_well_formed() -> None:
     stages = {tool["title"]: tool["stages"] for tool in tools}
     assert stages["Claude Code"] == ["explore", "ai"]
     assert stages["dependency-cruiser"] == stages["pydeps"] == ["explore", "deps"]
+    assert all(stages[title] == ["practice"] for title in ASKED_COURSES)
+    assert stages["Motion"] == stages["GSAP"] == stages["Base UI"] == ["ui"]
 
 
 def test_seed_adds_every_tool_once_as_planned_without_images() -> None:

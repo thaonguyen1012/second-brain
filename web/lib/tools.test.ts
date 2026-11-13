@@ -27,6 +27,7 @@ describe('tool stages', () => {
       'practice',
       'plan',
       'code',
+      'ui',
       'review',
       'test',
       'security',

@@ -514,5 +514,155 @@
     "summary": "Dán kết quả EXPLAIN của PostgreSQL để xem kế hoạch query dạng cây và thấy bước chậm nhất.",
     "source": "https://explain.dalibo.com",
     "stages": ["data"]
+  },
+  {
+    "title": "Radix UI",
+    "summary": "Component React không style, chuẩn truy cập (dialog, menu, popover, tabs...): bạn tự đặt giao diện của mình lên trên. shadcn/ui nay mặc định dùng Base UI, nhưng vẫn hỗ trợ Radix.",
+    "source": "https://www.radix-ui.com/primitives",
+    "stages": ["ui"]
+  },
+  {
+    "title": "Base UI",
+    "summary": "Component React không style, chuẩn truy cập, của nhóm tác giả Radix, Floating UI và Material UI; bản 1.0 từ 12/2025. App này dựng giao diện trên nó (qua Space UI).",
+    "source": "https://base-ui.com",
+    "stages": ["ui"]
+  },
+  {
+    "title": "React Aria",
+    "summary": "Hook và component không style của Adobe, kỹ nhất về truy cập: bàn phím, trình đọc màn hình, quốc tế hóa.",
+    "source": "https://react-aria.adobe.com",
+    "stages": ["ui"]
+  },
+  {
+    "title": "shadcn/ui",
+    "summary": "Chép mã component vào thẳng dự án bằng CLI thay vì cài thư viện: Base UI, Radix hoặc React Aria bên dưới, Tailwind bên trên. Đọc mã để học cách dựng component.",
+    "source": "https://ui.shadcn.com",
+    "stages": ["ui"]
+  },
+  {
+    "title": "cmdk",
+    "summary": "Menu lệnh ⌘K và ô chọn có tìm kiếm cho React (Command của shadcn/ui dùng nó); nay chỉ còn được bảo trì.",
+    "source": "https://github.com/dip/cmdk",
+    "stages": ["ui"]
+  },
+  {
+    "title": "Sonner",
+    "summary": "Thông báo toast cho React: gọi toast() là có chồng thông báo đẹp, có animation.",
+    "source": "https://sonner.emilkowal.ski",
+    "stages": ["ui"]
+  },
+  {
+    "title": "dnd kit",
+    "summary": "Kéo thả cho React: sắp xếp danh sách, bảng Kanban, dùng được bằng bàn phím và trình đọc màn hình. Bản viết lại @dnd-kit/react (chưa 1.0) là bản đang được phát triển.",
+    "source": "https://dndkit.com",
+    "stages": ["ui"]
+  },
+  {
+    "title": "Tiptap",
+    "summary": "Trình soạn văn bản (rich text) không có giao diện sẵn, dựng trên ProseMirror, nhiều extension; lõi miễn phí, phần cộng tác và AI trả phí.",
+    "source": "https://tiptap.dev",
+    "stages": ["ui"]
+  },
+  {
+    "title": "Embla Carousel",
+    "summary": "Carousel nhẹ, không style, vuốt mượt trên điện thoại; có bản cho React, Vue, Svelte.",
+    "source": "https://www.embla-carousel.com",
+    "stages": ["ui"]
+  },
+  {
+    "title": "Motion",
+    "summary": "Thư viện animation cho React và JavaScript (trước là Framer Motion): chuyển cảnh theo layout, cử chỉ, hiệu ứng khi cuộn. Miễn phí, mã nguồn mở.",
+    "source": "https://motion.dev",
+    "stages": ["ui"]
+  },
+  {
+    "title": "GSAP",
+    "summary": "Animation JavaScript theo timeline, chỉnh tới từng nhịp; ScrollTrigger cho hiệu ứng theo cuộn. Miễn phí cả plugin từ 2025 (Webflow mua lại), giấy phép riêng.",
+    "source": "https://gsap.com",
+    "stages": ["ui"]
+  },
+  {
+    "title": "Lenis",
+    "summary": "Cuộn mượt (smooth scroll) nhẹ cho web, hay dùng cùng GSAP ScrollTrigger cho trang có hiệu ứng cuộn.",
+    "source": "https://lenis.dev",
+    "stages": ["ui"]
+  },
+  {
+    "title": "nivo",
+    "summary": "Biểu đồ cho React dựng trên D3: nhiều loại chart, vẽ bằng SVG, canvas hoặc HTML, có trang ví dụ để chỉnh thử.",
+    "source": "https://nivo.rocks",
+    "stages": ["ui"]
+  },
+  {
+    "title": "ColorSlurp",
+    "summary": "Lấy màu ở bất kỳ đâu trên màn hình Mac và đổi qua lại các định dạng màu (hex, RGB, HSL...); có cả bản iOS.",
+    "source": "https://colorslurp.com",
+    "stages": ["ui"]
+  },
+  {
+    "title": "Recent",
+    "summary": "Kho thiết kế web chọn tay để lấy cảm hứng làm giao diện (trước là Godly).",
+    "source": "https://recent.design",
+    "stages": ["ui"]
+  },
+  {
+    "title": "Awwwards",
+    "summary": "Giải thưởng và kho web thiết kế đẹp, mỗi ngày một Site of the Day: xem các trang hàng đầu làm giao diện và hiệu ứng thế nào.",
+    "source": "https://www.awwwards.com",
+    "stages": ["ui"]
+  },
+  {
+    "title": "Build UI",
+    "summary": "Video khóa học dựng UI React của Sam Selikoff và Ryan Toronto (Framer Motion, Tailwind, Remix), làm theo từng bước; ít thấy bài mới từ 2025.",
+    "source": "https://buildui.com",
+    "stages": ["practice"]
+  },
+  {
+    "title": "CSS for JavaScript Developers",
+    "summary": "Khóa CSS của Josh W. Comeau: hiểu vì sao CSS chạy như vậy (layout, flexbox, grid, animation) qua bài tập tương tác; trả phí một lần.",
+    "source": "https://css-for-js.dev",
+    "stages": ["practice"]
+  },
+  {
+    "title": "The Joy of React",
+    "summary": "Khóa React của Josh W. Comeau: từ nền tảng tới React 19 và Server Components, nhiều bài tập và dự án nhỏ; trả phí một lần.",
+    "source": "https://www.joyofreact.com",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Whimsical Animations",
+    "summary": "Khóa mới (04/2026) của Josh W. Comeau về animation và tương tác vui mắt trên web; trả phí một lần.",
+    "source": "https://whimsy.joshwcomeau.com",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Three.js Journey",
+    "summary": "Khóa Three.js/WebGL của Bruno Simon: từ cảnh 3D đầu tiên tới shader, vật lý và React Three Fiber; có thêm khóa WebGPU & TSL.",
+    "source": "https://threejs-journey.com",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Learn Next.js",
+    "summary": "Khóa miễn phí chính thức của Next.js: dựng một app dashboard hoàn chỉnh với App Router, chương nào cũng có phần tự làm.",
+    "source": "https://nextjs.org/learn",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Codrops",
+    "summary": "Bài hướng dẫn và demo hiệu ứng web sáng tạo (CSS, WebGL, GSAP), có mã nguồn để tải về mổ xẻ; miễn phí.",
+    "source": "https://tympanus.net/codrops",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Raycast",
+    "summary": "Launcher thay Spotlight cho Mac và Windows: mở app, chạy lệnh, hàng nghìn extension, có AI trong gói Pro.",
+    "source": "https://www.raycast.com",
+    "stages": ["code"]
+  },
+  {
+    "title": "Warp",
+    "summary": "Terminal có AI agent (macOS, Linux, Windows): gõ lệnh hoặc nhờ agent làm bằng lời, output chia theo khối dễ đọc; có gói miễn phí.",
+    "source": "https://www.warp.dev",
+    "stages": ["code", "ai"]
   }
 ]
