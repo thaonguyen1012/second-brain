@@ -1,5 +1,6 @@
 'use client';
 // "Hôm nay" panels loaded with next/dynamic (today.tsx), so they stay outside the home page's first JS.
+import { useId } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { api, type ApiStatus } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
@@ -61,24 +62,33 @@ function Warn({ children }: { children: React.ReactNode }) {
 
 function StatusParts({ status }: { status: ApiStatus }) {
   const t = useT();
+  const freeTierId = useId();
   const { llm, jobs, lastBriefDate } = status;
   const overBudget = llm.budgetUsd > 0 && llm.monthCostUsd >= llm.budgetUsd * 0.8;
   const costText = t('LLM tháng này {cost} / {budget}', { cost: usd(llm.monthCostUsd, t), budget: usd(llm.budgetUsd, t) });
-  // On the free tier the cost is what the calls would cost on the paid tier: said in a tooltip, not in the line
+  const freeTier = t('Gói miễn phí, tính theo giá trả phí');
+  // On the free tier the cost is what the calls would cost on the paid tier: said in a tooltip, not in the line.
+  // Base UI tooltips are for the eye only, so screen readers get the same words as the line's description.
   const costLabel = llm.freeTier ? (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <span
-            tabIndex={0}
-            className="rounded-sm underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        }
-      >
-        {costText}
-      </TooltipTrigger>
-      <TooltipPopup>{t('Gói miễn phí, tính theo giá trả phí')}</TooltipPopup>
-    </Tooltip>
+    <>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <span
+              tabIndex={0}
+              aria-describedby={freeTierId}
+              className="rounded-sm underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          }
+        >
+          {costText}
+        </TooltipTrigger>
+        <TooltipPopup>{freeTier}</TooltipPopup>
+      </Tooltip>
+      <span id={freeTierId} hidden>
+        {freeTier}
+      </span>
+    </>
   ) : (
     costText
   );

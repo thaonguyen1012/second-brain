@@ -74,7 +74,6 @@ export const week = {
   'Từ tuần trước': 'From last week',
   'Giờ đã ghi cho mục tiêu này': 'Time logged for this objective',
   'Trạng thái: {title}': 'Status: {title}',
-  'Thao tác mục tiêu': 'Objective actions',
   'Đưa lên': 'Move up',
   'Đưa xuống': 'Move down',
   'Kết quả muốn có': 'Desired outcome',

@@ -215,7 +215,6 @@ export const growth = {
   'tự tin {confidence}/10': 'confidence {confidence}/10',
   Chấm: 'Score',
   'Chấm lại': 'Score again',
-  'Thao tác với dự đoán': 'Actions for the prediction',
   'Xóa dự đoán?': 'Delete this prediction?',
   '"{statement}" bị xóa, kể cả kết quả đã chấm. Không hoàn tác được.':
     '"{statement}" is deleted, including its score. This cannot be undone.',

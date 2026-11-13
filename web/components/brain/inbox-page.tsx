@@ -262,7 +262,7 @@ function EntryCard({
             </Button>
           )}
           <span className="ms-auto">
-            <RowMenu>
+            <RowMenu label={t('Thao tác cho "{title}"', { title: titleOf(entry, t) })}>
               <MenuItem onClick={onOpportunity}>
                 <Lightbulb aria-hidden />
                 {t('Bằng chứng cho cơ hội')}

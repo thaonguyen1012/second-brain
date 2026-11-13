@@ -356,7 +356,7 @@ function PredictionRow({
           <Scale aria-hidden />
           {p.outcome === 'open' ? t('Chấm') : t('Chấm lại')}
         </Button>
-        <RowMenu label={t('Thao tác với dự đoán')}>
+        <RowMenu label={t('Thao tác với "{title}"', { title: p.statement })}>
           <MenuItem onClick={onEdit}>
             <Pencil aria-hidden />
             {t('Sửa')}

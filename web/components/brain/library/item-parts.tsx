@@ -156,7 +156,7 @@ export function ItemRow({
             {t(step.label)}
           </Button>
         )}
-        <RowMenu>
+        <RowMenu label={t('Thao tác cho "{title}"', { title: item.title })}>
           <ItemMenuItems item={item} onEdit={onEdit} onWriteNote={onWriteNote} onRate={onRate} />
         </RowMenu>
       </div>

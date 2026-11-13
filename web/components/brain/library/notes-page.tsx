@@ -130,6 +130,7 @@ function NoteRow({
 }) {
   const t = useT();
   const id = onSelect ? `note-${note.id}` : undefined;
+  const title = rowTitle(note, group === undefined || group === null ? null : itemTitle(group).title, t);
   useEffect(() => {
     if (selected && id) document.getElementById(id)?.scrollIntoView({ block: 'nearest' });
   }, [selected, id]);
@@ -152,13 +153,13 @@ function NoteRow({
           className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onOpen}
         >
-          {rowTitle(note, group === undefined || group === null ? null : itemTitle(group).title, t)}
+          {title}
         </button>
         <p className="truncate text-xs text-muted-foreground">
           <NoteMeta note={note} itemTitle={itemTitle} group={group} />
         </p>
       </div>
-      <RowMenu>
+      <RowMenu label={t('Thao tác cho ghi chú “{title}”', { title })}>
         <MenuItem onClick={onEdit}>
           <Pencil aria-hidden />
           {t('Sửa')}

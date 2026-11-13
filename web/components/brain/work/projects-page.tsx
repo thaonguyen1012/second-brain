@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Clock, FolderPlus, Pencil, Play, Plus } from 'lucide-react';
 import { api, type ApiItemStatus, type Page } from '@/lib/api/client';
@@ -152,7 +152,9 @@ function ProjectList({
   onStart: (p: ApiProject) => void;
 }) {
   const t = useT();
+  const rateHintId = useId();
   const withLogo = projects.some((p) => logoOf(p) !== null);
+  const rateHint = t('Số tiền chia cho mọi giờ đã làm, kể cả giờ không tính tiền.');
   return (
     // overflow-hidden: a flush logo is clipped by the list's radius
     <div className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card">
@@ -167,18 +169,21 @@ function ProjectList({
         <Tooltip>
           <TooltipTrigger
             render={
+              // Base UI tooltips are for the eye only: the definition reaches screen readers as the description
               <button
                 type="button"
+                aria-describedby={rateHintId}
                 className="cursor-help justify-self-end rounded-sm text-end underline decoration-dotted underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               />
             }
           >
             {t('Giá giờ thực tế')}
           </TooltipTrigger>
-          <TooltipPopup className="max-w-64">
-            {t('Số tiền chia cho mọi giờ đã làm, kể cả giờ không tính tiền.')}
-          </TooltipPopup>
+          <TooltipPopup className="max-w-64">{rateHint}</TooltipPopup>
         </Tooltip>
+        <span id={rateHintId} hidden>
+          {rateHint}
+        </span>
         <span className="text-end" aria-hidden>
           {t('Đã kiếm')}
         </span>

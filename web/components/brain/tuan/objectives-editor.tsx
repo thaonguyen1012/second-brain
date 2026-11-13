@@ -299,7 +299,7 @@ export function ObjectivesEditor({
                     onChange={(v) => v !== status && patch(o, { status: v })}
                   />
                   {/* Rename, reorder and delete live in one menu (DESIGN.md D22); the row keys still do them */}
-                  <RowMenu label={t('Thao tác mục tiêu')}>
+                  <RowMenu label={t('Thao tác cho "{title}"', { title: o.title })}>
                     <MenuItem onClick={() => setEditing({ id: o.id, title: o.title })}>
                       <Pencil aria-hidden />
                       {t('Sửa tên')}
