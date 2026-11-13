@@ -20,7 +20,7 @@ import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
 import { describeApiError } from '../api-state';
 import { fieldErrors, splitList } from './labels';
-import { FormError, FormRow } from './shared';
+import { FormError, FormRow, hintId } from './shared';
 import { SaveKeys } from '../save-keys';
 
 const MAX_TEXT = 20_000;
@@ -152,6 +152,7 @@ function JobAdForm({
         >
           <Textarea
             id="ad-text"
+            aria-describedby={hintId('ad-text')}
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={8}
@@ -167,7 +168,12 @@ function JobAdForm({
               'Sửa ô này thì kết quả của bạn được giữ, không phân tích lại. Đổi vị trí, công ty hay nội dung thì tin được phân tích lại.',
             )}
           >
-            <Input id="ad-skills" value={skills} onChange={(e) => setSkills(e.target.value)} />
+            <Input
+              id="ad-skills"
+              aria-describedby={hintId('ad-skills')}
+              value={skills}
+              onChange={(e) => setSkills(e.target.value)}
+            />
           </FormRow>
         )}
         <FormError error={error} />

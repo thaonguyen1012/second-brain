@@ -22,7 +22,7 @@ import { msg, type Msg } from '@/lib/i18n/translate';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
 import { fieldErrors } from './labels';
-import { FormError, FormRow } from './shared';
+import { FormError, FormRow, hintId } from './shared';
 import { SaveKeys } from '../save-keys';
 
 const fieldNames: Record<string, Msg> = {
@@ -158,6 +158,7 @@ function AchievementForm({
         >
           <Input
             id="ach-impact"
+            aria-describedby={hintId('ach-impact')}
             value={impact}
             onChange={(e) => setImpact(e.target.value)}
             placeholder={t('Thanh toán 40 s → 12 s')}

@@ -22,7 +22,7 @@ import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { describeApiError } from '../api-state';
 import { fieldErrors, formatDay, outcomeOf, today } from './labels';
-import { FormError, FormRow } from './shared';
+import { FormError, FormRow, hintId } from './shared';
 import { SaveKeys } from '../save-keys';
 
 const fieldNames: Record<string, Msg> = {
@@ -124,7 +124,13 @@ function PredictionForm({
             <Input id="pred-made" type="date" value={madeOn} onChange={(e) => setMadeOn(e.target.value)} />
           </FormRow>
           <FormRow id="pred-check" label={t('Ngày chấm lại')} hint={prediction ? undefined : t('Để trống: sau 6 tháng.')}>
-            <Input id="pred-check" type="date" value={checkOn} onChange={(e) => setCheckOn(e.target.value)} />
+            <Input
+              id="pred-check"
+              type="date"
+              aria-describedby={prediction ? undefined : hintId('pred-check')}
+              value={checkOn}
+              onChange={(e) => setCheckOn(e.target.value)}
+            />
           </FormRow>
           <FormRow id="pred-conf" label={t('Độ tự tin 1–10')}>
             <Input

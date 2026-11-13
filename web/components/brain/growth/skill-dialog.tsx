@@ -20,7 +20,7 @@ import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
 import { describeApiError } from '../api-state';
 import { fieldErrors, splitList } from './labels';
-import { FormError, FormRow } from './shared';
+import { FormError, FormRow, hintId } from './shared';
 
 const fieldNames: Record<string, Msg> = { name: msg('Tên'), aliases: msg('Tên khác'), note: msg('Ghi chú') };
 
@@ -75,7 +75,12 @@ function SkillForm({
           label={t('Tên khác (cách nhau bằng dấu phẩy)')}
           hint={t('Tin tuyển dụng gọi kỹ năng này bằng các tên đó cũng được tính, ví dụ: postgres, psql.')}
         >
-          <Input id="skill-aliases" value={aliases} onChange={(e) => setAliases(e.target.value)} />
+          <Input
+            id="skill-aliases"
+            aria-describedby={hintId('skill-aliases')}
+            value={aliases}
+            onChange={(e) => setAliases(e.target.value)}
+          />
         </FormRow>
         <FormRow id="skill-note" label={t('Ghi chú')}>
           <Textarea id="skill-note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />

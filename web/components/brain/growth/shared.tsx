@@ -87,6 +87,9 @@ export function PeriodStepper({
   );
 }
 
+/** The id of a FormRow's hint: the control gives it as its aria-describedby, so the hint is read with the field. */
+export const hintId = (id: string) => `${id}-hint`;
+
 /** Label + control stacked, the form layout of the item dialog. */
 export function FormRow({
   id,
@@ -105,7 +108,11 @@ export function FormRow({
     <div className={cn('flex flex-col gap-1.5', className)}>
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && (
+        <p id={hintId(id)} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
