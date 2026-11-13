@@ -30,6 +30,7 @@ from django.db.models import (
     TextField,
     Value,
 )
+from django.db.models.fields.json import KT
 from django.db.models.functions import Concat
 from django.utils import timezone
 
@@ -44,6 +45,10 @@ IMAGE_JOB = "item_image"  # one job per Item, key item_image:<pk>
 # The `expect` of a running fetch that a later image change ended (_end_fetch): no stored image has this
 # name, so neither the job nor a retry of it can set its image.
 ENDED_FETCH = "ended"
+# The mark ({"found": FOUND_NOTHING} in its payload) of a fetch whose link gave no picture: no og:image, no
+# logo on the site, a refused or unreadable answer (fetch_found_nothing). It is the Item's imageMissing while
+# the Item still has the source and the image of that fetch, until a fetch is asked again.
+FOUND_NOTHING = "nothing"
 _HTTP_URL = URLValidator(schemes=["http", "https"])
 # Item fields an API write may set (POST/PATCH /api/items; /api/projects sends a subset).
 ITEM_FIELDS = ("type", "status", "title", "summary", "tags", "source", "rating", "started_at", "finished_at")
@@ -127,15 +132,23 @@ class ImageTooLarge(ValueError):
 
 
 def items(user: User, query: str = "") -> QuerySet[Item]:
-    """The owner's Items with `note_count` and `image_pending` (an image job waits or runs for the Item),
-    both in the list's one query; `query` matches title, summary or source (case-insensitive substring) or is
-    exactly one of the tags."""
+    """The owner's Items with `note_count`, `image_pending` (an image job waits or runs for the Item) and
+    `image_missing` (the last fetch of the Item's source gave no picture: FOUND_NOTHING), all in the list's
+    one query; `query` matches title, summary or source (case-insensitive substring) or is exactly one of the
+    tags."""
     image_job = Job.objects.filter(
-        key=Concat(Value(f"{IMAGE_JOB}:"), OuterRef("pk"), output_field=CharField()),
-        status__in=(Job.Status.PENDING, Job.Status.RUNNING),
+        key=Concat(Value(f"{IMAGE_JOB}:"), OuterRef("pk"), output_field=CharField())
+    )
+    # what the last fetch found is the Item's while it still has the link and the image that fetch had
+    found_nothing = (
+        image_job.filter(status=Job.Status.DONE, payload__found=FOUND_NOTHING)
+        .annotate(asked=KT("payload__url"), had=KT("payload__expect"))
+        .filter(asked=OuterRef("source"), had=OuterRef("image_path"))
     )
     rows = Item.objects.filter(user=user).annotate(
-        note_count=Count("notes", distinct=True), image_pending=Exists(image_job)
+        note_count=Count("notes", distinct=True),
+        image_pending=Exists(image_job.filter(status__in=(Job.Status.PENDING, Job.Status.RUNNING))),
+        image_missing=Exists(found_nothing),
     )
     if query := normalize_query(query):
         rows = rows.filter(
@@ -289,6 +302,17 @@ def _end_fetch(item_id: int) -> None:
         rows.update(status=Job.Status.DONE, last_error="", updated_at=now)
     elif job.payload.get("expect") != ENDED_FETCH:
         rows.update(payload={**job.payload, "expect": ENDED_FETCH}, updated_at=now)
+
+
+def fetch_found_nothing(item_id: int, expect: str) -> None:
+    """The item_image job's link gave no picture: its running row is marked FOUND_NOTHING (imageMissing once
+    it is done), unless an image change ended the fetch meanwhile (its expect is then ENDED_FETCH). Under the
+    job row's lock, like _end_fetch; run_jobs saves the job's end without its payload, so the mark stays."""
+    with transaction.atomic():
+        running = _image_job(item_id).select_for_update().filter(status=Job.Status.RUNNING)
+        job = running.filter(payload__expect=expect).first()
+        if job is not None:
+            Job.objects.filter(pk=job.pk).update(payload={**job.payload, "found": FOUND_NOTHING})
 
 
 def _fetch_ended(item_id: int, expect: str | None) -> bool:

@@ -2831,9 +2831,14 @@ components:
           type: boolean
           readOnly: true
           default: false
+        imageMissing:
+          type: boolean
+          readOnly: true
+          default: false
       required:
       - createdAt
       - id
+      - imageMissing
       - imagePending
       - imageUrl
       - noteCount

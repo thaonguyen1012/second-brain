@@ -306,6 +306,8 @@ function ItemForm({
             source={form.source}
             imageUrl={item?.imageUrl}
             pending={item?.imagePending}
+            // what the last fetch found is about the saved link, not one being typed
+            missing={!!item?.imageMissing && form.source.trim() === (item.source ?? '').trim()}
             fetchOnSave={fetchOnSave}
             change={change}
             onChange={setImage}

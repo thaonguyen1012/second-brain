@@ -99,7 +99,10 @@ export const library = {
     'On saving, the image will be fetched from the link; it shows up in a few minutes.',
   'Khi lưu, logo sẽ được lấy từ trang; nó hiện sau vài phút.':
     'On saving, the logo will be fetched from the site; it shows up in a few minutes.',
+  'Trang không có logo dùng được; hãy tải logo lên.': 'The site has no usable logo; upload one.',
+  'Link không có ảnh dùng được; hãy tải ảnh lên.': 'The link has no usable image; upload one.',
   'Chưa có ảnh.': 'No image yet.',
+  'Chưa có logo.': 'No logo yet.',
   'Không đọc được ảnh này. Chỉ nhận JPEG, PNG, GIF hoặc WebP.':
     'Cannot read this image. Only JPEG, PNG, GIF or WebP are accepted.',
   'Chỉ nhận ảnh JPEG, PNG, GIF hoặc WebP.': 'Only JPEG, PNG, GIF or WebP images are accepted.',

@@ -1243,6 +1243,8 @@ export interface components {
             readonly imageUrl: string | null;
             /** @default false */
             readonly imagePending: boolean;
+            /** @default false */
+            readonly imageMissing: boolean;
         };
         /**
          * @description POST /api/items/{id}/image/fetch: the link to take the image from; empty or left out = the Item's

@@ -136,3 +136,45 @@ export function willFetchOnSave(ctx: {
   if (ctx.hasOwnImage || !canFetchPicture(ctx.type, ctx.source)) return false;
   return ctx.creating || ctx.source.trim() !== ctx.savedSource.trim();
 }
+
+/**
+ * The picture field's status line (components/brain/library/item-image-field.tsx): what the save will do, what is under
+ * way, or what the last fetch found. A tool's fetch takes the logo of its site (siteLogo: takesSiteLogo), every other
+ * type's the image of its link; when the link gave none (missing: ApiItem.imageMissing) the line says so, so the owner
+ * uploads one instead of asking again. `logo`: the field holds a logo (a project, a tool).
+ */
+export function imageStatusText(
+  t: T,
+  s: {
+    reading: boolean;
+    change: { kind: string };
+    pending: boolean;
+    saved: boolean;
+    fetchOnSave: boolean;
+    siteLogo: boolean;
+    missing: boolean;
+    logo: boolean;
+  },
+): string {
+  if (s.reading) return t('Đang đọc ảnh…');
+  if (s.change.kind === 'fetch')
+    return s.siteLogo
+      ? t('Logo sẽ được lấy từ trang sau khi lưu; nó hiện sau vài phút.')
+      : t('Ảnh sẽ được lấy từ link sau khi lưu; nó hiện sau vài phút.');
+  if (s.change.kind === 'upload') return t('Ảnh mới được lưu khi bấm Lưu.');
+  if (s.change.kind === 'remove') return t('Ảnh được bỏ khi bấm Lưu.');
+  if (s.saved) return '';
+  if (s.pending)
+    return s.siteLogo
+      ? t('Đang lấy logo từ trang; nó hiện sau vài phút.')
+      : t('Đang lấy ảnh từ link; nó hiện sau vài phút.');
+  if (s.fetchOnSave)
+    return s.siteLogo
+      ? t('Khi lưu, logo sẽ được lấy từ trang; nó hiện sau vài phút.')
+      : t('Khi lưu, ảnh sẽ được lấy từ link; nó hiện sau vài phút.');
+  if (s.missing)
+    return s.siteLogo
+      ? t('Trang không có logo dùng được; hãy tải logo lên.')
+      : t('Link không có ảnh dùng được; hãy tải ảnh lên.');
+  return s.logo ? t('Chưa có logo.') : t('Chưa có ảnh.');
+}

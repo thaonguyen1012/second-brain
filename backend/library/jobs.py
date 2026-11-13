@@ -17,12 +17,13 @@ def fetch_item_image(payload: dict[str, Any]) -> None:
     organisation's avatar), re-encoded by thumbnails.logo_to_webp; for any other type the URL's own bytes
     when it answers with an image, else the page's og:image (twitter:image), re-encoded at ITEM_SIZES.
 
-    Refused URLs, unreadable images and links without a picture are final (logged, no image). An error that
-    may go away raises, so the queue retries (3 attempts); while the GitHub API's hourly limit is used up the
-    job waits until it resets (RetryLater with a delay: only this job waits, the other Items' images go on).
-    The image is set only while the Item still has the image it had when the fetch was requested (`expect`)
-    and no other change has ended the fetch since (services.set_image): an upload, a removal or an inbox link
-    made meanwhile wins and the fetched file is discarded.
+    Refused URLs, unreadable images and links without a picture are final (logged, no image, the job marked
+    FOUND_NOTHING: the Item's imageMissing). An error that may go away raises, so the queue retries (3
+    attempts); while the GitHub API's hourly limit is used up the job waits until it resets (RetryLater with
+    a delay: only this job waits, the other Items' images go on). The image is set only while the Item still
+    has the image it had when the fetch was requested (`expect`) and no other change has ended the fetch
+    since (services.set_image): an upload, a removal or an inbox link made meanwhile wins and the fetched
+    file is discarded.
     """
     item_id, url, expect = payload["item_id"], payload["url"], payload["expect"]
     row = Item.objects.filter(pk=item_id).values_list("image_path", "type").first()
@@ -34,10 +35,12 @@ def fetch_item_image(payload: dict[str, Any]) -> None:
         if webp is None:
             reason = "no logo on the site" if logo else "page without og:image"
             logger.info("no item image", extra={"item": item_id, "reason": reason})
+            services.fetch_found_nothing(item_id, expect)
             return
         name = thumbnails.store(webp)
     except (safe_fetch.FetchBlocked, thumbnails.ThumbnailError) as exc:
         logger.warning("item image refused", extra={"item": item_id, "reason": str(exc)})
+        services.fetch_found_nothing(item_id, expect)
         return
     except logos.RateLimited as exc:
         raise jobs.RetryLater(str(exc), delay=exc.wait) from exc

@@ -8,6 +8,7 @@ import {
   handbookPath,
   imageFileProblem,
   imageShapeOf,
+  imageStatusText,
   isLocalImage,
   isWebLink,
   ownPicture,
@@ -200,5 +201,40 @@ describe('canFetchPicture', () => {
 
   it('takes the logo of the site for a tool only', () => {
     expect(['tool', 'project', 'book'].map(takesSiteLogo)).toEqual([true, false, false]);
+  });
+});
+
+describe('imageStatusText', () => {
+  const idle = {
+    reading: false,
+    change: { kind: 'keep' },
+    pending: false,
+    saved: false,
+    fetchOnSave: false,
+    siteLogo: false,
+    missing: false,
+    logo: false,
+  };
+  const tool = { ...idle, siteLogo: true, logo: true };
+
+  it('says when the last fetch found nothing, so the owner uploads one instead of asking again', () => {
+    expect(imageStatusText(tVi, { ...tool, missing: true })).toBe('Trang không có logo dùng được; hãy tải logo lên.');
+    expect(imageStatusText(tVi, { ...idle, missing: true })).toBe('Link không có ảnh dùng được; hãy tải ảnh lên.');
+    expect(imageStatusText(tVi, tool)).toBe('Chưa có logo.');
+    expect(imageStatusText(tVi, { ...idle, logo: true })).toBe('Chưa có logo.'); // a project
+    expect(imageStatusText(tVi, idle)).toBe('Chưa có ảnh.');
+  });
+
+  it('puts a chosen change, a fetch under way or one the save makes before what the last fetch found', () => {
+    expect(imageStatusText(tVi, { ...tool, missing: true, change: { kind: 'fetch' } })).toBe(
+      'Logo sẽ được lấy từ trang sau khi lưu; nó hiện sau vài phút.',
+    );
+    expect(imageStatusText(tVi, { ...tool, missing: true, pending: true })).toBe(
+      'Đang lấy logo từ trang; nó hiện sau vài phút.',
+    );
+    expect(imageStatusText(tVi, { ...idle, missing: true, fetchOnSave: true })).toBe(
+      'Khi lưu, ảnh sẽ được lấy từ link; nó hiện sau vài phút.',
+    );
+    expect(imageStatusText(tVi, { ...tool, missing: true, saved: true })).toBe('');
   });
 });

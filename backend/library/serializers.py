@@ -42,6 +42,8 @@ class ItemSerializer(serializers.ModelSerializer[Item]):
     imageUrl = serializers.SerializerMethodField()
     # Annotated by services.items(): an image fetch for the Item waits for run_jobs or runs.
     imagePending = serializers.BooleanField(source="image_pending", read_only=True, default=False)
+    # Annotated by services.items(): the last fetch of the Item's source ended without a picture.
+    imageMissing = serializers.BooleanField(source="image_missing", read_only=True, default=False)
 
     class Meta:
         model = Item
@@ -61,6 +63,7 @@ class ItemSerializer(serializers.ModelSerializer[Item]):
             "noteCount",
             "imageUrl",
             "imagePending",
+            "imageMissing",
         ]
 
     def validate_summary(self, value: str) -> str:

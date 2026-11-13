@@ -124,6 +124,7 @@ def test_a_refused_url_is_final(client: Client, net: FakeNet) -> None:
     job = Job.objects.get()
     assert (job.status, job.attempts) == ("done", 0)
     assert net.requests == [] and Item.objects.get(pk=item.pk).image_path == ""
+    assert image_state(client, item) == (False, True)
 
 
 def test_an_unreadable_image_is_final(client: Client, net: FakeNet, tmp_path: Path) -> None:
@@ -150,13 +151,36 @@ def test_a_network_error_is_retried(client: Client, net: FakeNet) -> None:
     assert client.get(f"/api/items/{item.pk}").json()["imagePending"] is True
 
 
+def image_state(client: Client, item: Item) -> tuple[bool, bool]:
+    """(imagePending, imageMissing) of the Item as the API answers it."""
+    data = client.get(f"/api/items/{item.pk}").json()
+    return data["imagePending"], data["imageMissing"]
+
+
 def test_a_page_without_an_image_ends_without_one(client: Client, net: FakeNet) -> None:
     net.site("plain.test", PUBLIC, html("<title>No picture</title>"))
     item = book(client, source="https://plain.test/")
+    assert image_state(client, item) == (False, False)
     fetch(client, item)
+    assert image_state(client, item) == (True, False)
     run_jobs()
     assert Job.objects.get().status == "done" and hosts(net) == ["plain.test"]
     assert Item.objects.get(pk=item.pk).image_path == ""
+    assert image_state(client, item) == (False, True)  # the link gave no picture: the dialog says so
+    fetch(client, item)  # asked again: the mark goes
+    assert image_state(client, item) == (True, False)
+    run_jobs()
+    assert image_state(client, item) == (False, True)
+    # an image the owner gives it is not what the fetch found; removed, the Item is as the fetch left it
+    upload(client, item, "blue")
+    assert image_state(client, item) == (False, False)
+    remove(client, item.pk)
+    assert image_state(client, item) == (False, True)
+    # a new link without a picture is fetched on its own; the old link's answer is not the new one's
+    data = send(client, "patch", f"/api/items/{item.pk}", {"source": "https://plain.test/v2"}, csrf(client))
+    assert (data.json()["imagePending"], data.json()["imageMissing"]) == (True, False)
+    Job.objects.filter(status="pending").update(status="done")
+    assert image_state(client, item) == (False, False)
 
 
 def upload(client: Client, item: Item, color: str) -> Any:
@@ -250,6 +274,22 @@ def test_an_image_removed_during_the_fetch_stays_removed(
         run_jobs()
     assert hosts(net) == ["blog.test", "cdn.test"] and Job.objects.get().status == "done"
     assert Item.objects.get(pk=item.pk).image_path == "" and list(tmp_path.iterdir()) == []
+
+
+def test_a_fetch_ended_while_it_ran_never_says_the_link_had_no_picture(client: Client, net: FakeNet) -> None:
+    """An upload during the fetch ends it: what the link gave afterwards says nothing about the Item."""
+    item = book(client)
+    fetch(client, item)
+
+    def upload_then_answer(request: httpx.Request) -> httpx.Response:
+        upload(client, item, "blue")
+        return html("<title>No picture</title>")(request)
+
+    net.site("blog.test", PUBLIC, upload_then_answer)
+    run_jobs()
+    job = Job.objects.get()
+    assert job.status == "done" and "found" not in job.payload
+    assert image_state(client, item) == (False, False)
 
 
 def test_a_fetch_ended_while_it_ran_sets_no_image_on_its_retry(client: Client, net: FakeNet) -> None:
@@ -492,6 +532,7 @@ def test_a_tool_whose_site_has_no_icon_ends_without_one(client: Client, net: Fak
     run_jobs()
     assert Job.objects.get().status == "done" and Item.objects.get(pk=item.pk).image_path == ""
     assert asked(net) == ["bare.test/", "bare.test/apple-touch-icon.png", "bare.test/favicon.ico"]
+    assert image_state(client, item) == (False, True)  # "Trang không có logo dùng được"
 
 
 def test_a_tools_logo_is_retried_after_a_network_error(client: Client, net: FakeNet) -> None:

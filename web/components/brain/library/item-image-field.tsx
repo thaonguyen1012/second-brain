@@ -9,6 +9,7 @@ import {
   canFetchPicture,
   imageFileProblem,
   imageShapeOf,
+  imageStatusText,
   isLocalImage,
   shrinkTarget,
   takesSiteLogo,
@@ -28,7 +29,7 @@ export type ImageChange = { kind: 'keep' } | { kind: 'upload'; file: File } | { 
 
 export const KEEP_IMAGE: ImageChange = { kind: 'keep' };
 
-export type ImageFields = Pick<ApiItem, 'imageUrl' | 'imagePending'>;
+export type ImageFields = Pick<ApiItem, 'imageUrl' | 'imagePending' | 'imageMissing'>;
 
 /**
  * Sends a picture change for a saved Item (or project, which is an Item) and answers its new picture fields, or null
@@ -38,15 +39,16 @@ export async function applyImageChange(id: number, change: ImageChange): Promise
   switch (change.kind) {
     case 'upload': {
       const saved = await itemImageApi.upload(id, change.file);
-      return { imageUrl: saved.imageUrl, imagePending: saved.imagePending };
+      return { imageUrl: saved.imageUrl, imagePending: saved.imagePending, imageMissing: saved.imageMissing };
     }
     case 'remove':
-      // the server also ends a fetch from the link that waits or runs, so nothing comes back afterwards
+      // the server also ends a fetch from the link that waits or runs, so nothing comes back afterwards (what the
+      // last fetch found is not sent back: the field says only "no picture yet" until the next load)
       await itemImageApi.remove(id);
-      return { imageUrl: null, imagePending: false };
+      return { imageUrl: null, imagePending: false, imageMissing: false };
     case 'fetch': {
       const saved = await itemImageApi.fetchFromLink(id);
-      return { imageUrl: saved.imageUrl, imagePending: saved.imagePending };
+      return { imageUrl: saved.imageUrl, imagePending: saved.imagePending, imageMissing: saved.imageMissing };
     }
     default:
       return null;
@@ -88,33 +90,6 @@ async function prepareUpload(file: File): Promise<File> {
   }
 }
 
-/**
- * The field's status line: what the save will do, or what is under way. A tool's fetch takes the logo of its site
- * (takesSiteLogo), every other type's the image of its link.
- */
-function statusText(
-  t: T,
-  s: { reading: boolean; change: ImageChange; pending: boolean; saved: boolean; fetchOnSave: boolean; siteLogo: boolean },
-): string {
-  if (s.reading) return t('Đang đọc ảnh…');
-  if (s.change.kind === 'fetch')
-    return s.siteLogo
-      ? t('Logo sẽ được lấy từ trang sau khi lưu; nó hiện sau vài phút.')
-      : t('Ảnh sẽ được lấy từ link sau khi lưu; nó hiện sau vài phút.');
-  if (s.change.kind === 'upload') return t('Ảnh mới được lưu khi bấm Lưu.');
-  if (s.change.kind === 'remove') return t('Ảnh được bỏ khi bấm Lưu.');
-  if (s.saved) return '';
-  if (s.pending)
-    return s.siteLogo
-      ? t('Đang lấy logo từ trang; nó hiện sau vài phút.')
-      : t('Đang lấy ảnh từ link; nó hiện sau vài phút.');
-  if (s.fetchOnSave)
-    return s.siteLogo
-      ? t('Khi lưu, logo sẽ được lấy từ trang; nó hiện sau vài phút.')
-      : t('Khi lưu, ảnh sẽ được lấy từ link; nó hiện sau vài phút.');
-  return t('Chưa có ảnh.');
-}
-
 const previewBox = {
   poster: 'h-24 w-16 object-cover',
   cover: 'h-16 aspect-[16/7] object-cover',
@@ -127,6 +102,7 @@ export function ItemImageField({
   source,
   imageUrl,
   pending,
+  missing = false,
   fetchOnSave = false,
   change,
   onChange,
@@ -138,6 +114,8 @@ export function ItemImageField({
   imageUrl: string | null | undefined;
   /** A fetch from the link is waiting for run_jobs (ApiItem.imagePending). */
   pending?: boolean;
+  /** The last fetch of the link as it is in the field gave no picture (ApiItem.imageMissing). */
+  missing?: boolean;
   /** Saving will make the server fetch the link's image on its own (willFetchOnSave). */
   fetchOnSave?: boolean;
   /** The change the save will send (the dialog passes effectiveImageChange). */
@@ -195,7 +173,16 @@ export function ItemImageField({
     }
   };
 
-  const status = statusText(t, { reading, change, pending: !!pending, saved: !!saved, fetchOnSave, siteLogo });
+  const status = imageStatusText(t, {
+    reading,
+    change,
+    pending: !!pending,
+    saved: !!saved,
+    fetchOnSave,
+    siteLogo,
+    missing,
+    logo: shape === 'logo',
+  });
 
   return (
     <div className="flex flex-col gap-1.5">
