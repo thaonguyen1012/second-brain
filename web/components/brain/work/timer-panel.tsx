@@ -338,20 +338,20 @@ export function TimerPanel({
                 type="submit"
                 disabled={busy || projectId === null}
                 aria-keyshortcuts="t"
-                // says what it starts: the visible word, then the project picked beside it
+                // says what it starts: all it shows (the word and its key hint, WCAG 2.5.3), then the project
+                // picked beside it
                 aria-label={
                   projectId === null
                     ? undefined
-                    : t(
-                        'Bắt đầu bấm giờ cho "{title}"',
-                        { title: projects.find((p) => p.id === projectId)?.title ?? '' },
-                        'button',
-                      )
+                    : t('Bắt đầu, {key}: bấm giờ cho "{title}"', {
+                        key: 'T',
+                        title: projects.find((p) => p.id === projectId)?.title ?? '',
+                      })
                 }
               >
                 {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
-                {t('Bắt đầu')}
-                <KeyHint k="T" />
+                {/* a space before the key: the shown text reads "Bắt đầu T", as the name starts (the gap draws it) */}
+                {t('Bắt đầu')} <KeyHint k="T" />
               </Button>
             </div>
           </div>

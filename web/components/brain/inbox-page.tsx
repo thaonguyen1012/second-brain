@@ -245,13 +245,14 @@ function EntryCard({
         ))
       }
       actions={
-        // Every card shows these verbs: each name says whose (the visible words first, then the entry)
+        // Every card shows these verbs: each name says whose. It starts with all the button shows, its words and
+        // its key hint (WCAG 2.5.3: the visible label stays in the name), then names the entry.
         <>
           {entry.status === 'inbox' && (
             <Button
               size="xs"
               variant="outline"
-              aria-label={t('Đọc sau "{title}"', { title: titleOf(entry, t) })}
+              aria-label={t('Đọc sau, {key}: "{title}"', { key: 'L', title: titleOf(entry, t) })}
               onClick={() => onTriage('later')}
             >
               {t('Đọc sau')} <RowKey>L</RowKey>
@@ -261,7 +262,7 @@ function EntryCard({
             <Button
               size="xs"
               variant="outline"
-              aria-label={t('Lưu trữ "{title}"', { title: titleOf(entry, t) })}
+              aria-label={t('Lưu trữ, {key}: "{title}"', { key: 'A', title: titleOf(entry, t) })}
               onClick={() => onTriage('archived')}
             >
               {t('Lưu trữ', null, 'verb')} <RowKey>A</RowKey>
@@ -271,7 +272,7 @@ function EntryCard({
             <Button
               size="xs"
               variant="outline"
-              aria-label={t('Về inbox "{title}"', { title: titleOf(entry, t) })}
+              aria-label={t('Về inbox, {key}: "{title}"', { key: 'U', title: titleOf(entry, t) })}
               onClick={() => onTriage('inbox')}
             >
               {t('Về inbox')} <RowKey>U</RowKey>
@@ -281,7 +282,7 @@ function EntryCard({
             <Button
               size="xs"
               variant="ghost"
-              aria-label={t('Mở "{title}"', { title: titleOf(entry, t) })}
+              aria-label={t('Mở, {key}: "{title}"', { key: 'I', title: titleOf(entry, t) })}
               render={<a href={entry.url} target="_blank" rel="noreferrer" />}
             >
               <ExternalLink aria-hidden />
@@ -291,7 +292,7 @@ function EntryCard({
             <Button
               size="xs"
               variant="ghost"
-              aria-label={t('Ghi chú về "{title}"', { title: titleOf(entry, t) })}
+              aria-label={t('Ghi chú, {key}: "{title}"', { key: 'N', title: titleOf(entry, t) })}
               onClick={onNote}
             >
               <NotebookPen aria-hidden />

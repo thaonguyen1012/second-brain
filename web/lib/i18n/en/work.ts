@@ -118,8 +118,8 @@ export const work = {
 
   // Timer (work/timer-panel.tsx)
   'Bắt đầu bấm giờ cho "{title}"': 'Started timing "{title}"',
-  // the same Vietnamese as the start button's name: the visible "Start", then the picked project
-  'button::Bắt đầu bấm giờ cho "{title}"': 'Start the timer for "{title}"',
+  // the start button's name: what it shows (the word, its key), then the picked project
+  'Bắt đầu, {key}: bấm giờ cho "{title}"': 'Start, {key}: the timer for "{title}"',
   'Đã dừng: {time} cho "{title}"': 'Stopped: {time} for "{title}"',
   'Bộ bấm giờ đã dừng từ trước.': 'The timer had already stopped.',
   Dừng: 'Stop',
