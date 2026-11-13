@@ -11,11 +11,11 @@ import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
-import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
+import { singleKeyShortcutsOn } from '@/lib/single-key-shortcuts';
 import { ApiErrorState, describeApiError } from '../api-state';
 import { useInvalidFields } from '../invalid-fields';
 import { ChoiceSelect } from '../choice-select';
-import { fieldErrors, formatClock, formatMinutes } from './format';
+import { fieldErrors, formatClock, formatMinutes, isTyping } from './format';
 import type { TimerState } from './use-work';
 
 const LAST_PROJECT = 'work:last-project';
@@ -180,7 +180,8 @@ export function TimerPanel({
   // T toggles the timer (same pattern as the inbox keys: never while typing, with a modifier or with single keys off).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!singleKeyShortcut(e) || e.key.toLowerCase() !== 't') return;
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || e.key.toLowerCase() !== 't') return;
+      if (!singleKeyShortcutsOn()) return;
       if (document.querySelector('[role="dialog"]')) return;
       e.preventDefault();
       void (running ? stop() : start());

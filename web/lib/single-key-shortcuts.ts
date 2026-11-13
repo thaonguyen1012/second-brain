@@ -1,9 +1,10 @@
 // Single-key shortcuts (N, J, /, ?, [, 1-9, the arrows and Del a page listens for...) and the one switch that turns
 // them all off (WCAG 2.1.4 Character Key Shortcuts): on by default, set in a page's key legend
 // (components/brain/key-legend.tsx) and remembered in this browser. Every page-wide handler of a key pressed on its own
-// asks singleKeyShortcut(e) first; a focused objective row asks singleKeyShortcutsOn() for its letters only (its
-// arrows, Enter and Del act on the row in place, like any focused control). Shortcuts with ⌘, Ctrl or Alt (⌘K,
-// Ctrl+Enter, Alt+↑) never go through it, so they keep working.
+// asks singleKeyShortcut(e) first, or singleKeyShortcutsOn() after its own modifier and typing checks (Ghi chú, the
+// timer); a focused objective row asks singleKeyShortcutsOn() for its letters only (its arrows, Enter and Del act on
+// the row in place, like any focused control). Shortcuts with ⌘, Ctrl or Alt (⌘K, Ctrl+Enter, Alt+↑) never go through
+// it, so they keep working.
 
 /** localStorage key: '0' when the owner turned single-key shortcuts off, '1' (or nothing) when they are on. */
 export const SINGLE_KEY_SHORTCUTS_KEY = 'alex-brain:single-key-shortcuts';

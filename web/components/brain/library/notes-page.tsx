@@ -12,7 +12,7 @@ import { itemPicture } from '@/lib/handbook-picture';
 import { groupNotesByItem, noteDateLabel, noteHeading, type NoteGroup } from '@/lib/item-notes';
 import { itemTypeLabel } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
-import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
+import { singleKeyShortcutsOn } from '@/lib/single-key-shortcuts';
 import { useListView } from '@/lib/use-board-view';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
@@ -43,6 +43,11 @@ const templates = [
 ] as const;
 
 type NotesView = 'list' | 'items';
+
+function isTyping(el: EventTarget | null): boolean {
+  const t = el as HTMLElement | null;
+  return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+}
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -338,7 +343,8 @@ export function NotesPage() {
   );
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (deleting || !singleKeyShortcut(e)) return;
+      if (deleting || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (!singleKeyShortcutsOn()) return;
       // The key legend dialog and a row's overflow menu handle their own keys
       if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return;
       const act: Record<string, () => void> = {
