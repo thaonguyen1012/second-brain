@@ -59,6 +59,10 @@ function EntryRow({
     e.objective && t('Mục tiêu: {title}', { title: objectiveTitle ?? t('mục tiêu tuần') }),
     e.note,
   ].filter(Boolean);
+  // The buttons' names: a project has many entries, several on one day (each stop of the timer makes one), so they
+  // say the day and the duration too, as the row and its day heading show them (the running one, the only timer, says
+  // that it runs)
+  const which = { title: e.projectTitle, day: formatDay(e.date, t), time: formatMinutes(e.minutes, t) };
   return (
     <li className={cn(ENTRY_GRID, 'min-h-10 py-2')}>
       <div className="flex min-w-0 flex-col gap-1">
@@ -77,8 +81,11 @@ function EntryRow({
             size="icon-sm"
             variant="ghost"
             onClick={onEdit}
-            // a project has many entries: the day tells this one apart
-            aria-label={t('Sửa giờ của {title} ngày {day}', { title: e.projectTitle, day: formatDay(e.date, t) })}
+            aria-label={
+              e.running
+                ? t('Sửa giờ của {title} ngày {day} (đang chạy)', which)
+                : t('Sửa giờ của {title} ngày {day} ({time})', which)
+            }
           >
             <Pencil aria-hidden />
           </Button>
@@ -112,10 +119,11 @@ function EntryRow({
                   <DeleteButton
                     size="icon-sm"
                     label=""
-                    aria-label={t('Xóa giờ của {title} ngày {day}', {
-                      title: e.projectTitle,
-                      day: formatDay(e.date, t),
-                    })}
+                    aria-label={
+                      e.running
+                        ? t('Xóa giờ của {title} ngày {day} (đang chạy)', which)
+                        : t('Xóa giờ của {title} ngày {day} ({time})', which)
+                    }
                   />
                 }
               />
