@@ -11,6 +11,11 @@ in the commit that finishes the work.
 
 ## Done
 
+* Tool logos (13/11/2026, DECISIONS 9.10, DESIGN.md §9a): the `item_image` job takes a tool's logo from its official
+  site's icon (`backend/core/services/site_icon.py`), GitHub links through the repository's homepage or the avatar of
+  an organisation that is the tool (`backend/library/logos.py`); at GitHub's hourly limit only those jobs wait.
+  `manage.py fetch_tool_logos` queues existing tools, `seed_tools` new ones; "Lấy logo từ trang" in the dialog;
+  `imageMissing` says when a link gave no picture. A live run on the 111 starter tools gave 87 logos.
 * Accessibility, two passes (13/11/2026, DECISIONS 9.11, DESIGN.md §4-§6): the `fixing-accessibility` skill in
   `.claude/skills/`; controls named after their record, loading states and notices read out, form errors tied to
   their fields, a skip link and landmarks, view switches tied to their tabpanel, a switch for single-key shortcuts,
@@ -49,6 +54,8 @@ in the commit that finishes the work.
 
 ## Not done yet / open
 
+* Tool logos: about 1 starter tool in 5 gets none (a person's repository, a site that blocks robots, only tiny or
+  SVG icons): upload those by hand. The GitHub API is called without a token (60 requests an hour).
 * English follow-ups: on English lesson pages the book's name in the frame (breadcrumb, book switcher, footer, the
   root page's h1 and `<title>`) is the Vietnamese meta.json title; Fumadocs' sr-only "Copy Anchor Link"/"Copy Text"
   sit inside the lesson's `lang="vi"` body; at 320 px or 125 % text the top bar can scroll sideways.

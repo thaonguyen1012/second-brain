@@ -637,7 +637,8 @@ wins.
   drawing yet shows the ground with its name. No gradients, glows, shadows, purple, sparkles, emoji or text in a
   drawing.
 - **Item images** (owner 07/11/2026: "Item có thể thêm ảnh bìa để dễ hình dung", "Dự án có thể thêm logo"; DECISIONS
-  9.6). One picture per Item: its own image (uploaded, or the OG image of its link; a small local webp from
+  9.6). One picture per Item: its own image (uploaded; the OG image of its link; for a tool, the icon of its official
+  site, which the server fetches (DECISIONS 9.10); a small local webp from
   `/api/items/{id}/image`; `ownPicture()`, `lib/item-picture.ts`), else on Thư viện the Sổ tay cover of a handbook
   course (`BookCover`; `itemPicture()`, `lib/handbook-picture.ts`, the only one that ships the registry), else nothing.
   The shape follows the type: a 2:3 **poster** for books and films, a **logo** for projects and tools, a landscape **cover** for
@@ -653,19 +654,30 @@ wins.
   (`DetailPicture`): a 2:3 poster 4rem wide (5rem from sm), a 16:7 cover 7rem (9rem), the handbook's cover thumb in
   a 4rem (5rem) square, a 48px (56px) logo on its ground, `rounded-md`, no frame or shadow. A logo is the one inset
   picture: `object-contain` on `--logo-ground`, white in both themes and kept under forced colours (a sticker; the logo
-  keeps its transparency and most logos are drawn for a light page), `rounded-md` on cards. No picture: the row keeps
+  keeps its transparency and most logos are drawn for a light page), `rounded-md` on cards. A fetched tool logo is
+  the site's own icon file, 32-256 px, never enlarged (under 64 px only when the site has nothing bigger), on the same
+  white ground; a drawing on a wide white or transparent margin (under 80% of the icon) is cut to a square around it
+  with a 6% margin so padded app icons fill the place like the others, and an icon on a coloured tile is kept as it is.
+  Nothing is added to make icons match (no frame, tile or padding); a 32-48 px icon shows slightly soft at 2x. No picture: the row keeps
   an empty track and the card stays text-only; never a placeholder drawing, with one exception: a **tool without a
   logo** shows the lucide icon of its first stage (`stagePicture()`, the Công cụ page's order in `lib/tools.ts`, the
-  Wrench without a stage; owner 13/11/2026, "nếu mình không kịp tải logo lên") in the place its logo would take, in
+  Wrench without a stage; owner 13/11/2026, "nếu mình không kịp tải logo lên"; also while its logo is being fetched,
+  and for good when its site gives none: about 1 tool in 5 of the starter list) in the place its logo would take, in
   every place a tool's picture shows (rows, board cards, the Item page): centred, `muted-foreground`, the title icon's
   1.5 line, nothing behind it (no logo ground, no tile, no colour per stage); 24px in a row's 56px track, 20px in a
   card's 40px place, 28px in the Item page's 48/56px place. Skeletons take the picture geometry the
   page had last time (D27). Pictures are decorative (`alt=""`, `aria-hidden`): the row or card names the record. The
   dialogs' "Ảnh bìa" / "Logo" field (`library/item-image-field.tsx`) is a labelled group: a preview at the card's
-  shape, "Tải ảnh lên" / "Đổi ảnh", a "Lấy ảnh từ link" toggle (`aria-pressed`; an http(s) source, never for a logo (projects, tools),
-  whose OG image is a banner; not offered when saving will fetch it anyway: a new Item or a new link without a
-  picture, which the status line says) and ghost "Bỏ ảnh"; the buttons stay put when used and "Bỏ ảnh" hands the focus
-  to "Đổi ảnh"; the status line is a polite live region. Every change waits for "Lưu" and "Hủy" drops it, so no
+  shape, "Tải ảnh lên" / "Đổi ảnh", a fetch toggle (`aria-pressed`, an http(s) source): "Lấy ảnh từ link" (the page's
+  image), or for a tool "Lấy logo từ trang" (the icon of its official site, never its OG banner); never for a project,
+  whose logo is only uploaded (a client's site is not the project's logo); not offered when saving will fetch anyway: a
+  new Item or a new link without a picture, which the status line says ("Khi lưu, logo sẽ được lấy từ trang; nó hiện
+  sau vài phút." for a tool) and ghost "Bỏ ảnh"; the buttons stay put when used and "Bỏ ảnh" hands the focus
+  to "Đổi ảnh"; the status line is a polite live region, worded by `imageStatusText()` in `lib/item-picture.ts`.
+  When the last fetch of the saved link found no usable picture (`imageMissing`), it says so and asks for an upload
+  ("Trang không có logo dùng được; hãy tải logo lên." for a tool, "Link không có ảnh dùng được; hãy tải ảnh lên."
+  otherwise), only while the field's link is the saved one; an empty logo field reads "Chưa có logo.", a cover or
+  poster "Chưa có ảnh.". Every change waits for "Lưu" and "Hủy" drops it, so no
   confirm dialog; a wrong file is refused before any upload, under the field; a big photo is shrunk in the browser
   (1600 px) before the upload. A handbook course has no field, unless it still has a picture of its own to remove.
 - **Width.** App content is capped at `max-w-7xl`, left-aligned with the title; bands stay full-bleed. Hôm nay has

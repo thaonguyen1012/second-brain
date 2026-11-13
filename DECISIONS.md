@@ -186,7 +186,8 @@ copied from.
 
 Built: note templates per Item type; one shared board for Projects and Library (lanes by status, drag and drop, a
 "move to" menu); one picture per Item (upload shrunk to webp, or fetched from the link's OpenGraph image by a job,
-or the inbox thumbnail reused; never a runtime request to another domain); a logo for projects; pictures in the
+or the inbox thumbnail reused; never a runtime request to another domain); a logo for projects (uploaded) and
+tools (their site's icon, 9.10); pictures in the
 export (`images/`) and the backup (`backups/thumbs/`, never deleted). Status changes set `started_at`/`finished_at`.
 
 ### 9.7 Home hierarchy (07/11/2026)
@@ -233,8 +234,25 @@ fold at 1280x720 and 390x844; no layout shift; `make check` and the JS budget ho
   test, security, dependencies, git, CI/CD, observability, data, AI and docs. A tool shows under each of its stages,
   "Other" without one.
 * A tool's statuses read Want to try / In use / Mastered / Dropped (the shared four statuses of an Item).
-* A tool's picture is a logo, uploaded by hand (a site's OG image is a banner, so no automatic fetch). Until there is
-  one, the row shows its stage's lucide icon: ink colour, no colour per stage, no tile.
+* A tool's picture is a logo, which the server fetches from the tool's official site (13/11/2026; it was uploaded
+  by hand before). Never the site's OG image, which is a banner.
+  - The `item_image` job (run by `run_jobs`, every request through `safe_fetch`) reads the page's apple-touch-icon
+    and icon links (inline `data:` icons too), the raster icons of its web manifest, then `/apple-touch-icon.png`
+    and `/favicon.ico`. It takes the first of 64 px or more, else the largest of at least 32 px; with none, a square
+    og:image or an `<img>` the page names as its logo. No SVG, no dark-scheme icons, not Read the Docs' or mdBook's
+    default icons. Stored as webp of at most 256 px, never enlarged, transparency kept, wide margins trimmed.
+  - GitHub links: the GitHub API (no token, 60 requests an hour) gives the repository's homepage, whose icon is
+    taken (a person's repository only when the homepage names it); else the avatar of an organisation that is the
+    tool itself (its login is the repository's name). An umbrella organisation's mark or a person's face is never
+    a tool's logo. At the hourly limit only the GitHub jobs wait for the reset; other pictures go on.
+  - Stores: the VS Code Marketplace, the Chrome Web Store and GitLab give the item's own icon; npm, PyPI and similar
+    stores give none.
+* When: creating a tool with an http(s) link, or a new link while it has no logo, so `seed_tools` queues one per new
+  tool; `manage.py fetch_tool_logos [--owner EMAIL] [--again]` queues the tools that have a link and no logo, and
+  skips those whose site had none last time unless `--again`. The dialog offers "Lấy logo từ trang" (fetch the logo
+  from the site); an upload always wins; when a fetch found nothing, the field says so and asks for an upload
+  (`imageMissing`, every type). A project's logo is still only uploaded. Until there is a logo, the row shows its
+  stage's lucide icon: ink colour, no colour per stage, no tile.
 * Two views: the list of rows, and a grid of cards (`?view=grid`, remembered per browser) with the logo or the
   section's icon, the name, the summary, the status and the site link; the same sections and filters in both.
 * An "Interfaces & UI libraries" stage (`ui`, after code) holds UI and animation libraries and UI references; UI
