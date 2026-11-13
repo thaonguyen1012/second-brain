@@ -166,7 +166,9 @@
   border-color: transparent;
 }
 
-/* Muted text at 80% on the faded tile is 4.1:1; the alias keeps full muted (6.5:1), smaller than the name */
+/* The alias at 80% is below 4.5:1 once the tile fades: 3.7:1 on the ageing tile (its own 85% on top), 4.1:1 in
+   muted on the faded one. There it keeps the tile's full colour (5.6:1, 6.5:1), smaller than the name. */
+.ssg-skill .ss-stage .sk-tile[data-fresh='aging'] .sk-tile__alias,
 .ssg-skill .ss-stage .sk-tile[data-fresh='faded'] .sk-tile__alias {
   opacity: 1;
 }

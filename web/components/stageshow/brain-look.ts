@@ -88,6 +88,9 @@ const light: LookTokens = {
   '--ss-well': 'var(--secondary)',
   '--ss-canvas': 'var(--secondary)',
   '--ss-raised': 'var(--popover)',
+  // The filled destructive button holds white text (the timer's "Dừng", held while the guide plays): 3.8:1 on the
+  // app's red-500, so the guides deepen it toward the ink, to 5:1 (dark's red-800 already gives 8:1)
+  '--ss-destructive': 'color-mix(in srgb, var(--destructive) 85%, var(--foreground))',
 };
 
 const dark: LookTokens = {

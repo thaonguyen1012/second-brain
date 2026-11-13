@@ -96,8 +96,12 @@ product (a time-lapse, "3 tháng sau") are `.g-note` pills, never app UI.
   Text in a guide is text in a picture: 4.5:1 in every frame that holds still, light and dark, also where the app
   draws it lighter (a placeholder, a disabled button). `--ss-text-faint` keeps 4.5:1 on every stage ground; a
   "not yet" primary is a pale primary with a deep label (`.ib-button[data-off]`), never 64% opacity; blue text on
-  the grey well or a tint is deepened toward `--ss-text-strong`. Check with axe color-contrast on `/huong-dan/`
-  with reduced motion (the posters) and while the guides play.
+  the grey well or a tint is deepened toward `--ss-text-strong`; a key in a filled button sits on a 20% tint of
+  `--ss-text-strong` (in light a chip darker than the button), not the app's white tint (`.g-kbd`), and the filled
+  destructive is deepened in light (`brain-look.ts`); text on a tile that fades keeps its full colour
+  (`.sk-tile__alias`). Check with axe color-contrast on `/huong-dan/` with reduced motion (the posters), and while
+  the guides play by measuring each text in the frames that hold still, at 1440 and 390 px: axe leaves a one-letter
+  key as "incomplete", so it does not count those.
 * **The look comes from `brain-look.ts`.** Tokens point at the app's CSS variables, so a change in
   `app/global.css` reaches the guides. Use `--ss-*` tokens in guide CSS, not raw colors (a drawn thumbnail is
   the exception).

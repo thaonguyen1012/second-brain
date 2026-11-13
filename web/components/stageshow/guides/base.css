@@ -227,9 +227,12 @@
   line-height: 1;
 }
 
+/* In a filled button the app puts the key on a white 20% tint (bg-primary-foreground/20): white on that lighter blue
+   is 3.5:1 (on the red, 3.2:1), below 4.5:1 for text in a picture, so here the tint is the ink's. In light that is a
+   chip a shade darker than the button (white keeps 6.8:1 on the blue, 6.9:1 on the red); dark keeps the white tint. */
 .ssg-brain .g-button:not([data-variant]) .g-kbd,
 .ssg-brain .g-button[data-variant='destructive'] .g-kbd {
-  background: rgb(255 255 255 / 0.2);
+  background: color-mix(in srgb, var(--ss-text-strong) 20%, transparent);
   color: inherit;
 }
 
