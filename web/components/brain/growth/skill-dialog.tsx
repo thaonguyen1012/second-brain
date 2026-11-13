@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
 import { describeApiError } from '../api-state';
+import { useInvalidFields } from '../invalid-fields';
 import { fieldErrors, splitList } from './labels';
 import { FormError, FormRow, hintId } from './shared';
 
@@ -39,21 +40,24 @@ function SkillForm({
   const [note, setNote] = useState(skill?.note ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
 
   const submit = async () => {
     if (!name.trim()) {
-      setError(t('Cần có tên kỹ năng.'));
+      setError(invalid.mark(t('Cần có tên kỹ năng.'), 'name'));
       return;
     }
     const body = { name: name.trim(), aliases: splitList(aliases), note: note.trim() };
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const saved = skill ? await growthApi.updateSkill(skill.id, body) : await growthApi.createSkill(body);
       onSaved(saved, !skill);
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, t, fieldNames)) || describeApiError(e, t).title);
+      invalid.fromError(e, t);
       setBusy(false);
     }
   };
@@ -68,7 +72,14 @@ function SkillForm({
     >
       <DialogPanel className="flex flex-col gap-4">
         <FormRow id="skill-name" label={t('Tên kỹ năng')}>
-          <Input id="skill-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          <Input
+            id="skill-name"
+            aria-required
+            {...invalid.field('name')}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+          />
         </FormRow>
         <FormRow
           id="skill-aliases"
@@ -77,15 +88,22 @@ function SkillForm({
         >
           <Input
             id="skill-aliases"
-            aria-describedby={hintId('skill-aliases')}
+            {...invalid.field('aliases', hintId('skill-aliases'))}
             value={aliases}
             onChange={(e) => setAliases(e.target.value)}
           />
         </FormRow>
         <FormRow id="skill-note" label={t('Ghi chú')}>
-          <Textarea id="skill-note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
+          <Textarea
+            id="skill-note"
+            {...invalid.field('note')}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={3}
+          />
         </FormRow>
         <FormError error={error} />
+        {invalid.copies}
       </DialogPanel>
       <DialogFooter>
         <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>

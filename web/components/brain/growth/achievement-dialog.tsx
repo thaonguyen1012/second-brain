@@ -21,6 +21,7 @@ import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
+import { useInvalidFields } from '../invalid-fields';
 import { fieldErrors } from './labels';
 import { FormError, FormRow, hintId } from './shared';
 import { SaveKeys } from '../save-keys';
@@ -85,6 +86,7 @@ function AchievementForm({
   const [skills, setSkills] = useState<number[]>(achievement?.skills.map((s) => s.id) ?? []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
   // Set synchronously, so a second Cmd+Enter before the re-render cannot POST twice.
   const inFlight = useRef(false);
   const projects = useApi('achievement-projects', loadProjects);
@@ -100,7 +102,7 @@ function AchievementForm({
   const submit = async () => {
     if (inFlight.current) return;
     if (!title.trim()) {
-      setError(t('Cần ghi việc đã làm.'));
+      setError(invalid.mark(t('Cần ghi việc đã làm.'), 'title'));
       return;
     }
     const body: ApiAchievementWrite = {
@@ -114,6 +116,7 @@ function AchievementForm({
     inFlight.current = true;
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const saved = achievement
         ? await growthApi.updateAchievement(achievement.id, body)
@@ -122,6 +125,7 @@ function AchievementForm({
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, t, fieldNames)) || describeApiError(e, t).title);
+      invalid.fromError(e, t);
       inFlight.current = false;
       setBusy(false);
     }
@@ -145,6 +149,8 @@ function AchievementForm({
         <FormRow id="ach-title" label={t('Việc đã làm')}>
           <Input
             id="ach-title"
+            aria-required
+            {...invalid.field('title')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t('Ship trang thanh toán mới')}
@@ -158,22 +164,35 @@ function AchievementForm({
         >
           <Input
             id="ach-impact"
-            aria-describedby={hintId('ach-impact')}
+            {...invalid.field('impact', hintId('ach-impact'))}
             value={impact}
             onChange={(e) => setImpact(e.target.value)}
             placeholder={t('Thanh toán 40 s → 12 s')}
           />
         </FormRow>
         <FormRow id="ach-description" label={t('Mô tả (không bắt buộc)')}>
-          <Textarea id="ach-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+          <Textarea
+            id="ach-description"
+            {...invalid.field('description')}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+          />
         </FormRow>
         <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
           <FormRow id="ach-date" label={t('Ngày')}>
-            <Input id="ach-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Input
+              id="ach-date"
+              type="date"
+              {...invalid.field('date')}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </FormRow>
           <FormRow id="ach-project" label={t('Dự án')}>
             <ChoiceSelect
               id="ach-project"
+              {...invalid.field('project')}
               label={t('Dự án')}
               value={project}
               onChange={setProject}
@@ -185,6 +204,7 @@ function AchievementForm({
           <SkillToggles value={skills} onChange={setSkills} />
         </FormRow>
         <FormError error={error} />
+        {invalid.copies}
       </DialogPanel>
       <DialogFooter>
         <span className="me-auto self-center text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">

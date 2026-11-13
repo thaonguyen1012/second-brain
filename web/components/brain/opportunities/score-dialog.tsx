@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { describeApiError } from '../api-state';
+import { useInvalidFields } from '../invalid-fields';
 import { fieldErrors, scoreDims, type ScoreKey } from './labels';
 
 const hints: Record<ScoreKey, Msg> = {
@@ -48,24 +49,27 @@ function ScoreForm({
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
 
   const submit = async () => {
     const nums = {} as Record<ScoreKey, number>;
     for (const d of scoreDims) {
       const n = Number(values[d.key]);
       if (!values[d.key].trim() || !Number.isInteger(n) || n < 1 || n > 10) {
-        setError(t('{name}: cần một số nguyên từ 1 đến 10.', { name: t(d.label) }));
+        setError(invalid.mark(t('{name}: cần một số nguyên từ 1 đến 10.', { name: t(d.label) }), d.key));
         return;
       }
       nums[d.key] = n;
     }
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       onSaved(await opportunitiesApi.recordScores(opportunity.id, { ...nums, note: note.trim() }));
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
+      invalid.fromError(e, t);
       setBusy(false);
     }
   };
@@ -92,7 +96,8 @@ function ScoreForm({
                 step={1}
                 value={values[d.key]}
                 autoFocus={i === 0}
-                aria-describedby={`score-${d.key}-hint`}
+                aria-required
+                {...invalid.field(d.key, `score-${d.key}-hint`)}
                 onChange={(e) => setValues((v) => ({ ...v, [d.key]: e.target.value }))}
               />
               <span id={`score-${d.key}-hint`} className="text-xs text-muted-foreground">
@@ -103,13 +108,14 @@ function ScoreForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="score-note">{t('Vì sao đổi điểm (không bắt buộc)')}</Label>
-          <Textarea id="score-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+          <Textarea id="score-note" rows={2} {...invalid.field('note')} value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
         {error && (
           <p className="whitespace-pre-line text-sm text-destructive-foreground" role="alert">
             {error}
           </p>
         )}
+        {invalid.copies}
       </DialogPanel>
       <DialogFooter>
         <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>

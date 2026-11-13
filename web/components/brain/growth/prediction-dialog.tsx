@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { describeApiError } from '../api-state';
+import { useInvalidFields } from '../invalid-fields';
 import { fieldErrors, formatDay, outcomeOf, today } from './labels';
 import { FormError, FormRow, hintId } from './shared';
 import { SaveKeys } from '../save-keys';
@@ -55,22 +56,23 @@ function PredictionForm({
   const [confidence, setConfidence] = useState(prediction?.confidence ? String(prediction.confidence) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
   // Set synchronously, so a second Cmd+Enter before the re-render cannot POST twice.
   const inFlight = useRef(false);
 
   const submit = async () => {
     if (inFlight.current) return;
     if (!statement.trim()) {
-      setError(t('Cần ghi dự đoán.'));
+      setError(invalid.mark(t('Cần ghi dự đoán.'), 'statement'));
       return;
     }
     const conf = confidence.trim() ? Number(confidence) : null;
     if (conf !== null && !(Number.isInteger(conf) && conf >= 1 && conf <= 10)) {
-      setError(t('Độ tự tin là số nguyên từ 1 đến 10, hoặc để trống.'));
+      setError(invalid.mark(t('Độ tự tin là số nguyên từ 1 đến 10, hoặc để trống.'), 'confidence'));
       return;
     }
     if (checkOn && madeOn && checkOn < madeOn) {
-      setError(t('Ngày chấm lại phải sau ngày ghi.'));
+      setError(invalid.mark(t('Ngày chấm lại phải sau ngày ghi.'), 'checkOn'));
       return;
     }
     const body: ApiPredictionWrite = {
@@ -82,6 +84,7 @@ function PredictionForm({
     inFlight.current = true;
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const saved = prediction
         ? await growthApi.updatePrediction(prediction.id, body)
@@ -89,6 +92,7 @@ function PredictionForm({
       onSaved(saved, !prediction);
     } catch (err) {
       setError(errorText(err, t));
+      invalid.fromError(err, t);
       inFlight.current = false;
       setBusy(false);
     }
@@ -112,6 +116,8 @@ function PredictionForm({
         <FormRow id="pred-statement" label={t('Dự đoán')}>
           <Textarea
             id="pred-statement"
+            aria-required
+            {...invalid.field('statement')}
             value={statement}
             onChange={(e) => setStatement(e.target.value)}
             rows={3}
@@ -121,13 +127,19 @@ function PredictionForm({
         </FormRow>
         <div className="grid gap-4 sm:grid-cols-3">
           <FormRow id="pred-made" label={t('Ngày ghi')}>
-            <Input id="pred-made" type="date" value={madeOn} onChange={(e) => setMadeOn(e.target.value)} />
+            <Input
+              id="pred-made"
+              type="date"
+              {...invalid.field('madeOn')}
+              value={madeOn}
+              onChange={(e) => setMadeOn(e.target.value)}
+            />
           </FormRow>
           <FormRow id="pred-check" label={t('Ngày chấm lại')} hint={prediction ? undefined : t('Để trống: sau 6 tháng.')}>
             <Input
               id="pred-check"
               type="date"
-              aria-describedby={prediction ? undefined : hintId('pred-check')}
+              {...invalid.field('checkOn', prediction ? undefined : hintId('pred-check'))}
               value={checkOn}
               onChange={(e) => setCheckOn(e.target.value)}
             />
@@ -135,6 +147,7 @@ function PredictionForm({
           <FormRow id="pred-conf" label={t('Độ tự tin 1–10')}>
             <Input
               id="pred-conf"
+              {...invalid.field('confidence')}
               inputMode="numeric"
               value={confidence}
               onChange={(e) => setConfidence(e.target.value)}
@@ -142,6 +155,7 @@ function PredictionForm({
           </FormRow>
         </div>
         <FormError error={error} />
+        {invalid.copies}
       </DialogPanel>
       <DialogFooter>
         <span className="me-auto self-center text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
@@ -174,6 +188,7 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
   const [note, setNote] = useState(prediction.note);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
   const inFlight = useRef(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -192,16 +207,18 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
   const submit = async () => {
     if (inFlight.current) return;
     if (outcome === null) {
-      setError(t('Chọn kết quả trước: 1 đúng, 2 một phần, 3 sai.'));
+      setError(invalid.mark(t('Chọn kết quả trước: 1 đúng, 2 một phần, 3 sai.'), 'outcome'));
       return;
     }
     inFlight.current = true;
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       onSaved(await growthApi.updatePrediction(prediction.id, { outcome, note: note.trim() }));
     } catch (err) {
       setError(errorText(err, t));
+      invalid.fromError(err, t);
       inFlight.current = false;
       setBusy(false);
     }
@@ -228,6 +245,8 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
           </span>
           <RadioGroup
             aria-labelledby="pred-outcome"
+            aria-required
+            {...invalid.field('outcome')}
             className="flex flex-row flex-wrap gap-2"
             value={outcome}
             onValueChange={(v) => setOutcome(v as ApiOutcome)}
@@ -245,9 +264,16 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
           </RadioGroup>
         </div>
         <FormRow id="pred-note" label={t('Chuyện gì đã xảy ra, mình học được gì')}>
-          <Textarea id="pred-note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
+          <Textarea
+            id="pred-note"
+            {...invalid.field('note')}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={3}
+          />
         </FormRow>
         <FormError error={error} />
+        {invalid.copies}
       </DialogPanel>
       <DialogFooter>
         <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>

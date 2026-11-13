@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { describeApiError } from '../api-state';
+import { useInvalidFields } from '../invalid-fields';
 import { ItemPicker, type ItemLabel } from './item-picker';
 import { MAX_MARKDOWN } from '@/lib/item-notes';
 import { fieldErrors as sharedFieldErrors } from '@/lib/labels';
@@ -81,6 +82,7 @@ function NoteForm({
   const [form, setForm] = useState<Form>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
   const set = <K extends keyof Form>(k: K, v: Form[K]) => {
     const next = { ...form, [k]: v };
     setForm(next);
@@ -90,16 +92,17 @@ function NoteForm({
   const submit = async () => {
     if (busy) return;
     if (!form.markdown.trim()) {
-      setError(t('Ghi chú cần có nội dung.'));
+      setError(invalid.mark(t('Ghi chú cần có nội dung.'), 'markdown'));
       return;
     }
     if (form.markdown.length > MAX_MARKDOWN) {
-      setError(t('Nội dung dài quá {max} ký tự.', { max: t.num(MAX_MARKDOWN) }));
+      setError(invalid.mark(t('Nội dung dài quá {max} ký tự.', { max: t.num(MAX_MARKDOWN) }), 'markdown'));
       return;
     }
     const body = { title: form.title.trim(), markdown: form.markdown, items: form.items };
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const saved = note ? await notesApi.update(note.id, body) : await notesApi.create(body);
       onDirty(false);
@@ -107,6 +110,7 @@ function NoteForm({
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
+      invalid.fromError(e, t);
       setBusy(false);
     }
   };
@@ -130,6 +134,7 @@ function NoteForm({
           <Label htmlFor="note-title">{t('Tiêu đề (không bắt buộc)')}</Label>
           <Input
             id="note-title"
+            {...invalid.field('title')}
             value={form.title}
             maxLength={300}
             onChange={(e) => set('title', e.target.value)}
@@ -140,6 +145,8 @@ function NoteForm({
           <Label htmlFor="note-markdown">{t('Nội dung (markdown)')}</Label>
           <Textarea
             id="note-markdown"
+            aria-required
+            {...invalid.field('markdown')}
             value={form.markdown}
             onChange={(e) => set('markdown', e.target.value)}
             placeholder={t('# Ba ý chính\n\n- …')}
@@ -160,6 +167,7 @@ function NoteForm({
             value={form.items}
             onChange={(v) => set('items', v)}
             status={itemsStatus}
+            invalid={invalid.field('items')}
           />
         </div>
         {error && (
@@ -167,6 +175,7 @@ function NoteForm({
             {error}
           </p>
         )}
+        {invalid.copies}
       </DialogPanel>
       <DialogFooter>
         <span className="me-auto text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">

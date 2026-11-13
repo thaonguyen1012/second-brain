@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
+import type { InvalidFieldProps } from '../invalid-fields';
 
 const MAX_OPTIONS = 6;
 
@@ -36,6 +37,7 @@ export function ItemPicker({
   value,
   onChange,
   status,
+  invalid,
 }: {
   id: string;
   items: ApiItem[];
@@ -45,6 +47,8 @@ export function ItemPicker({
   onChange: (ids: number[]) => void;
   /** Loading or error text for the Item list, shown under the box. */
   status?: string;
+  /** The field's error state in a form (useInvalidFields().field('items')), on the search box. */
+  invalid?: InvalidFieldProps;
 }) {
   const t = useT();
   const [query, setQuery] = useState('');
@@ -95,6 +99,7 @@ export function ItemPicker({
       <div className="relative">
         <Input
           id={id}
+          {...invalid}
           role="combobox"
           aria-expanded={options.length > 0}
           aria-controls={listId}

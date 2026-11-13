@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
 import { describeApiError } from '../api-state';
+import { useInvalidFields } from '../invalid-fields';
 import { fieldErrors, splitList } from './labels';
 import { FormError, FormRow, hintId } from './shared';
 import { SaveKeys } from '../save-keys';
@@ -52,21 +53,24 @@ function JobAdForm({
   const [skills, setSkills] = useState(initialSkills);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
   // Set synchronously, so a second Cmd+Enter before the re-render cannot POST twice (two paid extractions).
   const inFlight = useRef(false);
 
   const submit = async () => {
     if (inFlight.current) return;
     if (!title.trim() || !text.trim()) {
-      setError(t('Cần có tên vị trí và nội dung tin.'));
+      setError(invalid.mark(t('Cần có tên vị trí và nội dung tin.'), !title.trim() && 'title', !text.trim() && 'text'));
       return;
     }
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(adMonth)) {
-      setError(t('Tháng có dạng YYYY-MM, ví dụ 2026-11.'));
+      setError(invalid.mark(t('Tháng có dạng YYYY-MM, ví dụ 2026-11.'), 'month'));
       return;
     }
     if (text.length > MAX_TEXT) {
-      setError(t('Nội dung dài quá {max} ký tự, hãy bỏ bớt phần giới thiệu công ty.', { max: t.num(MAX_TEXT) }));
+      setError(
+        invalid.mark(t('Nội dung dài quá {max} ký tự, hãy bỏ bớt phần giới thiệu công ty.', { max: t.num(MAX_TEXT) }), 'text'),
+      );
       return;
     }
     const body: ApiJobAdWrite = {
@@ -82,6 +86,7 @@ function JobAdForm({
     inFlight.current = true;
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const saved = ad
         ? await growthApi.updateJobAd(ad.id, patch)
@@ -90,6 +95,7 @@ function JobAdForm({
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, t, fieldNames)) || describeApiError(e, t).title);
+      invalid.fromError(e, t);
       inFlight.current = false;
       setBusy(false);
     }
@@ -114,6 +120,8 @@ function JobAdForm({
           <FormRow id="ad-title" label={t('Vị trí')}>
             <Input
               id="ad-title"
+              aria-required
+              {...invalid.field('title')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Product Engineer"
@@ -121,13 +129,19 @@ function JobAdForm({
             />
           </FormRow>
           <FormRow id="ad-company" label={t('Công ty')}>
-            <Input id="ad-company" value={company} onChange={(e) => setCompany(e.target.value)} />
+            <Input
+              id="ad-company"
+              {...invalid.field('company')}
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+            />
           </FormRow>
         </div>
         <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
           <FormRow id="ad-url" label={t('Link tin (không bắt buộc)')}>
             <Input
               id="ad-url"
+              {...invalid.field('url')}
               type="url"
               inputMode="url"
               placeholder="https://…"
@@ -138,6 +152,8 @@ function JobAdForm({
           <FormRow id="ad-month" label={t('Tháng')}>
             <Input
               id="ad-month"
+              aria-required
+              {...invalid.field('month')}
               type="month"
               placeholder="YYYY-MM"
               value={adMonth}
@@ -152,7 +168,8 @@ function JobAdForm({
         >
           <Textarea
             id="ad-text"
-            aria-describedby={hintId('ad-text')}
+            aria-required
+            {...invalid.field('text', hintId('ad-text'))}
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={8}
@@ -170,13 +187,14 @@ function JobAdForm({
           >
             <Input
               id="ad-skills"
-              aria-describedby={hintId('ad-skills')}
+              {...invalid.field('skills', hintId('ad-skills'))}
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
             />
           </FormRow>
         )}
         <FormError error={error} />
+        {invalid.copies}
       </DialogPanel>
       <DialogFooter>
         <span className="me-auto self-center text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">

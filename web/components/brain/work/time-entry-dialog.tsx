@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { useT } from '@/lib/i18n/client';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
+import { useInvalidFields } from '../invalid-fields';
 import { fieldErrors, formatMinutes, parseDuration, todayPrague } from './format';
 
 interface Form {
@@ -62,6 +63,7 @@ function EntryForm({
   }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
   const running = !!entry?.running;
   const minutes = parseDuration(form.duration);
@@ -80,10 +82,10 @@ function EntryForm({
     objectiveChoices.push({ value: String(entry.objective), label: t('Mục tiêu của tuần khác (giữ nguyên)') });
 
   const submit = async () => {
-    if (!form.project) return setError(t('Chọn một dự án.'));
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return setError(t('Chọn ngày.'));
+    if (!form.project) return setError(invalid.mark(t('Chọn một dự án.'), 'project'));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return setError(invalid.mark(t('Chọn ngày.'), 'date'));
     if (!running && minutes === null)
-      return setError(t('Thời gian từ 1 phút đến 24 giờ, ví dụ 90, 1:30, 1h30 hoặc 1,5h.'));
+      return setError(invalid.mark(t('Thời gian từ 1 phút đến 24 giờ, ví dụ 90, 1:30, 1h30 hoặc 1,5h.'), 'minutes'));
     const common = {
       project: Number(form.project),
       date: form.date,
@@ -93,6 +95,7 @@ function EntryForm({
     };
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const saved = entry
         ? await workApi.updateTimeEntry(entry.id, running ? common : { ...common, minutes: minutes! })
@@ -101,6 +104,7 @@ function EntryForm({
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
+      invalid.fromError(e, t);
       setBusy(false);
     }
   };
@@ -118,6 +122,8 @@ function EntryForm({
           <Label htmlFor="entry-project">{t('Dự án')}</Label>
           <ChoiceSelect
             id="entry-project"
+            aria-required
+            {...invalid.field('project')}
             label={t('Dự án')}
             value={form.project}
             onChange={(v) => set('project', v)}
@@ -127,7 +133,14 @@ function EntryForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="entry-date">{t('Ngày')}</Label>
-            <Input id="entry-date" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} />
+            <Input
+              id="entry-date"
+              type="date"
+              aria-required
+              {...invalid.field('date')}
+              value={form.date}
+              onChange={(e) => set('date', e.target.value)}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="entry-duration">{t('Thời gian')}</Label>
@@ -136,7 +149,8 @@ function EntryForm({
               value={running ? '' : form.duration}
               placeholder={running ? t('Đang chạy') : '1:30'}
               disabled={running}
-              aria-describedby="entry-duration-hint"
+              aria-required={!running || undefined}
+              {...invalid.field('minutes', 'entry-duration-hint')}
               onChange={(e) => set('duration', e.target.value)}
               autoFocus={!entry}
             />
@@ -153,6 +167,7 @@ function EntryForm({
           <Label htmlFor="entry-note">{t('Ghi chú')}</Label>
           <Input
             id="entry-note"
+            {...invalid.field('note')}
             value={form.note}
             maxLength={500}
             onChange={(e) => set('note', e.target.value)}
@@ -163,6 +178,7 @@ function EntryForm({
           <Label htmlFor="entry-objective">{t('Mục tiêu tuần này (không bắt buộc)')}</Label>
           <ChoiceSelect
             id="entry-objective"
+            {...invalid.field('objective')}
             label={t('Mục tiêu tuần này')}
             value={form.objective}
             onChange={(v) => set('objective', v)}
@@ -178,6 +194,7 @@ function EntryForm({
             {error}
           </p>
         )}
+        {invalid.copies}
       </DialogPanel>
       <DialogFooter>
         <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>

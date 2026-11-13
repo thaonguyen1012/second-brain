@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
+import { useInvalidFields } from '../invalid-fields';
 import { decisions, fieldErrors, freshness } from './labels';
 
 interface Form {
@@ -111,11 +112,18 @@ function OpportunityForm({
   const [fitTouched, setFitTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = async () => {
     if (!form.title.trim() || !form.hypothesis.trim()) {
-      setError(t('Cần có tên và giả thuyết.'));
+      setError(
+        invalid.mark(
+          t('Cần có tên và giả thuyết.'),
+          !form.title.trim() && 'title',
+          !form.hypothesis.trim() && 'hypothesis',
+        ),
+      );
       return;
     }
     const body = {
@@ -130,6 +138,7 @@ function OpportunityForm({
     };
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const saved = opportunity
         ? await opportunitiesApi.update(opportunity.id, body)
@@ -138,6 +147,7 @@ function OpportunityForm({
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
+      invalid.fromError(e, t);
       setBusy(false);
     }
   };
@@ -153,12 +163,21 @@ function OpportunityForm({
       <DialogPanel className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="opp-title">{t('Tên')}</Label>
-          <Input id="opp-title" value={form.title} onChange={(e) => set('title', e.target.value)} autoFocus />
+          <Input
+            id="opp-title"
+            aria-required
+            {...invalid.field('title')}
+            value={form.title}
+            onChange={(e) => set('title', e.target.value)}
+            autoFocus
+          />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="opp-hypothesis">{t('Giả thuyết (một câu: ai, đau gì, trả tiền cho gì)')}</Label>
           <Textarea
             id="opp-hypothesis"
+            aria-required
+            {...invalid.field('hypothesis')}
             rows={2}
             value={form.hypothesis}
             onChange={(e) => set('hypothesis', e.target.value)}
@@ -166,11 +185,22 @@ function OpportunityForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="opp-why-now">{t('Vì sao bây giờ')}</Label>
-          <Textarea id="opp-why-now" rows={2} value={form.whyNow} onChange={(e) => set('whyNow', e.target.value)} />
+          <Textarea
+            id="opp-why-now"
+            rows={2}
+            {...invalid.field('whyNow')}
+            value={form.whyNow}
+            onChange={(e) => set('whyNow', e.target.value)}
+          />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="opp-next">{t('Hành động kế tiếp')}</Label>
-          <Input id="opp-next" value={form.nextAction} onChange={(e) => set('nextAction', e.target.value)} />
+          <Input
+            id="opp-next"
+            {...invalid.field('nextAction')}
+            value={form.nextAction}
+            onChange={(e) => set('nextAction', e.target.value)}
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
@@ -178,6 +208,7 @@ function OpportunityForm({
             <Input
               id="opp-decide-by"
               type="date"
+              {...invalid.field('decideBy')}
               value={form.decideBy}
               onChange={(e) => set('decideBy', e.target.value)}
             />
@@ -186,6 +217,7 @@ function OpportunityForm({
             <Label htmlFor="opp-decision">{t('Quyết định')}</Label>
             <ChoiceSelect
               id="opp-decision"
+              {...invalid.field('decision')}
               label={t('Quyết định')}
               value={form.decision}
               onChange={(v) => set('decision', v)}
@@ -208,6 +240,7 @@ function OpportunityForm({
             {error}
           </p>
         )}
+        {invalid.copies}
       </DialogPanel>
       <DialogFooter>
         <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>

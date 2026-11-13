@@ -20,6 +20,7 @@ import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { cn } from '@/lib/utils';
 import { describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
+import { useInvalidFields, type InvalidFieldProps } from '../invalid-fields';
 import { evidenceKinds, fieldErrors, today } from './labels';
 import { FormError, FormRow } from './shared';
 
@@ -56,7 +57,15 @@ function useDebounced<T>(value: T, ms: number): T {
   return v;
 }
 
-function ItemPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function ItemPicker({
+  value,
+  onChange,
+  invalid,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  invalid: InvalidFieldProps;
+}) {
   const t = useT();
   const rows = useApi('evidence-picker:item', () => loadItems(t));
   if (rows.error && !rows.data)
@@ -65,11 +74,29 @@ function ItemPicker({ value, onChange }: { value: string; onChange: (v: string) 
   if (rows.data.length === 0)
     return <p className="text-sm text-muted-foreground">{t('Thư viện chưa có item nào. Thêm ở trang Thư viện trước.')}</p>;
   const choices = [{ value: '', label: t('Chọn item…') }, ...rows.data];
-  return <ChoiceSelect id="evidence-ref" label={t('Chọn item')} value={value} onChange={onChange} choices={choices} />;
+  return (
+    <ChoiceSelect
+      id="evidence-ref"
+      aria-required
+      {...invalid}
+      label={t('Chọn item')}
+      value={value}
+      onChange={onChange}
+      choices={choices}
+    />
+  );
 }
 
 /** Search-as-you-type over GET /api/notes?q= (newest notes while the box is empty). */
-function NotePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function NotePicker({
+  value,
+  onChange,
+  invalid,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  invalid: InvalidFieldProps;
+}) {
   const t = useT();
   const [query, setQuery] = useState('');
   const q = useDebounced(query.trim(), 250);
@@ -104,6 +131,8 @@ function NotePicker({ value, onChange }: { value: string; onChange: (v: string) 
       />
       <ChoiceSelect
         id="evidence-ref"
+        aria-required
+        {...invalid}
         label={t('Chọn ghi chú')}
         value={value}
         onChange={(v) => {
@@ -146,19 +175,23 @@ export function EvidenceForm({
   const [date, setDate] = useState(evidence?.date ?? today());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
   const prefix = evidence ? `ev-${evidence.id}` : 'ev-new';
+  // the library row a new item or note evidence links (its API field)
+  const refKey = kind === 'item' ? 'item' : 'libraryNote';
 
   const submit = async () => {
     if (kind === 'link' && (!title.trim() || !url.trim())) {
-      setError(t('Link cần có tiêu đề và địa chỉ.'));
+      setError(invalid.mark(t('Link cần có tiêu đề và địa chỉ.'), !title.trim() && 'title', !url.trim() && 'url'));
       return;
     }
     if (!evidence && kind !== 'link' && !ref) {
-      setError(kind === 'item' ? t('Chọn một item.') : t('Chọn một ghi chú.'));
+      setError(invalid.mark(kind === 'item' ? t('Chọn một item.') : t('Chọn một ghi chú.'), refKey));
       return;
     }
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       if (evidence) {
         const saved = await growthApi.updateSkillEvidence(skillId, evidence.id, {
@@ -183,6 +216,7 @@ export function EvidenceForm({
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, t, fieldNames)) || describeApiError(e, t).title);
+      invalid.fromError(e, t);
       setBusy(false);
     }
   };
@@ -206,6 +240,7 @@ export function EvidenceForm({
         <FormRow id={`${prefix}-kind`} label={t('Loại bằng chứng')}>
           <ChoiceSelect
             id={`${prefix}-kind`}
+            {...invalid.field('kind')}
             label={t('Loại bằng chứng')}
             value={kind}
             onChange={(v) => {
@@ -219,9 +254,9 @@ export function EvidenceForm({
       {!evidence && kind !== 'link' && (
         <FormRow id="evidence-ref" label={kind === 'item' ? t('Item') : t('Ghi chú')}>
           {kind === 'item' ? (
-            <ItemPicker value={ref} onChange={setRef} />
+            <ItemPicker value={ref} onChange={setRef} invalid={invalid.field(refKey)} />
           ) : (
-            <NotePicker value={ref} onChange={setRef} />
+            <NotePicker value={ref} onChange={setRef} invalid={invalid.field(refKey)} />
           )}
         </FormRow>
       )}
@@ -229,12 +264,21 @@ export function EvidenceForm({
         id={`${prefix}-title`}
         label={kind === 'link' ? t('Tiêu đề') : t('Tiêu đề (để trống thì lấy theo item hoặc ghi chú)')}
       >
-        <Input id={`${prefix}-title`} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+        <Input
+          id={`${prefix}-title`}
+          aria-required={kind === 'link' || undefined}
+          {...invalid.field('title')}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          autoFocus
+        />
       </FormRow>
       {kind === 'link' && (
         <FormRow id={`${prefix}-url`} label={t('Link')}>
           <Input
             id={`${prefix}-url`}
+            aria-required
+            {...invalid.field('url')}
             type="url"
             inputMode="url"
             placeholder="https://…"
@@ -245,13 +289,26 @@ export function EvidenceForm({
       )}
       <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
         <FormRow id={`${prefix}-date`} label={t('Ngày ship hoặc viết')}>
-          <Input id={`${prefix}-date`} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input
+            id={`${prefix}-date`}
+            type="date"
+            {...invalid.field('date')}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
         </FormRow>
         <FormRow id={`${prefix}-note`} label={t('Ghi chú')}>
-          <Textarea id={`${prefix}-note`} value={note} onChange={(e) => setNote(e.target.value)} rows={1} />
+          <Textarea
+            id={`${prefix}-note`}
+            {...invalid.field('note')}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={1}
+          />
         </FormRow>
       </div>
       <FormError error={error} />
+      {invalid.copies}
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
           {t('Hủy')}
