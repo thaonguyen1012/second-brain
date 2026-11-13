@@ -189,6 +189,7 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const invalid = useInvalidFields();
+  const outcomeField = invalid.field('outcome');
   const inFlight = useRef(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -246,7 +247,7 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
           <RadioGroup
             aria-labelledby="pred-outcome"
             aria-required
-            {...invalid.field('outcome')}
+            {...outcomeField}
             className="flex flex-row flex-wrap gap-2"
             value={outcome}
             onValueChange={(v) => setOutcome(v as ApiOutcome)}
@@ -256,7 +257,8 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
                 key={value}
                 className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-accent/50 has-data-checked:border-primary has-data-checked:bg-primary/8"
               >
-                <Radio value={value} />
+                {/* The focus lands on a radio, and only the group may carry aria-invalid: each reads the error too */}
+                <Radio value={value} aria-describedby={outcomeField['aria-describedby']} />
                 {t(outcomeOf(value).label)}
                 <Kbd className="max-sm:hidden pointer-coarse:hidden">{key}</Kbd>
               </label>
