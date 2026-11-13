@@ -142,14 +142,18 @@ response 201 { "id": 1, "type": "book", "status": "planned", "title": "Deep Work
                "summary": "Làm việc sâu, không xao nhãng", "tags": ["focus"],
                "source": "Cal Newport", "rating": 9, "createdAt": "...", "updatedAt": "...",
                "startedAt": null, "finishedAt": null, "noteCount": 0,
-               "imageUrl": null, "imagePending": false }
+               "imageUrl": null, "imagePending": false, "imageMissing": false }
 ```
 
 `noteCount` (read only) is the number of notes linked to the Item. `imageUrl` (read only) is where the Item's image
 loads, `/api/items/1/image?v=3f2a9c1e` (`v` changes with the image, so a replaced image never comes from the browser
 cache), or `null` without an image. `imagePending` (read only) is `true` while a fetch of the image from a link waits
-for the background job or runs. Every Item answer (list, one, create, update, upload, fetch) carries both, without a
-query per row. The image cannot be set through this body, only through the endpoints below.
+for the background job or runs. `imageMissing` (read only) is `true` when the last fetch of the Item's `source` ended
+without a picture (a page without an image, a site without a usable logo, a refused or unreadable answer), while the
+Item has the image it had when that fetch was asked (none, usually: an upload makes it `false`, removing that upload
+makes it `true` again) and until a fetch is asked again; a fetch that an image change ended never sets it. Every Item
+answer (list, one, create, update, upload, fetch) carries all three, without a query per row. The image cannot be set
+through this body, only through the endpoints below.
 
 `type`: course, book, film, article, project, tool. `status`: planned, active, done, dropped. `summary` (optional,
 at most 300 characters, default "") is one line on what the Item is or what it is for (a tool's "dùng để làm gì");
@@ -191,37 +195,51 @@ Item, so it uses these endpoints too). The server stores it re-encoded as webp, 
   upload, a removal, linking an inbox entry) ends the fetch: `imagePending` turns `false` (at once when the job has
   not started; a running job finishes without setting its image) and the fetched image is never applied, also when
   the image is back to what it was when asked (removed again). A page without an image, a refused address or an
-  unreadable image ends without an image; a network error is retried (3 attempts, 10 minutes apart). Asking again
-  while a fetch waits keeps one job: the same request changes nothing, another link starts it over with every
-  attempt and no delay; after a fetch has ended (or was ended) it runs again.
+  unreadable image ends without an image (`imageMissing: true`); a network error is retried (3 attempts, 10 minutes
+  apart). Asking again while a fetch waits keeps one job: the same request changes nothing, another link starts it
+  over with every attempt and no delay; after a fetch has ended (or was ended) it runs again.
   `400 { "url": ["Item chưa có link http(s)."] }` when there is no `url` and the source is not an http(s) URL (an
   invalid `url` answers `400` with the URL message). Allowed for every type (the UI hides it for projects, whose
 logo is uploaded, and offers it as "Lấy logo từ trang" for tools).
 
 For a tool the fetch takes the logo of its site instead of an `og:image` (a page's banner makes a poor logo;
 DECISIONS 9.10, `backend/library/logos.py`, `backend/core/services/site_icon.py`): the icons the page declares
-(`<link rel>` apple-touch-icon, icon, shortcut icon, also inline as a `data:` URL; the raster icons of its web
-app manifest) and the site's `/apple-touch-icon.png` and `/favicon.ico` (not on Read the Docs, which answers them
-with its own icon), ranked by declared size (128-512 px first), at most 5 of them tried. The first raster image
+(`<link rel>` apple-touch-icon, icon, shortcut icon, also inline as a `data:` URL; not one for a dark colour scheme,
+a light drawing that would vanish on the logo's white ground; the raster icons of its web app manifest) and the
+site's `/apple-touch-icon.png` and `/favicon.ico` (not on Read the Docs, which answers them with its own icon, nor for
+a project's page on `<user>.github.io/<project>/` or GitLab Pages, where the root and the paths above the project are
+the user's own site), ranked by declared size (128-512 px first), at most 5 of them tried. The first raster image
 (PNG, JPEG, GIF, WebP or an ICO's largest frame) of 64 px or more on its smaller side is kept, else the largest of
-at least 32 px; never enlarged, with its transparency. SVG is never fetched, and the default icons of Read the
-Docs and mdBook are never taken. A small page that only redirects with `<meta http-equiv="refresh">` is followed
-once. A `url` that answers with an image is that logo itself. Hosts whose pages carry their own icon:
-`github.com/<owner>/<repo>` asks the GitHub API (no token) for the repository's homepage and takes that site's
-icon; with no homepage, or a homepage icon under 64 px, the owner's avatar (256 px) when the owner is an
-organisation; a person's account gives no avatar, and GitHub's own pages (`/features/...`, `/search`) keep GitHub's
-icon. The Visual Studio Marketplace, the Chrome Web
-Store and GitLab give the item's own icon (the page's `og:image`, only when it is the store's icon URL); npm, PyPI,
-Bitbucket, Codeberg, SourceForge, addons.mozilla.org, the App Store and Google Play give none. A GitHub API limit
-(403 or 429) defers the job 15 minutes without counting an attempt; a repository that is gone (404) ends without a
-logo.
+at least 32 px; never enlarged, with its transparency, and a drawing on a wide white or transparent margin (under
+80% of the icon) is cut out with 6% around it. An image under 32 px on its smaller side once at most 256 px (a
+favicon, a sliver) is no logo. When no icon makes a logo, the last resort is a raster logo the page itself shows: a
+square `og:image`, else an `<img>` whose short alt or class says "logo" and whose file name holds "logo" or the
+site's name (at most 2:1); at most 2 such images are fetched. SVG is never fetched, and the default icons of Read
+the Docs and mdBook are never taken. A small page that only redirects with `<meta http-equiv="refresh">` is followed
+once (when that fails, the page itself is read). A page the guard refuses for its answer (over 2 MB, compressed, not
+HTML) still gives its site's root files; an image link it refuses stays refused. Any answer under 500 but 408 and
+429 is final (a 204 for a silenced favicon included). A `url` that answers with an image is that logo itself. Hosts
+whose pages carry their own icon: `github.com/<owner>/<repo>` asks the GitHub API (no token) for the repository's
+homepage and takes that site's icon (a person's repository only when the homepage names the repository in its host
+or path: a person's own site carries their own mark); with no homepage, or a homepage icon under 64 px, the owner's
+avatar (256 px) only when the owner is an organisation that is the tool itself (its login is the repository's name in
+letters and digits, `gitleaks/gitleaks`; an umbrella organisation's avatar, `grafana/k6`, `pypa/pip-audit`, is
+another mark); a person's account gives no avatar, `github.com/<organisation>` gives its avatar, and GitHub's own
+pages (`/features/...`, `/search`) keep GitHub's icon. The Visual Studio Marketplace, the Chrome Web Store and GitLab
+give the item's own icon (the page's `og:image`, only when it is the store's icon URL); npm, PyPI, Bitbucket,
+Codeberg, SourceForge, addons.mozilla.org, the App Store and Google Play give none. A GitHub API 403 or 429 is its
+hourly limit only when `/rate_limit` (never counted) says no request remains: the job then waits until the limit
+resets (at most 61 minutes) without counting an attempt, the other repositories wait too without a request, and
+every other job, of any kind, goes on. Any other 403 or 429 is an error retried like a network error (3 attempts,
+then the job fails); a repository that is gone (404) ends without a logo.
 
 Automatic fetch: creating an Item, or a `PATCH` that changes its `source`, queues the same fetch (`imagePending:
 true` in that answer) when the Item has no image, its `source` is an http(s) URL and it is not a project (a page's
 banner makes a poor logo, and a client's site is not the project's): a tool gets the logo of its site. Handbook
 courses (source `/docs/...`) and sources that are plain text are skipped. `manage.py seed_tools` therefore queues a
-logo for each tool it adds, and `manage.py fetch_tool_logos [--owner EMAIL]` queues one for each of the owner's tools
-that has a link, no image and no fetch waiting or running.
+logo for each tool it adds, and `manage.py fetch_tool_logos [--owner EMAIL] [--again]` queues one for each of the
+owner's tools that has a link, no image and no fetch waiting or running, except a tool whose last fetch of the same
+link found no logo (`imageMissing`; `--again` asks those too).
 
 ### Where an Item is used
 
