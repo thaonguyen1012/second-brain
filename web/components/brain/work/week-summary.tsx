@@ -72,7 +72,7 @@ export function WeekSummary({
       {summary.error && !data ? (
         <ApiErrorState error={summary.error} onRetry={summary.reload} />
       ) : !data ? (
-        <Skeleton className="h-24 rounded-xl" aria-label={t('Đang tải tổng kết tuần')} />
+        <Skeleton className="h-24 rounded-xl" role="status" aria-busy="true" aria-label={t('Đang tải tổng kết tuần')} />
       ) : (
         <>
           <div className="flex flex-col gap-1">

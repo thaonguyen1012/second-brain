@@ -222,7 +222,7 @@ export function TimerPanel({
   }
 
   if (timer.error && !timer.data) return <ApiErrorState error={timer.error} onRetry={timer.reload} />;
-  if (!timer.data) return <Skeleton className="h-24 rounded-xl" aria-label={t('Đang tải bộ bấm giờ')} />;
+  if (!timer.data) return <Skeleton className="h-24 rounded-xl" role="status" aria-busy="true" aria-label={t('Đang tải bộ bấm giờ')} />;
   if (!running && projects.length === 0 && !onAddProject) return null;
 
   const objectiveChoices = [

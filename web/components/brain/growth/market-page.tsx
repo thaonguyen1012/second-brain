@@ -66,7 +66,7 @@ function JobAdRow({ ad, onEdit, onDeleted }: { ad: ApiJobAd; onEdit: () => void;
           {[ad.company, host, t('thêm {date}', { date: formatDay(ad.createdAt) })].filter(Boolean).join(' · ')}
         </p>
         {ad.processed && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5" aria-label={t('Cấp bậc và kỹ năng được đòi')}>
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5" role="group" aria-label={t('Cấp bậc và kỹ năng được đòi')}>
             <Badge variant="secondary">{t(seniority[ad.seniority])}</Badge>
             {ad.skills.map((k) => (
               <Badge key={k} variant="outline">

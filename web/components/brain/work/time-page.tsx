@@ -291,7 +291,7 @@ export function TimePage() {
   return (
     <div className={cn(PAGE_WIDTH, 'flex flex-col gap-6 px-4 pb-12 sm:px-8')}>
       {projectsLoading ? (
-        <Skeleton className="h-24 rounded-xl" aria-label={t('Đang tải bộ bấm giờ')} />
+        <Skeleton className="h-24 rounded-xl" role="status" aria-busy="true" aria-label={t('Đang tải bộ bấm giờ')} />
       ) : choices.error && !choices.data && !timer.running ? (
         // Unknown project list: say so, never "Chưa có dự án" (it would invite a duplicate project)
         <ApiErrorState error={choices.error} onRetry={choices.reload} />
