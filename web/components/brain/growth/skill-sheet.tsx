@@ -125,19 +125,25 @@ function SkillBody({
     onChanged();
   };
 
+  // Before the skill has loaded (or when it failed) the sheet has no visible title; a dialog still needs a name
+  const pendingTitle = <SheetTitle className="sr-only">{t('Kỹ năng', null, 'kind')}</SheetTitle>;
   if (detail.error && !skill)
     return (
       <SheetPanel>
+        {pendingTitle}
         <ApiErrorState error={detail.error} onRetry={detail.reload} />
       </SheetPanel>
     );
   if (!skill)
     return (
-      <SheetPanel className="flex flex-col gap-3" role="status" aria-busy="true" aria-label={t('Đang tải')}>
-        <Skeleton className="h-8 w-1/2 rounded-lg" />
-        <Skeleton className="h-8 w-48 rounded-lg" />
-        <Skeleton className="h-36 rounded-xl" />
-      </SheetPanel>
+      <>
+        {pendingTitle}
+        <SheetPanel className="flex flex-col gap-3" role="status" aria-busy="true" aria-label={t('Đang tải')}>
+          <Skeleton className="h-8 w-1/2 rounded-lg" />
+          <Skeleton className="h-8 w-48 rounded-lg" />
+          <Skeleton className="h-36 rounded-xl" />
+        </SheetPanel>
+      </>
     );
 
   const f = freshness[skill.freshness];

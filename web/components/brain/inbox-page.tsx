@@ -612,6 +612,8 @@ export function InboxPage() {
         ) : null
       ) : (
         <div className="flex flex-col gap-3">
+          {/* The cards' titles are h3: the tab's name heads them, so the outline does not jump from the h1 */}
+          <h2 className="sr-only">{t(inboxStatusOf(status).label)}</h2>
           {shown.map((e, i) => (
             <EntryCard
               key={e.id}

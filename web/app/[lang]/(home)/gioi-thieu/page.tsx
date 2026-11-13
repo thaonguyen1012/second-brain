@@ -181,7 +181,9 @@ export default async function IntroPage() {
         </div>
         <p className="intro-noprint text-sm text-muted-foreground">
           {t('Muốn xem từng trang hoạt động thế nào?')}{' '}
-          <Link href="/huong-dan/" className="text-primary underline-offset-4 hover:underline">
+          {/* Underlined at rest, like the app's other links inside a sentence: its blue is 1.5:1 against the muted text
+              around it (1.05:1 in dark), so colour alone does not mark it as a link (WCAG 1.4.1) */}
+          <Link href="/huong-dan/" className="text-primary underline underline-offset-4">
             {t('Xem mọi hướng dẫn')}
           </Link>
         </p>
