@@ -13,17 +13,20 @@ import { useNewNoteCopies, useUnsavedCopy, type NoteText, type SaveState } from 
  * stays in the editor and in this browser's copy meanwhile). "Đã lưu" and a failure are read out (a polite live
  * region, the focus stays in the text); "Đang lưu…" is not, or every pause in typing would be announced twice.
  * Without `onRetry` (the text itself cannot be saved: empty, too long) there is no "Thử lại"; `action` stands beside
- * the reason instead (the Item page: "Xóa ghi chú" for an emptied note).
+ * the reason instead (the Item page: "Xóa ghi chú" for an emptied note). `name`: the note's, where several editors
+ * can each fail at once (the Item page); "Thử lại" is then named after it.
  */
 export function SaveStatus({
   state,
   error,
+  name,
   onRetry,
   action,
   className,
 }: {
   state: SaveState;
   error: string | null;
+  name?: string;
   onRetry?: () => void;
   action?: ReactNode;
   className?: string;
@@ -48,7 +51,12 @@ export function SaveStatus({
         )}
       </span>
       {state === 'error' && onRetry && (
-        <Button size="xs" variant="outline" onClick={onRetry}>
+        <Button
+          size="xs"
+          variant="outline"
+          aria-label={name === undefined ? undefined : t('Thử lại: lưu “{title}”', { title: name })}
+          onClick={onRetry}
+        >
           {t('Thử lại')}
         </Button>
       )}

@@ -176,6 +176,11 @@ export const library = {
   'Sửa ghi chú “{title}”': 'Edit the note “{title}”',
   'Thao tác cho ghi chú “{title}”': 'Actions for the note “{title}”',
   'Xong ghi chú “{title}”': 'Done editing “{title}”',
+  // the other buttons an open editor repeats, named after its note (item-notes.tsx, save-status.tsx)
+  'Khôi phục “{title}”': 'Restore “{title}”',
+  'Bỏ bản nháp “{title}”': 'Discard draft: “{title}”',
+  'Thử lại: lưu “{title}”': 'Try again: save “{title}”',
+  'Xóa ghi chú “{title}”': 'Delete note “{title}”',
   'Mở để khôi phục “{title}”': 'Open to restore “{title}”',
   'Mở để xem “{title}”': 'Open to review “{title}”',
   'Mở ở trang Ghi chú': 'Open on the Notes page',

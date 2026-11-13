@@ -36,8 +36,8 @@ export const itemStatusesFor = (type?: string) => (type === 'tool' ? toolStatuse
 
 /**
  * The one-click next step of the lifecycle on a row and the Item page (DECISIONS 4.2: "done" still needs a note).
- * `name`: the row button's accessible name, the visible words and then the Item ({title}), since every row of a list
- * shows the same verb.
+ * `name`: the step button's accessible name, the visible words and then the Item ({title}): every row of a list shows
+ * the same verb, and the Item page's open note editors have a "Xong" of their own.
  */
 const nextSteps: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: Msg; name: Msg }>> = {
   planned: { to: 'active', label: msg('Bắt đầu'), name: msg('Bắt đầu "{title}"') },

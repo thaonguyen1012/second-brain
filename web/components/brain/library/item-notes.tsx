@@ -60,18 +60,21 @@ function NotesSkeleton() {
  * it. `afterConflict`: the note was just saved elsewhere and now shows that version; the copy is what was typed here,
  * said at once (an alert) since the text under the user's hands just changed. `offer` 'older': the copy was written
  * over a version the note has been saved after since (perhaps by the copy's own save), so it is not called unsaved,
- * and restoring it replaces that newer version.
+ * and restoring it replaces that newer version. `name`: the note's, where several editors can each show this (the
+ * Item page); the buttons' names then end with it.
  */
 export function RecoveredDraft({
   copy,
   offer = 'unsaved',
   afterConflict = false,
+  name,
   onRestore,
   onDrop,
 }: {
   copy: NoteBackup;
   offer?: CopyOffer;
   afterConflict?: boolean;
+  name?: string;
   onRestore: () => void;
   onDrop: () => void;
 }) {
@@ -102,10 +105,20 @@ export function RecoveredDraft({
       </AlertDescription>
       {/* under the text at every width: it shows in narrow places (the Sheet, a phone) */}
       <AlertAction className="col-start-2 row-start-auto row-end-auto ms-0 mt-2 flex-wrap justify-start">
-        <Button size="sm" variant="outline" onClick={onRestore}>
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label={name === undefined ? undefined : t('Khôi phục “{title}”', { title: name })}
+          onClick={onRestore}
+        >
           {t('Khôi phục')}
         </Button>
-        <Button size="sm" variant="ghost" onClick={onDrop}>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label={name === undefined ? undefined : t('Bỏ bản nháp “{title}”', { title: name })}
+          onClick={onDrop}
+        >
           {t('Bỏ bản nháp')}
         </Button>
       </AlertAction>
@@ -188,6 +201,9 @@ function NoteInPlace({
     setOpening(copy.markdown);
     setEditorKey((k) => k + 1);
   };
+  // Several notes can be open at once: the buttons each editor repeats ("Xong", "Thử lại", "Khôi phục"...) end with
+  // the note's name, the title as typed (a new note without one goes by its Item)
+  const name = title.trim() || (note ? noteTitle(note, t) : item.title);
 
   return (
     // data-note-editing: an Escape inside ends this edit (on any of its controls: the editor and the title handle
@@ -207,6 +223,7 @@ function NoteInPlace({
           copy={autosave.recovered}
           offer={autosave.recoveredOffer ?? 'unsaved'}
           afterConflict={afterConflict}
+          name={name}
           onRestore={restore}
           onDrop={autosave.dropRecovered}
         />
@@ -255,13 +272,19 @@ function NoteInPlace({
           className="me-auto"
           state={autosave.state}
           error={autosave.error}
+          name={name}
           onRetry={autosave.invalid ? undefined : () => void autosave.flush()}
           action={
             autosave.invalid &&
             autosave.note &&
             onDelete &&
             isBlankNote(markdown) && (
-              <Button size="xs" variant="outline" onClick={onDelete}>
+              <Button
+                size="xs"
+                variant="outline"
+                aria-label={t('Xóa ghi chú “{title}”', { title: name })}
+                onClick={onDelete}
+              >
                 <Trash2 aria-hidden />
                 {t('Xóa ghi chú')}
               </Button>
@@ -272,11 +295,7 @@ function NoteInPlace({
           type="button"
           variant="outline"
           size="sm"
-          // several notes can be open at once: the name says which (the visible word first; a new note without a title
-          // goes by its Item)
-          aria-label={t('Xong ghi chú “{title}”', {
-            title: title.trim() || (note ? noteTitle(note, t) : item.title),
-          })}
+          aria-label={t('Xong ghi chú “{title}”', { title: name })}
           onClick={() => void done()}
         >
           <Check aria-hidden />

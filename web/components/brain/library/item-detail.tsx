@@ -177,7 +177,14 @@ export function ItemDetail({
 
         <div className="flex flex-wrap items-center gap-2">
           {step && (
-            <Button variant="outline" size="sm" disabled={stepping} onClick={() => void stepTo(step.to)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={stepping}
+              // named after the Item, as on its List row: the notes' open editors below have a "Xong" of their own
+              aria-label={t(step.name, { title: item.title })}
+              onClick={() => void stepTo(step.to)}
+            >
               {t(step.label)}
             </Button>
           )}
