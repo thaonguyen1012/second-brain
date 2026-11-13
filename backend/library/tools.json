@@ -1,0 +1,518 @@
+[
+  {
+    "title": "DeepWiki",
+    "summary": "Wiki do AI viết cho một repo GitHub: kiến trúc, module, sơ đồ và hỏi đáp về code. Đọc trước khi mở một repo lạ.",
+    "source": "https://deepwiki.com",
+    "stages": ["explore", "ai"]
+  },
+  {
+    "title": "GitDiagram",
+    "summary": "Biến repo GitHub thành sơ đồ kiến trúc bấm được (đổi github.com thành gitdiagram.com trong link) để thấy các phần nối với nhau.",
+    "source": "https://gitdiagram.com",
+    "stages": ["explore", "docs"]
+  },
+  {
+    "title": "Gitingest",
+    "summary": "Gom cả repo thành một bản văn bản gọn để dán cho LLM rồi hỏi về codebase (đổi github.com thành gitingest.com).",
+    "source": "https://gitingest.com",
+    "stages": ["explore", "ai"]
+  },
+  {
+    "title": "Repomix",
+    "summary": "Đóng gói repo thành một file cho AI đọc, có đếm token và lọc file; tiện để nhờ AI giải thích cả dự án.",
+    "source": "https://repomix.com",
+    "stages": ["explore", "ai"]
+  },
+  {
+    "title": "Sourcegraph",
+    "summary": "Tìm và điều hướng code trên web (go to definition, find references) qua nhiều repo, không cần clone.",
+    "source": "https://sourcegraph.com",
+    "stages": ["explore"]
+  },
+  {
+    "title": "grep.app",
+    "summary": "Tìm một đoạn code trên hàng trăm nghìn repo GitHub công khai để xem người khác dùng một API thế nào.",
+    "source": "https://grep.app",
+    "stages": ["explore"]
+  },
+  {
+    "title": "GitHub code search",
+    "summary": "Tìm code trên GitHub, lọc theo repo, ngôn ngữ, đường dẫn hoặc regex: học từ cách các dự án thật viết.",
+    "source": "https://github.com/search?type=code",
+    "stages": ["explore"]
+  },
+  {
+    "title": "CodeTour",
+    "summary": "Extension VS Code để ghi và chạy các tour từng bước qua codebase: cách onboarding vào một repo mới.",
+    "source": "https://github.com/microsoft/codetour",
+    "stages": ["explore", "docs"]
+  },
+  {
+    "title": "Gource",
+    "summary": "Dựng hình động lịch sử của repo: ai sửa phần nào, dự án lớn lên ra sao qua từng commit.",
+    "source": "https://gource.io",
+    "stages": ["explore", "git"]
+  },
+  {
+    "title": "scc",
+    "summary": "Đếm dòng code theo ngôn ngữ kèm ước lượng độ phức tạp: biết nhanh quy mô và phần nặng nhất của repo.",
+    "source": "https://github.com/boyter/scc",
+    "stages": ["explore"]
+  },
+  {
+    "title": "tokei",
+    "summary": "Đếm dòng code, dòng comment và dòng trống theo từng ngôn ngữ, rất nhanh.",
+    "source": "https://github.com/XAMPPRocky/tokei",
+    "stages": ["explore"]
+  },
+  {
+    "title": "onefetch",
+    "summary": "Tóm tắt một repo ngay trong terminal: ngôn ngữ, người đóng góp chính, số commit, kích thước.",
+    "source": "https://github.com/o2sh/onefetch",
+    "stages": ["explore", "git"]
+  },
+  {
+    "title": "git-quick-stats",
+    "summary": "Thống kê lịch sử git trong terminal: commit theo người, theo giờ và theo ngày trong tuần, gợi ý người review.",
+    "source": "https://github.com/arzzen/git-quick-stats",
+    "stages": ["explore", "git"]
+  },
+  {
+    "title": "code2flow",
+    "summary": "Vẽ sơ đồ hàm nào gọi hàm nào (call graph) cho Python, JavaScript, Ruby, PHP để thấy luồng chạy.",
+    "source": "https://github.com/scottrogowski/code2flow",
+    "stages": ["explore"]
+  },
+  {
+    "title": "madge",
+    "summary": "Vẽ đồ thị phụ thuộc giữa các module JavaScript/TypeScript và tìm import vòng.",
+    "source": "https://github.com/pahen/madge",
+    "stages": ["explore"]
+  },
+  {
+    "title": "dependency-cruiser",
+    "summary": "Vẽ và kiểm tra phụ thuộc giữa các module JS/TS; đặt luật cấm import sai tầng và chạy nó trong CI.",
+    "source": "https://github.com/sverweij/dependency-cruiser",
+    "stages": ["explore", "deps"]
+  },
+  {
+    "title": "pydeps",
+    "summary": "Vẽ đồ thị import giữa các module Python để thấy cấu trúc gói và vòng phụ thuộc.",
+    "source": "https://github.com/thebjorn/pydeps",
+    "stages": ["explore", "deps"]
+  },
+  {
+    "title": "Python Tutor",
+    "summary": "Chạy code từng bước và vẽ biến, stack, heap để thấy code thật sự làm gì (Python, JavaScript, Java, C, C++).",
+    "source": "https://pythontutor.com",
+    "stages": ["explore", "practice"]
+  },
+  {
+    "title": "AST Explorer",
+    "summary": "Xem cây cú pháp (AST) của một đoạn code theo nhiều parser: nền để hiểu linter, codemod và compiler.",
+    "source": "https://astexplorer.net",
+    "stages": ["explore"]
+  },
+  {
+    "title": "Compiler Explorer",
+    "summary": "Xem code biên dịch ra assembly theo từng compiler và cờ tối ưu: hiểu hiệu năng ở tầng máy.",
+    "source": "https://godbolt.org",
+    "stages": ["explore"]
+  },
+  {
+    "title": "regex101",
+    "summary": "Viết và gỡ lỗi regex, có giải thích từng phần và chạy thử trên chuỗi mẫu.",
+    "source": "https://regex101.com",
+    "stages": ["explore", "code"]
+  },
+  {
+    "title": "explainshell",
+    "summary": "Dán một lệnh shell để xem giải thích từng tham số, lấy từ man page.",
+    "source": "https://explainshell.com",
+    "stages": ["explore"]
+  },
+  {
+    "title": "crontab.guru",
+    "summary": "Đọc và viết biểu thức cron, có câu giải thích lịch chạy bằng lời.",
+    "source": "https://crontab.guru",
+    "stages": ["explore"]
+  },
+  {
+    "title": "Chrome DevTools",
+    "summary": "Soi DOM, CSS, request mạng, hiệu năng và bộ nhớ của trang; đặt breakpoint trong JavaScript.",
+    "source": "https://developer.chrome.com/docs/devtools",
+    "stages": ["explore", "observe"]
+  },
+  {
+    "title": "React Developer Tools",
+    "summary": "Xem cây component React với props và state, đo component nào render chậm (Profiler).",
+    "source": "https://react.dev/learn/react-developer-tools",
+    "stages": ["explore"]
+  },
+  {
+    "title": "Django Debug Toolbar",
+    "summary": "Bảng debug cho Django: các câu SQL của mỗi request, thời gian, template, cache; bắt query lặp (N+1).",
+    "source": "https://django-debug-toolbar.readthedocs.io",
+    "stages": ["explore", "observe"]
+  },
+  {
+    "title": "Claude Code",
+    "summary": "Agent lập trình chạy trong terminal: đọc repo, giải thích codebase, sửa code, chạy lệnh và test.",
+    "source": "https://github.com/anthropics/claude-code",
+    "stages": ["explore", "ai"]
+  },
+  {
+    "title": "Exercism",
+    "summary": "Bài tập theo lộ trình cho hơn 70 ngôn ngữ, có mentor review code miễn phí: học viết đúng kiểu của từng ngôn ngữ.",
+    "source": "https://exercism.org",
+    "stages": ["practice"]
+  },
+  {
+    "title": "CodeCrafters",
+    "summary": "Tự xây lại Redis, Git, SQLite, HTTP server... từng bước, có test tự chấm: hiểu phần mềm quen thuộc chạy bên trong ra sao.",
+    "source": "https://codecrafters.io",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Build Your Own X",
+    "summary": "Danh sách hướng dẫn tự viết lại các công nghệ quen thuộc từ đầu: database, Git, trình biên dịch, game, mạng.",
+    "source": "https://github.com/codecrafters-io/build-your-own-x",
+    "stages": ["practice"]
+  },
+  {
+    "title": "The Missing Semester",
+    "summary": "Khóa học của MIT về công cụ hằng ngày của dev: shell, Vim, Git, debug và profiling, build tự động.",
+    "source": "https://missing.csail.mit.edu",
+    "stages": ["practice"]
+  },
+  {
+    "title": "roadmap.sh",
+    "summary": "Lộ trình học theo vai trò và công nghệ (backend, DevOps, AI engineer...) kèm ý tưởng dự án để làm.",
+    "source": "https://roadmap.sh",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Frontend Mentor",
+    "summary": "Làm giao diện thật từ bản thiết kế có sẵn rồi nộp lên để cộng đồng review.",
+    "source": "https://www.frontendmentor.io",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Learn Git Branching",
+    "summary": "Học Git bằng trò chơi trực quan: branch, merge, rebase, cherry-pick, thấy cây commit đổi theo từng lệnh.",
+    "source": "https://learngitbranching.js.org",
+    "stages": ["practice", "git"]
+  },
+  {
+    "title": "SQLBolt",
+    "summary": "Bài học SQL tương tác từ SELECT tới JOIN và GROUP BY, làm ngay trong trình duyệt.",
+    "source": "https://sqlbolt.com",
+    "stages": ["practice", "data"]
+  },
+  {
+    "title": "PostgreSQL Exercises",
+    "summary": "Bài tập SQL trên một database mẫu chạy PostgreSQL thật, từ truy vấn cơ bản tới join, aggregate và truy vấn đệ quy.",
+    "source": "https://pgexercises.com",
+    "stages": ["practice", "data"]
+  },
+  {
+    "title": "Use The Index, Luke",
+    "summary": "Sách web miễn phí về index và hiệu năng SQL viết cho developer: vì sao query chậm và sửa thế nào.",
+    "source": "https://use-the-index-luke.com",
+    "stages": ["practice", "data"]
+  },
+  {
+    "title": "Advent of Code",
+    "summary": "Câu đố lập trình theo từng ngày vào tháng 12, giải bằng ngôn ngữ nào cũng được; đề các năm trước vẫn còn để luyện.",
+    "source": "https://adventofcode.com",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Codewars",
+    "summary": "Bài tập nhỏ (kata) theo cấp độ; giải xong được xem lời giải của người khác để học cách viết gọn hơn.",
+    "source": "https://www.codewars.com",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Good First Issue",
+    "summary": "Gom các issue dễ của những dự án open source nổi tiếng: chỗ bắt đầu đóng góp lần đầu.",
+    "source": "https://goodfirstissue.dev",
+    "stages": ["practice"]
+  },
+  {
+    "title": "Up For Grabs",
+    "summary": "Danh sách dự án open source có việc dành riêng cho người mới đóng góp.",
+    "source": "https://up-for-grabs.net",
+    "stages": ["practice"]
+  },
+  {
+    "title": "DevDocs",
+    "summary": "Tài liệu API của nhiều ngôn ngữ và framework trong một ô tìm, dùng được cả offline.",
+    "source": "https://devdocs.io",
+    "stages": ["practice", "docs"]
+  },
+  {
+    "title": "MDN Web Docs",
+    "summary": "Tài liệu chuẩn về HTML, CSS, JavaScript và Web API, kèm ví dụ và bảng hỗ trợ trình duyệt.",
+    "source": "https://developer.mozilla.org",
+    "stages": ["practice", "docs"]
+  },
+  {
+    "title": "tldr pages",
+    "summary": "Ví dụ ngắn cho các lệnh terminal hay dùng, dễ đọc hơn man page.",
+    "source": "https://tldr.sh",
+    "stages": ["practice", "docs"]
+  },
+  {
+    "title": "Excalidraw",
+    "summary": "Bảng vẽ kiểu vẽ tay để phác kiến trúc và luồng dữ liệu khi thiết kế hay thảo luận.",
+    "source": "https://excalidraw.com",
+    "stages": ["plan", "docs"]
+  },
+  {
+    "title": "Mermaid",
+    "summary": "Viết sơ đồ (flowchart, sequence, ERD) bằng chữ, nằm ngay trong Markdown và Git.",
+    "source": "https://mermaid.js.org",
+    "stages": ["plan", "docs"]
+  },
+  {
+    "title": "ADR (Architecture Decision Records)",
+    "summary": "Ghi mỗi quyết định kiến trúc thành một file ngắn: bối cảnh, lựa chọn, hệ quả.",
+    "source": "https://adr.github.io",
+    "stages": ["plan", "docs"]
+  },
+  {
+    "title": "C4 model",
+    "summary": "Cách vẽ kiến trúc phần mềm theo bốn mức: context, container, component, code.",
+    "source": "https://c4model.com",
+    "stages": ["plan", "docs"]
+  },
+  {
+    "title": "Visual Studio Code",
+    "summary": "Trình soạn code có debugger, Git và extension cho hầu hết ngôn ngữ.",
+    "source": "https://code.visualstudio.com",
+    "stages": ["code"]
+  },
+  {
+    "title": "ripgrep",
+    "summary": "Tìm chữ hoặc regex trong cả repo rất nhanh, tự bỏ qua file trong .gitignore.",
+    "source": "https://github.com/BurntSushi/ripgrep",
+    "stages": ["explore", "code"]
+  },
+  {
+    "title": "Ruff",
+    "summary": "Linter và formatter Python viết bằng Rust, rất nhanh, thay cho Flake8, isort và Black.",
+    "source": "https://docs.astral.sh/ruff/",
+    "stages": ["code", "review"]
+  },
+  {
+    "title": "mypy",
+    "summary": "Kiểm tra kiểu tĩnh cho Python theo type hint, bắt lỗi trước khi chạy.",
+    "source": "https://mypy-lang.org",
+    "stages": ["code", "review"]
+  },
+  {
+    "title": "ESLint",
+    "summary": "Linter cho JavaScript và TypeScript: bắt lỗi và giữ quy ước code chung.",
+    "source": "https://eslint.org",
+    "stages": ["code", "review"]
+  },
+  {
+    "title": "uv",
+    "summary": "Quản lý phiên bản Python, môi trường ảo và thư viện kèm lockfile, nhanh hơn pip nhiều lần.",
+    "source": "https://docs.astral.sh/uv/",
+    "stages": ["code", "deps"]
+  },
+  {
+    "title": "SonarQube Cloud",
+    "summary": "Phân tích code trên mỗi pull request: bug, code smell, lỗ hổng và độ phủ test.",
+    "source": "https://sonarcloud.io",
+    "stages": ["review", "security"]
+  },
+  {
+    "title": "delta",
+    "summary": "Hiển thị git diff dễ đọc: tô màu cú pháp, đánh dấu từng từ đổi, xem hai cột.",
+    "source": "https://github.com/dandavison/delta",
+    "stages": ["review", "git"]
+  },
+  {
+    "title": "Semgrep",
+    "summary": "Quét code tìm lỗi bảo mật và bug theo luật; luật viết giống chính đoạn code cần tìm.",
+    "source": "https://semgrep.dev",
+    "stages": ["review", "security"]
+  },
+  {
+    "title": "GitHub CodeQL",
+    "summary": "Phân tích code như truy vấn dữ liệu để tìm lỗ hổng; chạy trong GitHub code scanning.",
+    "source": "https://codeql.github.com",
+    "stages": ["review", "security"]
+  },
+  {
+    "title": "Playwright",
+    "summary": "Test end-to-end trên Chromium, Firefox và WebKit; tự chờ phần tử, có trace để xem lại lỗi.",
+    "source": "https://playwright.dev",
+    "stages": ["test"]
+  },
+  {
+    "title": "Vitest",
+    "summary": "Test runner cho dự án Vite và TypeScript, API giống Jest, chạy nhanh.",
+    "source": "https://vitest.dev",
+    "stages": ["test"]
+  },
+  {
+    "title": "pytest",
+    "summary": "Framework test cho Python: fixture, parametrize và nhiều plugin (như pytest-django).",
+    "source": "https://docs.pytest.org",
+    "stages": ["test"]
+  },
+  {
+    "title": "k6",
+    "summary": "Load test bằng script JavaScript: API chịu được bao nhiêu request và độ trễ p95 ra sao.",
+    "source": "https://github.com/grafana/k6",
+    "stages": ["test", "observe"]
+  },
+  {
+    "title": "hyperfine",
+    "summary": "Đo thời gian chạy của một lệnh nhiều lần, có thống kê, để so hai cách làm.",
+    "source": "https://github.com/sharkdp/hyperfine",
+    "stages": ["test"]
+  },
+  {
+    "title": "git bisect",
+    "summary": "Tìm commit gây ra lỗi bằng tìm kiếm nhị phân qua lịch sử.",
+    "source": "https://git-scm.com/docs/git-bisect",
+    "stages": ["test", "git"]
+  },
+  {
+    "title": "gitleaks",
+    "summary": "Quét repo và lịch sử git tìm secret (API key, mật khẩu) bị commit nhầm.",
+    "source": "https://github.com/gitleaks/gitleaks",
+    "stages": ["security", "git"]
+  },
+  {
+    "title": "git-filter-repo",
+    "summary": "Viết lại lịch sử git: xóa file hay secret khỏi mọi commit (thay cho git filter-branch).",
+    "source": "https://github.com/newren/git-filter-repo",
+    "stages": ["security", "git"]
+  },
+  {
+    "title": "Trivy",
+    "summary": "Quét lỗ hổng trong image Docker, thư viện, file hạ tầng (IaC) và secret.",
+    "source": "https://github.com/aquasecurity/trivy",
+    "stages": ["security", "deps"]
+  },
+  {
+    "title": "Bandit",
+    "summary": "Quét code Python tìm lỗi bảo mật hay gặp: eval, subprocess với shell=True, mật khẩu viết cứng.",
+    "source": "https://github.com/PyCQA/bandit",
+    "stages": ["security"]
+  },
+  {
+    "title": "Snyk",
+    "summary": "Tìm và sửa lỗ hổng trong thư viện, code, container và IaC; tự mở PR nâng phiên bản.",
+    "source": "https://snyk.io",
+    "stages": ["security", "deps"]
+  },
+  {
+    "title": "pip-audit",
+    "summary": "Kiểm tra các thư viện Python đang dùng có lỗ hổng đã công bố không.",
+    "source": "https://github.com/pypa/pip-audit",
+    "stages": ["security", "deps"]
+  },
+  {
+    "title": "npm audit",
+    "summary": "Báo lỗ hổng đã biết trong cây phụ thuộc npm và gợi ý bản sửa.",
+    "source": "https://docs.npmjs.com/cli/commands/npm-audit",
+    "stages": ["security", "deps"]
+  },
+  {
+    "title": "OSV-Scanner",
+    "summary": "Quét lockfile của nhiều hệ sinh thái với cơ sở dữ liệu lỗ hổng mở OSV.",
+    "source": "https://github.com/google/osv-scanner",
+    "stages": ["security", "deps"]
+  },
+  {
+    "title": "Dependabot",
+    "summary": "GitHub tự mở pull request nâng phiên bản thư viện và cảnh báo lỗ hổng.",
+    "source": "https://docs.github.com/en/code-security/dependabot",
+    "stages": ["deps"]
+  },
+  {
+    "title": "lefthook",
+    "summary": "Quản lý git hook (pre-commit, pre-push) nhanh, cấu hình trong một file YAML.",
+    "source": "https://github.com/evilmartians/lefthook",
+    "stages": ["git", "ci"]
+  },
+  {
+    "title": "pre-commit",
+    "summary": "Framework git hook cho nhiều ngôn ngữ: chạy linter, formatter trước mỗi commit.",
+    "source": "https://pre-commit.com",
+    "stages": ["git", "ci"]
+  },
+  {
+    "title": "GitHub CLI",
+    "summary": "Làm việc với GitHub từ terminal: pull request, issue, Actions, release.",
+    "source": "https://cli.github.com",
+    "stages": ["git", "ci"]
+  },
+  {
+    "title": "GitHub Actions",
+    "summary": "CI/CD ngay trong GitHub: chạy test, build, deploy theo mỗi push hay pull request.",
+    "source": "https://github.com/features/actions",
+    "stages": ["ci"]
+  },
+  {
+    "title": "Docker",
+    "summary": "Đóng gói app và phụ thuộc thành container chạy giống nhau ở máy dev, CI và server.",
+    "source": "https://www.docker.com",
+    "stages": ["ci"]
+  },
+  {
+    "title": "Sentry",
+    "summary": "Bắt lỗi kèm stack trace từ app đang chạy, gom theo release, có theo dõi hiệu năng.",
+    "source": "https://sentry.io",
+    "stages": ["observe"]
+  },
+  {
+    "title": "Grafana",
+    "summary": "Dashboard và cảnh báo cho metric, log, trace từ nhiều nguồn dữ liệu.",
+    "source": "https://grafana.com",
+    "stages": ["observe"]
+  },
+  {
+    "title": "Prometheus",
+    "summary": "Thu thập metric dạng chuỗi thời gian và gửi cảnh báo; chuẩn phổ biến để giám sát server.",
+    "source": "https://prometheus.io",
+    "stages": ["observe"]
+  },
+  {
+    "title": "OpenTelemetry",
+    "summary": "Chuẩn mở để gắn trace, metric, log vào code và gửi tới backend giám sát nào cũng được.",
+    "source": "https://opentelemetry.io",
+    "stages": ["observe"]
+  },
+  {
+    "title": "Uptime Kuma",
+    "summary": "Tự host để theo dõi site còn chạy không và báo ngay khi sập.",
+    "source": "https://github.com/louislam/uptime-kuma",
+    "stages": ["observe"]
+  },
+  {
+    "title": "psql",
+    "summary": "Client dòng lệnh của PostgreSQL: chạy query, xem cấu trúc bảng, đo thời gian từng câu.",
+    "source": "https://www.postgresql.org/docs/current/app-psql.html",
+    "stages": ["data"]
+  },
+  {
+    "title": "EXPLAIN ANALYZE",
+    "summary": "Xem PostgreSQL chạy một query thế nào: dùng index nào, tốn bao lâu ở từng bước.",
+    "source": "https://www.postgresql.org/docs/current/using-explain.html",
+    "stages": ["data"]
+  },
+  {
+    "title": "explain.dalibo.com",
+    "summary": "Dán kết quả EXPLAIN của PostgreSQL để xem kế hoạch query dạng cây và thấy bước chậm nhất.",
+    "source": "https://explain.dalibo.com",
+    "stages": ["data"]
+  }
+]
