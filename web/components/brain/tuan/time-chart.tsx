@@ -88,7 +88,8 @@ function WeekSplit({ time }: { time: ApiWeekTime }) {
 /**
  * Stacked columns per day (objective hours at the baseline), hover or focus shows the values (WCAG 1.4.13): the
  * pointer can move onto the tooltip, which stays until the pointer and the focus leave the column or Escape hides it
- * (the focus stays where it is).
+ * (the focus stays where it is). The focus moving to a column shows that column even with the pointer resting on
+ * another; a hover ending shows the focused column again.
  */
 function DayColumns({ days }: { days: ApiDayWork[] }) {
   const t = useT();
@@ -140,7 +141,11 @@ function DayColumns({ days }: { days: ApiDayWork[] }) {
                   aria-label={label}
                   onMouseEnter={() => setHovered(i)}
                   onMouseLeave={() => setHovered((h) => (h === i ? null : h))}
-                  onFocus={() => setFocused(i)}
+                  onFocus={() => {
+                    // the latest trigger wins: a hover elsewhere would show another day beside this ring
+                    setFocused(i);
+                    setHovered(null);
+                  }}
                   onBlur={() => setFocused((f) => (f === i ? null : f))}
                   className="relative flex flex-1 flex-col items-center justify-end rounded-md outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
                 >
