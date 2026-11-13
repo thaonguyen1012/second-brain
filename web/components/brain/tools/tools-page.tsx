@@ -71,7 +71,7 @@ function rowFocusTarget(target: { id: number; group: ToolGroupKey } | null): HTM
 
 /**
  * The official site of the tool, in a new tab: an icon button tooltipped with the site. Many tools share a site
- * (github.com), so the name also says which tool, after the tooltip's words.
+ * (github.com), so the name also says which tool: all the tooltip's words first, unbroken (WCAG 2.5.3), then the tool.
  */
 function SourceLink({ url, title }: { url: string; title: string }) {
   const t = useT();
@@ -84,7 +84,7 @@ function SourceLink({ url, title }: { url: string; title: string }) {
           <Button
             size="icon-sm"
             variant="ghost"
-            aria-label={t('Mở {site}: "{title}" (tab mới)', { site, title })}
+            aria-label={t('Mở {site} (tab mới): "{title}"', { site, title })}
             render={<a href={url} target="_blank" rel="noopener noreferrer" />}
           />
         }

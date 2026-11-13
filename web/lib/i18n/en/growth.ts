@@ -287,7 +287,7 @@ export const growth = {
     'Tools good engineers use at each stage of the work, and tools to learn by dissecting real code.',
   'Mọi công đoạn': 'All stages',
   'Mở {site} (tab mới)': 'Open {site} (new tab)',
-  'Mở {site}: "{title}" (tab mới)': 'Open {site}: "{title}" (new tab)',
+  'Mở {site} (tab mới): "{title}"': 'Open {site} (new tab): "{title}"',
   'Không có công cụ nào khớp bộ lọc.': 'No tools match the filters.',
   'Chưa có công cụ nào': 'No tools yet',
   'Lưu công cụ bạn dùng hoặc muốn thử, kèm một dòng dùng để làm gì; hoặc chạy <code>manage.py seed_tools</code> một lần để có sẵn danh sách gợi ý.':
