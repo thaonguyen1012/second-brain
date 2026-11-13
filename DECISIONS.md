@@ -229,13 +229,32 @@ fold at 1280x720 and 390x844; no layout shift; `make check` and the JS budget ho
   it. The page `/phat-trien/cong-cu/` sits in the Growth group of the sidebar; the Library still lists every type.
 * Every Item gains `summary`: one line on what it is, for a tool "what it is for"; in the API, `?q=` and the export.
 * Stages are tags from one fixed list (`web/lib/tools.ts`, the same slugs in `backend/library/tools.py`), learning
-  first: reading and dissecting codebases, learning by doing, then plan, code, review, test, security, dependencies,
-  git, CI/CD, observability, data, AI and docs. A tool shows under each of its stages, "Other" without one.
+  first: reading and dissecting codebases, learning by doing, then plan, code, interfaces and UI libraries, review,
+  test, security, dependencies, git, CI/CD, observability, data, AI and docs. A tool shows under each of its stages,
+  "Other" without one.
 * A tool's statuses read Want to try / In use / Mastered / Dropped (the shared four statuses of an Item).
 * A tool's picture is a logo, uploaded by hand (a site's OG image is a banner, so no automatic fetch). Until there is
   one, the row shows its stage's lucide icon: ink colour, no colour per stage, no tile.
-* `manage.py seed_tools` adds 86 well-known tools (summary, official link, stages) for the owner when they choose to
-  run it; it never overwrites a tool they already have.
+* Two views: the list of rows, and a grid of cards (`?view=grid`, remembered per browser) with the logo or the
+  section's icon, the name, the summary, the status and the site link; the same sections and filters in both.
+* An "Interfaces & UI libraries" stage (`ui`, after code) holds UI and animation libraries and UI references; UI
+  courses sit under learning by doing. Entries taken from a curated list written around 2023 were checked against
+  their state in November 2026: renamed ones under their current name (Framer Motion is Motion, Godly is Recent),
+  dead, unmaintained or CSS-replaced ones left out (Fig, Vaul, React Wrap Balancer, Tremor).
+* `manage.py seed_tools` adds 111 well-known tools (summary, official link, stages) for the owner when they choose to
+  run it; it never overwrites a tool they already have, so running it again only adds the new ones.
+
+### 9.11 Accessibility (13/11/2026)
+
+* The rules of the `fixing-accessibility` skill (ibelick/ui-skills, MIT, a copy in `.claude/skills/`) apply on top
+  of `web/DESIGN.md`; the patterns they settled are in DESIGN.md §4-§6.
+* Two passes, each checked with axe-core (WCAG 2.2 AA) on fixtures and by keyboard: names for every control (row
+  menus and repeated row buttons named after their record), loading states and notices read out, form errors tied to
+  their fields, a skip link with one `<main>`, a banner and a whole nav, view switches tied to their tabpanel, a
+  switch that turns single-key shortcuts off (WCAG 2.1.4), a hoverable and dismissible chart tooltip, links in text
+  underlined, text in the guide pictures at 4.5:1, and the focus kept on a row after a delete.
+* Colour tokens and the registry components are not changed by these passes; their own findings (the destructive
+  red at 3.8:1 on white) wait for a design decision.
 
 ## 10. Engineering standards for phase 2 (01/11/2026)
 

@@ -11,6 +11,14 @@ in the commit that finishes the work.
 
 ## Done
 
+* Accessibility, two passes (13/11/2026, DECISIONS 9.11, DESIGN.md §4-§6): the `fixing-accessibility` skill in
+  `.claude/skills/`; controls named after their record, loading states and notices read out, form errors tied to
+  their fields, a skip link and landmarks, view switches tied to their tabpanel, a switch for single-key shortcuts,
+  the week chart tooltip, links in text underlined, guide picture contrast, focus after deletes. axe over 63 page
+  states: 384 → 336 nodes, no new ones. Open: label-content-name-mismatch on the sidebar count rows and a few
+  buttons, the destructive red at 3.8:1, focus after Escape in four dialogs, the Item Sheet's scroll area focus ring.
+* Tools page, grid view and UI stage (13/11/2026, DECISIONS 9.10): a List / Grid switch; an "Interfaces & UI
+  libraries" stage; 111 seed tools, each new one checked against its current state.
 * Tools page (13/11/2026): tools engineers use at each stage of the work, and tools to learn by reading code and by
   doing, as Items of type `tool` on `/phat-trien/cong-cu/` (DECISIONS 9.10): a section per stage with its icon,
   status and stage filters, a one-line `summary` on every Item, `manage.py seed_tools` with 86 tools. Commits: Add the
