@@ -4,10 +4,14 @@ import { useT } from '@/lib/i18n/client';
 /**
  * "Bỏ qua tới nội dung" (WCAG 2.4.1): the page's first tab stop, out of sight until it has the focus, then a small
  * popover-like button at the top left (Button's default size, radius and focus ring; DESIGN.md §6). It hands the
- * focus to `target`, which takes it with tabIndex -1, without scrolling (a phone's lesson page would slide its first
- * lines under the sticky bar) and without a #hash: a hash entry carries no App Router state, so Back from the next
- * page would land on it with that next page still showing (checked 13/11/2026). Without JavaScript it is a plain
- * in-page link.
+ * focus to `target` without scrolling (a phone's lesson page would slide its first lines under the sticky bar) and
+ * without a #hash: a hash entry carries no App Router state, so Back from the next page would land on it with that
+ * next page still showing (checked 13/11/2026). Without JavaScript it is a plain in-page link.
+ *
+ * The target is focusable only while it holds that focus (tabindex -1 until its blur, as GOV.UK Frontend's skip
+ * link does, or until the next pointer press): a tabindex on it makes Chrome focus the whole region on a click in its
+ * text, and the next Tab then goes back to the region's first control and scrolls the page to the top (review
+ * 13/11/2026). Dropped at the press, a click in the text after the skip leaves the next Tab where it clicked.
  */
 export function SkipLink({ target }: { target: string }) {
   const t = useT();
@@ -18,6 +22,16 @@ export function SkipLink({ target }: { target: string }) {
         const el = document.getElementById(target);
         if (!el) return;
         e.preventDefault();
+        if (!el.hasAttribute('tabindex')) {
+          const drop = () => {
+            el.removeAttribute('tabindex');
+            el.removeEventListener('blur', drop);
+            document.removeEventListener('pointerdown', drop, true);
+          };
+          el.setAttribute('tabindex', '-1');
+          el.addEventListener('blur', drop);
+          document.addEventListener('pointerdown', drop, true);
+        }
         el.focus({ preventScroll: true });
       }}
       className="fixed start-4 top-4 z-50 inline-flex h-9 items-center rounded-lg border bg-popover px-[calc(--spacing(3)-1px)] text-base font-medium text-popover-foreground shadow-popover outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background not-focus:sr-only sm:h-8 sm:text-sm"

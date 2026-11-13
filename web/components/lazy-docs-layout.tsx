@@ -47,7 +47,7 @@ function markTitles(nodes: PageTree.Node[], locale: Locale): PageTree.Node[] {
 
 /**
  * DocsLayout whose sidebar starts with the server's shell tree and loads the full book tree. The skip link before it
- * jumps the lesson tree to the lesson (DocsPage's `#nd-page`, focusable in the docs page).
+ * jumps the lesson tree to the lesson (DocsPage's `#nd-page`, focusable while the skip link's focus is on it).
  */
 export function LazyDocsLayout({ book, tree, ...props }: Props) {
   const locale = useLocale();

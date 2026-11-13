@@ -307,7 +307,8 @@ const MAIN_ID = 'main-content';
  * App frame for non-lesson pages: sidebar (drawer on mobile) and a sticky top bar with search, inbox and theme.
  * Landmarks: the sidebar's nav, the top bar as the banner, the page as the one main; the skip link comes first. The
  * column beside the sidebar is SidebarInset's box as a div: the registry renders it as a <main>, which would put the
- * top bar inside the page's main. The main takes the focus without a ring: it is not a control.
+ * top bar inside the page's main. The main is focusable only while the skip link's focus is on it (skip-link.tsx),
+ * and takes that focus without a ring: it is not a control.
  * `roadmap`: false hides the Lộ trình row (no content/roadmap.json; the layouts read lib/content/roadmap.ts).
  */
 export function AppShell({ children, roadmap = true }: { children: ReactNode; roadmap?: boolean }) {
@@ -325,7 +326,7 @@ export function AppShell({ children, roadmap = true }: { children: ReactNode; ro
             <ThemeToggle />
           </div>
         </header>
-        <main id={MAIN_ID} tabIndex={-1} className="flex flex-1 flex-col outline-none">
+        <main id={MAIN_ID} className="flex flex-1 flex-col outline-none">
           {children}
         </main>
       </div>
