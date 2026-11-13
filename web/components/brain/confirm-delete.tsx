@@ -212,9 +212,29 @@ export function ConfirmDelete({
             </p>
           )}
         </AlertDialogHeader>
+        {/* Never natively disabled while the DELETE runs: a disabled button drops the focus to <body>, where it would
+            stay after a failure too (Safari leaves it on "Hủy" after a click on "Xóa"). aria-disabled with the
+            disabled look; confirm() and change() ignore presses meanwhile. */}
         <AlertDialogFooter>
-          <AlertDialogClose render={<Button variant="ghost" type="button" disabled={busy} />}>{t('Hủy')}</AlertDialogClose>
-          <Button variant="destructive" type="button" onClick={() => void confirm()} disabled={busy}>
+          <AlertDialogClose
+            render={
+              <Button
+                variant="ghost"
+                type="button"
+                aria-disabled={busy || undefined}
+                className="aria-disabled:pointer-events-none aria-disabled:opacity-64"
+              />
+            }
+          >
+            {t('Hủy')}
+          </AlertDialogClose>
+          <Button
+            variant="destructive"
+            type="button"
+            onClick={() => void confirm()}
+            aria-disabled={busy || undefined}
+            className="aria-disabled:pointer-events-none aria-disabled:opacity-64"
+          >
             {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
             {confirmLabel ?? t('Xóa')}
           </Button>
