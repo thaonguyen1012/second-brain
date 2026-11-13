@@ -112,6 +112,7 @@ export function ItemImageField({
   const t = useT();
   const labelId = useId();
   const statusId = useId();
+  const problemId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadButton = useRef<HTMLButtonElement>(null);
   // The picked file's preview URL: made in the pick handler (not in an effect), revoked on the next pick and on
@@ -189,7 +190,8 @@ export function ItemImageField({
               size="sm"
               variant="outline"
               disabled={disabled || reading}
-              aria-describedby={statusId}
+              // a refused file is described on the button that picks one (the focus is back on it after the pick)
+              aria-describedby={problem ? `${statusId} ${problemId}` : statusId}
               onClick={() => fileInput.current?.click()}
             >
               <ImagePlus aria-hidden />
@@ -232,7 +234,7 @@ export function ItemImageField({
             {status}
           </p>
           {problem && (
-            <p className="text-xs text-destructive-foreground" role="alert">
+            <p id={problemId} className="text-xs text-destructive-foreground" role="alert">
               {problem}
             </p>
           )}

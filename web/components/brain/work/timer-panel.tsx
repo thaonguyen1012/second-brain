@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
 import { ApiErrorState, describeApiError } from '../api-state';
 import { ChoiceSelect } from '../choice-select';
+import { useInvalidFields } from '../invalid-fields';
 import { fieldErrors, formatClock, formatMinutes, isTyping } from './format';
 import type { TimerState } from './use-work';
 
@@ -104,6 +105,7 @@ export function TimerPanel({
   const [objective, setObjective] = useState('none');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
   const running = timer.running;
   const startButton = useRef<HTMLButtonElement>(null);
   const focusStart = useRef(false);
@@ -135,6 +137,7 @@ export function TimerPanel({
     if (projectId === null || busy) return;
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const entry = await timer.start({
         project: projectId,
@@ -148,6 +151,7 @@ export function TimerPanel({
     } catch (err) {
       const e = toApiError(err);
       setError((e.status === 400 && fieldErrors(e.body, t)) || describeApiError(e, t).title);
+      invalid.fromError(e, t);
     } finally {
       setBusy(false);
     }
@@ -280,6 +284,8 @@ export function TimerPanel({
             >
               {projects.length > 0 ? (
                 <ChoiceSelect
+                  aria-required
+                  {...invalid.field('project')}
                   label={t('Dự án')}
                   value={String(projectId ?? '')}
                   onChange={(v) => setPicked(Number(v))}
@@ -305,6 +311,7 @@ export function TimerPanel({
                 </div>
               )}
               <Input
+                {...invalid.field('note')}
                 aria-label={t('Ghi chú (đang làm gì)')}
                 placeholder={t('Đang làm gì? (không bắt buộc)')}
                 value={note}
@@ -317,6 +324,7 @@ export function TimerPanel({
               </label>
               {objectiveChoices.length > 1 ? (
                 <ChoiceSelect
+                  {...invalid.field('objective')}
                   label={t('Mục tiêu tuần này')}
                   value={objective}
                   onChange={setObjective}
@@ -332,6 +340,7 @@ export function TimerPanel({
               </Button>
             </div>
           </div>
+          {invalid.copies}
         </form>
       )}
       {errorLine}

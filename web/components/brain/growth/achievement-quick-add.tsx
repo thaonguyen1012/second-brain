@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
+import { useInvalidFields } from '../invalid-fields';
 import { WriteError } from '../tuan/week-section';
 
 /**
@@ -30,11 +31,13 @@ export function AchievementQuickAdd({
   const [impact, setImpact] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const invalid = useInvalidFields();
 
   async function add() {
     if (!title.trim() || busy) return;
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const a = await weeksApi.addAchievement({ title: title.trim(), impact: impact.trim(), date });
       onAdded(a);
@@ -42,6 +45,7 @@ export function AchievementQuickAdd({
       setImpact('');
     } catch (err) {
       setError(err);
+      invalid.fromError(err, t);
     } finally {
       setBusy(false);
     }
@@ -61,6 +65,8 @@ export function AchievementQuickAdd({
           onChange={(e) => setTitle(e.target.value)}
           placeholder={titlePlaceholder ?? t('Đã làm gì')}
           aria-label={t('Thành tựu', null, 'field')}
+          aria-required
+          {...invalid.field('title')}
           maxLength={200}
           className="col-span-2 @min-[27rem]:col-span-1"
         />
@@ -69,12 +75,14 @@ export function AchievementQuickAdd({
           onChange={(e) => setImpact(e.target.value)}
           placeholder={t('Con số tác động')}
           aria-label={t('Tác động (con số)')}
+          {...invalid.field('impact')}
           maxLength={200}
         />
         <Button type="submit" variant="outline" disabled={!title.trim()} loading={busy}>
           <Plus aria-hidden />
           {t('Thêm')}
         </Button>
+        {invalid.copies}
       </form>
       <WriteError error={error} />
     </div>

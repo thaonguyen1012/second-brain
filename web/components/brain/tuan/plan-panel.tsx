@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n/client';
+import { useInvalidFields } from '../invalid-fields';
 import { ObjectiveHint, ObjectivesEditor, type ObjectivesUpdate } from './objectives-editor';
 import { WeekSection, WriteError } from './week-section';
 import { clockTime, weekRange } from './week-utils';
@@ -105,6 +106,7 @@ function PlanJournal({
   const [saved, setSaved] = useState(week.planningJournal);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const invalid = useInvalidFields();
   const dirty = text !== saved;
   const hope = t('{week} mình mong...', { week: weekName });
 
@@ -112,12 +114,14 @@ function PlanJournal({
     if (busy) return;
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       const next = await weeksApi.plan(start, { planningJournal: text });
       setSaved(next.planningJournal);
       onSaved(next);
     } catch (err) {
       setError(err);
+      invalid.fromError(err, t);
     } finally {
       setBusy(false);
     }
@@ -127,6 +131,7 @@ function PlanJournal({
     <WeekSection id="week-plan-journal" title={t('Kỳ vọng cho {week}', { week: weekName })}>
       <Textarea
         aria-labelledby="week-plan-journal"
+        {...invalid.field('planningJournal')}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
@@ -138,6 +143,7 @@ function PlanJournal({
         rows={6}
         placeholder={`${hope.charAt(0).toUpperCase()}${hope.slice(1)}`}
       />
+      {invalid.copies}
       {/* Quiet at rest (DESIGN.md D2, §1.2): the objectives are the focal point, so the save button is outline
           and appears only while there is something to save; Cmd/Ctrl+Enter in the field saves too. */}
       <div className="flex min-h-8 flex-wrap items-center gap-2">

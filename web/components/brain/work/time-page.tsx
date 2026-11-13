@@ -359,6 +359,8 @@ export function TimePage() {
               <Input
                 id="time-filter-from"
                 type="date"
+                aria-invalid={badRange || undefined}
+                aria-describedby={badRange ? 'time-filter-range-error' : undefined}
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
                 className="sm:w-auto"
@@ -369,6 +371,8 @@ export function TimePage() {
               <Input
                 id="time-filter-to"
                 type="date"
+                aria-invalid={badRange || undefined}
+                aria-describedby={badRange ? 'time-filter-range-error' : undefined}
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
                 className="sm:w-auto"
@@ -387,7 +391,8 @@ export function TimePage() {
 
           <ApiStaleAlert result={entries} />
           {badRange ? (
-            <p className="text-sm text-destructive-foreground" role="alert">
+            // both dates name it as their error
+            <p id="time-filter-range-error" className="text-sm text-destructive-foreground" role="alert">
               {t('"Từ ngày" phải trước hoặc bằng "Đến ngày".')}
             </p>
           ) : entries.error && !entries.data ? (

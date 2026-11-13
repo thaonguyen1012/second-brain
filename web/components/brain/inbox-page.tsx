@@ -29,6 +29,7 @@ import { BrainCard } from './brain-card';
 import { ConfirmDelete } from './confirm-delete';
 import { EmptyPanel } from './empty-panel';
 import { refreshInboxCount, useInboxCount } from './inbox-count';
+import { useInvalidFields } from './invalid-fields';
 import { ItemDialog } from './item-dialog';
 import { KeyLegend } from './key-legend';
 import { NoteDialog, type NoteDraft } from './library/note-dialog';
@@ -82,18 +83,25 @@ function CaptureBox({
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const invalid = useInvalidFields();
 
   const submit = async () => {
     if (!value.trim() || busy) return;
     setBusy(true);
     setError(null);
+    invalid.clear();
     try {
       onCaptured(await api.createInboxEntry(captureBody(value)));
       setValue('');
       void refreshInboxCount();
     } catch (err) {
       const e = toApiError(err);
-      setError(e.status === 400 ? t('Link không hợp lệ (chỉ nhận http và https).') : describeApiError(e, t).title);
+      // a refused capture is about the one field (its link): marked, and the focus goes back to it
+      setError(
+        e.status === 400
+          ? invalid.mark(t('Link không hợp lệ (chỉ nhận http và https).'), 'capture')
+          : describeApiError(e, t).title,
+      );
     } finally {
       setBusy(false);
     }
@@ -112,6 +120,8 @@ function CaptureBox({
       </label>
       <Textarea
         id="capture"
+        aria-required
+        {...invalid.field('capture')}
         ref={inputRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -125,6 +135,7 @@ function CaptureBox({
         placeholder={t('Dán một link hoặc ghi một ý tưởng…')}
         rows={2}
       />
+      {invalid.copies}
       <div className="flex flex-wrap items-center gap-2 px-1">
         <span className="text-xs text-muted-foreground max-sm:hidden pointer-coarse:hidden">
           <SaveKeys /> {t('để lưu')}

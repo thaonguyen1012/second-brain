@@ -6,6 +6,7 @@ import { type ApiReviewField, type ApiReviewPatch, type ApiWeekOpportunities, we
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n/client';
+import { useInvalidFields } from '../invalid-fields';
 import { WeekSection, WriteError } from './week-section';
 import { clockTime, reviewQuestions } from './week-utils';
 import { SaveKeys } from '../save-keys';
@@ -36,6 +37,7 @@ export function ReviewJournal({
   const [saved, setSaved] = useState<Answers>(() => answersOf(week));
   const [state, setState] = useState<'idle' | 'saving' | 'error'>('idle');
   const [error, setError] = useState<unknown>(null);
+  const invalid = useInvalidFields();
   const [reviewedAt, setReviewedAt] = useState(week.reviewedAt);
   const busy = useRef(false);
   // A blur while a save is running queues its fields; they are sent with the latest text right after.
@@ -56,7 +58,8 @@ export function ReviewJournal({
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
 
-  async function save(fields: ApiReviewField[]) {
+  /** `focus`: a save asked for (Cmd/Ctrl+Enter, the button) takes the focus to a refused answer; one on blur never. */
+  async function save(fields: ApiReviewField[], focus = false) {
     if (fields.length === 0) return;
     if (busy.current) {
       for (const f of fields) queued.current.add(f);
@@ -65,6 +68,7 @@ export function ReviewJournal({
     busy.current = true;
     setState('saving');
     setError(null);
+    invalid.clear();
     const body: ApiReviewPatch = Object.fromEntries(fields.map((f) => [f, latest.current[f]]));
     try {
       const next = await weeksApi.saveReview(start, body);
@@ -74,6 +78,7 @@ export function ReviewJournal({
       onSaved(next);
     } catch (err) {
       setError(err);
+      invalid.fromError(err, t, undefined, { focus });
       setState('error');
     } finally {
       busy.current = false;
@@ -147,7 +152,7 @@ export function ReviewJournal({
               )}
               <Textarea
                 id={id}
-                aria-describedby={q.hint ? `${id}-hint` : undefined}
+                {...invalid.field(q.field, q.hint ? `${id}-hint` : undefined)}
                 placeholder={q.hint ? t(q.hint) : undefined}
                 className="[&_textarea]:min-h-8.5"
                 value={answers[q.field]}
@@ -156,7 +161,7 @@ export function ReviewJournal({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
-                    void save(dirtyFields);
+                    void save(dirtyFields, true);
                   }
                 }}
                 rows={1}
@@ -179,12 +184,13 @@ export function ReviewJournal({
           field also saves on blur and with Cmd/Ctrl+Enter, so nothing blue sits idle at the end of the journal. */}
       {(dirty || state === 'saving') && (
         <div className="flex">
-          <Button variant="outline" size="sm" onClick={() => void save(dirtyFields)} loading={state === 'saving'}>
+          <Button variant="outline" size="sm" onClick={() => void save(dirtyFields, true)} loading={state === 'saving'}>
             {t('Lưu nhìn lại')}
           </Button>
         </div>
       )}
       <WriteError error={error} />
+      {invalid.copies}
     </WeekSection>
   );
 }

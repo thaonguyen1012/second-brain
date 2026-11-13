@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
 import { StatusBadge } from '../brain-card';
 import { ConfirmDelete } from '../confirm-delete';
+import { useInvalidFields } from '../invalid-fields';
 import { RowMenu } from '../row-menu';
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WriteError } from './week-section';
@@ -105,6 +106,8 @@ export function ObjectivesEditor({
 }) {
   const t = useT();
   const [error, setError] = useState<unknown>(null);
+  // the add form's field, when the server refused a new objective
+  const invalid = useInvalidFields();
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<{ id: number; title: string } | null>(null);
@@ -141,6 +144,7 @@ export function ObjectivesEditor({
       lastWrite.current.set(id, n);
     }
     setError(null);
+    invalid.clear();
     onChange((list) => byPosition(list.map((x) => (changes.has(x.id) ? { ...x, ...changes.get(x.id) } : x))));
     try {
       await call();
@@ -199,12 +203,14 @@ export function ObjectivesEditor({
     if (!title || adding) return;
     setAdding(true);
     setError(null);
+    invalid.clear();
     try {
       const created = await weeksApi.addObjective(start, title);
       onChange((list) => [...list, created]);
       setDraft('');
     } catch (err) {
       setError(err);
+      invalid.fromError(err, t);
     } finally {
       setAdding(false);
     }
@@ -342,6 +348,8 @@ export function ObjectivesEditor({
             onChange={(e) => setDraft(e.target.value)}
             placeholder={t('Kết quả muốn có')}
             aria-label={t('Thêm mục tiêu')}
+            aria-required
+            {...invalid.field('title')}
             maxLength={200}
             className="flex-1"
           />
@@ -349,6 +357,7 @@ export function ObjectivesEditor({
             <Plus aria-hidden />
             {t('Thêm')}
           </Button>
+          {invalid.copies}
         </form>
       )}
 
