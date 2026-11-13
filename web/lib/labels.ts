@@ -22,6 +22,32 @@ export const itemStatuses: { value: ApiItemStatus; label: Msg; tone: Tone }[] = 
   { value: 'dropped', label: msg('Bỏ'), tone: 'outline' },
 ];
 
+/**
+ * The same four statuses and colours, read as a tool's use (owner 13/11/2026): Muốn thử, Đang dùng, Đã thành thạo,
+ * Bỏ. Wherever one tool's status shows; the board's lanes, which hold every type, keep the shared words.
+ */
+const toolStatuses: typeof itemStatuses = itemStatuses.map((s) => ({
+  ...s,
+  label: { planned: msg('Muốn thử'), active: msg('Đang dùng'), done: msg('Đã thành thạo'), dropped: s.label }[s.value],
+}));
+
+/** The statuses as an Item of `type` names them (a tool's own words, else the shared ones). */
+export const itemStatusesFor = (type?: string) => (type === 'tool' ? toolStatuses : itemStatuses);
+
+/** The one-click next step of the lifecycle on a row and the Item page (DECISIONS 4.2: "done" still needs a note). */
+const nextSteps: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: Msg }>> = {
+  planned: { to: 'active', label: msg('Bắt đầu') },
+  active: { to: 'done', label: msg('Xong') },
+};
+const toolNextSteps: typeof nextSteps = {
+  planned: { to: 'active', label: msg('Bắt đầu dùng') },
+  active: { to: 'done', label: msg('Đã thành thạo', 'step') },
+};
+
+/** The next step from `status` for an Item of `type`, or undefined (done, dropped). */
+export const itemNextStep = (status: ApiItemStatus | undefined, type?: string) =>
+  (type === 'tool' ? toolNextSteps : nextSteps)[status ?? 'planned'];
+
 export const inboxStatuses: { value: ApiInboxStatus; label: Msg; tone: Tone }[] = [
   { value: 'inbox', label: msg('Inbox'), tone: 'warning' },
   { value: 'later', label: msg('Đọc sau'), tone: 'info' },
@@ -44,7 +70,11 @@ export const destinations: Record<string, Msg> = {
 
 /** An Item type's label; an unknown type (a newer backend) shows its raw value. */
 export const itemTypeLabel = (type: string): Msg => itemTypes.find((x) => x.value === type)?.label ?? msg(type);
-export const itemStatusOf = (s: string | undefined) => itemStatuses.find((x) => x.value === s) ?? itemStatuses[0];
+/** A status's label and colour; with `type`, in that type's words (a tool's "Đang dùng"). */
+export const itemStatusOf = (s: string | undefined, type?: string) => {
+  const list = itemStatusesFor(type);
+  return list.find((x) => x.value === s) ?? list[0];
+};
 export const inboxStatusOf = (s: string) => inboxStatuses.find((x) => x.value === s) ?? inboxStatuses[0];
 
 /** Intl output with the day and month unpadded, so en-GB matches vi-VN and lib/dates formatDay ("8/11/2026"). */

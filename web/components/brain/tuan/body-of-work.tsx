@@ -89,7 +89,10 @@ function DayRow({ day, books, isToday }: { day: ApiDayWork; books: BookIndex; is
             <CheckCircle2 className="mt-1 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <span>
               <span className="text-muted-foreground">
-                {t('Xong {type}:', { type: t(itemTypeLabel(it.type)).toLowerCase() })}{' '}
+                {/* a tool is "done" once mastered */}
+                {it.type === 'tool'
+                  ? t('Đã thành thạo:')
+                  : t('Xong {type}:', { type: t(itemTypeLabel(it.type)).toLowerCase() })}{' '}
               </span>
               {it.title}
             </span>

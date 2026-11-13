@@ -146,6 +146,7 @@ export const week = {
   'Sổ tay:': 'Handbook:',
   '{n} trang học xong': { one: '{n} page done', other: '{n} pages done' },
   'Xong {type}:': 'Finished {type}:',
+  'Đã thành thạo:': 'Mastered:',
   'Inbox lưu trữ:': 'Archived from Inbox:',
   'Không tên': 'Untitled',
   'Giờ đã ghi:': 'Time logged:',

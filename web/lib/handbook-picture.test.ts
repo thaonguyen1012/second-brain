@@ -37,8 +37,21 @@ describe('itemPicture', () => {
     });
   });
 
+  it('shows the icon of a tool’s first stage until it has a logo', () => {
+    expect(itemPicture({ type: 'tool', tags: ['security', 'review'], imageUrl: null })).toEqual({
+      kind: 'stage',
+      stage: 'review',
+    });
+    expect(itemPicture({ type: 'tool', tags: [] })).toEqual({ kind: 'stage', stage: null });
+    expect(itemPicture({ type: 'tool', tags: ['git'], imageUrl: '/api/items/5/image?v=5' })).toMatchObject({
+      kind: 'image',
+      shape: 'logo',
+    });
+  });
+
   it('shows nothing otherwise', () => {
     expect(itemPicture({ type: 'book', source: 'James Clear', imageUrl: null })).toBeNull();
+    expect(itemPicture({ type: 'project', tags: ['security'], imageUrl: null })).toBeNull(); // only a tool has stages
     expect(itemPicture({ type: 'article', source: bookUrl(book) })).toBeNull(); // only a course is a handbook
   });
 });

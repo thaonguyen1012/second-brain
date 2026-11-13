@@ -117,6 +117,9 @@ the Vietnamese UI marks nothing `lang="en"`.
 | Đọc sau | Read later | inbox status |
 | Lưu trữ | Archive, archived | |
 | Dự định, đang làm, xong, bỏ | Planned, in progress, done, dropped | Item statuses |
+| Công cụ | Tools (page), tool | an Item type; the page under Phát triển |
+| Muốn thử, đang dùng, đã thành thạo, bỏ | Want to try, in use, mastered, dropped | a tool's statuses |
+| Công đoạn | Stages | a tool's stage tags (`lib/tools.ts`) |
 | Chưa quyết, giữ, làm, bỏ | Undecided, keep, build, drop | opportunity decisions |
 | Còn mới, đang cũ dần, đã mờ | Fresh, ageing, faded | skill freshness |
 | tự động | auto | the AI label (DESIGN.md D18) |

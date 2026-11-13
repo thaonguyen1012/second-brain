@@ -1,9 +1,11 @@
 'use client';
-import { useMemo, useState, type ComponentProps } from 'react';
+import { useId, useMemo, useState, type ComponentProps } from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import { api, type ApiItem, type ApiItemRequest, type ApiItemStatus, type ApiItemType } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
-import { fieldErrors, itemStatuses, itemTypes } from '@/lib/labels';
+import { fieldErrors, itemStatusesFor, itemTypes } from '@/lib/labels';
+import { toolStageIcons } from '@/lib/tool-icons';
+import { TOOL_STAGES, splitStageTags, toolStagesOf, type ToolStage } from '@/lib/tools';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,25 +28,54 @@ import { ItemImageField, KEEP_IMAGE, applyImageChange, imageErrorText, type Imag
 
 interface Form {
   title: string;
+  summary: string;
   type: ApiItemType;
   status: ApiItemStatus;
+  /** A tool's stages (the stage picker); the stage tags of any other type stay in `tags`. */
+  stages: ToolStage[];
+  /** The other tags, comma separated. */
   tags: string;
   source: string;
   rating: string;
 }
 
+const typedTags = (text: string) =>
+  text
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
 /** Form values of the edited Item, else of `draft` (a new Item prefilled by the caller), else empty. */
 const fromItem = (item: ApiItem | null, draft?: Partial<ApiItemRequest>): Form => {
   const i: Partial<ApiItemRequest> = item ?? draft ?? {};
+  const type = i.type ?? 'book';
+  const tags = i.tags ?? [];
+  const { stages, rest } = type === 'tool' ? splitStageTags(tags) : { stages: [], rest: tags };
   return {
     title: i.title ?? '',
-    type: i.type ?? 'book',
+    summary: i.summary ?? '',
+    type,
     status: i.status ?? 'planned',
-    tags: (i.tags ?? []).join(', '),
+    stages,
+    tags: rest.join(', '),
     source: i.source ?? '',
     rating: i.rating ? String(i.rating) : '',
   };
 };
+
+/**
+ * The form after a type change: becoming a tool moves stage tags typed in the text into the picker, and leaving it puts
+ * the picked stages back into the text, so a tag is never dropped unseen.
+ */
+function withType(form: Form, type: ApiItemType): Form {
+  if ((form.type === 'tool') === (type === 'tool')) return { ...form, type };
+  const typed = typedTags(form.tags);
+  if (type === 'tool') {
+    const { stages, rest } = splitStageTags(typed);
+    return { ...form, type, stages: toolStagesOf([...form.stages, ...stages]), tags: rest.join(', ') };
+  }
+  return { ...form, type, stages: [], tags: [...form.stages, ...typed].join(', ') };
+}
 
 function ItemForm({
   item,
@@ -62,13 +93,24 @@ function ItemForm({
   focusRating?: boolean;
 }) {
   const t = useT();
-  const typeOptions = useMemo(() => itemTypes.map((c) => ({ value: c.value, label: t(c.label) })), [t]);
-  const statusOptions = useMemo(() => itemStatuses.map((c) => ({ value: c.value, label: t(c.label) })), [t]);
+  const stagesId = useId();
   const [form, setForm] = useState<Form>(() => fromItem(item, draft));
+  const typeOptions = useMemo(() => itemTypes.map((c) => ({ value: c.value, label: t(c.label) })), [t]);
+  // a tool's statuses read as its use (Muốn thử, Đang dùng, Đã thành thạo, Bỏ)
+  const statusOptions = useMemo(
+    () => itemStatusesFor(form.type).map((c) => ({ value: c.value, label: t(c.label) })),
+    [t, form.type],
+  );
+  const tool = form.type === 'tool';
   const [image, setImage] = useState<ImageChange>(KEEP_IMAGE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const toggleStage = (stage: ToolStage) =>
+    setForm((f) => ({
+      ...f,
+      stages: f.stages.includes(stage) ? f.stages.filter((s) => s !== stage) : toolStagesOf([...f.stages, stage]),
+    }));
   // A handbook course shows its Sổ tay cover (lib/handbook-picture.ts): the field shows only while it still has a
   // picture of its own, to remove it. effectiveImageChange drops a change the field no longer shows.
   const handbook = form.type === 'course' && handbookPath(form.source) !== null;
@@ -108,12 +150,11 @@ function ItemForm({
     }
     const body = {
       title: form.title.trim(),
+      summary: form.summary.trim(),
       type: form.type,
       status: form.status,
-      tags: form.tags
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
+      // a tool's stages first, in the page's order, then the other tags
+      tags: [...(form.type === 'tool' ? form.stages : []), ...typedTags(form.tags)],
       source: form.source.trim(),
       rating,
     };
@@ -169,6 +210,15 @@ function ItemForm({
             autoFocus={!focusRating}
           />
         </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="item-summary">{tool ? t('Dùng để làm gì') : t('Tóm tắt một dòng')}</Label>
+          <Input
+            id="item-summary"
+            value={form.summary}
+            maxLength={300}
+            onChange={(e) => set('summary', e.target.value)}
+          />
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="item-type">{t('Loại')}</Label>
@@ -176,7 +226,7 @@ function ItemForm({
               id="item-type"
               label={t('Loại')}
               value={form.type}
-              onChange={(v) => set('type', v)}
+              onChange={(v) => setForm((f) => withType(f, v))}
               choices={typeOptions}
             />
           </div>
@@ -191,6 +241,31 @@ function ItemForm({
             />
           </div>
         </div>
+        {tool && (
+          // The stages a tool is used at: its tags, picked from the Công cụ page's list (lib/tools.ts)
+          <div className="flex flex-col gap-1.5">
+            <Label render={<span id={stagesId} />}>{t('Công đoạn')}</Label>
+            <div role="group" aria-labelledby={stagesId} className="flex flex-wrap gap-1.5">
+              {TOOL_STAGES.map((s) => {
+                const on = form.stages.includes(s.slug);
+                const Icon = toolStageIcons[s.slug];
+                return (
+                  <Button
+                    key={s.slug}
+                    type="button"
+                    size="xs"
+                    variant={on ? 'secondary' : 'outline'}
+                    aria-pressed={on}
+                    onClick={() => toggleStage(s.slug)}
+                  >
+                    <Icon aria-hidden />
+                    {t(s.label)}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="item-source">{t('Nguồn (tác giả, nền tảng, link)')}</Label>
           <Input id="item-source" value={form.source} onChange={(e) => set('source', e.target.value)} />
@@ -209,7 +284,9 @@ function ItemForm({
         )}
         <div className="grid gap-4 sm:grid-cols-[1fr_7rem]">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="item-tags">{t('Tag (cách nhau bằng dấu phẩy)')}</Label>
+            <Label htmlFor="item-tags">
+              {tool ? t('Tag khác (cách nhau bằng dấu phẩy)') : t('Tag (cách nhau bằng dấu phẩy)')}
+            </Label>
             <Input id="item-tags" value={form.tags} onChange={(e) => set('tags', e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -303,11 +380,14 @@ export function ItemDialog({
   focusRating?: boolean;
 }) {
   const t = useT();
+  const tool = (item?.type ?? draft?.type) === 'tool';
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} finalFocus={finalFocus}>
         <DialogHeader>
-          <DialogTitle>{item ? t('Sửa item') : t('Thêm item')}</DialogTitle>
+          <DialogTitle>
+            {item ? (tool ? t('Sửa công cụ') : t('Sửa item')) : tool ? t('Thêm công cụ') : t('Thêm item')}
+          </DialogTitle>
         </DialogHeader>
         {/* keyed so the form resets for each item */}
         {open && (

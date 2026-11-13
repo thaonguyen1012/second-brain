@@ -3,7 +3,7 @@ import type { Dictionary } from '../translate';
 
 export const library = {
   // Pages (app/[lang]/(home)/thu-vien/)
-  'Sách, phim, khóa học, bài viết và dự án.': 'Books, films, courses, articles and projects.',
+  'Sách, phim, khóa học, bài viết, dự án và công cụ.': 'Books, films, courses, articles, projects and tools.',
   'Ghi chú markdown; item xong cần có ghi chú.': 'Markdown notes; a done item needs a note.',
 
   // Items page (components/brain/library-page.tsx)
@@ -43,6 +43,13 @@ export const library = {
   '"{title}" bị xóa hẳn. Ghi chú liên kết vẫn giữ, chỉ mất liên kết; bằng chứng cho cơ hội giữ lại tiêu đề. Không hoàn tác được.':
     '"{title}" is deleted for good. Linked notes stay, only the link goes; evidence for an opportunity keeps the title. This cannot be undone.',
   'Thêm vào thư viện': 'Add to library',
+  // the one-line summary (every type; a tool's says what it is for) and a tool's stages (lib/tools.ts)
+  'Tóm tắt một dòng': 'One-line summary',
+  'Dùng để làm gì': 'What it is for',
+  'Tóm tắt': 'Summary',
+  'Công đoạn': 'Stages',
+  'Tag khác (cách nhau bằng dấu phẩy)': 'Other tags (separated by commas)',
+  'Sửa công cụ': 'Edit tool',
 
   // A done Item needs an output (components/brain/library/done-output.tsx); "rating" = an Item's 1-10 rating
   '## Highlights\n\n- \n\n## 3 ý chính\n\n1. \n2. \n3. \n': '## Highlights\n\n- \n\n## 3 key ideas\n\n1. \n2. \n3. \n',

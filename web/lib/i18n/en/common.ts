@@ -14,6 +14,12 @@ export const common = {
   'Đang làm': 'In progress',
   Xong: 'Done',
   Bỏ: 'Dropped',
+  // A tool's statuses and next steps (lib/labels.ts itemStatusesFor, itemNextStep)
+  'Muốn thử': 'Want to try',
+  'Đang dùng': 'In use',
+  'Đã thành thạo': 'Mastered',
+  'Bắt đầu dùng': 'Start using',
+  'step::Đã thành thạo': 'Mark as mastered',
   Inbox: 'Inbox',
   'Đọc sau': 'Read later',
   'Lưu trữ': 'Archived',

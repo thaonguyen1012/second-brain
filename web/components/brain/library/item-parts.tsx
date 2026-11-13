@@ -3,11 +3,10 @@ import Link from 'next/link';
 import { Briefcase, Maximize2, NotebookPen, Pencil, Plus, Star } from 'lucide-react';
 import type { ApiItem, ApiItemStatus } from '@/lib/api/client';
 import { itemPicture } from '@/lib/handbook-picture';
-import { formatDate, itemStatusOf, itemTypeLabel } from '@/lib/labels';
+import { formatDate, itemNextStep, itemStatusOf, itemTypeLabel } from '@/lib/labels';
 import { itemDateLabel, itemSourceLabel } from '@/lib/library-labels';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
-import { msg, type Msg } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { MenuItem, MenuLinkItem } from '@/components/ui/menu';
 import { StatusBadge } from '../brain-card';
@@ -28,12 +27,6 @@ export function itemListGrid(withPicture: boolean): string {
 
 // The parts of an Item on Thư viện: its row in the List, the body of its card on the Bảng (components/brain/
 // status-board.tsx) and the menu entries both share.
-
-/** The one-click next step of the lifecycle (DECISIONS 4.2); "done" still needs a note to count. */
-const nextStep: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: Msg }>> = {
-  planned: { to: 'active', label: msg('Bắt đầu') },
-  active: { to: 'done', label: msg('Xong') },
-};
 
 /**
  * Sửa, Viết ghi chú, Mở trang đầy đủ, Chấm điểm (a done film without a rating) and, for a project, Công việc. The
@@ -104,9 +97,9 @@ export function ItemRow({
   onRate: () => void;
 }) {
   const t = useT();
-  const s = itemStatusOf(item.status);
+  const s = itemStatusOf(item.status, item.type);
   const gap = missingOutput(item);
-  const step = nextStep[item.status ?? 'planned'];
+  const step = itemNextStep(item.status, item.type);
   const dates = [
     item.startedAt && t('bắt đầu {date}', { date: formatDate(item.startedAt, t) }),
     item.finishedAt && t('xong {date}', { date: formatDate(item.finishedAt, t) }),

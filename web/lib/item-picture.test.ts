@@ -11,6 +11,7 @@ import {
   isWebLink,
   ownPicture,
   shrinkTarget,
+  stagePicture,
   takesLogo,
   willFetchOnSave,
 } from './item-picture';
@@ -115,6 +116,15 @@ describe('ownPicture', () => {
     expect(ownPicture({ type: 'project', imageUrl: '/api/items/2/image?v=2' })).toMatchObject({ shape: 'logo' });
     expect(ownPicture({ type: 'book', imageUrl: null })).toBeNull();
     expect(ownPicture({ type: 'book', imageUrl: 'https://example.com/cover.jpg' })).toBeNull();
+  });
+});
+
+describe('stagePicture', () => {
+  it('stands in for a tool’s logo with its first stage, or the wrench without one', () => {
+    expect(stagePicture({ type: 'tool', tags: ['docs', 'plan'] })).toEqual({ kind: 'stage', stage: 'plan' });
+    expect(stagePicture({ type: 'tool', tags: ['cli'] })).toEqual({ kind: 'stage', stage: null });
+    expect(stagePicture({ type: 'tool' })).toEqual({ kind: 'stage', stage: null });
+    expect(stagePicture({ type: 'book', tags: ['security'] })).toBeNull();
   });
 });
 

@@ -258,4 +258,21 @@ export const growth = {
   '{statement} (ghi {date})': '{statement} (made {date})',
   'Đọc các nhà tiên tri để lấy khung tư duy, không để tin dự báo. Ghi lại, 6 tháng sau chấm lại.':
     'Read forecasters for their ways of thinking, not to believe their forecasts. Write it down, then score it 6 months later.',
+
+  // Tool stages, in the Công cụ page's order (lib/tools.ts)
+  'Đọc & mổ xẻ codebase': 'Reading & dissecting codebases',
+  'Học qua thực hành': 'Learning by doing',
+  'Lên kế hoạch & thiết kế': 'Planning & design',
+  'Viết code': 'Writing code',
+  'Review code': 'Code review',
+  'Kiểm thử': 'Testing',
+  'Bảo mật': 'Security',
+  'Phụ thuộc & chuỗi cung ứng': 'Dependencies & supply chain',
+  'Git & lịch sử': 'Git & history',
+  'CI/CD & deploy': 'CI/CD & deploys',
+  'Giám sát & log': 'Monitoring & logs',
+  'Dữ liệu & DB': 'Data & databases',
+  'AI & LLM': 'AI & LLMs',
+  'Tài liệu & sơ đồ': 'Docs & diagrams',
+  'Thêm công cụ': 'Add tool',
 } satisfies Dictionary;

@@ -155,7 +155,7 @@ export function LibraryPage() {
   const step = async (item: ApiItem, to: ApiItemStatus) => {
     try {
       upsert(await api.updateItem(item.id, { status: to }), false);
-      setNotice(`"${item.title}" → ${t(itemStatusOf(to).label)}`);
+      setNotice(`"${item.title}" → ${t(itemStatusOf(to, item.type).label)}`);
     } catch (err) {
       setNotice(describeApiError(toApiError(err), t).title);
     }

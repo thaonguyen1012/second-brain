@@ -6,8 +6,7 @@ import { api, type ApiItem, type ApiItemStatus } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
 import { handbookForSource, itemPicture } from '@/lib/handbook-picture';
 import { useT } from '@/lib/i18n/client';
-import { msg, type Msg } from '@/lib/i18n/translate';
-import { formatDate, hostOf, itemStatusOf, itemTypeLabel } from '@/lib/labels';
+import { formatDate, hostOf, itemNextStep, itemStatusOf, itemTypeLabel } from '@/lib/labels';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { SheetTitle } from '@/components/ui/sheet';
@@ -24,12 +23,6 @@ import { ItemNotes } from './item-notes';
 // and the full page /thu-vien/item/?id=N. Top to bottom: picture, title and properties (AFFiNE's properties at the
 // top; edited through the existing ItemDialog, the one way to edit them), the done-needs-an-output hint (DECISIONS
 // 4.2), every note of the Item, then "Được nhắc tới ở".
-
-/** The one-click next step of the lifecycle, as on the List row (item-parts.tsx). */
-const nextStep: Partial<Record<ApiItemStatus, { to: ApiItemStatus; label: Msg }>> = {
-  planned: { to: 'active', label: msg('Bắt đầu') },
-  active: { to: 'done', label: msg('Xong') },
-};
 
 /** An Item's source as a property: the handbook it is, the site it links to (new tab), or the text itself. */
 function SourceValue({ source }: { source: string }) {
@@ -105,8 +98,9 @@ export function ItemDetail({
   // "Viết ghi chú" in the Item dialog: once the dialog has closed, the focus goes to the composer it opened
   const writeAfterDialog = useRef(false);
 
-  const s = itemStatusOf(item.status);
-  const step = nextStep[item.status ?? 'planned'];
+  const s = itemStatusOf(item.status, item.type);
+  // the one-click next step of the lifecycle, as on the List row (item-parts.tsx)
+  const step = itemNextStep(item.status, item.type);
   const gap = missingOutput(item);
   const picture = itemPicture(item);
   const dates = [
@@ -126,7 +120,7 @@ export function ItemDetail({
     try {
       const saved = await api.updateItem(item.id, { status: to });
       onItemChange(saved);
-      setNotice(t('Đã chuyển sang {status}', { status: t(itemStatusOf(to).label) }));
+      setNotice(t('Đã chuyển sang {status}', { status: t(itemStatusOf(to, item.type).label) }));
     } catch (err) {
       setNotice(t('Không đổi được trạng thái: {reason}', { reason: describeApiError(toApiError(err), t).title }));
     } finally {
@@ -156,6 +150,11 @@ export function ItemDetail({
             <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge>
           </Property>
           <Property label={t('Loại')}>{t(itemTypeLabel(item.type))}</Property>
+          {item.summary?.trim() ? (
+            <Property label={item.type === 'tool' ? t('Dùng để làm gì') : t('Tóm tắt')}>
+              <span className="break-words">{item.summary}</span>
+            </Property>
+          ) : null}
           {item.rating ? (
             <Property label={t('Điểm', null, 'rating')}>
               <span className="tabular-nums">{item.rating}/10</span>

@@ -11,8 +11,10 @@ import {
   hostOf,
   inboxStatusOf,
   inboxStatuses,
+  itemNextStep,
   itemStatusOf,
   itemStatuses,
+  itemStatusesFor,
   itemTypeLabel,
   itemTypes,
   objectiveStatuses,
@@ -56,6 +58,27 @@ describe('label maps cover the API enums', () => {
       expect(labels.every((l) => l.trim().length > 0)).toBe(true);
       expect(new Set(labels).size).toBe(labels.length);
     }
+  });
+});
+
+describe('a tool’s statuses', () => {
+  it('read as its use, with the same values and colours as every Item', () => {
+    const tool = itemStatusesFor('tool');
+    expect(tool.map((s) => s.label.msgid)).toEqual(['Muốn thử', 'Đang dùng', 'Đã thành thạo', 'Bỏ']);
+    expect(tool.map((s) => [s.value, s.tone])).toEqual(itemStatuses.map((s) => [s.value, s.tone]));
+    expect(itemStatusesFor('book')).toBe(itemStatuses);
+    expect(itemStatusesFor()).toBe(itemStatuses);
+    expect(itemStatusOf('active', 'tool').label.msgid).toBe('Đang dùng');
+    expect(itemStatusOf('active', 'film').label.msgid).toBe('Đang làm');
+    expect(itemStatusOf('nope', 'tool').label.msgid).toBe('Muốn thử');
+  });
+
+  it('move on with their own verbs', () => {
+    expect(itemNextStep('planned', 'tool')).toEqual({ to: 'active', label: { msgid: 'Bắt đầu dùng' } });
+    expect(itemNextStep('active', 'tool')).toEqual({ to: 'done', label: { msgid: 'Đã thành thạo', context: 'step' } });
+    expect(itemNextStep('active', 'book')?.label.msgid).toBe('Xong');
+    expect(itemNextStep(undefined)?.to).toBe('active');
+    expect(itemNextStep('done', 'tool')).toBeUndefined();
   });
 });
 

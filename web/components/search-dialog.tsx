@@ -125,7 +125,8 @@ function toHits(r: BrainSearchResults, q: string, t: T): BrainHit[] {
       id: `brain-item-${it.id}`,
       kind: 'item' as const,
       title: it.title,
-      detail: join(t(itemTypeLabel(it.type)), t(itemStatusOf(it.status).label), it.source),
+      // a summary says more than a link (a tool's "dùng để làm gì"), and the search matches it too
+      detail: join(t(itemTypeLabel(it.type)), t(itemStatusOf(it.status, it.type).label), it.summary || it.source),
       href: `/thu-vien/?item=${it.id}`,
     })),
     ...r.notes.map((n) => ({

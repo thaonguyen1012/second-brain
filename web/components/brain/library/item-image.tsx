@@ -2,12 +2,15 @@ import type { ReactNode } from 'react';
 import { BookCover } from '@/components/book-cover';
 import type { ItemPicture } from '@/lib/item-picture';
 import type { T } from '@/lib/i18n/translate';
+import { toolStageIcons } from '@/lib/tool-icons';
+import type { ToolStage } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 
 // How an Item's picture (lib/item-picture.ts) is drawn (DESIGN.md §9a "Item images"): flush with the edges of its row
 // or card, clipped only by the container's radius (the split rule of covers), never a framed or padded box, no text
-// or scrim on it; a project logo is the one inset picture, on the logo ground. Decorative: the row or card always
-// names the record, so every picture is alt="" and aria-hidden. Local images only (isLocalImage).
+// or scrim on it; a project's or a tool's logo is the one inset picture, on the logo ground, and a tool without a
+// logo shows its stage's icon in that place (no ground, no tile). Decorative: the row or card always names the
+// record, so every picture is alt="" and aria-hidden. Local images only (isLocalImage).
 
 /** A plain <img> for an uploaded or fetched image (already a small webp from the server). */
 function Img({ url, className }: { url: string; className?: string }) {
@@ -28,15 +31,30 @@ function Logo({ url, className }: { url: string; className?: string }) {
 }
 
 /**
- * The picture cell of a Thư viện or Công việc row: a flush square as tall as the row (56px), the handbook's cover
- * thumb, an image cropped to the square, or a logo inside it. Without a picture the cell stays empty, so the columns
- * still line up (DESIGN.md §3).
+ * A tool's stage icon in the place of its missing logo (owner 13/11/2026): the lucide icon centred in the slot, muted
+ * ink with the page title icon's 1.5 line, nothing behind it (no colour per stage, no tile; DESIGN.md §9a).
+ */
+function StageGlyph({ stage, className, iconClass }: { stage: ToolStage | null; className?: string; iconClass: string }) {
+  const Icon = toolStageIcons[stage ?? 'other'];
+  return (
+    <span className={cn('flex items-center justify-center text-muted-foreground', className)}>
+      <Icon className={cn(iconClass, 'forced-colors:text-inherit')} strokeWidth={1.5} absoluteStrokeWidth />
+    </span>
+  );
+}
+
+/**
+ * The picture cell of a Thư viện, Công cụ or Công việc row: a flush square as tall as the row (56px), the handbook's
+ * cover thumb, an image cropped to the square, a logo inside it, or a tool's stage icon in the logo's place. Without a
+ * picture the cell stays empty, so the columns still line up (DESIGN.md §3).
  */
 export function RowPicture({ picture, className }: { picture: ItemPicture | null; className?: string }) {
   return (
     <span aria-hidden className={cn('relative -my-2 block w-14 self-stretch overflow-hidden', className)}>
       {picture?.kind === 'handbook' ? (
         <BookCover cover={picture.book.cover} title={picture.book.title} variant="thumb" className="absolute inset-0" />
+      ) : picture?.kind === 'stage' ? (
+        <StageGlyph stage={picture.stage} className="absolute inset-0" iconClass="size-6" />
       ) : picture?.shape === 'logo' ? (
         <Logo url={picture.url} className="absolute inset-0 p-2" />
       ) : picture ? (
@@ -54,6 +72,12 @@ export function RowPicture({ picture, className }: { picture: ItemPicture | null
 export function DetailPicture({ picture, className }: { picture: ItemPicture | null; className?: string }) {
   if (!picture) return null;
   const box = 'block shrink-0 overflow-hidden rounded-md';
+  if (picture.kind === 'stage')
+    return (
+      <span aria-hidden className={cn('shrink-0', className)}>
+        <StageGlyph stage={picture.stage} className="size-12 sm:size-14" iconClass="size-7" />
+      </span>
+    );
   if (picture.kind === 'handbook')
     return (
       <BookCover
@@ -84,10 +108,13 @@ export interface BoardMedia {
 
 /**
  * A board card's picture: the handbook's cover band or a landscape cover flush on top (16:7), a poster flush down the
- * card's start (a 4rem column, 2:3 at the card's minimum height), or a 40px logo before the title.
+ * card's start (a 4rem column, 2:3 at the card's minimum height), or a 40px logo before the title (a tool without
+ * one: its stage icon in that 40px place).
  */
 export function boardMedia(picture: ItemPicture | null, t: T): BoardMedia | null {
   if (!picture) return null;
+  if (picture.kind === 'stage')
+    return { placement: 'inline', node: <StageGlyph stage={picture.stage} className="size-10" iconClass="size-5" /> };
   if (picture.kind === 'handbook')
     return {
       placement: 'top',

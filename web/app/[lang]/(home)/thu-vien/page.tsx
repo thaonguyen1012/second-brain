@@ -18,7 +18,7 @@ export default async function Page() {
       <PageHeader
         title={t('Thư viện')}
         nav="/thu-vien/"
-        description={t('Sách, phim, khóa học, bài viết và dự án.')}
+        description={t('Sách, phim, khóa học, bài viết, dự án và công cụ.')}
       >
         <LibraryTabs current="items" />
       </PageHeader>

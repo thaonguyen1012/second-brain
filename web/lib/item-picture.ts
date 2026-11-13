@@ -4,10 +4,15 @@
 // in item-picture.test.ts; components/brain/library/item-image.tsx draws a picture.
 import type { Book } from '@/lib/books';
 import type { T } from '@/lib/i18n/translate';
+import { firstToolStage, type ToolStage } from '@/lib/tools';
 
 export type ImageShape = 'poster' | 'cover' | 'logo';
 
-export type ItemPicture = { kind: 'image'; url: string; shape: ImageShape } | { kind: 'handbook'; book: Book };
+export type ItemPicture =
+  | { kind: 'image'; url: string; shape: ImageShape }
+  | { kind: 'handbook'; book: Book }
+  /** A tool without a logo of its own: the icon of its first stage (null: no stage, the Wrench), in the logo's place. */
+  | { kind: 'stage'; stage: ToolStage | null };
 
 /** Upload limit of POST /api/items/{id}/image (backend settings.ITEM_IMAGE_MAX_BYTES). */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -73,6 +78,14 @@ export function isLocalImage(url: string | null | undefined): url is string {
 /** An Item's own image in the shape of its type, or null. */
 export function ownPicture(item: { type: string; imageUrl?: string | null }): ItemPicture | null {
   return isLocalImage(item.imageUrl) ? { kind: 'image', url: item.imageUrl, shape: imageShapeOf(item.type) } : null;
+}
+
+/**
+ * What a tool shows until it has a logo (owner 13/11/2026: "nếu mình không kịp tải logo lên"): the icon of its first
+ * stage in the Công cụ page's order (lib/tools.ts), or the Wrench without a stage. Null for every other type.
+ */
+export function stagePicture(item: { type: string; tags?: readonly string[] | null }): ItemPicture | null {
+  return item.type === 'tool' ? { kind: 'stage', stage: firstToolStage(item.tags) } : null;
 }
 
 /**

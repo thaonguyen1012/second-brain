@@ -318,8 +318,9 @@ so the near pairs that remain are listed under the palette, not hidden.
   it, Escape closes it and the focus goes back to the row or card (`recordFocusTarget`). From the top: the picture
   (§9a) and the title (the Sheet's 20px title, the page's 30px h1; without a picture the page shows the Thư viện title
   icon); the properties as AFFiNE shows them, a two-column `dl` (muted `text-xs` labels, values in `text-sm`: status
-  badge, type, rating, source, tags, dates; an empty one is left out); one row of `sm` buttons: the List row's next
-  step (outline "Bắt đầu"/"Xong"), outline "Sửa" (the existing `ItemDialog`, the one way to edit properties and the
+  badge, type, the one-line summary ("Tóm tắt"; on a tool "Dùng để làm gì"), rating, source, tags, dates; an empty one is
+  left out; a tool's status reads as its use: Muốn thử, Đang dùng, Đã thành thạo, Bỏ); one row of `sm` buttons: the
+  List row's next step (outline "Bắt đầu"/"Xong"; a tool's "Bắt đầu dùng"/"Đã thành thạo"), outline "Sửa" (the existing `ItemDialog`, the one way to edit properties and the
   picture), "Công việc" for a project and, in the Sheet only, a ghost "Mở trang đầy đủ" at the end; the
   done-needs-an-output warning (DECISIONS 4.2); then "Ghi chú" (h2, its count, an outline "Viết ghi chú") and every
   note of the Item, newest first, joined like one page: no card per note, `divide-y` with 20px above and below each,
@@ -511,7 +512,7 @@ wins.
   9.6). One picture per Item: its own image (uploaded, or the OG image of its link; a small local webp from
   `/api/items/{id}/image`; `ownPicture()`, `lib/item-picture.ts`), else on Thư viện the Sổ tay cover of a handbook
   course (`BookCover`; `itemPicture()`, `lib/handbook-picture.ts`, the only one that ships the registry), else nothing.
-  The shape follows the type: a 2:3 **poster** for books and films, a **logo** for projects, a landscape **cover** for
+  The shape follows the type: a 2:3 **poster** for books and films, a **logo** for projects and tools, a landscape **cover** for
   the rest. Pictures follow the split-card rule above: flush, clipped by the container's radius, no frame, no text or
   scrim, never dimmed by status (`opacity-50` means "being dragged"). Where (`library/item-image.tsx`): a Thư viện row
   gets one flush 56px square track at its start (`RowPicture`), shown only when a listed row has a picture, and then
@@ -524,10 +525,15 @@ wins.
   a 4rem (5rem) square, a 48px (56px) logo on its ground, `rounded-md`, no frame or shadow. A logo is the one inset
   picture: `object-contain` on `--logo-ground`, white in both themes and kept under forced colours (a sticker; the logo
   keeps its transparency and most logos are drawn for a light page), `rounded-md` on cards. No picture: the row keeps
-  an empty track and the card stays text-only; never a placeholder drawing. Skeletons take the picture geometry the
+  an empty track and the card stays text-only; never a placeholder drawing, with one exception: a **tool without a
+  logo** shows the lucide icon of its first stage (`stagePicture()`, the Công cụ page's order in `lib/tools.ts`, the
+  Wrench without a stage; owner 13/11/2026, "nếu mình không kịp tải logo lên") in the place its logo would take, in
+  every place a tool's picture shows (rows, board cards, the Item page): centred, `muted-foreground`, the title icon's
+  1.5 line, nothing behind it (no logo ground, no tile, no colour per stage); 24px in a row's 56px track, 20px in a
+  card's 40px place, 28px in the Item page's 48/56px place. Skeletons take the picture geometry the
   page had last time (D27). Pictures are decorative (`alt=""`, `aria-hidden`): the row or card names the record. The
   dialogs' "Ảnh bìa" / "Logo" field (`library/item-image-field.tsx`) is a labelled group: a preview at the card's
-  shape, "Tải ảnh lên" / "Đổi ảnh", a "Lấy ảnh từ link" toggle (`aria-pressed`; an http(s) source, never for projects,
+  shape, "Tải ảnh lên" / "Đổi ảnh", a "Lấy ảnh từ link" toggle (`aria-pressed`; an http(s) source, never for a logo (projects, tools),
   whose OG image is a banner; not offered when saving will fetch it anyway: a new Item or a new link without a
   picture, which the status line says) and ghost "Bỏ ảnh"; the buttons stay put when used and "Bỏ ảnh" hands the focus
   to "Đổi ảnh"; the status line is a polite live region. Every change waits for "Lưu" and "Hủy" drops it, so no
