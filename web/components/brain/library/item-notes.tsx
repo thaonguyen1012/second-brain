@@ -7,6 +7,7 @@ import { notesApi, type ApiNote } from '@/lib/api/library';
 import { loadAllPages } from '@/lib/api/pages';
 import { useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
+import type { T } from '@/lib/i18n/translate';
 import { isBlankNote, noteDateLabel, noteHeading } from '@/lib/item-notes';
 import { formatDate } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
@@ -53,6 +54,17 @@ function NotesSkeleton() {
       ))}
     </div>
   );
+}
+
+/**
+ * A note's name in the controls the page repeats for each note ("Sửa", "Xong", "Thử lại"...), from its `title`. A
+ * note whose title only repeats the Item's (each note "Viết ghi chú" starts does) shows its date line in place of a
+ * heading: its name adds that date, or every such note would have the same one. A new note (`note` null) has none.
+ */
+function noteName(title: string, note: ApiNote | null, item: ApiItem, t: T): string {
+  return note && noteHeading(title, item.title) === null
+    ? t('{title}, {date}', { title, date: noteDateLabel(note, t) })
+    : title;
 }
 
 /**
@@ -202,8 +214,8 @@ function NoteInPlace({
     setEditorKey((k) => k + 1);
   };
   // Several notes can be open at once: the buttons each editor repeats ("Xong", "Thử lại", "Khôi phục"...) end with
-  // the note's name, the title as typed (a new note without one goes by its Item)
-  const name = title.trim() || (note ? noteTitle(note, t) : item.title);
+  // the note's name (noteName), from the title as typed (a new note without one goes by its Item)
+  const name = noteName(title.trim() || (note ? noteTitle(note, t) : item.title), note, item, t);
 
   return (
     // data-note-editing: an Escape inside ends this edit (on any of its controls: the editor and the title handle
@@ -513,7 +525,7 @@ export function ItemNotes({
             const isEditing = editing.has(note.id);
             const heading = noteHeading(note.title, item.title);
             const others = note.itemLabels.filter((l) => l.id !== item.id);
-            const name = noteTitle(note, t);
+            const name = noteName(noteTitle(note, t), note, item, t);
             return (
               <li key={note.id} className="flex flex-col gap-2 py-5 first:pt-0 last:pb-0">
                 <div className="flex items-start gap-2">

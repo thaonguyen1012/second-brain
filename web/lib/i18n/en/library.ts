@@ -173,6 +173,8 @@ export const library = {
   'Chưa có ghi chú nào.': 'No notes yet.',
   'Ghi chú của item': "The item's notes",
   ' · cũng gắn với {items}': ' · also linked to {items}',
+  // the name of a note whose title only repeats its Item's, in the controls above: the title, then its date line
+  '{title}, {date}': '{title}, {date}',
   'Sửa ghi chú “{title}”': 'Edit the note “{title}”',
   'Thao tác cho ghi chú “{title}”': 'Actions for the note “{title}”',
   'Xong ghi chú “{title}”': 'Done editing “{title}”',

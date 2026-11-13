@@ -407,10 +407,15 @@ export function useUnsavedCopy(key: string, note: ShownNote | null): CopyOffer |
   return first ? offerOf(first, note) : null;
 }
 
-/** The new notes whose unsaved text this browser keeps (`new`, `new-item-<id>`), newest first: the notes list. */
-export function useNewNoteCopies(): string[] {
+/**
+ * The new notes whose unsaved text this browser keeps (`new`, `new-item-<id>`), newest first, each with the title of
+ * its newest copy: the notes list.
+ */
+export function useNewNoteCopies(): { key: string; title: string }[] {
   const slots = useOffered(isNewNoteKey, null, null);
-  return [...new Set(slots.map((s) => s.key))];
+  const out: { key: string; title: string }[] = [];
+  for (const s of slots) if (!out.some((o) => o.key === s.key)) out.push({ key: s.key, title: s.copy.title });
+  return out;
 }
 
 /**

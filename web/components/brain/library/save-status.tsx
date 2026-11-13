@@ -113,19 +113,34 @@ export function UnsavedCopyHint({
 
 /**
  * The notes list's word that this browser keeps a new note's unsaved text: one line per place it was written (the
- * notes page, a new note of an Item), each opening that place, where the editor offers it back.
+ * notes page, a new note of an Item), each opening that place, where the editor offers it back. The lines read alike,
+ * so each link's name ends with its copy's title, else its Item's (`itemTitle`), else "Ghi chú mới".
  */
-export function NewNoteCopyHints({ onOpen }: { onOpen: (query: string) => void }) {
+export function NewNoteCopyHints({
+  onOpen,
+  itemTitle,
+}: {
+  onOpen: (query: string) => void;
+  itemTitle?: (id: number) => string;
+}) {
   const t = useT();
-  const keys = useNewNoteCopies();
-  return keys.map((key) => {
+  const copies = useNewNoteCopies();
+  return copies.map(({ key, title }) => {
     const query = newNoteQuery(key);
     if (!query) return null;
+    const item = new URLSearchParams(query).get('item');
+    const name = title.trim() || (item !== null && itemTitle?.(Number(item))) || t('Ghi chú mới');
     return (
       <p key={key} className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
         <History className="size-3.5 shrink-0" aria-hidden />
         {t('Có bản nháp chưa lưu trong trình duyệt này')}
-        <Button variant="link" size="xs" className="h-auto p-0 text-xs underline" onClick={() => onOpen(query)}>
+        <Button
+          variant="link"
+          size="xs"
+          className="h-auto p-0 text-xs underline"
+          aria-label={t('Mở để khôi phục “{title}”', { title: name })}
+          onClick={() => onOpen(query)}
+        >
           {t('Mở để khôi phục')}
         </Button>
       </p>
