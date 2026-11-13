@@ -3,7 +3,8 @@ falling back to <title> and meta description. Stored values are plain text clean
 
 The page is third-party input (security audit S-07, S-08): only the charsets browsers use are decoded
 (punycode or idna from a Content-Type header would be slow or raise), each value is cut before nh3 sees it,
-and a malformed character reference ends as an empty field, never as an exception."""
+and markup the parser cannot read (a malformed character reference, PARSE_ERRORS) ends as an empty field,
+never as an exception."""
 
 import codecs
 import contextlib
@@ -99,10 +100,15 @@ def page_text(page: safe_fetch.Fetched) -> str:
     return page.body.decode(_charset(page), errors="replace")
 
 
+# What html.parser raises on markup it cannot read, which ends the parse: keep what was read before it. A
+# malformed character reference raises ValueError; `<![` before no name or an unknown keyword raises
+# AssertionError in the Python 3.13.2 that run_jobs uses on the laptop (`<![ CDATA[`, `<![foo[`).
+PARSE_ERRORS = (ValueError, AssertionError)
+
+
 def parse(page: safe_fetch.Fetched) -> Card:
     parser = _MetaParser()
-    # a malformed character reference raises ValueError: keep what was read before it
-    with contextlib.suppress(ValueError):
+    with contextlib.suppress(*PARSE_ERRORS):
         parser.feed(page_text(page))
     meta = parser.meta
     image = meta.get("og:image") or meta.get("og:image:url") or meta.get("twitter:image") or ""

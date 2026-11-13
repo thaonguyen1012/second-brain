@@ -3,13 +3,20 @@ official site (core/services/site_icon.py). Some links lead to a page whose icon
 tool's; route() says which:
 
 * github.com/<owner>/<repo>[/...]: the GitHub API (no token, 60 requests an hour) gives the repository's
-  homepage; when it is off github.com its site's icon is the logo. Else, or when that site gives none or only
-  a small one (under site_icon.GOOD_SIDE px), the owner's avatar when the owner is an organisation. A
-  person's account gives no avatar: a face is not a tool's logo. github.com/<owner> alone: the
-  organisation's avatar the same way. GitHub's own pages (GITHUB_PAGES: /features/..., /search,
+  homepage; when it is off github.com its site's icon is the logo. A person's repository follows its homepage
+  only when the homepage names the repository (onefetch.dev, uptime.kuma.pet, dandavison.github.io/delta):
+  a person's own site carries their own mark. With no homepage icon, or only a small one (under
+  site_icon.GOOD_SIDE px), the owner's avatar when the owner is an organisation that is the tool itself (its
+  login is the repository's name: gitleaks/gitleaks); an umbrella organisation's avatar (grafana/k6,
+  pypa/pip-audit) is another mark, and a person's is a face: neither is the tool's logo. github.com/<owner>
+  alone: the organisation's avatar. GitHub's own pages (GITHUB_PAGES: /features/..., /search,
   /marketplace...) are GitHub's products, so GitHub's icon is the right one there.
 * STORES: a store page whose og:image is the item's own icon, kept only when its URL is the store's icon URL.
 * NO_LOGO_HOSTS: other code hosts and stores, whose pages carry their own icon: no logo, no request.
+
+The API's hourly limit: a 403 or 429 is that limit only when /rate_limit (never counted) says no request
+remains; the job then waits until the limit resets (RateLimited), and this process asks no more until then.
+Any other 403 or 429 is an error that the job retries a few times before it gives up.
 
 Routes follow redirects: a link that lands on a store or a repository (aka.ms/codetour -> the marketplace)
 is read as one. Every request goes through safe_fetch: only call this from background jobs.
@@ -18,14 +25,20 @@ is read as one. Every request goes through safe_fetch: only call this from backg
 import enum
 import json
 import re
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
 
 import httpx
+from django.utils import timezone
 
 from core.services import safe_fetch, site_icon, thumbnails, unfurl
 
 GITHUB_HOSTS = frozenset({"github.com", "www.github.com"})
 GITHUB_API = "https://api.github.com"
+RATE_LIMIT_URL = f"{GITHUB_API}/rate_limit"  # never counted against the limit
+RATE_LIMIT_WAIT = timedelta(minutes=15)  # when /rate_limit does not say when the limit resets
+RESET_MARGIN = timedelta(seconds=30)
+MIN_WAIT, MAX_WAIT = timedelta(minutes=1), timedelta(minutes=61)  # the limit without a token is per hour
 AVATAR_SIZE = 256  # GitHub's `s` parameter: the avatar at thumbnails.LOGO_SIZE
 # First path segments of github.com that are GitHub's own pages, not an account (no account can take them)
 GITHUB_PAGES = frozenset(
@@ -72,6 +85,7 @@ GITHUB_PAGES = frozenset(
 )
 _OWNER = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})")
 _REPO = re.compile(r"[A-Za-z0-9._-]{1,100}")
+_NOT_ALNUM = re.compile(r"[^a-z0-9]")
 # Store pages whose og:image is the item's own icon (checked 13/11/2026): the pattern of that icon's URL. Any
 # other og:image (a store's card, a person's avatar) is no logo.
 STORES = {
@@ -110,13 +124,22 @@ class Route(enum.Enum):
 
 
 class RateLimited(Exception):
-    """The GitHub API refuses for now (403 or 429: the hourly limit without a token); ask again later."""
+    """The GitHub API's hourly limit (no token) is used up: ask again after `wait`, when it resets."""
+
+    def __init__(self, message: str, wait: timedelta) -> None:
+        super().__init__(message)
+        self.wait = wait
+
+
+# When the API's hourly limit resets, as this process (run_jobs) last saw it used up: until then a repository
+# waits without a request.
+_limit_resets_at: datetime | None = None
 
 
 def tool_logo(url: str) -> site_icon.Logo | None:
     """The logo of the tool whose link is `url`, or None when it has none we can tell. Raises FetchBlocked for
-    a refused link, FetchError for a network error (try again), ThumbnailError when the link is an image that
-    makes no logo, RateLimited when the GitHub API refuses for now."""
+    a refused link, FetchError for an error that may go away (try again), ThumbnailError when the link is an
+    image that makes no logo, RateLimited while the GitHub API's hourly limit is used up."""
     return _logo(url, github=True)
 
 
@@ -173,9 +196,19 @@ def _github(url: str) -> site_icon.Logo | None:
     if data is None:
         return None
     holder = data.get("owner") if repo else data
+    holder = holder if isinstance(holder, dict) else {}
+    organisation = holder.get("type") == "Organization"
+    name = _text(data.get("name")) or repo  # the repository's name now (after a rename or a transfer)
+    # an organisation's avatar is the tool's logo only when the organisation is the tool (or the link is the
+    # organisation's own page)
+    is_the_tool = organisation and (not repo or _alnum(_text(holder.get("login"))) == _alnum(name))
+    avatar = _avatar(holder.get("avatar_url")) if is_the_tool else ""
+    homepage = _homepage(data.get("homepage")) if repo else ""
+    if homepage and not organisation and not names_repository(homepage, name):
+        homepage = ""  # a person's own site (a blog, their initials) carries their mark, not the tool's
     site: site_icon.Logo | None = None
     failed: safe_fetch.FetchError | None = None
-    if repo and (homepage := _homepage(data.get("homepage"))):
+    if homepage:
         try:
             site = _logo(homepage, github=False)
         except (safe_fetch.FetchBlocked, thumbnails.ThumbnailError):
@@ -184,11 +217,10 @@ def _github(url: str) -> site_icon.Logo | None:
             failed = exc
     if site is not None and site.side >= site_icon.GOOD_SIDE:
         return site
-    # no icon on the homepage, or a small one (a 32 px favicon): the organisation's avatar is sharper
-    if isinstance(holder, dict) and holder.get("type") == "Organization":
-        avatar = _avatar(holder.get("avatar_url"))
+    # no icon on the homepage, or a small one (a 32 px favicon): the tool's organisation's avatar is sharper
+    if avatar:
         try:
-            if avatar and (logo := site_icon.fetch_logo(avatar)) is not None:
+            if (logo := site_icon.fetch_logo(avatar)) is not None:
                 return logo
         except safe_fetch.FetchError:
             if site is None:
@@ -200,13 +232,40 @@ def _github(url: str) -> site_icon.Logo | None:
     return None
 
 
+def names_repository(url: str, repo: str) -> bool:
+    """Whether a URL names the repository: its name in letters and digits is one of the host's labels, or
+    labels run together (uptime.kuma.pet for uptime-kuma), or one of the path's segments
+    (dandavison.github.io/delta)."""
+    target = _alnum(repo)
+    if not target:
+        return False
+    parts = urlsplit(url)
+    labels = [_alnum(label) for label in (parts.hostname or "").split(".")]
+    for start in range(len(labels)):
+        joined = ""
+        for label in labels[start:]:
+            joined += label
+            if len(joined) >= len(target):
+                break
+        if joined == target:
+            return True
+    return any(_alnum(segment) == target for segment in parts.path.split("/"))
+
+
 def _github_json(url: str) -> dict[str, object] | None:
-    """The API's answer, or None for a repository or account that is not there (a 4xx: gone, private)."""
+    """The API's answer, or None for a repository or account that is not there (a 4xx: gone, private). Raises
+    RateLimited while the hourly limit is used up (without a request once this process has seen it), and the
+    FetchError of a 403 or 429 that is not that limit (a block, a short-term limit), which the job retries a
+    few times before it gives up."""
+    if _limit_resets_at is not None and _limit_resets_at > timezone.now():
+        raise RateLimited("GitHub API limit used up", max(_limit_resets_at - timezone.now(), MIN_WAIT))
     try:
         doc = safe_fetch.fetch(url, ("application/json",))
     except safe_fetch.FetchError as exc:
         if exc.status in (403, 429):
-            raise RateLimited(f"GitHub API answered {exc.status}") from exc
+            if (wait := _limit_wait()) is not None:
+                raise RateLimited(f"GitHub API answered {exc.status}: limit used up", wait) from exc
+            raise
         if isinstance(exc, safe_fetch.FetchBlocked) or not site_icon.is_final(exc):
             raise
         return None
@@ -215,6 +274,36 @@ def _github_json(url: str) -> dict[str, object] | None:
     except (ValueError, RecursionError):
         return None
     return data if isinstance(data, dict) else None
+
+
+def _limit_wait() -> timedelta | None:
+    """After a 403 or 429: how long until the hourly limit resets, when /rate_limit says no request remains
+    (the reset is then remembered, so the other repositories wait without a request); None when requests
+    remain or it cannot be read (the refusal is something else)."""
+    global _limit_resets_at  # the limit as this process saw it (module docstring)
+    try:
+        data = json.loads(safe_fetch.fetch(RATE_LIMIT_URL, ("application/json",)).body)
+    except (safe_fetch.FetchError, ValueError, RecursionError):
+        return None
+    resources = data.get("resources") if isinstance(data, dict) else None
+    core = resources.get("core") if isinstance(resources, dict) else None
+    if not isinstance(core, dict) or core.get("remaining") != 0:
+        return None
+    reset = core.get("reset")
+    wait = RATE_LIMIT_WAIT
+    if isinstance(reset, int) and not isinstance(reset, bool) and 0 < reset < 2**40:
+        wait = datetime.fromtimestamp(reset, UTC) - timezone.now() + RESET_MARGIN
+    wait = min(max(wait, MIN_WAIT), MAX_WAIT)
+    _limit_resets_at = timezone.now() + wait
+    return wait
+
+
+def _alnum(text: str) -> str:
+    return _NOT_ALNUM.sub("", text.lower())
+
+
+def _text(value: object) -> str:
+    return value.strip() if isinstance(value, str) else ""
 
 
 def _homepage(value: object) -> str:

@@ -8,13 +8,14 @@ import json
 import random
 import struct
 
+import httpx
 import pytest
 from PIL import Image, ImageDraw
 
-from core.services import safe_fetch, site_icon, thumbnails
+from core.services import safe_fetch, site_icon, thumbnails, unfurl
 from core.services.site_icon import Candidate
 from core.testing import icon_bytes as icon
-from core.tests.fakenet import FakeNet, Files, files
+from core.tests.fakenet import FakeNet, Files, Route, files
 
 PUBLIC = "93.184.215.14"
 
@@ -197,6 +198,61 @@ def test_root_candidates() -> None:
     assert site_icon.root_candidates("https://docs.readthedocs-hosted.com/") == []
     assert site_icon.root_candidates("ftp://tool.test/") == []
     assert site_icon.root_candidates("http://[::1") == []
+
+
+def test_an_icon_for_a_dark_colour_scheme_is_left_out() -> None:
+    """A dark scheme's icon is a light drawing: it would vanish on the logo's white ground."""
+    declared, _ = site_icon.page_candidates(
+        page(
+            """<link rel="icon" sizes="192x192" href="/light.png" media="(prefers-color-scheme: light)">
+            <link rel="icon" sizes="192x192" href="/dark.png" media="(prefers-color-scheme:DARK)">
+            <link rel="apple-touch-icon" href="/dark-t.png" media="screen and (prefers-color-scheme: dark)">
+            <link rel="icon" sizes="64x64" href="/any.png" media="screen">"""
+        )
+    )
+    assert [candidate.url.rpartition("/")[2] for candidate in declared] == ["light.png", "any.png"]
+
+
+@pytest.mark.parametrize("unreadable", ["<p>x <![ CDATA[y]]></p>", "<![-- b --]>", "<![foo[x]]>"])
+def test_markup_the_parser_cannot_read_keeps_what_came_before_it(unreadable: str) -> None:
+    """html.parser raises AssertionError on `<![` before no name or an unknown keyword (Python 3.13.2, the one
+    run_jobs uses on the laptop): what was read before it stays, in every parser of a page."""
+    before = '<link rel="icon" href="/a.png"><meta property="og:image" content="/og.png">'
+    body = f'{before}{unreadable}<link rel="icon" href="/b.png">'
+    declared, _ = site_icon.page_candidates(page(body))
+    assert declared[0] == Candidate("https://tool.test/a.png", None)
+    assert unfurl.parse(page(body)).image_url == "https://tool.test/og.png"
+    redirect = f'<meta http-equiv="refresh" content="0; url=/next/">{unreadable}'
+    assert site_icon.refresh_target(page(redirect)) == "https://tool.test/next/"
+
+
+def test_a_project_page_on_a_users_site_leaves_out_the_users_files() -> None:
+    """user.github.io/project/: the site's root and the paths above the project hold the user's own icon."""
+    declared, manifest = site_icon.page_candidates(
+        page(
+            """<link rel="icon" href="/favicon.ico"><link rel="icon" href="img/icon-128.png">
+            <link rel="apple-touch-icon" href="/other-project/touch.png">
+            <link rel="icon" href="https://cdn.test/icon.png"><link rel="manifest" href="/manifest.json">""",
+            url="https://someone.github.io/Tool/docs/",
+        )
+    )
+    assert [candidate.url for candidate in declared] == [
+        "https://someone.github.io/Tool/docs/img/icon-128.png",
+        "https://cdn.test/icon.png",
+    ]
+    assert manifest == ""
+    assert site_icon.root_candidates("https://someone.github.io/tool/") == []
+    assert site_icon.root_candidates("https://group.gitlab.io/tool/") == []
+    assert len(site_icon.root_candidates("https://someone.github.io/")) == 2  # the user's own site
+    doc = safe_fetch.Fetched(
+        url="https://someone.github.io/tool/site.webmanifest",
+        content_type="application/manifest+json",
+        charset=None,
+        body=json.dumps({"icons": [{"src": "/icon-512.png"}, {"src": "icon-192.png"}]}).encode(),
+    )
+    assert site_icon.manifest_candidates(doc) == [
+        Candidate("https://someone.github.io/tool/icon-192.png", None)
+    ]
 
 
 # --- finding the logo ---------------------------------------------------------------------------------------
@@ -476,6 +532,218 @@ def test_a_small_icon_is_kept_only_when_no_other_is_bigger(net: FakeNet) -> None
     ]
 
 
+@pytest.mark.parametrize(
+    ("target", "answer"),
+    [
+        ("http://intranet.test/", None),  # an address the guard refuses
+        ("/down/", 503),  # an error that may go away
+        ("/paper.pdf", ("application/pdf", b"%PDF-1.7")),  # an answer the guard refuses
+    ],
+)
+def test_a_refresh_that_fails_keeps_the_page(
+    net: FakeNet, target: str, answer: tuple[str, bytes] | int | None
+) -> None:
+    net.dns["intranet.test"] = ["10.0.0.7"]
+    redirect = f'<meta http-equiv="refresh" content="0; url={target}">'
+    paths: dict[str, tuple[str, bytes | str] | int] = {
+        "/": ("text/html", f'{redirect}<link rel="apple-touch-icon" href="/t.png">'),
+        "/t.png": ("image/png", icon((180, 180))),
+    }
+    if answer is not None:
+        paths[target] = answer
+    site(net, "tool.test", paths)
+    logo = site_icon.find("https://tool.test/")  # following the refresh is optional: the page's own icon
+    assert logo is not None and logo.url == "https://tool.test/t.png"
+
+
+def page_route(answer: httpx.Response) -> Route:
+    """A site whose page gets `answer` and whose /favicon.ico is fine."""
+    favicon = ico(16, 64)
+
+    def route(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/":
+            return answer
+        if request.url.path == "/favicon.ico":
+            return httpx.Response(200, headers={"content-type": "image/x-icon"}, content=favicon)
+        return httpx.Response(404)
+
+    return route
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        httpx.Response(
+            200, headers={"content-type": "text/html"}, content=b"<p>" * (safe_fetch.MAX_BYTES // 3 + 1)
+        ),
+        httpx.Response(
+            200, headers={"content-type": "text/html", "content-encoding": "gzip"}, content=b"\x1f\x8b"
+        ),
+        httpx.Response(200, headers={"content-type": "application/pdf"}, content=b"%PDF-1.7"),
+    ],
+    ids=["over 2 MB", "compressed", "a PDF"],
+)
+def test_a_page_whose_answer_the_guard_refuses_still_gives_its_root_files(
+    net: FakeNet, answer: httpx.Response
+) -> None:
+    net.site("big.test", PUBLIC, page_route(answer))
+    logo = site_icon.find("https://big.test/")
+    assert logo is not None and logo.url == "https://big.test/favicon.ico"
+    assert asked(net) == ["big.test/", "big.test/apple-touch-icon.png", "big.test/favicon.ico"]
+
+
+def test_an_image_link_the_guard_refuses_stays_refused(net: FakeNet) -> None:
+    """A link to an image too big to take: no other file of that host (a CDN's favicon) is the tool's logo."""
+    huge = b"\x89PNG\r\n\x1a\n" + b"0" * safe_fetch.MAX_BYTES
+    net.site(
+        "cdn.test",
+        PUBLIC,
+        page_route(httpx.Response(200, headers={"content-type": "image/png"}, content=huge)),
+    )
+    with pytest.raises(safe_fetch.FetchBlocked, match="larger"):
+        site_icon.find("https://cdn.test/")
+    assert asked(net) == ["cdn.test/"]
+
+
+def test_any_answer_under_500_but_408_and_429_is_final(net: FakeNet) -> None:
+    for status in (204, 304, 400, 404, 410, 451):  # a 204 silences favicon requests
+        site(net, "quiet.test", {"/": ("text/html", "<title>Quiet</title>"), "/favicon.ico": status})
+        assert site_icon.find("https://quiet.test/") is None, status
+    for status in (408, 429, 500, 503):
+        site(net, "busy.test", {"/": ("text/html", "<title>Busy</title>"), "/favicon.ico": status})
+        with pytest.raises(safe_fetch.FetchError) as raised:
+            site_icon.find("https://busy.test/")
+        assert raised.value.status == status
+    assert not site_icon.is_final(safe_fetch.FetchError("timeout"))
+
+
+# --- the last resort: a logo the page shows -----------------------------------------------------------------
+
+
+def test_a_square_og_image_is_the_logo_when_no_icon_makes_one(net: FakeNet) -> None:
+    """prometheus.io: only an SVG icon, and a 1200 px square of the logo as its og:image."""
+    paths: dict[str, tuple[str, bytes | str] | int] = {
+        "/": ("text/html", '<link rel="icon" href="/icon.svg"><meta property="og:image" content="/og.png">'),
+        "/og.png": ("image/png", icon((1200, 1150), "orange")),  # square within SQUARE
+    }
+    site(net, "prom.test", paths)
+    logo = site_icon.find("https://prom.test/")
+    assert logo is not None and logo.url == "https://prom.test/og.png" and 245 <= logo.side <= 246
+    # a banner is no logo: measured, or declared (then never fetched)
+    paths["/og.png"] = ("image/png", icon((1200, 630)))
+    assert site_icon.find("https://prom.test/") is None
+    paths["/"] = (
+        "text/html",
+        """<meta property="og:image" content="/og.png"><meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">""",
+    )
+    net.requests.clear()
+    assert site_icon.find("https://prom.test/") is None
+    assert "prom.test/og.png" not in asked(net)
+
+
+def test_an_img_the_page_names_as_its_logo(net: FakeNet) -> None:
+    """lefthook.dev (an SVG favicon; <img alt="Logo" src="./assets/lefthook.png">) and docs.pytest.org (a
+    favicon under 32 px; <img class="sidebar-logo" src="_static/pytest1.png">)."""
+    site(
+        net,
+        "lefthook.test",
+        {
+            "/": (
+                "text/html",
+                """<link rel="icon" href="/favicon.svg">
+                <img alt="Cartoon showing the logo as a distressed character" src="/lefthook-sad.png">
+                <img alt="Logo" src="./hero.png"><img alt="Logo" src="./assets/lefthook.png">""",
+            ),
+            "/assets/lefthook.png": ("image/png", icon((932, 622), "red")),
+        },
+    )
+    logo = site_icon.find("https://lefthook.test/")
+    assert logo is not None and logo.url == "https://lefthook.test/assets/lefthook.png"
+    assert "lefthook.test/lefthook-sad.png" not in asked(net)  # a long alt describes a picture
+    assert "lefthook.test/hero.png" not in asked(net)  # a file name with no "logo" and not the site's name
+    site(
+        net,
+        "docs.pytest.test",
+        {
+            "/": (
+                "text/html",
+                '<link rel="icon" href="/fav.ico"><img class="sidebar-logo" src="_static/pytest1.png">',
+            ),
+            "/fav.ico": ("image/x-icon", ico(16)),
+            "/_static/pytest1.png": ("image/png", icon((300, 300), "green")),
+        },
+    )
+    logo = site_icon.find("https://docs.pytest.test/")
+    assert logo is not None and logo.url == "https://docs.pytest.test/_static/pytest1.png"
+    # wider than LOGO_IMAGE_ASPECT:1 is a banner
+    site(
+        net,
+        "wide.test",
+        {
+            "/": ("text/html", '<img alt="logo" src="/logo.png">'),
+            "/logo.png": ("image/png", icon((900, 300))),
+        },
+    )
+    assert site_icon.find("https://wide.test/") is None
+
+
+def test_the_last_resort_waits_for_every_icon(net: FakeNet) -> None:
+    """A small icon still wins over the page's pictures (sentry.io's 48 px favicon, not its cartoon)."""
+    site(
+        net,
+        "tool.test",
+        {
+            "/": (
+                "text/html",
+                '<meta property="og:image" content="/og.png"><img alt="logo" src="/logo.png">',
+            ),
+            "/favicon.ico": ("image/x-icon", ico(16, 48)),
+            "/og.png": ("image/png", icon((600, 600))),
+            "/logo.png": ("image/png", icon((600, 600))),
+        },
+    )
+    logo = site_icon.find("https://tool.test/")
+    assert logo is not None and logo.url == "https://tool.test/favicon.ico"
+    assert asked(net) == ["tool.test/", "tool.test/apple-touch-icon.png", "tool.test/favicon.ico"]
+    # at most PAGE_LOGO_FETCHES pictures, and an error among them is no reason to try again later
+    images = "".join(f'<img alt="logo" src="/logo-{n}.png">' for n in range(5))
+    site(
+        net,
+        "many.test",
+        {"/": ("text/html", f'<meta property="og:image" content="/og.png">{images}'), "/og.png": 503},
+    )
+    assert site_icon.find("https://many.test/") is None
+    assert len(asked(net)) - 3 == 3 + site_icon.PAGE_LOGO_FETCHES  # the page, its root files, the pictures
+
+
+# --- the guard on every URL a page gives --------------------------------------------------------------------
+
+
+def test_no_url_a_page_gives_reaches_a_private_address(net: FakeNet) -> None:
+    """Icon links, <base>, the manifest and its icons, og:image and <img>: each goes through the guard."""
+    for address in ("127.0.0.1", "169.254.169.254", "10.0.0.8", "::1"):
+        net.dns[address] = [address]
+    net.dns["intranet.test"] = ["10.0.0.7"]
+    pages = [
+        """<link rel="icon" href="http://127.0.0.1/favicon.ico">
+        <link rel="apple-touch-icon" href="http://intranet.test/touch.png">
+        <link rel="icon" sizes="192x192" href="http://[::1]/i.png">
+        <link rel="icon" href="file:///etc/passwd"><link rel="icon" href="JavaScript:alert(1)">
+        <link rel="manifest" href="http://10.0.0.8/m.json">
+        <meta property="og:image" content="http://169.254.169.254/latest/meta-data/">
+        <img alt="Logo" src="http://intranet.test/logo.png">""",
+        '<base href="http://169.254.169.254/"><link rel="icon" href="i.png"><img alt="logo" src="logo.png">',
+        '<link rel="manifest" href="https://cdn.test/m.json">',
+    ]
+    manifest = {"icons": [{"src": "http://10.0.0.8/i.png", "sizes": "512x512"}, {"src": "file:///etc/hosts"}]}
+    site(net, "cdn.test", {"/m.json": ("application/json", json.dumps(manifest))})
+    for body in pages:
+        site(net, "tool.test", {"/": ("text/html", body)})
+        assert site_icon.find("https://tool.test/") is None
+    assert {request.headers["host"] for request in net.requests} == {"tool.test", "cdn.test"}
+
+
 # --- the logo file ------------------------------------------------------------------------------------------
 
 
@@ -535,3 +803,61 @@ def test_a_bomb_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
         thumbnails.logo_to_webp(icon((64, 64)))
     with pytest.raises(thumbnails.ThumbnailError, match="cannot decode"):
         thumbnails.logo_to_webp(ico(16, 64))
+
+
+def png(image: Image.Image) -> bytes:
+    out = io.BytesIO()
+    image.save(out, "PNG")
+    return out.getvalue()
+
+
+def drawn(
+    side: int, box: tuple[int, int, int, int], ground: str | tuple[int, ...] = (0, 0, 0, 0)
+) -> Image.Image:
+    """A `side` px icon with a green disc in `box` on `ground`."""
+    image = Image.new("RGBA", (side, side), ground)
+    ImageDraw.Draw(image).ellipse(box, fill="green")
+    return image
+
+
+def test_a_drawing_on_a_wide_margin_is_trimmed_to_fill_its_place() -> None:
+    """vitest.dev's pwa-512 icon: the drawing takes 39% of it, and showed 12 px wide in a 32 px place."""
+    webp = thumbnails.logo_to_webp(png(drawn(512, (156, 156, 355, 355))))  # a 200 px drawing
+    assert size_of(webp) == (224, 224)  # the drawing and 6% on each side, never enlarged
+    assert colour_of(webp)[1] > 100  # the drawing in the middle
+    with Image.open(io.BytesIO(webp)) as image:
+        margin = image.convert("RGBA").getpixel((5, 112))
+        assert isinstance(margin, tuple) and margin[3] == 0  # the margin kept, transparent
+    # on a white ground (a JPEG has no transparency): the same; its edges on JPEG's 8 px blocks, without
+    # chroma subsampling, so no blur leaks around them (and no larger than LOGO_WORK_SIZE: not shrunk first)
+    jpeg = Image.new("RGB", (512, 512), "white")
+    ImageDraw.Draw(jpeg).rectangle((248, 248, 351, 351), fill="navy")
+    out = io.BytesIO()
+    jpeg.save(out, "JPEG", quality=95, subsampling=0)
+    assert size_of(thumbnails.logo_to_webp(out.getvalue())) == (116, 116)
+    # a drawing off-centre keeps its square, inside the icon
+    assert size_of(thumbnails.logo_to_webp(png(drawn(512, (0, 300, 199, 499))))) == (224, 224)
+
+
+def test_what_is_left_as_it_is() -> None:
+    tile = drawn(512, (156, 156, 355, 355), ground="navy")  # an icon on a tile of its own colour
+    assert size_of(thumbnails.logo_to_webp(png(tile))) == (256, 256)
+    large = drawn(512, (40, 40, 471, 471))  # a drawing of 84%
+    assert size_of(thumbnails.logo_to_webp(png(large))) == (256, 256)
+    speck = drawn(512, (246, 246, 265, 265))  # a 20 px drawing would make a logo under LOGO_MIN_SIDE
+    assert size_of(thumbnails.logo_to_webp(png(speck))) == (256, 256)
+    # the pale parts of a drawing are drawing too
+    pale = drawn(512, (206, 206, 305, 305))
+    ImageDraw.Draw(pale).rectangle((156, 250, 355, 260), fill=(255, 255, 200, 255))
+    assert size_of(thumbnails.logo_to_webp(png(pale))) == (224, 224)
+
+
+def test_a_sliver_makes_no_logo() -> None:
+    """An image under LOGO_MIN_SIDE px on its smaller side once at most LOGO_SIZE px (a 32x600000 strip would
+    make a 1x256 logo) is refused from its header, before it is decoded."""
+    with pytest.raises(thumbnails.NotALogo, match="too small"):
+        thumbnails.logo_to_webp(icon((40, 2000)))
+    assert size_of(thumbnails.logo_to_webp(icon((64, 512)))) == (32, 256)  # 8:1 still makes one
+    assert thumbnails.image_size(ico(16, 48)) == (48, 48)
+    with pytest.raises(thumbnails.ThumbnailError):
+        thumbnails.image_size(b"<svg/>")

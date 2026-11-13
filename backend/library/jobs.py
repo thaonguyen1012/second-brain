@@ -1,7 +1,6 @@
 """Background job for Item images (run by `manage.py run_jobs`, never in a request; DECISIONS 9.6, 9.10)."""
 
 import logging
-from datetime import timedelta
 from typing import Any
 
 from core.services import jobs, safe_fetch, thumbnails, unfurl
@@ -9,9 +8,6 @@ from library import logos, services
 from library.models import Item
 
 logger = logging.getLogger(__name__)
-
-# The GitHub API's hourly limit (no token): the job waits this long, so the other Items' images go first.
-RATE_LIMIT_WAIT = timedelta(minutes=15)
 
 
 @jobs.handler(services.IMAGE_JOB)
@@ -21,10 +17,11 @@ def fetch_item_image(payload: dict[str, Any]) -> None:
     organisation's avatar), re-encoded by thumbnails.logo_to_webp; for any other type the URL's own bytes
     when it answers with an image, else the page's og:image (twitter:image), re-encoded at ITEM_SIZES.
 
-    Refused URLs, unreadable images and links without a picture are final (logged, no image). A network
-    error raises, so the queue retries; a GitHub API limit defers the job (RetryLater, RATE_LIMIT_WAIT). The
-    image is set only while the Item still has the image it had when the fetch was requested (`expect`) and
-    no other change has ended the fetch since (services.set_image): an upload, a removal or an inbox link
+    Refused URLs, unreadable images and links without a picture are final (logged, no image). An error that
+    may go away raises, so the queue retries (3 attempts); while the GitHub API's hourly limit is used up the
+    job waits until it resets (RetryLater with a delay: only this job waits, the other Items' images go on).
+    The image is set only while the Item still has the image it had when the fetch was requested (`expect`)
+    and no other change has ended the fetch since (services.set_image): an upload, a removal or an inbox link
     made meanwhile wins and the fetched file is discarded.
     """
     item_id, url, expect = payload["item_id"], payload["url"], payload["expect"]
@@ -43,7 +40,7 @@ def fetch_item_image(payload: dict[str, Any]) -> None:
         logger.warning("item image refused", extra={"item": item_id, "reason": str(exc)})
         return
     except logos.RateLimited as exc:
-        raise jobs.RetryLater(str(exc), delay=RATE_LIMIT_WAIT) from exc
+        raise jobs.RetryLater(str(exc), delay=exc.wait) from exc
     services.set_image(item_id, name, expect=expect, fetched=True, webp=webp)
 
 

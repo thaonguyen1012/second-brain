@@ -54,9 +54,10 @@ def _time_limit(seconds: int) -> Iterator[None]:
 
 
 class RetryLater(Exception):
-    """Not a failure (rate limit, quota): the job stays pending, attempts are not counted, and the rest of
-    this run skips jobs of the same kind. With `delay` the job also waits that long, so the next runs take the
-    other jobs of its kind first (a limit that only some of them hit, such as one API's)."""
+    """Not a failure (rate limit, quota): the job stays pending and attempts are not counted. Without `delay`
+    (a limit every job of the kind meets, such as the LLM budget) the rest of this run skips jobs of the same
+    kind. With `delay` (a limit only some jobs of the kind meet, such as one API's) only this job waits that
+    long: the run goes on with the other jobs of its kind, so they never wait behind it."""
 
     def __init__(self, message: str, delay: timedelta | None = None) -> None:
         super().__init__(message)
@@ -118,19 +119,20 @@ def run_pending(limit: int = 100, kinds: set[str] | None = None) -> dict[str, in
         last_error="interrupted (process killed or hung)",
     )
     counts = {"done": 0, "retry": 0, "deferred": 0, "failed": 0}
-    deferred: set[str] = set()
+    paused: set[str] = set()  # kinds a RetryLater without a delay stopped for the rest of this run
     for _ in range(limit):
-        job = _claim(deferred, kinds)
+        job = _claim(paused, kinds)
         if job is None:
             break
-        outcome = _run(job)
+        outcome, pauses_kind = _run(job)
         counts[outcome] += 1
-        if outcome == "deferred":
-            deferred.add(job.kind)
+        if pauses_kind:
+            paused.add(job.kind)
     return counts
 
 
-def _run(job: Job) -> str:
+def _run(job: Job) -> tuple[str, bool]:
+    """Run one claimed job: its outcome, and whether the rest of the run skips its kind."""
     fn = _handlers.get(job.kind)
     try:
         if fn is None:
@@ -142,9 +144,9 @@ def _run(job: Job) -> str:
         logger.warning("job deferred", extra={"job": job.key, "reason": str(exc)})
         job.status, job.last_error = Job.Status.PENDING, str(exc)[:500]
         if exc.delay is not None:
-            job.run_after = timezone.now() + exc.delay
+            job.run_after = timezone.now() + exc.delay  # in the future: not claimed again in this run
         job.save(update_fields=["status", "last_error", "run_after", "updated_at"])
-        return "deferred"
+        return "deferred", exc.delay is None
     except Exception as exc:
         logger.exception("job error", extra={"job": job.key})
         job.attempts += 1
@@ -154,8 +156,8 @@ def _run(job: Job) -> str:
         else:
             job.status, job.run_after = Job.Status.PENDING, timezone.now() + RETRY_DELAY
         job.save(update_fields=["status", "attempts", "last_error", "run_after", "updated_at"])
-        return "failed" if job.status == Job.Status.FAILED else "retry"
+        return ("failed" if job.status == Job.Status.FAILED else "retry"), False
     job.status, job.last_error = Job.Status.DONE, ""
     job.save(update_fields=["status", "last_error", "updated_at"])
     logger.info("job done", extra={"job": job.key})
-    return "done"
+    return "done", False

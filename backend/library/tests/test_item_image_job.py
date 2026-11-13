@@ -21,6 +21,7 @@ from core.services import thumbnails
 from core.testing import csrf, icon_bytes, image_bytes, send
 from core.tests.fakenet import FakeNet, Route, files, html
 from inbox.models import InboxEntry
+from library import logos
 from library.models import Item
 
 pytestmark = pytest.mark.django_db
@@ -502,21 +503,63 @@ def test_a_tools_logo_is_retried_after_a_network_error(client: Client, net: Fake
     assert (job.status, job.attempts) == ("pending", 1) and job.last_error.startswith("FetchError")
 
 
-def test_the_github_limit_lets_the_other_images_go_first(client: Client, net: FakeNet) -> None:
-    net.site("api.github.com", PUBLIC, lambda r: httpx.Response(403))
-    repository = a_tool(client, source="https://github.com/acme/tool")
-    other = book(client)
-    fetch(client, repository)
-    fetch(client, other)
-    run_jobs()  # the tool's job meets the limit: no attempt counted, its kind waits for the rest of this run
-    job = Job.objects.get(key=f"item_image:{repository.pk}")
-    assert (job.status, job.attempts, job.last_error) == ("pending", 0, "GitHub API answered 403")
-    assert job.run_after > timezone.now() + dt.timedelta(minutes=14)
-    assert Item.objects.get(pk=other.pk).image_path == ""
-    run_jobs()  # the next run: the book's image; the tool's job waits its turn
-    assert Item.objects.get(pk=other.pk).image_path
-    assert Job.objects.get(key=f"item_image:{repository.pk}").status == "pending"
-    assert asked(net).count("api.github.com/repos/acme/tool") == 1
+def github_api(remaining: int, reset: dt.datetime | None = None) -> Route:
+    """api.github.com refusing every repository (403), its /rate_limit saying how many requests remain."""
+    core: dict[str, Any] = {"limit": 60, "remaining": remaining}
+    if reset is not None:
+        core["reset"] = int(reset.timestamp())
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/rate_limit":
+            return httpx.Response(200, json={"resources": {"core": core}})
+        return httpx.Response(403)
+
+    return answer
+
+
+def test_the_github_limit_holds_only_the_repositories_until_it_resets(
+    client: Client, net: FakeNet, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reset = timezone.now() + dt.timedelta(minutes=40)
+    net.site("api.github.com", PUBLIC, github_api(remaining=0, reset=reset))
+    repositories = [a_tool(client, source=f"https://github.com/acme/t{n}") for n in range(3)]
+    other = book(client)  # queued after them
+    for item in (*repositories, other):
+        fetch(client, item)
+    run_jobs()
+    assert Item.objects.get(pk=other.pk).image_path  # the book's image comes in the same run
+    for item in repositories:  # no attempt counted: they wait until the limit resets
+        job = Job.objects.get(key=f"item_image:{item.pk}")
+        assert (job.status, job.attempts) == ("pending", 0) and "limit used up" in job.last_error
+        assert reset < job.run_after < reset + dt.timedelta(minutes=1)
+    # the limit is asked about once; the other repositories wait without a request
+    api_paths = [r.url.path for r in net.requests if r.headers["host"] == "api.github.com"]
+    assert api_paths == ["/repos/acme/t0", "/rate_limit"]
+    asked_before = len(net.requests)
+    run_jobs()  # the next run, before the reset: nothing is due
+    assert len(net.requests) == asked_before and Job.objects.filter(status="pending").count() == 3
+    # after the reset (a later run_jobs process): the repositories are asked again
+    monkeypatch.setattr(logos, "_limit_resets_at", None)
+    net.site("api.github.com", PUBLIC, files({}))  # gone: no logo, final
+    Job.objects.filter(status="pending").update(run_after=timezone.now())
+    run_jobs()
+    assert set(Job.objects.values_list("status", flat=True)) == {"done"}
+
+
+def test_a_github_refusal_that_is_not_the_limit_ends_after_three_attempts(
+    client: Client, net: FakeNet
+) -> None:
+    """A repository GitHub blocks (403 while requests remain) never waits for ever, nor holds the others."""
+    net.site("api.github.com", PUBLIC, github_api(remaining=57))
+    blocked = a_tool(client, source="https://github.com/acme/blocked")
+    fetch(client, blocked)
+    for expected in ("pending", "pending", "failed"):
+        Job.objects.filter(status="pending").update(run_after=timezone.now())
+        run_jobs()
+        job = Job.objects.get(key=f"item_image:{blocked.pk}")
+        assert job.status == expected
+    assert (job.attempts, job.last_error) == (3, "FetchError: HTTP 403")
+    assert client.get(f"/api/items/{blocked.pk}").json()["imagePending"] is False
 
 
 def test_an_upload_while_a_tools_logo_waits_wins(

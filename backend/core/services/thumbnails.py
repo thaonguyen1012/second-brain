@@ -18,7 +18,7 @@ from typing import cast
 
 from django.conf import settings
 from django.db import connection, transaction
-from PIL import IcoImagePlugin, Image, ImageOps
+from PIL import IcoImagePlugin, Image, ImageChops, ImageOps
 
 from inbox.models import InboxEntry
 from library.models import Item
@@ -31,11 +31,19 @@ SIZES = (1200, 800, 600, 400)  # inbox link cards
 ITEM_SIZES = (600, 400)
 QUALITIES = (80, 65, 50)
 # A site's icon taken as a logo (a tool's, DECISIONS 9.10) shows at most 56 css px wide: 256 px covers 3x
-# screens. A smaller side under LOGO_MIN_SIDE is a 16 px favicon, which would only show blurred.
+# screens. A smaller side under LOGO_MIN_SIDE (once at most LOGO_SIZE px) is a 16 px favicon or a sliver,
+# which would only show blurred.
 LOGO_SIZE = 256
 LOGO_MIN_SIDE = 32
 LOGO_LOSSLESS_BYTES = 32 * 1024  # flat logos stay well under it; a photo-like avatar goes lossy
 LOGO_QUALITIES = (90, 80)  # flat colours and sharp edges: lossy webp needs more quality than a photo
+# A drawing on a wide white or transparent ground (a web app icon padded for masks, an avatar's margin) is
+# trimmed, so it fills its place like the other logos (checked on the tools' sites 13/11/2026: Vitest's
+# drawing took 39% of its icon). It is cut at LOGO_WORK_SIZE px, so the trimmed drawing keeps its pixels.
+LOGO_WORK_SIZE = 2 * LOGO_SIZE
+LOGO_TRIM_BELOW = 0.8  # trimmed when the drawing's larger side is under this share of the icon's
+LOGO_MARGIN = 0.06  # of the drawing's larger side, kept on each side of it
+LOGO_GROUND = 20  # a pixel whose channels are all within this of white (seen on white) is ground
 ICON_FORMATS = FORMATS | {"ICO"}
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS  # Pillow warns above this and raises above twice this
 
@@ -77,24 +85,30 @@ def to_webp(data: bytes, sizes: tuple[int, ...] = SIZES) -> bytes:
 
 def logo_to_webp(data: bytes) -> bytes:
     """A site's icon as a logo: a webp of at most LOGO_SIZE px on its longer side, never enlarged, its
-    transparency kept; lossless when that stays under LOGO_LOSSLESS_BYTES (a small icon stays sharp), else
-    lossy at LOGO_QUALITIES. Pillow reads the bytes themselves, whatever type the sender claimed: JPEG, PNG,
-    GIF, WebP (their first frame) or ICO (its largest frame, in its most colours). SVG, anything else and a
-    bomb raise ThumbnailError; NotALogo when the smaller side is under LOGO_MIN_SIDE px or every pixel has
-    one colour (a blank or fully transparent icon)."""
+    transparency kept, a drawing on a wide white or transparent ground trimmed (_trim); lossless when that
+    stays under LOGO_LOSSLESS_BYTES (a small icon stays sharp), else lossy at LOGO_QUALITIES. Pillow reads the
+    bytes themselves, whatever type the sender claimed: JPEG, PNG, GIF, WebP (their first frame) or ICO (its
+    largest frame, in its most colours). SVG, anything else and a bomb raise ThumbnailError; NotALogo when the
+    smaller side, once at most LOGO_SIZE px, is under LOGO_MIN_SIDE px (a 16 px favicon, a 32x600000 sliver:
+    checked before decoding) or every pixel has one colour (a blank or fully transparent icon)."""
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             with Image.open(io.BytesIO(data), formats=sorted(ICON_FORMATS)) as source:
                 frame = _icon_frame(source)
-                if min(frame.size) < LOGO_MIN_SIDE:
-                    raise NotALogo(f"icon of {frame.width}x{frame.height} px is too small")
-                frame.thumbnail((LOGO_SIZE, LOGO_SIZE), Image.Resampling.LANCZOS)
+                width, height = frame.size
+                if min(width, height) * min(1.0, LOGO_SIZE / max(width, height)) < LOGO_MIN_SIDE:
+                    raise NotALogo(f"icon of {width}x{height} px is too small")
+                frame.thumbnail((LOGO_WORK_SIZE, LOGO_WORK_SIZE), Image.Resampling.LANCZOS)
                 image = ImageOps.exif_transpose(frame).convert("RGBA")
     except ThumbnailError:
         raise
     except Exception as exc:  # third-party bytes: Pillow raises many types (S-06)
         raise ThumbnailError(f"cannot decode image: {type(exc).__name__}") from exc
+    image = _trim(image)
+    image.thumbnail((LOGO_SIZE, LOGO_SIZE), Image.Resampling.LANCZOS)
+    if min(image.size) < LOGO_MIN_SIDE:
+        raise NotALogo(f"logo of {image.width}x{image.height} px is too small")
     bands = cast("tuple[tuple[int, int], ...]", image.getextrema())  # RGBA: (lowest, highest) per band
     if bands[3][1] == 0 or all(low == high for low, high in bands):
         raise NotALogo("icon of one colour")
@@ -110,14 +124,52 @@ def logo_to_webp(data: bytes) -> bytes:
 def _icon_frame(source: Image.Image) -> Image.Image:
     """The frame a logo is made of: an ICO's largest, in its most colours (Pillow opens the largest, but in
     its fewest colours when one size comes in several depths), else the first frame (a JPEG decoded at a
-    reduced scale that still covers LOGO_SIZE)."""
+    reduced scale that still covers LOGO_WORK_SIZE)."""
     if isinstance(source, IcoImagePlugin.IcoImageFile):
         entries = source.ico.entry
         best = max(range(len(entries)), key=lambda i: (entries[i].square, entries[i].color_depth))
         return source.ico.frame(best)
     source.seek(0)
-    source.draft("RGB", (LOGO_SIZE, LOGO_SIZE))
+    source.draft("RGB", (LOGO_WORK_SIZE, LOGO_WORK_SIZE))
     return source
+
+
+def _trim(image: Image.Image) -> Image.Image:
+    """An RGBA icon whose four corners are white or transparent and whose drawing (the pixels that, seen on
+    white, are more than LOGO_GROUND from it) is under LOGO_TRIM_BELOW of its larger side: the square around
+    the drawing with LOGO_MARGIN on each side (a square keeps the icon's shape, so its smaller side still says
+    how sharp it is). An icon on a tile of its own colour, or whose drawing is already large, is left as it
+    is, and so is one whose drawing would make a logo under LOGO_MIN_SIDE px."""
+    width, height = image.size
+    corners = [image.getpixel((x, y)) for x in (0, width - 1) for y in (0, height - 1)]
+    if not all(isinstance(c, tuple) and (c[3] < 16 or min(c[:3]) > 255 - LOGO_GROUND) for c in corners):
+        return image
+    seen = Image.new("RGBA", image.size, "white")
+    seen.alpha_composite(image)
+    white = Image.new("RGB", image.size, "white")
+    red, green, blue = ImageChops.difference(seen.convert("RGB"), white).split()
+    farthest = ImageChops.lighter(ImageChops.lighter(red, green), blue)  # each pixel's largest distance
+    box = farthest.point([0] * (LOGO_GROUND + 1) + [255] * (255 - LOGO_GROUND)).getbbox()
+    if box is None:
+        return image
+    drawn = max(box[2] - box[0], box[3] - box[1])
+    side = round(drawn * (1 + 2 * LOGO_MARGIN))
+    if drawn >= LOGO_TRIM_BELOW * max(width, height) or side < LOGO_MIN_SIDE:
+        return image
+    crop_w, crop_h = min(side, width), min(side, height)
+    left = min(max(0, round((box[0] + box[2] - crop_w) / 2)), width - crop_w)
+    top = min(max(0, round((box[1] + box[3] - crop_h) / 2)), height - crop_h)
+    return image.crop((left, top, left + crop_w, top + crop_h))
+
+
+def image_size(data: bytes) -> tuple[int, int]:
+    """An image's size as published (an ICO's largest frame), read from its header; ThumbnailError for bytes
+    Pillow does not read as one of ICON_FORMATS."""
+    try:
+        with Image.open(io.BytesIO(data), formats=sorted(ICON_FORMATS)) as image:
+            return image.size
+    except Exception as exc:  # third-party bytes: Pillow raises many types (S-06)
+        raise ThumbnailError(f"cannot decode image: {type(exc).__name__}") from exc
 
 
 def _encode(image: Image.Image, *, lossless: bool = False, quality: int = 100) -> bytes:

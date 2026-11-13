@@ -46,23 +46,24 @@ def test_rate_limited_job_stays_pending_and_pauses_its_kind(calls: list[str]) ->
     assert (job.status, job.attempts, job.last_error) == ("pending", 0, "429")
 
 
-def test_a_deferral_with_a_delay_lets_the_other_jobs_of_its_kind_go_first(
-    monkeypatch: pytest.MonkeyPatch, calls: list[str]
-) -> None:
+def test_a_deferral_with_a_delay_waits_alone(monkeypatch: pytest.MonkeyPatch, calls: list[str]) -> None:
     def picky(payload: dict[str, Any]) -> None:
         calls.append(payload["n"])
-        if payload["n"] == "api":  # a limit only this job hits (one API's)
+        if payload["n"].startswith("api"):  # a limit only these jobs meet (one API's)
             raise jobs.RetryLater("403", delay=timedelta(minutes=15))
 
     monkeypatch.setitem(jobs._handlers, "picky", picky)
-    jobs.enqueue("picky", "p:1", {"n": "api"})
-    jobs.enqueue("picky", "p:2", {"n": "site"})
-    assert jobs.run_pending() == {"done": 0, "retry": 0, "deferred": 1, "failed": 0}  # the kind waits
-    job = Job.objects.get(key="p:1")
+    for n, name in enumerate(("api-1", "api-2", "site-1", "api-3", "site-2")):
+        jobs.enqueue("picky", f"p:{n}", {"n": name})
+    # each waiting job is tried once and waits; the other jobs of its kind still run in the same run
+    assert jobs.run_pending() == {"done": 2, "retry": 0, "deferred": 3, "failed": 0}
+    assert calls == ["api-1", "api-2", "site-1", "api-3", "site-2"]
+    job = Job.objects.get(key="p:0")
     assert (job.status, job.attempts, job.last_error) == ("pending", 0, "403")
     assert job.run_after > timezone.now() + timedelta(minutes=14)
-    assert jobs.run_pending()["done"] == 1  # the next run: the other job, not the one that waits
-    assert calls == ["api", "site"]
+    assert jobs.run_pending() == {"done": 0, "retry": 0, "deferred": 0, "failed": 0}  # they wait their delay
+    Job.objects.filter(status="pending").update(run_after=timezone.now())
+    assert jobs.run_pending()["deferred"] == 3
 
 
 def test_failing_job_retries_then_fails(calls: list[str]) -> None:

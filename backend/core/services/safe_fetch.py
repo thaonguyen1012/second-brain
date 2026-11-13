@@ -45,6 +45,15 @@ class FetchBlocked(FetchError):
     """The guard refused the URL or the response; retrying will not help."""
 
 
+class ResponseRefused(FetchBlocked):
+    """The guard refused the answer (its type, encoding or size), not the address: the site's other URLs may
+    still be read."""
+
+    def __init__(self, message: str, content_type: str) -> None:
+        super().__init__(message)
+        self.content_type = content_type  # the answer's media type, lowercase ("" without one)
+
+
 @dataclass(frozen=True)
 class Fetched:
     url: str  # final URL after redirects
@@ -217,19 +226,19 @@ def _read(
     media_type, _, params = response.headers.get("content-type", "").partition(";")
     media_type = media_type.strip().lower()
     if media_type not in accept:
-        raise FetchBlocked(f"content type {media_type or 'missing'!r} is not accepted")
+        raise ResponseRefused(f"content type {media_type or 'missing'!r} is not accepted", media_type)
     if response.headers.get("content-encoding", "identity").strip().lower() != "identity":
         # httpx would decode it with no output limit (a few hundred bytes can expand to GBs).
-        raise FetchBlocked("compressed body refused")
+        raise ResponseRefused("compressed body refused", media_type)
     declared = response.headers.get("content-length", "")
     if declared.isdigit() and int(declared) > MAX_BYTES:
-        raise FetchBlocked("body larger than the limit")
+        raise ResponseRefused("body larger than the limit", media_type)
     body = bytearray()
     try:
         for chunk in response.iter_raw():
             body += chunk
             if len(body) > MAX_BYTES:
-                raise FetchBlocked("body larger than the limit")
+                raise ResponseRefused("body larger than the limit", media_type)
             if time.monotonic() > deadline:
                 raise FetchError("timeout")
     except httpx.HTTPError as exc:
