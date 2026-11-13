@@ -36,6 +36,10 @@ TRANSPORT: httpx.BaseTransport | None = None  # tests swap in httpx.MockTranspor
 class FetchError(Exception):
     """The fetch failed for a reason that may go away (network, HTTP status, timeout)."""
 
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status  # the HTTP status of an answer other than 200, else None
+
 
 class FetchBlocked(FetchError):
     """The guard refused the URL or the response; retrying will not help."""
@@ -209,7 +213,7 @@ def _read(
     response: httpx.Response, url: str, accept: tuple[str, ...], deadline: float, watchdog: _Watchdog
 ) -> Fetched:
     if response.status_code != 200:
-        raise FetchError(f"HTTP {response.status_code}")
+        raise FetchError(f"HTTP {response.status_code}", status=response.status_code)
     media_type, _, params = response.headers.get("content-type", "").partition(";")
     media_type = media_type.strip().lower()
     if media_type not in accept:

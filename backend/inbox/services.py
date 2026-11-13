@@ -58,8 +58,8 @@ def set_status(entry: InboxEntry, status: str) -> None:
 def triage_entry(entry: InboxEntry, changes: dict[str, object]) -> InboxEntry:
     """Apply the weekly-review decision (status, linked Item); only TRIAGE_FIELDS can change. Linking an Item
     that has no image gives it a copy of the entry's thumbnail (no network; an image is never replaced),
-    except a project or a tool: a page's OG image is a banner, not a logo (library.LOGO_TYPES, the rule of
-    library.fetch_automatically)."""
+    except a project or a tool: a page's OG image is a banner, not a logo (library.LOGO_TYPES; a tool's logo
+    is its site's icon, which library.fetch_automatically queues, a project's is uploaded)."""
     fields = [f for f in TRIAGE_FIELDS if f in changes]
     if "item" in changes:
         entry.item = changes["item"]  # type: ignore[assignment]  # an owned Item or None (serializer)

@@ -166,9 +166,9 @@ that does not change the status leaves both dates alone.
 ### Item image
 
 One image per Item (DECISIONS 9.6): the cover of a book or film, the logo of a project or a tool (a project is an
-Item, so it uses these endpoints too). The server stores it re-encoded as webp, at most 600 px on the longer side and 200 KB,
-without EXIF; never the uploaded bytes. Every endpoint answers `404` for an unknown id or another owner's Item and
-`401` when not logged in; writes need the CSRF header.
+Item, so it uses these endpoints too). The server stores it re-encoded as webp, at most 600 px on the longer side and 200 KB
+(a logo fetched from a tool's site: at most 256 px), without EXIF; never the uploaded bytes. Every endpoint answers
+`404` for an unknown id or another owner's Item and `401` when not logged in; writes need the CSRF header.
 
 * `GET /api/items/{id}/image`: the webp (`Content-Type: image/webp`, `Cache-Control: private, max-age=86400`), `404`
   when the Item has no image. Load it through `imageUrl`. Not in the OpenAPI schema (not JSON).
@@ -195,12 +195,30 @@ without EXIF; never the uploaded bytes. Every endpoint answers `404` for an unkn
   while a fetch waits keeps one job: the same request changes nothing, another link starts it over with every
   attempt and no delay; after a fetch has ended (or was ended) it runs again.
   `400 { "url": ["Item chưa có link http(s)."] }` when there is no `url` and the source is not an http(s) URL (an
-  invalid `url` answers `400` with the URL message). Allowed for every type (the UI hides it for projects and tools,
-whose picture is a logo).
+  invalid `url` answers `400` with the URL message). Allowed for every type (the UI hides it for projects, whose
+logo is uploaded, and offers it as "Lấy logo từ trang" for tools).
+
+For a tool the fetch takes the logo of its site instead of an `og:image` (a page's banner makes a poor logo;
+DECISIONS 9.10, `backend/library/logos.py`, `backend/core/services/site_icon.py`): the icons the page declares
+(`<link rel>` apple-touch-icon, icon, shortcut icon; the raster icons of its web app manifest) and the site's
+`/apple-touch-icon.png` and `/favicon.ico` (not on Read the Docs, which answers them with its own icon), ranked by
+declared size (128-512 px first), at most 5 of them tried; the first raster image (PNG, JPEG, GIF, WebP or an ICO's
+largest frame) whose smaller side is at least 32 px is kept, never enlarged, with its transparency. SVG is never
+fetched. A `url` that answers with an image is that logo itself. Hosts whose pages carry their own icon:
+`github.com/<owner>/<repo>` asks the GitHub API (no token) for the repository's homepage and takes that site's
+icon, else the owner's avatar (256 px) when the owner is an organisation; a person's account gives none, and
+GitHub's own pages (`/features/...`, `/search`) keep GitHub's icon. The Visual Studio Marketplace, the Chrome Web
+Store and GitLab give the item's own icon (the page's `og:image`, only when it is the store's icon URL); npm, PyPI,
+Bitbucket, Codeberg, SourceForge, addons.mozilla.org, the App Store and Google Play give none. A GitHub API limit
+(403 or 429) defers the job 15 minutes without counting an attempt; a repository that is gone (404) ends without a
+logo.
 
 Automatic fetch: creating an Item, or a `PATCH` that changes its `source`, queues the same fetch (`imagePending:
-true` in that answer) when the Item has no image, its `source` is an http(s) URL and it is not a project or a tool
-(a page's banner makes a poor logo). Handbook courses (source `/docs/...`) and sources that are plain text are skipped.
+true` in that answer) when the Item has no image, its `source` is an http(s) URL and it is not a project (a page's
+banner makes a poor logo, and a client's site is not the project's): a tool gets the logo of its site. Handbook
+courses (source `/docs/...`) and sources that are plain text are skipped. `manage.py seed_tools` therefore queues a
+logo for each tool it adds, and `manage.py fetch_tool_logos [--owner EMAIL]` queues one for each of the owner's tools
+that has a link, no image and no fetch waiting or running.
 
 ### Where an Item is used
 
@@ -300,7 +318,7 @@ records the weekly triage and accepts only `{ "status": "inbox|later|archived", 
 archived and cleared (`null`) when it leaves the archive. Linking an Item that has no image gives it its own copy of
 the entry's thumbnail (re-encoded for Items, no network request; the Item's `imageUrl`) and ends a fetch of the
 Item's image that waits or runs; an Item that has an image keeps it, and a project or a tool never gets one this way
-(a page's OG image is a banner, not a logo). An entry linked before its unfurl finished passes the thumbnail on when the unfurl
+(a page's OG image is a banner, not a logo; a tool's logo fetch goes on). An entry linked before its unfurl finished passes the thumbnail on when the unfurl
 stores it. Unlinking or
 deleting the entry later leaves the Item's image alone.
 `suggestedDestination` is one of read_later, book, opportunity, note (or empty until processed).

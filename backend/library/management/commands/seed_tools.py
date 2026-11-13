@@ -12,8 +12,9 @@ from library.models import Item
 class Command(BaseCommand):
     help = (
         "Add the starter list of well-known engineering tools (library/tools.json) to the owner's library as "
-        "Items of type tool, status planned, tagged with their stages. Safe to run again: a tool the owner "
-        "already has (the same title, in any case) is left exactly as it is."
+        "Items of type tool, status planned, tagged with their stages; each new tool's logo is queued (the "
+        "item_image job, made by run_jobs). Safe to run again: a tool the owner already has (the same title, "
+        "in any case) is left exactly as it is."
     )
 
     def add_arguments(self, parser: CommandParser) -> None:
@@ -29,7 +30,8 @@ class Command(BaseCommand):
                 if mine.exists():
                     kept += 1
                     continue
-                # create_item, as the API does: a planned Item has no dates, and a tool never queues an image
+                # create_item, as the API does: a planned Item has no dates, and a tool with a link queues the
+                # logo of its site (fetch_automatically; run_jobs makes the requests, never this command)
                 services.create_item(
                     owner,
                     {

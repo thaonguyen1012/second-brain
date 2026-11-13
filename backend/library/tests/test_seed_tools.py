@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 
 from core.models import Job
+from core.tests.fakenet import FakeNet
 from library.models import Item
 from library.tools import STAGES, seed_tools, stage_tags
 
@@ -84,7 +85,8 @@ def test_the_starter_list_is_well_formed() -> None:
     assert stages["Motion"] == stages["GSAP"] == stages["Base UI"] == ["ui"]
 
 
-def test_seed_adds_every_tool_once_as_planned_without_images() -> None:
+def test_seed_adds_every_tool_once_as_planned_and_queues_its_logo(monkeypatch: pytest.MonkeyPatch) -> None:
+    FakeNet(monkeypatch)  # no request may leave: run_jobs fetches the logos, never the command
     first = seed()
     tools = Item.objects.filter(user=owner(), type="tool")
     n = len(seed_tools())
@@ -95,11 +97,19 @@ def test_seed_adds_every_tool_once_as_planned_without_images() -> None:
     semgrep = tools.get(title="Semgrep")
     assert (semgrep.source, semgrep.tags) == ("https://semgrep.dev", ["review", "security"])
     assert semgrep.summary.startswith("Quét code")
-    assert not Job.objects.exists()  # a tool's picture is a logo: no fetch from its link
+    # each tool's logo waits for run_jobs: the icon of its site (DECISIONS 9.10)
+    jobs = Job.objects.filter(kind="item_image", status="pending")
+    assert jobs.count() == n
+    assert jobs.get(key=f"item_image:{semgrep.pk}").payload == {
+        "item_id": semgrep.pk,
+        "url": "https://semgrep.dev",
+        "expect": "",
+    }
 
     again = seed()
     assert again.strip() == f"0 tools added, {n} already there, for {OWNER}"
     assert Item.objects.filter(type="tool").count() == n
+    assert Job.objects.count() == n  # nothing queued twice
 
 
 def test_seed_never_changes_a_tool_the_owner_already_has() -> None:

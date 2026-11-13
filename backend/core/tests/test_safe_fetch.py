@@ -125,8 +125,23 @@ def test_other_schemes_and_errors(net: FakeNet) -> None:
     with pytest.raises(FetchError, match="DNS"):
         fetch("http://unknown.test/", safe_fetch.HTML_TYPES)
     net.site("down.test", PUBLIC, lambda r: httpx.Response(503))
-    with pytest.raises(FetchError, match="503"):
+    with pytest.raises(FetchError, match="503") as raised:
         fetch("http://down.test/", safe_fetch.HTML_TYPES)
+    assert raised.value.status == 503  # callers tell a missing file (4xx) from a server error
+
+
+def test_only_an_http_answer_carries_a_status(net: FakeNet) -> None:
+    net.site("gone.test", PUBLIC, lambda r: httpx.Response(404))
+    with pytest.raises(FetchError) as raised:
+        fetch("http://gone.test/", safe_fetch.HTML_TYPES)
+    assert (str(raised.value), raised.value.status) == ("HTTP 404", 404)
+    with pytest.raises(FetchError) as raised:
+        fetch("http://unknown.test/", safe_fetch.HTML_TYPES)
+    assert raised.value.status is None
+    net.site("pic.test", PUBLIC, lambda r: httpx.Response(200, headers={"content-type": "image/png"}))
+    with pytest.raises(FetchBlocked) as blocked:
+        fetch("http://pic.test/", safe_fetch.HTML_TYPES)
+    assert blocked.value.status is None
 
 
 def test_compressed_body_is_refused(net: FakeNet) -> None:

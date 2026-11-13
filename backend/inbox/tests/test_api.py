@@ -133,7 +133,7 @@ def test_linking_gives_the_item_its_own_copy_of_the_thumbnail(
 def test_linking_a_project_never_makes_the_thumbnail_its_logo(
     client: Client, settings: Any, tmp_path: Path, kind: str
 ) -> None:
-    # A page's OG image is a banner, not a logo: a project or a tool gets a logo only from an upload.
+    # A page's OG image is a banner, not a logo: a project's logo is uploaded, a tool's is its site's icon.
     settings.THUMBS_DIR = tmp_path
     client.get("/api/me")
     user = User.objects.get(username="dev@localhost")

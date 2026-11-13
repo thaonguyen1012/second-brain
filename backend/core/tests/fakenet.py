@@ -1,6 +1,6 @@
 """Fake DNS and HTTP for tests: no test may reach the network."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 import httpx
@@ -42,6 +42,24 @@ def html(body: str, **headers: Any) -> Route:
     return lambda request: httpx.Response(
         200, headers={"content-type": "text/html; charset=utf-8", **headers}, text=body
     )
+
+
+Files = Mapping[str, tuple[str, bytes | str] | int]  # path -> (content type, body), or an HTTP status
+
+
+def files(paths: Files) -> Route:
+    """A site answering by path (a bare status: that answer, without a body), 404 for any other path. The
+    mapping is read at each request, so a test may change it between fetches."""
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        found = paths.get(request.url.path, 404)
+        if isinstance(found, int):
+            return httpx.Response(found)
+        kind, body = found
+        content = body.encode() if isinstance(body, str) else body
+        return httpx.Response(200, headers={"content-type": kind}, content=content)
+
+    return answer
 
 
 def redirect(location: str) -> Route:

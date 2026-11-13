@@ -55,7 +55,12 @@ def _time_limit(seconds: int) -> Iterator[None]:
 
 class RetryLater(Exception):
     """Not a failure (rate limit, quota): the job stays pending, attempts are not counted, and the rest of
-    this run skips jobs of the same kind."""
+    this run skips jobs of the same kind. With `delay` the job also waits that long, so the next runs take the
+    other jobs of its kind first (a limit that only some of them hit, such as one API's)."""
+
+    def __init__(self, message: str, delay: timedelta | None = None) -> None:
+        super().__init__(message)
+        self.delay = delay
 
 
 def handler(kind: str) -> Callable[[Handler], Handler]:
@@ -136,7 +141,9 @@ def _run(job: Job) -> str:
     except RetryLater as exc:
         logger.warning("job deferred", extra={"job": job.key, "reason": str(exc)})
         job.status, job.last_error = Job.Status.PENDING, str(exc)[:500]
-        job.save(update_fields=["status", "last_error", "updated_at"])
+        if exc.delay is not None:
+            job.run_after = timezone.now() + exc.delay
+        job.save(update_fields=["status", "last_error", "run_after", "updated_at"])
         return "deferred"
     except Exception as exc:
         logger.exception("job error", extra={"job": job.key})

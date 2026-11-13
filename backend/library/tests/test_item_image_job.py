@@ -18,8 +18,8 @@ from PIL import Image
 
 from core.models import Job
 from core.services import thumbnails
-from core.testing import csrf, image_bytes, send
-from core.tests.fakenet import FakeNet, Route, html
+from core.testing import csrf, icon_bytes, image_bytes, send
+from core.tests.fakenet import FakeNet, Route, files, html
 from inbox.models import InboxEntry
 from library.models import Item
 
@@ -353,19 +353,19 @@ def test_creating_an_item_with_a_link_queues_its_image(client: Client, net: Fake
     assert Item.objects.get(pk=data["id"]).image_path
 
 
-def test_no_automatic_fetch_for_logos_or_sources_without_a_link(client: Client, net: FakeNet) -> None:
-    # a project's and a tool's picture is a logo, which a page's OG banner is not
+def test_no_automatic_fetch_for_projects_or_sources_without_a_link(client: Client, net: FakeNet) -> None:
+    # a project's picture is a logo, which a page's OG banner is not, and a client's site is not the project's
     headers = csrf(client)
     for body in (
         {"type": "project", "title": "Repo", "source": "https://github.test/alex/shop"},
-        {"type": "tool", "title": "Semgrep", "source": "https://semgrep.test/"},
+        {"type": "tool", "title": "grep", "source": "man grep"},
         {"type": "course", "title": "Làm vườn", "source": "/docs/ky-nang/garden-notes/"},
         {"type": "book", "title": "Dune", "source": "Frank Herbert"},
         {"type": "film", "title": "No source"},
     ):
         assert send(client, "post", "/api/items", body, headers).json()["imagePending"] is False
-    tool = Item.objects.get(type="tool")
-    patched = send(client, "patch", f"/api/items/{tool.pk}", {"source": "https://semgrep.test/new"}, headers)
+    in_library = Item.objects.get(type="project")
+    patched = send(client, "patch", f"/api/items/{in_library.pk}", {"source": "https://shop.test/"}, headers)
     assert patched.json()["imagePending"] is False
     project = send(
         client, "post", "/api/projects", {"title": "Shop", "source": "https://shop.test/"}, headers
@@ -415,3 +415,136 @@ def test_a_new_link_keeps_an_existing_image(client: Client, net: FakeNet) -> Non
     url = f"/api/items/{item.pk}"
     data = send(client, "patch", url, {"source": "https://blog.test/dune"}, csrf(client)).json()
     assert data["imagePending"] is False and not Job.objects.exists()
+
+
+# --- a tool's logo: the icon of its site (DECISIONS 9.10) ---------------------------------------------------
+
+TOOL_PAGE = (
+    '<meta property="og:image" content="https://cdn.test/cover.png">'  # a 1600 px banner, never a logo
+    '<link rel="apple-touch-icon" href="/touch.png">'
+)
+
+
+@pytest.fixture
+def tool_site(net: FakeNet) -> FakeNet:
+    net.site(
+        "tool.test",
+        PUBLIC,
+        files({"/": ("text/html", TOOL_PAGE), "/touch.png": ("image/png", icon_bytes((180, 180)))}),
+    )
+    return net
+
+
+def a_tool(client: Client, source: str = "https://tool.test/", **fields: Any) -> Item:
+    """Made in the ORM: no automatic fetch."""
+    return Item.objects.create(user=owner(client), type="tool", title="Semgrep", source=source, **fields)
+
+
+def asked(net: FakeNet) -> list[str]:
+    return [f"{r.headers['host']}{r.url.path}" for r in net.requests]
+
+
+def test_a_tool_with_a_link_queues_the_logo_of_its_site(
+    client: Client, tool_site: FakeNet, tmp_path: Path
+) -> None:
+    headers = csrf(client)
+    body = {"type": "tool", "title": "Semgrep", "source": "https://tool.test/"}
+    data = send(client, "post", "/api/items", body, headers).json()
+    assert data["imagePending"] is True and tool_site.requests == []  # run_jobs makes the requests
+    assert Job.objects.get().payload == {"item_id": data["id"], "url": "https://tool.test/", "expect": ""}
+    run_jobs()
+    logo = Item.objects.get(pk=data["id"]).image_path
+    with Image.open(tmp_path / logo) as image:
+        assert (image.format, image.size) == ("WEBP", (180, 180))  # the site's icon, not its banner
+    assert asked(tool_site) == ["tool.test/", "tool.test/touch.png"]
+    assert Job.objects.get().status == "done"
+    # a tool that gets a link later queues its logo too, while it has none
+    later = a_tool(client, source="man semgrep")
+    patched = send(client, "patch", f"/api/items/{later.pk}", {"source": "https://tool.test/"}, headers)
+    assert patched.json()["imagePending"] is True
+    with_logo = send(client, "patch", f"/api/items/{data['id']}", {"source": "https://tool.test/v2"}, headers)
+    assert with_logo.json()["imagePending"] is False
+
+
+def test_a_tool_on_request_takes_its_sites_logo_or_the_image_linked(
+    client: Client, tool_site: FakeNet, tmp_path: Path
+) -> None:
+    item = a_tool(client)
+    response = fetch(client, item)
+    assert response.status_code == 202 and response.json()["imagePending"] is True
+    run_jobs()
+    first = Item.objects.get(pk=item.pk).image_path
+    assert first and asked(tool_site) == ["tool.test/", "tool.test/touch.png"]
+    # a link to an image is the logo itself, at most LOGO_SIZE px
+    tool_site.site("cdn.test", PUBLIC, files({"/logo.png": ("image/png", icon_bytes((512, 512), "blue"))}))
+    fetch(client, Item.objects.get(pk=item.pk), url="https://cdn.test/logo.png")
+    run_jobs()
+    second = Item.objects.get(pk=item.pk).image_path
+    with Image.open(tmp_path / second) as image:
+        assert second != first and image.size == (thumbnails.LOGO_SIZE, thumbnails.LOGO_SIZE)
+
+
+def test_a_tool_whose_site_has_no_icon_ends_without_one(client: Client, net: FakeNet) -> None:
+    net.site("bare.test", PUBLIC, files({"/": ("text/html", "<title>Bare</title>")}))
+    item = a_tool(client, source="https://bare.test/")
+    fetch(client, item)
+    run_jobs()
+    assert Job.objects.get().status == "done" and Item.objects.get(pk=item.pk).image_path == ""
+    assert asked(net) == ["bare.test/", "bare.test/apple-touch-icon.png", "bare.test/favicon.ico"]
+
+
+def test_a_tools_logo_is_retried_after_a_network_error(client: Client, net: FakeNet) -> None:
+    net.site("down.test", PUBLIC, lambda r: httpx.Response(503))
+    item = a_tool(client, source="https://down.test/")
+    fetch(client, item)
+    run_jobs()
+    job = Job.objects.get()
+    assert (job.status, job.attempts) == ("pending", 1) and job.last_error.startswith("FetchError")
+
+
+def test_the_github_limit_lets_the_other_images_go_first(client: Client, net: FakeNet) -> None:
+    net.site("api.github.com", PUBLIC, lambda r: httpx.Response(403))
+    repository = a_tool(client, source="https://github.com/acme/tool")
+    other = book(client)
+    fetch(client, repository)
+    fetch(client, other)
+    run_jobs()  # the tool's job meets the limit: no attempt counted, its kind waits for the rest of this run
+    job = Job.objects.get(key=f"item_image:{repository.pk}")
+    assert (job.status, job.attempts, job.last_error) == ("pending", 0, "GitHub API answered 403")
+    assert job.run_after > timezone.now() + dt.timedelta(minutes=14)
+    assert Item.objects.get(pk=other.pk).image_path == ""
+    run_jobs()  # the next run: the book's image; the tool's job waits its turn
+    assert Item.objects.get(pk=other.pk).image_path
+    assert Job.objects.get(key=f"item_image:{repository.pk}").status == "pending"
+    assert asked(net).count("api.github.com/repos/acme/tool") == 1
+
+
+def test_an_upload_while_a_tools_logo_waits_wins(
+    client: Client, tool_site: FakeNet, django_capture_on_commit_callbacks: Any
+) -> None:
+    item = a_tool(client)
+    fetch(client, item)
+    assert upload(client, item, "blue")["imagePending"] is False
+    uploaded = Item.objects.get(pk=item.pk).image_path
+    with django_capture_on_commit_callbacks(execute=True):
+        run_jobs()
+    assert tool_site.requests == [] and Item.objects.get(pk=item.pk).image_path == uploaded
+
+
+def test_linking_an_inbox_entry_leaves_a_tools_logo_fetch_alone(
+    client: Client, tool_site: FakeNet, tmp_path: Path
+) -> None:
+    """'Thành item' with a tool: the entry's thumbnail is the page's banner, never the tool's logo, so the
+    link copies nothing and the logo fetch the create queued goes on."""
+    headers = csrf(client)
+    thumbnail = thumbnails.store(thumbnails.to_webp(image_bytes((1600, 900), "green")))
+    entry = InboxEntry.objects.create(user=owner(client), url="https://tool.test/", og_image_path=thumbnail)
+    body = {"type": "tool", "title": "Semgrep", "source": "https://tool.test/"}
+    item = send(client, "post", "/api/items", body, headers).json()
+    send(client, "patch", f"/api/inbox/{entry.pk}", {"item": item["id"]}, headers)
+    data = client.get(f"/api/items/{item['id']}").json()
+    assert (data["imageUrl"], data["imagePending"]) == (None, True)
+    run_jobs()
+    logo = Item.objects.get(pk=item["id"]).image_path
+    with Image.open(tmp_path / logo) as image:
+        assert image.size == (180, 180)

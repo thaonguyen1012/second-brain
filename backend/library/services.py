@@ -1,8 +1,9 @@
 """Library: Items and Notes (DECISIONS 4.1). Note bodies are private: they are never sent to an LLM.
 
 Item images (DECISIONS 9.6): one webp per Item in THUMBS_DIR (core/services/thumbnails.py), from an upload,
-from the link (the `item_image` job in library/jobs.py, run by run_jobs) or copied from a linked inbox
-entry's thumbnail. Every change goes through set_image; any change but the job's own ends the Item's fetch.
+from the link (the `item_image` job in library/jobs.py, run by run_jobs: the page's image, or for a tool the
+logo of its site, DECISIONS 9.10) or copied from a linked inbox entry's thumbnail. Every change goes through
+set_image; any change but the job's own ends the Item's fetch.
 """
 
 import datetime as dt
@@ -47,9 +48,11 @@ _HTTP_URL = URLValidator(schemes=["http", "https"])
 # Item fields an API write may set (POST/PATCH /api/items; /api/projects sends a subset).
 ITEM_FIELDS = ("type", "status", "title", "summary", "tags", "source", "rating", "started_at", "finished_at")
 # Types whose picture is a logo (a project's, a tool's): a page's OG image is a banner, not a logo, so these
-# never take one on their own (no automatic fetch, no inbox thumbnail); a logo is uploaded, or fetched on
-# request.
+# never take one on their own (no og:image fetch from their link, no inbox thumbnail).
 LOGO_TYPES = frozenset({Item.Type.PROJECT, Item.Type.TOOL})
+# The logo types whose logo the item_image job finds on its own: a tool's is the icon of its official site
+# (library/logos.py, DECISIONS 9.10). A project's is only uploaded: a client's site is not the project's logo.
+SITE_ICON_TYPES = frozenset({Item.Type.TOOL})
 NOTE_FIELDS = ("title", "markdown")
 # The ASCII punctuation a backslash may escape in markdown (CommonMark), as the editor writes `AT\&T`
 _ESCAPABLE = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
@@ -352,10 +355,12 @@ def request_fetch(item: Item, url: str) -> None:
 
 
 def fetch_automatically(item: Item) -> None:
-    """A new link brings its image (DECISIONS 9.6), for an Item without one whose source is an http(s) URL
-    (handbook courses point at /docs/... and are skipped). Never for a project or a tool (LOGO_TYPES): a
-    page's OG banner makes a poor logo, so a logo is uploaded or fetched on request."""
-    if item.type not in LOGO_TYPES and not item.image_path and is_http_url(item.source):
+    """A new link brings its picture (DECISIONS 9.6, 9.10), for an Item without one whose source is an
+    http(s) URL (handbook courses point at /docs/... and are skipped): the page's image, or for a tool
+    (SITE_ICON_TYPES) the logo of its site. Never for a project: a page's OG banner makes a poor logo and a
+    client's site is not the project's, so a project's logo is uploaded (or fetched on request)."""
+    takes_one = item.type not in LOGO_TYPES or item.type in SITE_ICON_TYPES
+    if takes_one and not item.image_path and is_http_url(item.source):
         request_fetch(item, item.source)
 
 

@@ -168,9 +168,11 @@ class ItemImageFetchView(APIView):
     )
     def post(self, request: Request, pk: int) -> Response:
         """Take the image from a link, in the background: the og:image of the page, or the URL itself when it
-        is an image (`url`, default the Item's source). Answers 202 with the Item (imagePending true) at once;
-        run_jobs makes the request, so the image appears within about 5 minutes. It replaces only the image
-        the Item had when asked: an upload, a removal or an inbox link made meanwhile ends the fetch."""
+        is an image (`url`, default the Item's source); for a tool, the logo of the site (its icon; for a
+        GitHub repository its homepage's icon or its organisation's avatar). Answers 202 with the Item
+        (imagePending true) at once; run_jobs makes the request, so the image appears within about 5 minutes.
+        It replaces only the image the Item had when asked: an upload, a removal or an inbox link made
+        meanwhile ends the fetch."""
         user = request_user(request)
         item = get_object_or_404(Item, pk=pk, user=user)
         body = ItemImageFetchSerializer(data=request.data)

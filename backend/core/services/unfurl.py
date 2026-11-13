@@ -94,11 +94,16 @@ def plain_text(value: str, limit: int) -> str:
     return " ".join(text.split())[:limit]
 
 
+def page_text(page: safe_fetch.Fetched) -> str:
+    """The page's HTML as text, in its declared charset when browsers use it, else UTF-8."""
+    return page.body.decode(_charset(page), errors="replace")
+
+
 def parse(page: safe_fetch.Fetched) -> Card:
     parser = _MetaParser()
     # a malformed character reference raises ValueError: keep what was read before it
     with contextlib.suppress(ValueError):
-        parser.feed(page.body.decode(_charset(page), errors="replace"))
+        parser.feed(page_text(page))
     meta = parser.meta
     image = meta.get("og:image") or meta.get("og:image:url") or meta.get("twitter:image") or ""
     try:
