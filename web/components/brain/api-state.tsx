@@ -111,7 +111,7 @@ export function EmptyState({
 export function LoadingCards({ count = 3 }: { count?: number }) {
   const t = useT();
   return (
-    <div className="flex flex-col gap-3" aria-busy="true" aria-label={t('Đang tải')}>
+    <div className="flex flex-col gap-3" role="status" aria-busy="true" aria-label={t('Đang tải')}>
       {Array.from({ length: count }, (_, i) => (
         <div key={i} aria-hidden className="flex flex-col gap-3 rounded-xl border bg-card p-4">
           <div className="flex flex-col gap-1.5">

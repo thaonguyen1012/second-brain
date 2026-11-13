@@ -147,7 +147,7 @@ function EvidenceRow({
 function DetailSkeleton() {
   const t = useT();
   return (
-    <div className="flex flex-col gap-6" aria-busy="true" aria-label={t('Đang tải')}>
+    <div className="flex flex-col gap-6" role="status" aria-busy="true" aria-label={t('Đang tải')}>
       <div className="flex flex-col gap-3">
         <div className="flex gap-1.5">
           <Skeleton className="h-4.5 w-16" />
@@ -318,11 +318,9 @@ export function OpportunityDetail({ id }: { id: number }) {
             {t('Sửa cơ hội')} <Kbd>E</Kbd>
           </Tip>
         </div>
-        {notice && (
-          <p className="text-sm text-muted-foreground" role="status">
-            {notice}
-          </p>
-        )}
+        <p className="text-sm text-muted-foreground empty:sr-only" role="status">
+          {notice}
+        </p>
       </header>
 
       <div className="grid gap-4 xl:grid-cols-2">

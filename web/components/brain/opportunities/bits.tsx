@@ -88,7 +88,7 @@ export function Tip({ trigger, children }: { trigger: ReactElement; children: Re
 export function RowsSkeleton({ count = 4 }: { count?: number }) {
   const t = useT();
   return (
-    <div className="flex flex-col divide-y rounded-xl border bg-card" aria-busy="true" aria-label={t('Đang tải')}>
+    <div className="flex flex-col divide-y rounded-xl border bg-card" role="status" aria-busy="true" aria-label={t('Đang tải')}>
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="flex h-14 items-center gap-3 px-3">
           <Skeleton className="h-4.5 w-16" />

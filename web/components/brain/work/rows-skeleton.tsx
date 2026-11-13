@@ -6,7 +6,7 @@ import { useT } from '@/lib/i18n/client';
 export function RowsSkeleton({ count = 4 }: { count?: number }) {
   const t = useT();
   return (
-    <div className="flex flex-col divide-y rounded-xl border bg-card" aria-busy="true" aria-label={t('Đang tải')}>
+    <div className="flex flex-col divide-y rounded-xl border bg-card" role="status" aria-busy="true" aria-label={t('Đang tải')}>
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="flex h-14 items-center gap-3 px-3">
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">

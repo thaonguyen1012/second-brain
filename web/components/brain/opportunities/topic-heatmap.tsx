@@ -287,7 +287,7 @@ export function TopicHeatmap() {
       {topics.error && !topics.data ? (
         <ApiErrorState error={topics.error} onRetry={topics.reload} />
       ) : !m ? (
-        <Skeleton className="h-48 rounded-xl" aria-busy="true" aria-label={t('Đang tải')} />
+        <Skeleton className="h-48 rounded-xl" role="status" aria-busy="true" aria-label={t('Đang tải')} />
       ) : m.rows.length === 0 ? (
         <EmptyHeatmap weeks={m.weeks} />
       ) : (

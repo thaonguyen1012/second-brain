@@ -496,11 +496,9 @@ export function NotesPage() {
       {/* a new note's text that never reached the server (at ?id=new, or for an Item): its page offers it back */}
       <NewNoteCopyHints onOpen={(query) => router.push(notePath(query))} />
 
-      {notice && (
-        <p className="text-sm text-muted-foreground" role="status">
-          {notice}
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground empty:sr-only" role="status">
+        {notice}
+      </p>
 
       <ApiStaleAlert result={notes} />
       {failed && notes.error ? (

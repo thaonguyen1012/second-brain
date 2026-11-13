@@ -186,11 +186,9 @@ export function SkillsPage() {
         </div>
       )}
 
-      {notice && (
-        <p className="text-sm text-muted-foreground" role="status">
-          {notice}
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground empty:sr-only" role="status">
+        {notice}
+      </p>
 
       <ApiStaleAlert result={skills} />
       {skills.error && !skills.data ? (

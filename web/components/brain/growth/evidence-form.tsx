@@ -112,11 +112,9 @@ function NotePicker({ value, onChange }: { value: string; onChange: (v: string) 
         }}
         choices={choices}
       />
-      {status && (
-        <p className="text-xs text-muted-foreground" aria-live="polite">
-          {status}
-        </p>
-      )}
+      <p className="text-xs text-muted-foreground empty:sr-only" aria-live="polite">
+        {status}
+      </p>
     </div>
   );
 }

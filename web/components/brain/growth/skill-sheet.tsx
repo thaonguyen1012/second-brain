@@ -133,7 +133,7 @@ function SkillBody({
     );
   if (!skill)
     return (
-      <SheetPanel className="flex flex-col gap-3" aria-busy="true" aria-label={t('Đang tải')}>
+      <SheetPanel className="flex flex-col gap-3" role="status" aria-busy="true" aria-label={t('Đang tải')}>
         <Skeleton className="h-8 w-1/2 rounded-lg" />
         <Skeleton className="h-8 w-48 rounded-lg" />
         <Skeleton className="h-36 rounded-xl" />

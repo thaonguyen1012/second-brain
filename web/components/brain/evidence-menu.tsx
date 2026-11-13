@@ -49,11 +49,9 @@ export default function EvidenceMenu({ newsItem }: { newsItem: number }) {
 
   return (
     <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
-      {status && (
-        <span className="text-xs text-muted-foreground" role="status">
-          {status}
-        </span>
-      )}
+      <span className="text-xs text-muted-foreground empty:sr-only" role="status">
+        {status}
+      </span>
       <Menu open={open} onOpenChange={setOpen}>
         <Tooltip>
           <TooltipTrigger

@@ -381,11 +381,9 @@ export function ToolsPage() {
         </div>
       )}
 
-      {notice && (
-        <p className="text-sm text-muted-foreground" role="status">
-          {notice}
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground empty:sr-only" role="status">
+        {notice}
+      </p>
 
       <ApiStaleAlert result={tools} />
       {failed && tools.error ? (

@@ -228,11 +228,9 @@ function NoteEditing({
           onDrop={autosave.dropRecovered}
         />
       ) : (
-        afterConflict && (
-          <p className="text-xs text-muted-foreground" role="status">
-            {t('Ghi chú vừa được lưu ở nơi khác: đang hiện bản đó.')}
-          </p>
-        )
+        <p className="text-xs text-muted-foreground empty:sr-only" role="status">
+          {afterConflict && t('Ghi chú vừa được lưu ở nơi khác: đang hiện bản đó.')}
+        </p>
       )}
 
       {/* The page's heading for screen readers; the field below is the title itself */}
@@ -275,7 +273,7 @@ function NoteEditing({
               {t('Chưa lưu được liên kết: {reason}', { reason: linkError })}
             </p>
           )}
-          <p className="mt-1 text-xs text-muted-foreground empty:hidden" role="status">
+          <p className="mt-1 text-xs text-muted-foreground empty:sr-only" role="status">
             {linkNotice}
           </p>
         </dd>

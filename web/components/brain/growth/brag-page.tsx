@@ -89,7 +89,7 @@ function AchievementRow({
 /** Loading placeholder at the geometry of a row list (DESIGN.md D27). */
 function LoadingRows() {
   const t = useT();
-  return <Skeleton className="h-36 rounded-xl" aria-busy="true" aria-label={t('Đang tải')} />;
+  return <Skeleton className="h-36 rounded-xl" role="status" aria-busy="true" aria-label={t('Đang tải')} />;
 }
 
 type Scope = 'week' | 'all';
@@ -201,11 +201,9 @@ function BragSection() {
           </Button>
         </div>
       )}
-      {notice && (
-        <p className="text-sm text-muted-foreground" role="status">
-          {notice}
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground empty:sr-only" role="status">
+        {notice}
+      </p>
       <ApiStaleAlert result={list} />
       {list.error && !list.data ? (
         <ApiErrorState error={list.error} onRetry={list.reload} />
@@ -457,11 +455,9 @@ function PredictionsSection() {
           </AlertAction>
         </Alert>
       )}
-      {notice && (
-        <p className="text-sm text-muted-foreground" role="status">
-          {notice}
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground empty:sr-only" role="status">
+        {notice}
+      </p>
       <ApiStaleAlert result={list} />
       {/* One surface: the title, filter and "Ghi dự đoán" in its header, then the rows or one line. With no
           predictions yet there is nothing to filter. */}
@@ -494,7 +490,7 @@ function PredictionsSection() {
             <ApiErrorState error={list.error} onRetry={list.reload} />
           </div>
         ) : list.loading && rows.length === 0 ? (
-          <div className="flex flex-col gap-2 p-3" aria-busy="true" aria-label={t('Đang tải')}>
+          <div className="flex flex-col gap-2 p-3" role="status" aria-busy="true" aria-label={t('Đang tải')}>
             <Skeleton className="h-10" />
             <Skeleton className="h-10" />
           </div>

@@ -92,14 +92,13 @@ export function BookmarkletHelp() {
               },
             )}
           </p>
-          {clicked && (
-            <p role="status" className="text-xs">
-              {t(
+          <p role="status" className="text-xs empty:sr-only">
+            {clicked &&
+              t(
                 'Nút này không bấm ở đây: kéo nó lên thanh dấu trang ({key}+Shift+B để hiện thanh này), hoặc sao chép mã bên dưới.',
                 { key: platform === 'mac' ? 'Cmd' : 'Ctrl' },
               )}
-            </p>
-          )}
+          </p>
           <p className="text-xs leading-relaxed">
             <span className="pointer-coarse:hidden">{t('Không kéo được?')} </span>
             {t('Sao chép mã, rồi tạo một dấu trang mới và dán mã vào ô địa chỉ (URL) của nó.')}
@@ -127,8 +126,9 @@ export function BookmarkletHelp() {
           {copyButton}
         </>
       )}
-      {/* Mounted before any copy, so screen readers announce the result when it appears */}
-      <p role="status" className="text-xs empty:hidden">
+      {/* Mounted before any copy, so screen readers announce the result when it appears; sr-only, not hidden, while
+          empty: a display:none region is out of the accessibility tree and would come back with its text */}
+      <p role="status" className="text-xs empty:sr-only">
         {copied === 'ok' && t('Đã sao chép mã bookmarklet. Tạo dấu trang mới và dán mã vào ô địa chỉ (URL).')}
         {copied === 'failed' &&
           t('Không sao chép được. Trên máy tính, hãy kéo nút Lưu vào Brain lên thanh dấu trang.')}

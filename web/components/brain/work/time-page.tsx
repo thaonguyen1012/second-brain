@@ -267,8 +267,9 @@ export function TimePage() {
   // Unfiltered and empty: no toolbar (D26), one line with an outline "Nhập giờ"; "Bắt đầu" stays the one primary.
   const emptyUnfiltered =
     !filtered && !badRange && !entries.loading && !!entries.data && !entries.error && list.length === 0;
-  const noticeLine = notice && (
-    <p className="text-sm text-muted-foreground" role="status">
+  // Always an element where it shows: a status region mounted before its text is read out when the text arrives
+  const noticeLine = (
+    <p className="text-sm text-muted-foreground empty:sr-only" role="status">
       {notice}
     </p>
   );
