@@ -45,7 +45,7 @@ export function shrinkTarget(width: number, height: number, bytes: number): { wi
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
 }
 
-/** Whether "Lấy ảnh từ link" can work: the source is a web address. */
+/** Whether the source is a web address, which a fetch from the link needs. */
 export function isWebLink(source: string | null | undefined): boolean {
   return /^https?:\/\/\S+$/i.test((source ?? '').trim());
 }
@@ -63,12 +63,23 @@ export function imageShapeOf(type: string): ImageShape {
   return 'cover';
 }
 
-/**
- * Whether the type's picture is a logo (a project, a tool). A page's OG image is a banner, not a logo, so the server
- * never fetches one for these on its own (backend library.services.LOGO_TYPES) and the field offers no "Lấy ảnh từ
- * link": a logo is uploaded.
- */
+/** Whether the type's picture is a logo (a project, a tool), never a page's OG image, which is a banner. */
 export const takesLogo = (type: string): boolean => imageShapeOf(type) === 'logo';
+
+/**
+ * Whether the server finds the type's logo on its own: a tool's is the icon of its official site (DECISIONS 9.10;
+ * backend library.services.SITE_ICON_TYPES, library/logos.py). A project's logo is only uploaded: a client's site is not
+ * the project's logo.
+ */
+export const takesSiteLogo = (type: string): boolean => type === 'tool';
+
+/**
+ * Whether the picture can come from the link (the field's fetch toggle): a web address, for any type but a project. A
+ * tool's link gives the logo of its site ("Lấy logo từ trang"), every other type's the page's image ("Lấy ảnh từ link").
+ */
+export function canFetchPicture(type: string, source: string | null | undefined): boolean {
+  return isWebLink(source) && (!takesLogo(type) || takesSiteLogo(type));
+}
 
 /** Only same-origin paths (the API's /api/items/{id}/image) are ever rendered: no request to another domain. */
 export function isLocalImage(url: string | null | undefined): url is string {
@@ -81,8 +92,9 @@ export function ownPicture(item: { type: string; imageUrl?: string | null }): It
 }
 
 /**
- * What a tool shows until it has a logo (owner 13/11/2026: "nếu mình không kịp tải logo lên"): the icon of its first
- * stage in the Công cụ page's order (lib/tools.ts), or the Wrench without a stage. Null for every other type.
+ * What a tool shows until it has a logo (owner 13/11/2026: "nếu mình không kịp tải logo lên"; also while its site's
+ * logo is being fetched, or when its site has none): the icon of its first stage in the Công cụ page's order
+ * (lib/tools.ts), or the Wrench without a stage. Null for every other type.
  */
 export function stagePicture(item: { type: string; tags?: readonly string[] | null }): ItemPicture | null {
   return item.type === 'tool' ? { kind: 'stage', stage: firstToolStage(item.tags) } : null;
@@ -97,22 +109,22 @@ export function toolRowPicture(item: { type: string; imageUrl?: string | null },
 }
 
 /**
- * The picture change a save really sends. The field hides "Lấy ảnh từ link" for a logo (a project, a tool) or a source
- * that is no web address, and hides itself for a handbook course without a picture of its own; a change chosen before
- * such an edit is dropped here instead of being sent unseen.
+ * The picture change a save really sends. The field hides its fetch toggle when the picture cannot come from the link
+ * (a project, or a source that is no web address: canFetchPicture), and hides itself for a handbook course without a
+ * picture of its own; a change chosen before such an edit is dropped here instead of being sent unseen.
  */
 export function effectiveImageChange<C extends { kind: string }>(
   change: C,
   ctx: { type: string; source: string; handbook: boolean; hasOwnImage: boolean },
 ): C | { kind: 'keep' } {
   if (ctx.handbook && !ctx.hasOwnImage) return { kind: 'keep' };
-  if (change.kind === 'fetch' && (takesLogo(ctx.type) || !isWebLink(ctx.source))) return { kind: 'keep' };
+  if (change.kind === 'fetch' && !canFetchPicture(ctx.type, ctx.source)) return { kind: 'keep' };
   return change;
 }
 
 /**
- * Whether saving will make the server fetch the link's image on its own (API_CONTRACT "Automatic fetch"): a new
- * Item, or one whose source changes, with a web link, no picture and no logo (not a project or a tool).
+ * Whether saving will make the server fetch the picture on its own (API_CONTRACT "Automatic fetch"): a new Item, or one
+ * whose source changes, with a web link and no picture, unless it is a project. A tool gets the logo of its site.
  */
 export function willFetchOnSave(ctx: {
   creating: boolean;
@@ -121,6 +133,6 @@ export function willFetchOnSave(ctx: {
   savedSource: string;
   hasOwnImage: boolean;
 }): boolean {
-  if (takesLogo(ctx.type) || ctx.hasOwnImage || !isWebLink(ctx.source)) return false;
+  if (ctx.hasOwnImage || !canFetchPicture(ctx.type, ctx.source)) return false;
   return ctx.creating || ctx.source.trim() !== ctx.savedSource.trim();
 }

@@ -84,15 +84,21 @@ export const library = {
   'Tải ảnh lên': 'Upload image',
   'Đổi ảnh': 'Change image',
   'Lấy ảnh từ link': 'Fetch image from link',
+  'Lấy logo từ trang': 'Fetch logo from site',
   'Bỏ ảnh': 'Remove image',
   'Đang đọc ảnh…': 'Reading the image…',
   'Ảnh sẽ được lấy từ link sau khi lưu; nó hiện sau vài phút.':
     'The image will be fetched from the link after saving; it shows up in a few minutes.',
+  'Logo sẽ được lấy từ trang sau khi lưu; nó hiện sau vài phút.':
+    'The logo will be fetched from the site after saving; it shows up in a few minutes.',
   'Ảnh mới được lưu khi bấm Lưu.': 'The new image is saved when you press Save.',
   'Ảnh được bỏ khi bấm Lưu.': 'The image is removed when you press Save.',
   'Đang lấy ảnh từ link; nó hiện sau vài phút.': 'Fetching the image from the link; it shows up in a few minutes.',
+  'Đang lấy logo từ trang; nó hiện sau vài phút.': 'Fetching the logo from the site; it shows up in a few minutes.',
   'Khi lưu, ảnh sẽ được lấy từ link; nó hiện sau vài phút.':
     'On saving, the image will be fetched from the link; it shows up in a few minutes.',
+  'Khi lưu, logo sẽ được lấy từ trang; nó hiện sau vài phút.':
+    'On saving, the logo will be fetched from the site; it shows up in a few minutes.',
   'Chưa có ảnh.': 'No image yet.',
   'Không đọc được ảnh này. Chỉ nhận JPEG, PNG, GIF hoặc WebP.':
     'Cannot read this image. Only JPEG, PNG, GIF or WebP are accepted.',

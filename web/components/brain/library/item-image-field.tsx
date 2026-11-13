@@ -4,7 +4,15 @@ import { ImagePlus, Link2, X } from 'lucide-react';
 import type { ApiError, ApiItem } from '@/lib/api/client';
 import { itemImageApi } from '@/lib/api/library';
 import { firstFieldError } from '@/lib/labels';
-import { IMAGE_ACCEPT, imageFileProblem, imageShapeOf, isLocalImage, isWebLink, shrinkTarget } from '@/lib/item-picture';
+import {
+  IMAGE_ACCEPT,
+  canFetchPicture,
+  imageFileProblem,
+  imageShapeOf,
+  isLocalImage,
+  shrinkTarget,
+  takesSiteLogo,
+} from '@/lib/item-picture';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
 import type { T } from '@/lib/i18n/translate';
@@ -12,8 +20,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
 // The picture field of the Item and project dialogs (DECISIONS 9.6): a book or film poster, an article or course
-// cover, a project logo. Every change waits for "Lưu" (and "Hủy" drops it), so removing a picture needs no confirm
-// dialog; the dialog sends the change after the record itself is saved (applyImageChange).
+// cover, a project's or a tool's logo (a tool's can come from its site, DECISIONS 9.10). Every change waits for "Lưu"
+// (and "Hủy" drops it), so removing a picture needs no confirm dialog; the dialog sends the change after the record
+// itself is saved (applyImageChange).
 
 export type ImageChange = { kind: 'keep' } | { kind: 'upload'; file: File } | { kind: 'remove' } | { kind: 'fetch' };
 
@@ -79,6 +88,33 @@ async function prepareUpload(file: File): Promise<File> {
   }
 }
 
+/**
+ * The field's status line: what the save will do, or what is under way. A tool's fetch takes the logo of its site
+ * (takesSiteLogo), every other type's the image of its link.
+ */
+function statusText(
+  t: T,
+  s: { reading: boolean; change: ImageChange; pending: boolean; saved: boolean; fetchOnSave: boolean; siteLogo: boolean },
+): string {
+  if (s.reading) return t('Đang đọc ảnh…');
+  if (s.change.kind === 'fetch')
+    return s.siteLogo
+      ? t('Logo sẽ được lấy từ trang sau khi lưu; nó hiện sau vài phút.')
+      : t('Ảnh sẽ được lấy từ link sau khi lưu; nó hiện sau vài phút.');
+  if (s.change.kind === 'upload') return t('Ảnh mới được lưu khi bấm Lưu.');
+  if (s.change.kind === 'remove') return t('Ảnh được bỏ khi bấm Lưu.');
+  if (s.saved) return '';
+  if (s.pending)
+    return s.siteLogo
+      ? t('Đang lấy logo từ trang; nó hiện sau vài phút.')
+      : t('Đang lấy ảnh từ link; nó hiện sau vài phút.');
+  if (s.fetchOnSave)
+    return s.siteLogo
+      ? t('Khi lưu, logo sẽ được lấy từ trang; nó hiện sau vài phút.')
+      : t('Khi lưu, ảnh sẽ được lấy từ link; nó hiện sau vài phút.');
+  return t('Chưa có ảnh.');
+}
+
 const previewBox = {
   poster: 'h-24 w-16 object-cover',
   cover: 'h-16 aspect-[16/7] object-cover',
@@ -134,8 +170,10 @@ export function ItemImageField({
   const preview = change.kind === 'upload' ? pickedUrl : change.kind === 'remove' ? null : saved;
   const label = shape === 'logo' ? t('Logo') : t('Ảnh bìa');
   const currentLabel = shape === 'logo' ? t('Logo hiện tại') : t('Ảnh bìa hiện tại');
-  // a project's or a tool's link is a site, whose OG card is a banner, not a logo: only an upload makes a logo
-  const canFetch = shape !== 'logo' && isWebLink(source);
+  // A site's OG card is a banner, not a logo: a tool's link gives the icon of its site instead, and a project's logo is
+  // only uploaded (a client's site is not the project's).
+  const canFetch = canFetchPicture(type, source);
+  const siteLogo = takesSiteLogo(type);
   const fetchChosen = change.kind === 'fetch';
 
   const pick = async (file: File | undefined) => {
@@ -157,21 +195,7 @@ export function ItemImageField({
     }
   };
 
-  const status = reading
-    ? t('Đang đọc ảnh…')
-    : fetchChosen
-      ? t('Ảnh sẽ được lấy từ link sau khi lưu; nó hiện sau vài phút.')
-      : change.kind === 'upload'
-        ? t('Ảnh mới được lưu khi bấm Lưu.')
-        : change.kind === 'remove'
-          ? t('Ảnh được bỏ khi bấm Lưu.')
-          : pending && !saved
-            ? t('Đang lấy ảnh từ link; nó hiện sau vài phút.')
-            : !saved && fetchOnSave
-              ? t('Khi lưu, ảnh sẽ được lấy từ link; nó hiện sau vài phút.')
-              : !saved
-                ? t('Chưa có ảnh.')
-                : '';
+  const status = statusText(t, { reading, change, pending: !!pending, saved: !!saved, fetchOnSave, siteLogo });
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -208,7 +232,7 @@ export function ItemImageField({
                 onClick={() => onChange(fetchChosen ? KEEP_IMAGE : { kind: 'fetch' })}
               >
                 <Link2 aria-hidden />
-                {t('Lấy ảnh từ link')}
+                {siteLogo ? t('Lấy logo từ trang') : t('Lấy ảnh từ link')}
               </Button>
             )}
             {preview && (

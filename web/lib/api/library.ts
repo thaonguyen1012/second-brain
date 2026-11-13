@@ -77,7 +77,10 @@ export const itemImageApi = {
     form.append('file', file, file instanceof File ? file.name : 'image');
     return request<ApiItem>('POST', `/api/items/${id}/image`, form, signal);
   },
-  /** The OG image of `url` (default: the Item's source), fetched by the next run_jobs (202, imagePending). */
+  /**
+   * The OG image of `url` (default: the Item's source), for a tool the logo of the site, fetched by the next run_jobs
+   * (202, imagePending).
+   */
   fetchFromLink: (id: number, url?: string) =>
     request<ApiItem>('POST', `/api/items/${id}/image/fetch`, url ? { url } : {}),
   remove: (id: number) => request<void>('DELETE', `/api/items/${id}/image`),

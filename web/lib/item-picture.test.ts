@@ -3,6 +3,7 @@ import { tVi } from './i18n/translate';
 import {
   MAX_IMAGE_BYTES,
   SHRINK_TO,
+  canFetchPicture,
   effectiveImageChange,
   handbookPath,
   imageFileProblem,
@@ -13,6 +14,7 @@ import {
   shrinkTarget,
   stagePicture,
   takesLogo,
+  takesSiteLogo,
   toolRowPicture,
   willFetchOnSave,
 } from './item-picture';
@@ -151,9 +153,10 @@ describe('effectiveImageChange', () => {
     expect(effectiveImageChange(fetch, ctx)).toBe(fetch);
   });
 
-  it('drops a fetch for a logo (a project, a tool) or a source that is no web link', () => {
+  it('drops a fetch for a project or a source that is no web link; a tool fetches the logo of its site', () => {
     expect(effectiveImageChange(fetch, { ...ctx, type: 'project' })).toEqual({ kind: 'keep' });
-    expect(effectiveImageChange(fetch, { ...ctx, type: 'tool' })).toEqual({ kind: 'keep' });
+    expect(effectiveImageChange(fetch, { ...ctx, type: 'tool' })).toBe(fetch);
+    expect(effectiveImageChange(fetch, { ...ctx, type: 'tool', source: 'man grep' })).toEqual({ kind: 'keep' });
     expect(effectiveImageChange(upload, { ...ctx, type: 'tool' })).toBe(upload);
     expect(effectiveImageChange(fetch, { ...ctx, source: 'Wim Wenders' })).toEqual({ kind: 'keep' });
     expect(effectiveImageChange(upload, { ...ctx, type: 'project' })).toBe(upload);
@@ -173,13 +176,29 @@ describe('willFetchOnSave', () => {
   it('is true for a new Item or a new link, with no picture and not a project', () => {
     expect(willFetchOnSave(base)).toBe(true);
     expect(willFetchOnSave({ ...base, creating: false, savedSource: 'James Clear' })).toBe(true);
+    // a tool: the logo of its site (DECISIONS 9.10)
+    expect(willFetchOnSave({ ...base, type: 'tool', source: 'https://semgrep.dev' })).toBe(true);
   });
 
   it('is false otherwise', () => {
     expect(willFetchOnSave({ ...base, creating: false, savedSource: 'https://www.goodreads.com/x' })).toBe(false);
     expect(willFetchOnSave({ ...base, type: 'project' })).toBe(false);
-    expect(willFetchOnSave({ ...base, type: 'tool' })).toBe(false);
+    expect(willFetchOnSave({ ...base, type: 'tool', hasOwnImage: true })).toBe(false);
     expect(willFetchOnSave({ ...base, hasOwnImage: true })).toBe(false);
     expect(willFetchOnSave({ ...base, source: 'James Clear' })).toBe(false);
+  });
+});
+
+describe('canFetchPicture', () => {
+  it('needs a web link, and is never for a project', () => {
+    expect(canFetchPicture('book', 'https://www.goodreads.com/x')).toBe(true);
+    expect(canFetchPicture('tool', 'https://semgrep.dev')).toBe(true);
+    expect(canFetchPicture('project', 'https://client.example')).toBe(false);
+    expect(canFetchPicture('tool', 'man grep')).toBe(false);
+    expect(canFetchPicture('article', undefined)).toBe(false);
+  });
+
+  it('takes the logo of the site for a tool only', () => {
+    expect(['tool', 'project', 'book'].map(takesSiteLogo)).toEqual([true, false, false]);
   });
 });
