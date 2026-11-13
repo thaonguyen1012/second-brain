@@ -18,6 +18,9 @@ class Item(models.Model):
         FILM = "film"
         ARTICLE = "article"
         PROJECT = "project"
+        # A tool engineers use at work or to learn (the Công cụ page, 13/11/2026); its stages are tags
+        # (library/tools.py STAGES)
+        TOOL = "tool"
 
     class Status(models.TextChoices):
         PLANNED = "planned"  # want to read / watch / take
@@ -29,6 +32,10 @@ class Item(models.Model):
     type = models.CharField(max_length=20, choices=Type.choices)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNED)
     title = models.CharField(max_length=300)
+    # One line on what it is or what it is for ("dùng để làm gì" on a tool), any type. db_default keeps a
+    # column DEFAULT, so a process still running the code from before this field can INSERT Items during a
+    # deploy.
+    summary = models.CharField(max_length=300, blank=True, default="", db_default="")
     tags = tag_field()
     source = models.CharField(max_length=2000, blank=True)  # URL or free text (author, platform...)
     rating = models.PositiveSmallIntegerField(

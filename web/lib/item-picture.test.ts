@@ -11,6 +11,7 @@ import {
   isWebLink,
   ownPicture,
   shrinkTarget,
+  takesLogo,
   willFetchOnSave,
 } from './item-picture';
 
@@ -76,12 +77,19 @@ describe('handbookPath', () => {
 });
 
 describe('imageShapeOf', () => {
-  it('gives books and films a poster, projects a logo, the rest a cover', () => {
+  it('gives books and films a poster, projects and tools a logo, the rest a cover', () => {
     expect(imageShapeOf('book')).toBe('poster');
     expect(imageShapeOf('film')).toBe('poster');
     expect(imageShapeOf('project')).toBe('logo');
+    expect(imageShapeOf('tool')).toBe('logo');
     expect(imageShapeOf('article')).toBe('cover');
     expect(imageShapeOf('course')).toBe('cover');
+    expect([takesLogo('project'), takesLogo('tool'), takesLogo('book'), takesLogo('article')]).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
   });
 });
 
@@ -120,8 +128,10 @@ describe('effectiveImageChange', () => {
     expect(effectiveImageChange(fetch, ctx)).toBe(fetch);
   });
 
-  it('drops a fetch for a project or a source that is no web link', () => {
+  it('drops a fetch for a logo (a project, a tool) or a source that is no web link', () => {
     expect(effectiveImageChange(fetch, { ...ctx, type: 'project' })).toEqual({ kind: 'keep' });
+    expect(effectiveImageChange(fetch, { ...ctx, type: 'tool' })).toEqual({ kind: 'keep' });
+    expect(effectiveImageChange(upload, { ...ctx, type: 'tool' })).toBe(upload);
     expect(effectiveImageChange(fetch, { ...ctx, source: 'Wim Wenders' })).toEqual({ kind: 'keep' });
     expect(effectiveImageChange(upload, { ...ctx, type: 'project' })).toBe(upload);
   });
@@ -145,6 +155,7 @@ describe('willFetchOnSave', () => {
   it('is false otherwise', () => {
     expect(willFetchOnSave({ ...base, creating: false, savedSource: 'https://www.goodreads.com/x' })).toBe(false);
     expect(willFetchOnSave({ ...base, type: 'project' })).toBe(false);
+    expect(willFetchOnSave({ ...base, type: 'tool' })).toBe(false);
     expect(willFetchOnSave({ ...base, hasOwnImage: true })).toBe(false);
     expect(willFetchOnSave({ ...base, source: 'James Clear' })).toBe(false);
   });

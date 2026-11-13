@@ -961,7 +961,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description The week (empty, `id` null, until it is first written to) and the previous week's open objectives. */
+        /** @description The week (empty, `id` null, until first written to) and the previous week's open objectives. */
         get: operations["getWeekPlan"];
         put?: never;
         post: operations["planWeek"];
@@ -979,8 +979,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Objective progress and body of work per day. A past week that was never opened answers 404; this week
-         *     and later ones answer even before they are written to (computed, nothing saved: a GET never writes).
+         * @description Objective progress and body of work per day. A past week never opened answers 404; this week and
+         *     later ones answer before they are written to (computed, nothing saved: a GET never writes).
          */
         get: operations["getWeekReview"];
         put?: never;
@@ -1091,6 +1091,8 @@ export interface components {
             /** @description Open objectives of this week; 0 while the week has no row yet. */
             objectivesOpen: number;
             skills: number;
+            /** @description Items of type tool (GET /api/items?type=tool). */
+            tools: number;
             /** @description Job ads of this month (GET /api/market/job-ads?month=). */
             jobAds: number;
             /** @description Achievements of this week (GET /api/achievements?week=). */
@@ -1221,6 +1223,8 @@ export interface components {
             type: components["schemas"]["TypeEnum"];
             status?: components["schemas"]["ItemStatusEnum"];
             title: string;
+            /** @description One line on what it is, or on a tool what it is used for. */
+            summary?: string;
             tags?: string[];
             source?: string;
             rating?: number | null;
@@ -1276,6 +1280,8 @@ export interface components {
             type: components["schemas"]["TypeEnum"];
             status?: components["schemas"]["ItemStatusEnum"];
             title: string;
+            /** @description One line on what it is, or on a tool what it is used for. */
+            summary?: string;
             tags?: string[];
             source?: string;
             rating?: number | null;
@@ -1801,6 +1807,8 @@ export interface components {
             type?: components["schemas"]["TypeEnum"];
             status?: components["schemas"]["ItemStatusEnum"];
             title?: string;
+            /** @description One line on what it is, or on a tool what it is used for. */
+            summary?: string;
             tags?: string[];
             source?: string;
             rating?: number | null;
@@ -2298,11 +2306,12 @@ export interface components {
          *     * `film` - Film
          *     * `article` - Article
          *     * `project` - Project
+         *     * `tool` - Tool
          * @enum {string}
          */
-        TypeEnum: "course" | "book" | "film" | "article" | "project";
+        TypeEnum: "course" | "book" | "film" | "article" | "project" | "tool";
         Week: {
-            /** @description null for a week never written to */
+            /** @description null: a week never written to */
             readonly id: number | null;
             /** Format: date */
             readonly startDate: string;
@@ -2676,10 +2685,10 @@ export interface operations {
                 cursor?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
-                /** @description Case-insensitive match in title or source, or one exact tag. */
+                /** @description Case-insensitive match in title, summary or source, or one exact tag. */
                 q?: string;
                 status?: "active" | "done" | "dropped" | "planned";
-                type?: "article" | "book" | "course" | "film" | "project";
+                type?: "article" | "book" | "course" | "film" | "project" | "tool";
             };
             header?: never;
             path?: never;

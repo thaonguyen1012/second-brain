@@ -12,6 +12,7 @@ export const itemTypes: { value: ApiItemType; label: Msg }[] = [
   { value: 'film', label: msg('Phim') },
   { value: 'article', label: msg('Bài viết') },
   { value: 'project', label: msg('Dự án') },
+  { value: 'tool', label: msg('Công cụ') },
 ];
 
 export const itemStatuses: { value: ApiItemStatus; label: Msg; tone: Tone }[] = [

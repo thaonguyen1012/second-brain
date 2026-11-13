@@ -131,10 +131,10 @@ export function ItemImageField({
   const saved = isLocalImage(imageUrl) ? imageUrl : null;
   const pickedUrl = change.kind === 'upload' && picked?.file === change.file ? picked.url : null;
   const preview = change.kind === 'upload' ? pickedUrl : change.kind === 'remove' ? null : saved;
-  const label = type === 'project' ? t('Logo') : t('Ảnh bìa');
-  const currentLabel = type === 'project' ? t('Logo hiện tại') : t('Ảnh bìa hiện tại');
-  // a project's link is a site, whose OG card is a banner, not a logo: only an upload makes a logo
-  const canFetch = type !== 'project' && isWebLink(source);
+  const label = shape === 'logo' ? t('Logo') : t('Ảnh bìa');
+  const currentLabel = shape === 'logo' ? t('Logo hiện tại') : t('Ảnh bìa hiện tại');
+  // a project's or a tool's link is a site, whose OG card is a banner, not a logo: only an upload makes a logo
+  const canFetch = shape !== 'logo' && isWebLink(source);
   const fetchChosen = change.kind === 'fetch';
 
   const pick = async (file: File | undefined) => {

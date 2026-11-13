@@ -20,7 +20,7 @@ export function missingOutput(item: Pick<ApiItem, 'status' | 'type' | 'rating' |
 
 /**
  * Starting text of a new note on an Item, one per type (DECISIONS 4.2: the output each type asks for; 9.8: a template
- * for all five). The same words as the hints below, as headings to fill in; shown in the UI language.
+ * for every type). The same words as the hints below, as headings to fill in; shown in the UI language.
  */
 export const noteTemplates: Record<ApiItemType, Msg> = {
   book: msg('## Highlights\n\n- \n\n## 3 ý chính\n\n1. \n2. \n3. \n'),
@@ -28,6 +28,7 @@ export const noteTemplates: Record<ApiItemType, Msg> = {
   course: msg('## Học được gì\n\n- \n\n## Sẽ áp dụng vào đâu\n\n- \n'),
   article: msg('## Ý chính\n\n- \n\n## Vì sao đáng nhớ\n\n'),
   project: msg('## Kết quả (kèm con số)\n\n- \n\n## Bài học rút ra\n\n- \n'),
+  tool: msg('## Dùng vào việc gì\n\n- \n\n## Lệnh và cấu hình hay dùng\n\n- \n\n## Mẹo, giới hạn\n\n- \n'),
 };
 
 /** The type's template in the UI language; an unknown type starts empty. */
@@ -48,6 +49,7 @@ const noteHint: Record<string, Msg> = {
   course: msg('Ghi lại những gì đã học được.'),
   article: msg('Ghi vài ý chính đáng nhớ.'),
   project: msg('Ghi kết quả và bài học rút ra.'),
+  tool: msg('Ghi cách mình dùng nó: lệnh, cấu hình, mẹo.'),
 };
 
 function hintText(type: string, gap: { note: boolean; rating: boolean }, t: T): string {

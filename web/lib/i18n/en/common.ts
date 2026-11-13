@@ -9,6 +9,7 @@ export const common = {
   Phim: 'Film',
   'Bài viết': 'Article',
   'Dự án': 'Project',
+  'Công cụ': 'Tool',
   'Dự định': 'Planned',
   'Đang làm': 'In progress',
   Xong: 'Done',

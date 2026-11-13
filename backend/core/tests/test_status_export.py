@@ -104,7 +104,7 @@ def test_export_writes_notes_and_json_without_secrets(client: Client, tmp_path: 
     user = owner(client)
     user.set_password("hunter2-password")
     user.save()
-    book = Item.objects.create(user=user, type="book", title='Deep "Work"', tags=["focus"])
+    book = Item.objects.create(user=user, type="book", title='Deep "Work"', tags=["focus"], summary="Làm sâu")
     note = Note.objects.create(user=user, title="Ý chính: Deep Work", markdown="# Ba ý\n\n- một")
     note.items.add(book)
     Note.objects.create(user=user, markdown="no title")
@@ -139,6 +139,7 @@ def test_export_writes_notes_and_json_without_secrets(client: Client, tmp_path: 
     data = {p.stem: json.loads(p.read_text()) for p in (tmp_path / "data").iterdir()}
     assert set(data) == set(export.TABLES)
     assert [row["fields"]["title"] for row in data["items"]] == ['Deep "Work"']
+    assert [row["fields"]["summary"] for row in data["items"]] == ["Làm sâu"]  # every Item field goes out
     assert [row["fields"]["title"] for row in data["objectives"]] == ["ship"]
     assert len(data["inbox_entries"]) == 1
     manifest = json.loads((tmp_path / "manifest.json").read_text())

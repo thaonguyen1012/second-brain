@@ -54,7 +54,7 @@ def _item_json(user: User, pk: int) -> Any:
             OpenApiParameter("type", str, enum=Item.Type.values),
             OpenApiParameter("status", str, enum=Item.Status.values),
             OpenApiParameter(
-                "q", str, description="Case-insensitive match in title or source, or one exact tag."
+                "q", str, description="Case-insensitive match in title, summary or source, or one exact tag."
             ),
         ],
     ),

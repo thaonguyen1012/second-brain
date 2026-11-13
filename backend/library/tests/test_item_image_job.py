@@ -353,15 +353,20 @@ def test_creating_an_item_with_a_link_queues_its_image(client: Client, net: Fake
     assert Item.objects.get(pk=data["id"]).image_path
 
 
-def test_no_automatic_fetch_for_projects_or_sources_without_a_link(client: Client, net: FakeNet) -> None:
+def test_no_automatic_fetch_for_logos_or_sources_without_a_link(client: Client, net: FakeNet) -> None:
+    # a project's and a tool's picture is a logo, which a page's OG banner is not
     headers = csrf(client)
     for body in (
         {"type": "project", "title": "Repo", "source": "https://github.test/alex/shop"},
+        {"type": "tool", "title": "Semgrep", "source": "https://semgrep.test/"},
         {"type": "course", "title": "Làm vườn", "source": "/docs/ky-nang/garden-notes/"},
         {"type": "book", "title": "Dune", "source": "Frank Herbert"},
         {"type": "film", "title": "No source"},
     ):
         assert send(client, "post", "/api/items", body, headers).json()["imagePending"] is False
+    tool = Item.objects.get(type="tool")
+    patched = send(client, "patch", f"/api/items/{tool.pk}", {"source": "https://semgrep.test/new"}, headers)
+    assert patched.json()["imagePending"] is False
     project = send(
         client, "post", "/api/projects", {"title": "Shop", "source": "https://shop.test/"}, headers
     )

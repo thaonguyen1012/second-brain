@@ -129,16 +129,17 @@ def test_linking_gives_the_item_its_own_copy_of_the_thumbnail(
     assert Item.objects.get(pk=bare.pk).image_path == ""
 
 
+@pytest.mark.parametrize("kind", ["project", "tool"])
 def test_linking_a_project_never_makes_the_thumbnail_its_logo(
-    client: Client, settings: Any, tmp_path: Path
+    client: Client, settings: Any, tmp_path: Path, kind: str
 ) -> None:
-    # A page's OG image is a banner, not a logo: a project gets a logo only from an upload.
+    # A page's OG image is a banner, not a logo: a project or a tool gets a logo only from an upload.
     settings.THUMBS_DIR = tmp_path
     client.get("/api/me")
     user = User.objects.get(username="dev@localhost")
     thumbnail = thumbnails.store(thumbnails.to_webp(image_bytes((1600, 900))))
     entry = InboxEntry.objects.create(user=user, url="https://client.test/", og_image_path=thumbnail)
-    project = Item.objects.create(user=user, type="project", title="Client site")
+    project = Item.objects.create(user=user, type=kind, title="Client site")
     headers = csrf(client)
 
     response = send(client, "patch", f"/api/inbox/{entry.pk}", {"item": project.pk}, headers)

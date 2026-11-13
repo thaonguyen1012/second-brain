@@ -102,15 +102,16 @@ since then, refused and failed ones too. `lastBriefDate` is the owner's newest D
 ## GET /api/counts
 
 ```json
-200 { "objectivesOpen": 2, "skills": 14, "jobAds": 6, "achievements": 1, "items": 37, "notes": 12,
+200 { "objectivesOpen": 2, "skills": 14, "tools": 40, "jobAds": 6, "achievements": 1, "items": 77, "notes": 12,
       "opportunities": 3, "projects": 2, "timerRunning": false }
 ```
 
 The numbers next to the app sidebar's rows. Each one is the row count of the list its sidebar row opens, with
 that page's default filters, so a click shows exactly that many rows: `objectivesOpen` = the open objectives of
 this week, `jobAds` = the job ads of this month (`GET /api/market/job-ads?month=`), `achievements` = the
-achievements of this week (`GET /api/achievements?week=`); `skills`, `items`, `notes`, `opportunities` and
-`projects` = their whole unfiltered lists. `timerRunning` is `true` while a timer runs. This week and this month
+achievements of this week (`GET /api/achievements?week=`), `tools` = the Items of type tool (`GET
+/api/items?type=tool`, the Công cụ page); `skills`, `items`, `notes`, `opportunities` and `projects` = their whole
+unfiltered lists. `timerRunning` is `true` while a timer runs. This week and this month
 are Europe/Prague. Read-only: unlike `GET /api/weeks/current` it never creates a Week row (a week nobody opened
 yet has `objectivesOpen: 0`). One COUNT or EXISTS query per number. `401` when not logged in.
 
@@ -128,15 +129,17 @@ the LLM cache. `401` when not logged in.
 
 ## Items (`/api/items`)
 
-`GET /api/items?type=book&status=active&q=deep` lists items (all filters optional; `q` matches title or source,
-or is exactly one of the tags). `GET /api/items/{id}` reads one (with `noteCount`). `POST /api/items` creates one, `PATCH /api/items/{id}` changes any writable field.
+`GET /api/items?type=book&status=active&q=deep` lists items (all filters optional; `q` matches title, summary or
+source, or is exactly one of the tags). `GET /api/items/{id}` reads one (with `noteCount`). `POST /api/items` creates one, `PATCH /api/items/{id}` changes any writable field.
 `DELETE /api/items/{id}` (`204`) unlinks notes, inbox entries, evidence and achievements and removes the project's
 details and the Item's image; a project with time entries answers `409` `{ "detail": "..." }` (delete its time
 entries first).
 
 ```json
-request  { "type": "book", "title": "Deep Work", "tags": ["Focus"], "source": "Cal Newport", "rating": 9 }
-response 201 { "id": 1, "type": "book", "status": "planned", "title": "Deep Work", "tags": ["focus"],
+request  { "type": "book", "title": "Deep Work", "summary": "Làm việc sâu, không xao nhãng", "tags": ["Focus"],
+           "source": "Cal Newport", "rating": 9 }
+response 201 { "id": 1, "type": "book", "status": "planned", "title": "Deep Work",
+               "summary": "Làm việc sâu, không xao nhãng", "tags": ["focus"],
                "source": "Cal Newport", "rating": 9, "createdAt": "...", "updatedAt": "...",
                "startedAt": null, "finishedAt": null, "noteCount": 0,
                "imageUrl": null, "imagePending": false }
@@ -148,8 +151,10 @@ cache), or `null` without an image. `imagePending` (read only) is `true` while a
 for the background job or runs. Every Item answer (list, one, create, update, upload, fetch) carries both, without a
 query per row. The image cannot be set through this body, only through the endpoints below.
 
-`type`: course, book, film, article, project. `status`: planned, active, done, dropped. Tags are lowercased and
-deduplicated; `rating` is 1-10 or null.
+`type`: course, book, film, article, project, tool. `status`: planned, active, done, dropped. `summary` (optional,
+at most 300 characters, default "") is one line on what the Item is or what it is for (a tool's "dùng để làm gì");
+any run of whitespace in it is sent back as one space. Tags are lowercased and deduplicated (a tool's stages are
+tags: `backend/library/tools.py`, `web/lib/tools.ts`); `rating` is 1-10 or null.
 
 The dates follow the status on every write (`POST`/`PATCH` here and on `/api/projects`), so an Item marked done
 anywhere counts in the week review (by `finishedAt`): a change to `active` sets `startedAt` to now when it is empty
@@ -160,8 +165,8 @@ that does not change the status leaves both dates alone.
 
 ### Item image
 
-One image per Item (DECISIONS 9.6): the cover of a book or film, the logo of a project (a project is an Item, so it
-uses these endpoints too). The server stores it re-encoded as webp, at most 600 px on the longer side and 200 KB,
+One image per Item (DECISIONS 9.6): the cover of a book or film, the logo of a project or a tool (a project is an
+Item, so it uses these endpoints too). The server stores it re-encoded as webp, at most 600 px on the longer side and 200 KB,
 without EXIF; never the uploaded bytes. Every endpoint answers `404` for an unknown id or another owner's Item and
 `401` when not logged in; writes need the CSRF header.
 
@@ -190,11 +195,12 @@ without EXIF; never the uploaded bytes. Every endpoint answers `404` for an unkn
   while a fetch waits keeps one job: the same request changes nothing, another link starts it over with every
   attempt and no delay; after a fetch has ended (or was ended) it runs again.
   `400 { "url": ["Item chưa có link http(s)."] }` when there is no `url` and the source is not an http(s) URL (an
-  invalid `url` answers `400` with the URL message). Allowed for every type (the UI hides it for projects).
+  invalid `url` answers `400` with the URL message). Allowed for every type (the UI hides it for projects and tools,
+whose picture is a logo).
 
 Automatic fetch: creating an Item, or a `PATCH` that changes its `source`, queues the same fetch (`imagePending:
-true` in that answer) when the Item has no image, its `source` is an http(s) URL and it is not a project (a page's
-banner makes a poor logo). Handbook courses (source `/docs/...`) and sources that are plain text are skipped.
+true` in that answer) when the Item has no image, its `source` is an http(s) URL and it is not a project or a tool
+(a page's banner makes a poor logo). Handbook courses (source `/docs/...`) and sources that are plain text are skipped.
 
 ### Where an Item is used
 
@@ -293,8 +299,8 @@ records the weekly triage and accepts only `{ "status": "inbox|later|archived", 
 `archivedAt` is set when the status becomes archived, kept while it stays
 archived and cleared (`null`) when it leaves the archive. Linking an Item that has no image gives it its own copy of
 the entry's thumbnail (re-encoded for Items, no network request; the Item's `imageUrl`) and ends a fetch of the
-Item's image that waits or runs; an Item that has an image keeps it, and a project never gets one this way (a page's
-OG image is a banner, not a logo). An entry linked before its unfurl finished passes the thumbnail on when the unfurl
+Item's image that waits or runs; an Item that has an image keeps it, and a project or a tool never gets one this way
+(a page's OG image is a banner, not a logo). An entry linked before its unfurl finished passes the thumbnail on when the unfurl
 stores it. Unlinking or
 deleting the entry later leaves the Item's image alone.
 `suggestedDestination` is one of read_later, book, opportunity, note (or empty until processed).

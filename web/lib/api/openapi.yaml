@@ -341,7 +341,8 @@ paths:
         name: q
         schema:
           type: string
-        description: Case-insensitive match in title or source, or one exact tag.
+        description: Case-insensitive match in title, summary or source, or one exact
+          tag.
       - in: query
         name: status
         schema:
@@ -361,6 +362,7 @@ paths:
           - course
           - film
           - project
+          - tool
       tags:
       - items
       security:
@@ -2111,8 +2113,8 @@ paths:
   /api/weeks/{start}/plan:
     get:
       operationId: getWeekPlan
-      description: The week (empty, `id` null, until it is first written to) and the
-        previous week's open objectives.
+      description: The week (empty, `id` null, until first written to) and the previous
+        week's open objectives.
       parameters:
       - in: path
         name: start
@@ -2162,8 +2164,8 @@ paths:
     get:
       operationId: getWeekReview
       description: |-
-        Objective progress and body of work per day. A past week that was never opened answers 404; this week
-        and later ones answer even before they are written to (computed, nothing saved: a GET never writes).
+        Objective progress and body of work per day. A past week never opened answers 404; this week and
+        later ones answer before they are written to (computed, nothing saved: a GET never writes).
       parameters:
       - in: path
         name: start
@@ -2413,6 +2415,9 @@ components:
           description: Open objectives of this week; 0 while the week has no row yet.
         skills:
           type: integer
+        tools:
+          type: integer
+          description: Items of type tool (GET /api/items?type=tool).
         jobAds:
           type: integer
           description: Job ads of this month (GET /api/market/job-ads?month=).
@@ -2439,6 +2444,7 @@ components:
       - projects
       - skills
       - timerRunning
+      - tools
     DailyBrief:
       type: object
       properties:
@@ -2777,6 +2783,10 @@ components:
         title:
           type: string
           maxLength: 300
+        summary:
+          type: string
+          description: One line on what it is, or on a tool what it is used for.
+          maxLength: 300
         tags:
           type: array
           items:
@@ -2906,6 +2916,10 @@ components:
         title:
           type: string
           minLength: 1
+          maxLength: 300
+        summary:
+          type: string
+          description: One line on what it is, or on a tool what it is used for.
           maxLength: 300
         tags:
           type: array
@@ -4089,6 +4103,10 @@ components:
         title:
           type: string
           minLength: 1
+          maxLength: 300
+        summary:
+          type: string
+          description: One line on what it is, or on a tool what it is used for.
           maxLength: 300
         tags:
           type: array
@@ -5370,6 +5388,7 @@ components:
       - film
       - article
       - project
+      - tool
       type: string
       description: |-
         * `course` - Course
@@ -5377,6 +5396,7 @@ components:
         * `film` - Film
         * `article` - Article
         * `project` - Project
+        * `tool` - Tool
     Week:
       type: object
       properties:
@@ -5384,7 +5404,7 @@ components:
           type: integer
           readOnly: true
           nullable: true
-          description: null for a week never written to
+          description: 'null: a week never written to'
         startDate:
           type: string
           format: date

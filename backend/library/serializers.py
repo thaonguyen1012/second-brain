@@ -24,6 +24,13 @@ def image_too_large() -> str:
 
 
 class ItemSerializer(serializers.ModelSerializer[Item]):
+    # One line: any run of whitespace (a pasted line break) becomes one space
+    summary = serializers.CharField(
+        max_length=300,
+        required=False,
+        allow_blank=True,
+        help_text="One line on what it is, or on a tool what it is used for.",
+    )
     tags = serializers.ListField(child=serializers.CharField(max_length=50), required=False, max_length=30)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
     updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
@@ -43,6 +50,7 @@ class ItemSerializer(serializers.ModelSerializer[Item]):
             "type",
             "status",
             "title",
+            "summary",
             "tags",
             "source",
             "rating",
@@ -54,6 +62,9 @@ class ItemSerializer(serializers.ModelSerializer[Item]):
             "imageUrl",
             "imagePending",
         ]
+
+    def validate_summary(self, value: str) -> str:
+        return " ".join(value.split())
 
     def validate_tags(self, value: list[str]) -> list[str]:
         return normalize_tags(value)

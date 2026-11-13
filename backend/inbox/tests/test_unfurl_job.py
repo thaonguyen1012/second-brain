@@ -167,14 +167,15 @@ def test_unfurl_fills_an_item_linked_before_it_finished(client: Client, net: Fak
     assert {p.name for p in tmp_path.glob("*.webp")} == {thumbnail, copy}
 
 
+@pytest.mark.parametrize("kind", ["project", "tool"])
 def test_unfurl_never_gives_a_linked_project_the_thumbnail(
-    client: Client, net: FakeNet, tmp_path: Path
+    client: Client, net: FakeNet, tmp_path: Path, kind: str
 ) -> None:
-    # a page's OG image is a banner, not a logo
+    # a page's OG image is a banner, not a logo (a project's or a tool's picture)
     headers = csrf(client)
     entry_id = send(client, "post", "/api/inbox", {"url": "https://blog.test/p"}, headers).json()["id"]
     owner = client.session["_auth_user_id"]
-    project = Item.objects.create(user_id=owner, type="project", title="Client site")
+    project = Item.objects.create(user_id=owner, type=kind, title="Client site")
     InboxEntry.objects.filter(pk=entry_id).update(item=project)
     call_command("run_jobs", stdout=io.StringIO())
     thumbnail = InboxEntry.objects.get(pk=entry_id).og_image_path

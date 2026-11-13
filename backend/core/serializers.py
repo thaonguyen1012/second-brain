@@ -47,6 +47,7 @@ class CountsSerializer(serializers.Serializer[object]):
         help_text="Open objectives of this week; 0 while the week has no row yet."
     )
     skills = serializers.IntegerField()
+    tools = serializers.IntegerField(help_text="Items of type tool (GET /api/items?type=tool).")
     jobAds = serializers.IntegerField(help_text="Job ads of this month (GET /api/market/job-ads?month=).")
     achievements = serializers.IntegerField(
         help_text="Achievements of this week (GET /api/achievements?week=)."

@@ -49,10 +49,10 @@ def unfurl_entry(payload: dict[str, Any]) -> None:
     tagging.enqueue(entry)
     if entry.og_image_path:
         # linked to an Item before the unfurl finished: that Item gets the thumbnail as a link does (never a
-        # project: a page's OG image is a banner, not a logo)
+        # project or a tool: a page's OG image is a banner, not a logo)
         linked = (
             Item.objects.filter(inbox_entries=entry.pk, image_path="")
-            .exclude(type=Item.Type.PROJECT)
+            .exclude(type__in=library.LOGO_TYPES)
             .values_list("pk", flat=True)
         )
         if (item_id := linked.first()) is not None:

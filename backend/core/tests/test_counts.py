@@ -21,6 +21,7 @@ pytestmark = pytest.mark.django_db
 KEYS = {
     "objectivesOpen",
     "skills",
+    "tools",
     "jobAds",
     "achievements",
     "items",
@@ -74,6 +75,7 @@ def fill(user: User) -> None:
     JobAd.objects.create(user=user, title="Backend dev", text="Django, Postgres", month=this_month())
     Achievement.objects.create(user=user, title="Shipped", date=this_week())
     Item.objects.create(user=user, type="book", title="Clean Code")
+    Item.objects.create(user=user, type="tool", title="ripgrep", tags=["explore", "code"])
     shop = project(user)
     TimeEntry.objects.create(user=user, project=shop, date=timezone.localdate(), minutes=30)
     Note.objects.create(user=user, markdown="# Idea")
@@ -101,13 +103,14 @@ def test_counts_only_the_owners_rows(client: Client) -> None:
     timer(other, project(other, "Their shop"))
     with CaptureQueriesContext(connection) as queries:
         data = counts(client)
-    assert len(queries) <= 11  # one per number, plus the dev-mode login
+    assert len(queries) <= 12  # one per number, plus the dev-mode login
     assert data == {
         "objectivesOpen": 2,
         "skills": 1,
+        "tools": 1,
         "jobAds": 1,
         "achievements": 1,
-        "items": 2,  # the book and the project
+        "items": 3,  # the book, the tool and the project
         "notes": 1,
         "opportunities": 1,
         "projects": 1,
@@ -187,6 +190,7 @@ def test_each_count_equals_its_list(client: Client) -> None:
     Opportunity.objects.create(user=user, title="Dropped", hypothesis="x", decision="drop")
     Opportunity.objects.create(user=user, title="Built", hypothesis="y", decision="build")
     Item.objects.create(user=user, type="course", title="Finished course", status="done")
+    Item.objects.create(user=user, type="tool", title="Dropped tool", status="dropped")
     project(user, "Delivered", status="done")
     faded = growth.save_skill(Skill(user=user), {"name": "jQuery"})
     growth.add_evidence(
@@ -202,6 +206,7 @@ def test_each_count_equals_its_list(client: Client) -> None:
     current = client.get("/api/weeks/current").json()
     assert data["objectivesOpen"] == sum(o["status"] == "open" for o in current["objectives"])
     assert data["skills"] == rows("/api/skills?limit=200")
+    assert data["tools"] == rows("/api/items?type=tool&limit=200")
     assert data["jobAds"] == rows(f"/api/market/job-ads?month={this_month():%Y-%m}&limit=200")
     assert data["achievements"] == rows(f"/api/achievements?week={this_week()}&limit=200")
     assert data["items"] == rows("/api/items?limit=200")
@@ -212,7 +217,8 @@ def test_each_count_equals_its_list(client: Client) -> None:
     assert data["timerRunning"] is True
     skills = client.get("/api/skills?limit=200").json()["results"]
     assert {s["name"]: s["freshness"] for s in skills}["jQuery"] == "faded"
-    assert (data["skills"], data["items"], data["opportunities"], data["projects"]) == (2, 5, 3, 3)
+    assert (data["skills"], data["tools"], data["items"]) == (2, 2, 7)
+    assert (data["opportunities"], data["projects"]) == (3, 3)
 
 
 def test_counts_require_auth(anon_client: Client) -> None:

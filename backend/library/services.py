@@ -45,7 +45,11 @@ IMAGE_JOB = "item_image"  # one job per Item, key item_image:<pk>
 ENDED_FETCH = "ended"
 _HTTP_URL = URLValidator(schemes=["http", "https"])
 # Item fields an API write may set (POST/PATCH /api/items; /api/projects sends a subset).
-ITEM_FIELDS = ("type", "status", "title", "tags", "source", "rating", "started_at", "finished_at")
+ITEM_FIELDS = ("type", "status", "title", "summary", "tags", "source", "rating", "started_at", "finished_at")
+# Types whose picture is a logo (a project's, a tool's): a page's OG image is a banner, not a logo, so these
+# never take one on their own (no automatic fetch, no inbox thumbnail); a logo is uploaded, or fetched on
+# request.
+LOGO_TYPES = frozenset({Item.Type.PROJECT, Item.Type.TOOL})
 NOTE_FIELDS = ("title", "markdown")
 # The ASCII punctuation a backslash may escape in markdown (CommonMark), as the editor writes `AT\&T`
 _ESCAPABLE = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
@@ -121,8 +125,8 @@ class ImageTooLarge(ValueError):
 
 def items(user: User, query: str = "") -> QuerySet[Item]:
     """The owner's Items with `note_count` and `image_pending` (an image job waits or runs for the Item),
-    both in the list's one query; `query` matches title or source (case-insensitive substring) or is exactly
-    one of the tags."""
+    both in the list's one query; `query` matches title, summary or source (case-insensitive substring) or is
+    exactly one of the tags."""
     image_job = Job.objects.filter(
         key=Concat(Value(f"{IMAGE_JOB}:"), OuterRef("pk"), output_field=CharField()),
         status__in=(Job.Status.PENDING, Job.Status.RUNNING),
@@ -132,7 +136,10 @@ def items(user: User, query: str = "") -> QuerySet[Item]:
     )
     if query := normalize_query(query):
         rows = rows.filter(
-            Q(title__icontains=query) | Q(source__icontains=query) | Q(tags__contains=[query.lower()])
+            Q(title__icontains=query)
+            | Q(summary__icontains=query)
+            | Q(source__icontains=query)
+            | Q(tags__contains=[query.lower()])
         )
     return rows
 
@@ -346,9 +353,9 @@ def request_fetch(item: Item, url: str) -> None:
 
 def fetch_automatically(item: Item) -> None:
     """A new link brings its image (DECISIONS 9.6), for an Item without one whose source is an http(s) URL
-    (handbook courses point at /docs/... and are skipped). Never for a project: a page's OG banner makes a
-    poor logo, so its logo is uploaded or fetched on request."""
-    if item.type != Item.Type.PROJECT and not item.image_path and is_http_url(item.source):
+    (handbook courses point at /docs/... and are skipped). Never for a project or a tool (LOGO_TYPES): a
+    page's OG banner makes a poor logo, so a logo is uploaded or fetched on request."""
+    if item.type not in LOGO_TYPES and not item.image_path and is_http_url(item.source):
         request_fetch(item, item.source)
 
 

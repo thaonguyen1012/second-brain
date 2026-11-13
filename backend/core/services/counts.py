@@ -2,8 +2,9 @@
 
 Each number is the row count of the list that the sidebar row opens, with that page's default filters, so a
 click shows exactly that many rows. The counts reuse the list endpoints' own querysets (the services behind
-them): this week's open objectives (Tuần), all skills (Kỹ năng), this month's job ads (Thị trường), this
-week's achievements (Thành tựu), all Items, notes, opportunities and projects, and whether a timer runs.
+them): this week's open objectives (Tuần), all skills (Kỹ năng), all tools (Công cụ), this month's job
+ads (Thị trường), this week's achievements (Thành tựu), all Items, notes, opportunities and projects, and
+whether a timer runs.
 "This week" and "this month" are Europe/Prague, as in GET /api/weeks/current and the web's lib/dates.ts.
 
 One COUNT or EXISTS query per number. Read-only: unlike GET /api/weeks/current, no Week row is created
@@ -19,6 +20,7 @@ from django.utils import timezone
 
 from growth import services as growth
 from library import services as library
+from library.models import Item
 from opportunities import services as opportunities
 from weeks import services as weeks
 from weeks.models import Objective
@@ -40,6 +42,7 @@ def snapshot(user: User, today: dt.date | None = None) -> dict[str, Any]:
     return {
         "objectivesOpen": open_objectives.count(),
         "skills": rows(growth.skills(user, day)),
+        "tools": rows(library.items(user).filter(type=Item.Type.TOOL)),
         "jobAds": rows(growth.job_ads(user, growth.month_start(day))),
         "achievements": rows(growth.achievements(user, week)),
         "items": rows(library.items(user)),
