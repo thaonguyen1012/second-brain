@@ -223,6 +223,20 @@ fold at 1280x720 and 390x844; no layout shift; `make check` and the JS budget ho
   (`web/lib/i18n/README.md`); `lib/i18n/coverage.test.ts` fails on any UI text without English. British English.
 * Django answers in the page's language (`X-UI-Lang`, else the cookie); background jobs stay Vietnamese.
 
+### 9.10 Tools page (13/11/2026)
+
+* A tool is an Item of type `tool` (no new model), so notes, Cmd+K, `[[ ]]` links, the logo and the status come with
+  it. The page `/phat-trien/cong-cu/` sits in the Growth group of the sidebar; the Library still lists every type.
+* Every Item gains `summary`: one line on what it is, for a tool "what it is for"; in the API, `?q=` and the export.
+* Stages are tags from one fixed list (`web/lib/tools.ts`, the same slugs in `backend/library/tools.py`), learning
+  first: reading and dissecting codebases, learning by doing, then plan, code, review, test, security, dependencies,
+  git, CI/CD, observability, data, AI and docs. A tool shows under each of its stages, "Other" without one.
+* A tool's statuses read Want to try / In use / Mastered / Dropped (the shared four statuses of an Item).
+* A tool's picture is a logo, uploaded by hand (a site's OG image is a banner, so no automatic fetch). Until there is
+  one, the row shows its stage's lucide icon: ink colour, no colour per stage, no tile.
+* `manage.py seed_tools` adds 86 well-known tools (summary, official link, stages) for the owner when they choose to
+  run it; it never overwrites a tool they already have.
+
 ## 10. Engineering standards for phase 2 (01/11/2026)
 
 ### 10.1 Foundations

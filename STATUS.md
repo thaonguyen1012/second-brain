@@ -11,6 +11,12 @@ in the commit that finishes the work.
 
 ## Done
 
+* Tools page (13/11/2026): tools engineers use at each stage of the work, and tools to learn by reading code and by
+  doing, as Items of type `tool` on `/phat-trien/cong-cu/` (DECISIONS 9.10): a section per stage with its icon,
+  status and stage filters, a one-line `summary` on every Item, `manage.py seed_tools` with 86 tools. Commits: Add the
+  tool Item type and a one-line summary on every Item; Add manage.py seed_tools with 86 well-known engineering
+  tools; Show tools in the library with their own status words, stages and summary; Add the Cong cu page under
+  Growth, tools grouped by stage; Show the icon of the row's group on the Cong cu page.
 * Security fixes (11/11/2026): the findings of a full audit, fixed with tests: raw HTML inside admonitions and code
   is sanitised and only Shiki styles are lifted; background fetches and jobs have time limits and map every parser
   error; week GETs write nothing (`id: null` until the first write); `Cross-Origin-Resource-Policy`, a login for
