@@ -38,13 +38,16 @@ export function onRowClick(e: MouseEvent<HTMLElement>, open: () => void) {
   open();
 }
 
-/** "Filtered empty" (DESIGN.md §7, D26): one line with a "Xóa bộ lọc" link, no icon art and no guide. */
+/**
+ * "Filtered empty" (DESIGN.md §7, D26): one line with a "Xóa bộ lọc" link, no icon art and no guide. The link is
+ * underlined at rest: inside the sentence, its blue alone would not mark it (WCAG 1.4.1).
+ */
 export function FilteredEmpty({ children, onClear }: { children: string; onClear: () => void }) {
   const t = useT();
   return (
     <p className="text-sm text-muted-foreground">
       {children}{' '}
-      <Button variant="link" size="sm" className="px-0" onClick={onClear}>
+      <Button variant="link" size="sm" className="px-0 underline" onClick={onClear}>
         {t('Xóa bộ lọc')}
       </Button>
     </p>

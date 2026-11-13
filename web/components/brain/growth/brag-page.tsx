@@ -513,7 +513,7 @@ function PredictionsSection() {
         ) : rows.length === 0 ? (
           <p className="px-3 py-3 text-sm text-muted-foreground">
             {t('Không có mục nào khớp bộ lọc.')}{' '}
-            <Button variant="link" size="sm" className="px-0" onClick={() => setFilter('all')}>
+            <Button variant="link" size="sm" className="px-0 underline" onClick={() => setFilter('all')}>
               {t('Xóa bộ lọc')}
             </Button>
           </p>

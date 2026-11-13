@@ -83,10 +83,11 @@ export function UnsavedCopyHint({
       {offer === 'older'
         ? t('Có bản nháp viết trên bản cũ hơn của ghi chú')
         : t('Có bản nháp chưa lưu trong trình duyệt này')}
+      {/* underlined at rest: inside this line of text its blue alone would not mark it (WCAG 1.4.1) */}
       <Button
         variant="link"
         size="xs"
-        className="h-auto p-0 text-xs"
+        className="h-auto p-0 text-xs underline"
         aria-label={
           name === undefined
             ? undefined
@@ -116,7 +117,7 @@ export function NewNoteCopyHints({ onOpen }: { onOpen: (query: string) => void }
       <p key={key} className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
         <History className="size-3.5 shrink-0" aria-hidden />
         {t('Có bản nháp chưa lưu trong trình duyệt này')}
-        <Button variant="link" size="xs" className="h-auto p-0 text-xs" onClick={() => onOpen(query)}>
+        <Button variant="link" size="xs" className="h-auto p-0 text-xs underline" onClick={() => onOpen(query)}>
           {t('Mở để khôi phục')}
         </Button>
       </p>

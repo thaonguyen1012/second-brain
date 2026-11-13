@@ -364,7 +364,7 @@ export function ProjectsPage() {
       ) : list.length === 0 && filtered ? (
         <p className="text-sm text-muted-foreground">
           {t('Không có mục nào khớp bộ lọc.')}{' '}
-          <Button variant="link" size="sm" className="px-0" onClick={() => setStatus('all')}>
+          <Button variant="link" size="sm" className="px-0 underline" onClick={() => setStatus('all')}>
             {t('Xóa bộ lọc')}
           </Button>
         </p>

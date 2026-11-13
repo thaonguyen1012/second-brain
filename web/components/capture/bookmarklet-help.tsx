@@ -133,7 +133,13 @@ export function BookmarkletHelp() {
         {copied === 'failed' &&
           t('Không sao chép được. Trên máy tính, hãy kéo nút Lưu vào Brain lên thanh dấu trang.')}
       </p>
-      <Button variant="link" size="sm" className="-my-1 px-0" render={<Link href="/huong-dan/#guide-bookmarklet" />}>
+      {/* underlined at rest: right under the help text, its blue alone would not mark it (WCAG 1.4.1) */}
+      <Button
+        variant="link"
+        size="sm"
+        className="-my-1 px-0 underline"
+        render={<Link href="/huong-dan/#guide-bookmarklet" />}
+      >
         {t('Xem hướng dẫn có hình')}
         <ArrowRight aria-hidden />
       </Button>

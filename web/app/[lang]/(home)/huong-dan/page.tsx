@@ -95,7 +95,8 @@ export default async function Page() {
           <div key={g.guide} className="flex flex-col gap-2">
             <EmptyStateGuide guide={g.guide} variant="page" hideable={false} open />
             {g.text && <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{t(g.text)}</p>}
-            <Button variant="link" size="sm" className="self-start px-0" render={<Link href={g.href} />}>
+            {/* underlined at rest: right under the guide's text, its blue alone would not mark it (WCAG 1.4.1) */}
+            <Button variant="link" size="sm" className="self-start px-0 underline" render={<Link href={g.href} />}>
               {t(g.label)}
             </Button>
           </div>
