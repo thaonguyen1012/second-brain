@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { ApiDayWork, ApiWeekTime } from '@/lib/api/weeks';
 import { useT } from '@/lib/i18n/client';
@@ -85,10 +85,27 @@ function WeekSplit({ time }: { time: ApiWeekTime }) {
   );
 }
 
-/** Stacked columns per day (objective hours at the baseline), hover or focus shows the values. */
+/**
+ * Stacked columns per day (objective hours at the baseline), hover or focus shows the values (WCAG 1.4.13): the
+ * pointer can move onto the tooltip, which stays until the pointer and the focus leave the column or Escape hides it
+ * (the focus stays where it is).
+ */
 function DayColumns({ days }: { days: ApiDayWork[] }) {
   const t = useT();
-  const [active, setActive] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [focused, setFocused] = useState<number | null>(null);
+  const active = hovered ?? focused;
+  useEffect(() => {
+    if (active === null) return;
+    // Escape forgets both triggers: the tooltip comes back only when the pointer enters a column or the focus moves
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setHovered(null);
+      setFocused(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [active]);
   const max = Math.max(...days.map((d) => d.minutesForObjectives + d.minutesOther), 1);
   const ticks = hourTicks(max);
   const top = ticks[ticks.length - 1];
@@ -121,10 +138,10 @@ function DayColumns({ days }: { days: ApiDayWork[] }) {
                   key={d.date}
                   tabIndex={0}
                   aria-label={label}
-                  onMouseEnter={() => setActive(i)}
-                  onMouseLeave={() => setActive((a) => (a === i ? null : a))}
-                  onFocus={() => setActive(i)}
-                  onBlur={() => setActive((a) => (a === i ? null : a))}
+                  onMouseEnter={() => setHovered(i)}
+                  onMouseLeave={() => setHovered((h) => (h === i ? null : h))}
+                  onFocus={() => setFocused(i)}
+                  onBlur={() => setFocused((f) => (f === i ? null : f))}
                   className="relative flex flex-1 flex-col items-center justify-end rounded-md outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <div className="flex w-full max-w-6 flex-col-reverse gap-[2px]" style={{ height: pct(total) }}>
@@ -142,22 +159,28 @@ function DayColumns({ days }: { days: ApiDayWork[] }) {
                     )}
                   </div>
                   {active === i && (
+                    // Inside the column, so the pointer may rest on it; the transparent pb-1 (the old gap) keeps the
+                    // pointer inside on its way up
                     <div
-                      role="tooltip"
                       className={cn(
-                        'pointer-events-none absolute bottom-full z-10 mb-1 w-max rounded-lg whitespace-nowrap border bg-popover px-2.5 py-1.5 text-xs shadow-popover',
+                        'absolute bottom-full z-10 w-max pb-1',
                         i < 2 ? 'left-0' : i > 4 ? 'right-0' : 'left-1/2 -translate-x-1/2',
                       )}
                     >
-                      <p className="font-medium">{dayLabel(d.date, t)}</p>
-                      <p className="flex items-center gap-1.5 tabular-nums">
-                        <span className={cn('size-2 rounded-[2px]', FOR)} aria-hidden />
-                        {t('Cho mục tiêu: {time}', { time: minutesLong(d.minutesForObjectives, t) })}
-                      </p>
-                      <p className="flex items-center gap-1.5 tabular-nums">
-                        <span className={cn('size-2 rounded-[2px]', OTHER)} aria-hidden />
-                        {t('Khác: {time}', { time: minutesLong(d.minutesOther, t) })}
-                      </p>
+                      <div
+                        role="tooltip"
+                        className="rounded-lg whitespace-nowrap border bg-popover px-2.5 py-1.5 text-xs shadow-popover"
+                      >
+                        <p className="font-medium">{dayLabel(d.date, t)}</p>
+                        <p className="flex items-center gap-1.5 tabular-nums">
+                          <span className={cn('size-2 rounded-[2px]', FOR)} aria-hidden />
+                          {t('Cho mục tiêu: {time}', { time: minutesLong(d.minutesForObjectives, t) })}
+                        </p>
+                        <p className="flex items-center gap-1.5 tabular-nums">
+                          <span className={cn('size-2 rounded-[2px]', OTHER)} aria-hidden />
+                          {t('Khác: {time}', { time: minutesLong(d.minutesOther, t) })}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </li>
