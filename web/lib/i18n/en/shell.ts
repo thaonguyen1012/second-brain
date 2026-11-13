@@ -31,7 +31,8 @@ export const shell = {
   'Giới thiệu': 'About',
   'Hướng dẫn': 'Guides',
 
-  // Top bar and sidebar controls (components/app-shell.tsx, inbox-count.tsx)
+  // Top bar and sidebar controls (components/app-shell.tsx, inbox-count.tsx, skip-link.tsx)
+  'Bỏ qua tới nội dung': 'Skip to content',
   'đồng hồ đang chạy': 'timer running',
   'Ẩn menu': 'Hide menu',
   'Mở hoặc đóng menu': 'Open or close the menu',

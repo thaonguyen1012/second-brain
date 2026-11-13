@@ -66,8 +66,11 @@ export default async function Page(props: PageProps<'/[lang]/docs/[[...slug]]'>)
   return (
     <LazyDocsLayout tree={tree} book={book} {...baseOptions(t)}>
       {codeCss && <style>{codeCss}</style>}
-      {/* The lesson (title, headings, body) is Vietnamese whatever the UI language: lang="vi" on it */}
+      {/* The lesson (title, headings, body) is Vietnamese whatever the UI language: lang="vi" on it. Its article
+          (#nd-page) takes the focus from the skip link (lazy-docs-layout.tsx), without a ring: it is not a control */}
       <DocsPage
+        tabIndex={-1}
+        className="outline-none"
         toc={toc.map((i) => ({ ...i, title: <span lang="vi">{i.title}</span> }))}
         breadcrumb={{ enabled: false }}
         footer={{ items: { previous: neighbour(previous, t), next: neighbour(next, t) } }}

@@ -13,7 +13,6 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
-  SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -33,6 +32,7 @@ import { useT } from '@/lib/i18n/client';
 import type { T } from '@/lib/i18n/translate';
 import { useAppPathname } from '@/lib/use-app-pathname';
 import { LanguageSwitch } from '@/components/language-switch';
+import { SkipLink } from '@/components/skip-link';
 
 const [daily, ...areas] = appNav;
 /** The one row that depends on a file of the owner: hidden while there is no roadmap (AppShell `roadmap`). */
@@ -150,79 +150,83 @@ function AppSidebar({ roadmap }: { roadmap: boolean }) {
 
   return (
     <Sidebar collapsible="offcanvas" inert={!isMobile && state === 'collapsed' ? true : undefined}>
-      {/* h-16 + border: one line with the top bar's bottom border */}
-      <SidebarHeader className="h-16 flex-row items-center gap-2 border-b border-sidebar-border px-4">
-        {/* -m-1 p-1: room for the focus ring around the mark (no tile since 07/11/2026) */}
-        <Link
-          href="/"
-          className="-m-1 flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-        >
-          <BrandMark className="size-7 shrink-0" />
-          <span className="truncate font-heading text-sm font-semibold tracking-tight">{appName}</span>
-        </Link>
-        <LazyTooltip label={t('Ẩn menu')}>
-          {/* The glyph's right edge lines up with the row counts: the button is 32px with an 18px glyph below sm */}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={t('Ẩn menu')}
-            data-sidebar-hide=""
-            className="-me-2 sm:-me-1.5"
-            onClick={hide}
+      {/* One landmark for the whole sidebar: the app's mark and "Ẩn menu" head the menu they belong to. It passes the
+          sidebar's column on (the header, then the rows' scroll area taking the rest) */}
+      <nav aria-label="Menu" className="flex min-h-0 flex-1 flex-col">
+        {/* h-16 + border: one line with the top bar's bottom border */}
+        <SidebarHeader className="h-16 flex-row items-center gap-2 border-b border-sidebar-border px-4">
+          {/* -m-1 p-1: room for the focus ring around the mark (no tile since 07/11/2026) */}
+          <Link
+            href="/"
+            className="-m-1 flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
-            <PanelLeftClose aria-hidden />
-          </Button>
-        </LazyTooltip>
-      </SidebarHeader>
-      <SidebarContent className="py-2">
-        {/* Three tiers (owner's second reference, 06/11/2026): the daily pages; a hairline; the areas under their
-            labels, more space above a label than between rows; Khác pushed to the bottom (mt-auto; it scrolls with
-            the rest on a short screen) after another hairline, muted and without a label */}
-        <nav aria-label="Menu" className="flex flex-1 flex-col">
-          <SidebarGroup className="py-1.5">
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {daily.rows.map((row: NavRow) => (
-                  <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts, t)} />
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          <TierLine className="my-1.5" />
-          {areas.map((group, i) => (
-            <SidebarGroup key={group.label.msgid} className="pt-2.5 pb-0">
-              <SidebarGroupLabel
-                id={`nav-group-${i}`}
-                className="h-7 font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                {t(group.label)}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                {/* The label names its list, so "Item" is heard as part of Thư viện */}
-                <SidebarMenu aria-labelledby={`nav-group-${i}`}>
-                  {group.rows
-                    .filter((row: NavRow) => roadmap || row.href !== ROADMAP_HREF)
-                    .map((row: NavRow) => (
-                      <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts, t)} />
-                    ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ))}
-          <div className="mt-auto pt-5">
-            <TierLine />
+            <BrandMark className="size-7 shrink-0" />
+            <span className="truncate font-heading text-sm font-semibold tracking-tight">{appName}</span>
+          </Link>
+          <LazyTooltip label={t('Ẩn menu')}>
+            {/* The glyph's right edge lines up with the row counts: the button is 32px with an 18px glyph below sm */}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t('Ẩn menu')}
+              data-sidebar-hide=""
+              className="-me-2 sm:-me-1.5"
+              onClick={hide}
+            >
+              <PanelLeftClose aria-hidden />
+            </Button>
+          </LazyTooltip>
+        </SidebarHeader>
+        <SidebarContent className="py-2">
+          {/* Three tiers (owner's second reference, 06/11/2026): the daily pages; a hairline; the areas under their
+              labels, more space above a label than between rows; Khác pushed to the bottom (mt-auto; it scrolls with
+              the rest on a short screen) after another hairline, muted and without a label */}
+          <div className="flex flex-1 flex-col">
             <SidebarGroup className="py-1.5">
               <SidebarGroupContent>
-                <SidebarMenu aria-label={t(otherNav.label)}>
-                  {otherNav.links.map((link) => (
-                    <Row key={link.href} link={link} active={current === link.href} quiet />
+                <SidebarMenu>
+                  {daily.rows.map((row: NavRow) => (
+                    <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts, t)} />
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            <TierLine className="my-1.5" />
+            {areas.map((group, i) => (
+              <SidebarGroup key={group.label.msgid} className="pt-2.5 pb-0">
+                <SidebarGroupLabel
+                  id={`nav-group-${i}`}
+                  className="h-7 font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  {t(group.label)}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  {/* The label names its list, so "Item" is heard as part of Thư viện */}
+                  <SidebarMenu aria-labelledby={`nav-group-${i}`}>
+                    {group.rows
+                      .filter((row: NavRow) => roadmap || row.href !== ROADMAP_HREF)
+                      .map((row: NavRow) => (
+                        <Row key={row.href} link={row} active={current === row.href} end={rowEnd(row, counts, t)} />
+                      ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ))}
+            <div className="mt-auto pt-5">
+              <TierLine />
+              <SidebarGroup className="py-1.5">
+                <SidebarGroupContent>
+                  <SidebarMenu aria-label={t(otherNav.label)}>
+                    {otherNav.links.map((link) => (
+                      <Row key={link.href} link={link} active={current === link.href} quiet />
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </div>
           </div>
-        </nav>
-      </SidebarContent>
+        </SidebarContent>
+      </nav>
     </Sidebar>
   );
 }
@@ -296,15 +300,22 @@ function ThemeToggle() {
   );
 }
 
+/** The page's own content: the one `<main>`, where "Bỏ qua tới nội dung" puts the focus. */
+const MAIN_ID = 'main-content';
+
 /**
  * App frame for non-lesson pages: sidebar (drawer on mobile) and a sticky top bar with search, inbox and theme.
+ * Landmarks: the sidebar's nav, the top bar as the banner, the page as the one main; the skip link comes first. The
+ * column beside the sidebar is SidebarInset's box as a div: the registry renders it as a <main>, which would put the
+ * top bar inside the page's main. The main takes the focus without a ring: it is not a control.
  * `roadmap`: false hides the Lộ trình row (no content/roadmap.json; the layouts read lib/content/roadmap.ts).
  */
 export function AppShell({ children, roadmap = true }: { children: ReactNode; roadmap?: boolean }) {
   return (
     <SidebarProvider style={{ '--sidebar-width': '14rem' } as React.CSSProperties}>
+      <SkipLink target={MAIN_ID} />
       <AppSidebar roadmap={roadmap} />
-      <SidebarInset>
+      <div data-slot="sidebar-inset" className="relative flex w-full flex-1 flex-col bg-background">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur sm:px-8">
           <MenuTrigger />
           <SearchButton />
@@ -314,8 +325,10 @@ export function AppShell({ children, roadmap = true }: { children: ReactNode; ro
             <ThemeToggle />
           </div>
         </header>
-        {children}
-      </SidebarInset>
+        <main id={MAIN_ID} tabIndex={-1} className="flex flex-1 flex-col outline-none">
+          {children}
+        </main>
+      </div>
     </SidebarProvider>
   );
 }

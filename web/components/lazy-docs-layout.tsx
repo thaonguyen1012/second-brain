@@ -5,6 +5,7 @@ import type * as PageTree from 'fumadocs-core/page-tree';
 import { useLocale } from '@/lib/i18n/client';
 import type { Locale } from '@/lib/i18n/config';
 import { contentText } from '@/lib/i18n/content-lang';
+import { SkipLink } from '@/components/skip-link';
 
 type Props = ComponentProps<typeof DocsLayout> & { book: string | null };
 
@@ -44,7 +45,10 @@ function markTitles(nodes: PageTree.Node[], locale: Locale): PageTree.Node[] {
   );
 }
 
-/** DocsLayout whose sidebar starts with the server's shell tree and loads the full book tree. */
+/**
+ * DocsLayout whose sidebar starts with the server's shell tree and loads the full book tree. The skip link before it
+ * jumps the lesson tree to the lesson (DocsPage's `#nd-page`, focusable in the docs page).
+ */
 export function LazyDocsLayout({ book, tree, ...props }: Props) {
   const locale = useLocale();
   const [full, setFull] = useState<PageTree.Folder | null>(null);
@@ -64,5 +68,10 @@ export function LazyDocsLayout({ book, tree, ...props }: Props) {
       : tree;
     return locale === 'vi' ? shown : { ...shown, children: markTitles(shown.children, locale) };
   }, [tree, full, book, locale]);
-  return <DocsLayout tree={current} {...props} />;
+  return (
+    <>
+      <SkipLink target="nd-page" />
+      <DocsLayout tree={current} {...props} />
+    </>
+  );
 }
