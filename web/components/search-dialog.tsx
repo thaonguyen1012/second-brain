@@ -65,6 +65,11 @@ const MAX_QUERY = 200;
 /** After "Django not reachable" (dev without the proxy, static export) stop asking for a while. */
 const OFFLINE_PAUSE_MS = 60_000;
 let offlineUntil = 0;
+/**
+ * The arrows wait for a typed query's own rows (`waiting`) at most this long after it last changed: an answer that
+ * never comes (the second brain's requests have no time limit, a stalled server) held them for good.
+ */
+const WAIT_MS = 3000;
 
 type Kind = 'item' | 'note' | 'inbox' | 'opportunity' | 'skill' | 'achievement' | 'prediction' | 'jobAd' | 'news';
 
@@ -397,11 +402,11 @@ function showCommand() {
  *   results, and no row is highlighted until the user moves (an arrow, the pointer) or types, the command kept in
  *   view, so Enter pressed again, like the rows landing later, never does the opposite of the words typed;
  * - a new query text: the first row (Enter never picks a row arrowed to for an earlier query, like the command at the
- *   end of a weak one), and none while the query's own rows do not lead the list yet (`waiting`): the destinations
+ *   end of a weak one), and none while the query's own rows do not lead the list yet (`stale`): the destinations
  *   standing in for its first results, or another query's rows kept until its own land (Enter opened "Hôm nay", or a
- *   result of the query typed over), so Enter and the arrows wait for them (AppSearchDialog's key handler); the first
- *   of them takes it as they land, and a row the user points at meanwhile stays. A query that names the command has
- *   it first, active at once.
+ *   result of the query typed over), so Enter waits for them, and the arrows while they may still come (`waiting`,
+ *   AppSearchDialog's key handler); the first of them takes it as they land, and a row the user picks meanwhile (the
+ *   pointer, an arrow once the arrows stop waiting) stays. A query that names the command has it first, active at once.
  * ActiveBefore, rendered before the list, notes the active row in its layout effect, which runs before the list's;
  * ActiveAfter, rendered after it, sets the row. A dialog opened again starts at the top.
  */
@@ -428,14 +433,15 @@ function ActiveAfter({
   items,
   query,
   at,
-  waiting,
+  stale,
   memoryRef,
 }: {
   items: ListItems;
   query: string;
   /** Where the command is now (placeCommand). */
   at: CommandPlace;
-  waiting: boolean;
+  /** The rows on top are not the query's own yet (AppSearchDialog). */
+  stale: boolean;
   memoryRef: RefObject<ActiveMemory>;
 }) {
   const { setActive } = useSearch();
@@ -443,7 +449,7 @@ function ActiveAfter({
     const { id, query: before, at: was, held: wasHeld } = memoryRef.current;
     const held = query === before && wasHeld && at !== 'first';
     const memory: ActiveMemory = { query, id: null, at, held };
-    if (query !== before) setActive(waiting ? null : (items?.[0]?.id ?? null));
+    if (query !== before) setActive(stale ? null : (items?.[0]?.id ?? null));
     // The switch flipped under the highlighted command of a query naming what it did: the query now asks for the
     // state it is in, so the command went after the results; it loses the highlight (Enter again turned the switch
     // back against the words typed) and stays in view with its new action, the rows landing later unhighlighted too
@@ -454,13 +460,13 @@ function ActiveAfter({
     } else if (id && items?.some((i) => i.id === id)) setActive(id);
     // Still another query's rows on top (part of this one's landed), or rows landing under a command that lost the
     // highlight as above: Fumadocs' reset made the first of them active
-    else if (waiting || (held && !id)) setActive(null);
+    else if (stale || (held && !id)) setActive(null);
     // The row the user moved to left the list (a destination, as the results land): the first row again, as Fumadocs
     // does, but never the shortcut command they had moved off, which leads a query naming it (Enter would flip it)
     else if (id && id !== SHORTCUTS_COMMAND && items?.[0]?.id === SHORTCUTS_COMMAND)
       setActive(items.find((i) => i.id !== SHORTCUTS_COMMAND)?.id ?? null);
     memoryRef.current = memory;
-  }, [items, query, at, waiting, setActive, memoryRef]);
+  }, [items, query, at, stale, setActive, memoryRef]);
   return null;
 }
 
@@ -559,8 +565,14 @@ export default function AppSearchDialog({
   const stayOpen = useRef(false);
   // The command was picked since the query last changed: it stays listed, even alone (placeCommand's `picked`)
   const [picked, setPicked] = useState(false);
+  // The text typed whose rows the arrows waited for WAIT_MS (`waiting` below), until it changes
+  const [overdue, setOverdue] = useState<string | null>(null);
+  // The handbook search's error as the query last changed: only a newer one is the query's own (`failed` below)
+  const [errorBefore, setErrorBefore] = useState<Error | undefined>(undefined);
   const onQueryChange = (value: string) => {
     setPicked(false);
+    setOverdue(null);
+    setErrorBefore(search.error);
     onSearchChange(value);
   };
   // Where the focus goes as the dialog closes after a pick on the page shown (a heading of the lesson shown, only the
@@ -667,14 +679,29 @@ export default function AppSearchDialog({
     destinations: !collapsed && brainItems.length === 0,
     picked,
   });
-  // A typed query whose own rows do not lead the list yet, so none is active and Enter waits for them: the
-  // destinations stand in for its first results, or the rows on top are another query's until this one's land, the
-  // brain hits of a query it extends or shortens (useBrainSearch keeps them) or the handbook results of the last one
-  // (fumadocs-core's useSearch keeps them: Enter right after typing over a query opened a result of the old one)
-  const waiting =
+  // A typed query whose own rows do not lead the list yet (`stale`), so none is made active and Enter waits for them
+  // (ActiveAfter): the destinations stand in for its first results, or the rows on top are another query's until this
+  // one's land, the brain hits of a query it extends or shortens (useBrainSearch keeps them) or the handbook results of
+  // the last one (fumadocs-core's useSearch keeps them: Enter right after typing over a query opened a result of the
+  // old one).
+  const stale =
     query.trim() !== '' &&
     commandAt !== 'first' &&
     (brainItems.length > 0 ? brain.loading : search.data?.query !== search.search);
+  // The arrows wait with Enter while those rows may still come (`waiting`, the key handler below): not once the query's
+  // own handbook search failed (useSearch keeps the last results and adds `error`, shown as "Tìm kiếm lỗi, đang hiện
+  // kết quả cho …"; it keeps an earlier query's error too while this one is asked, and its isLoading reads the last
+  // search that answered), and at most WAIT_MS of the dialog open after the text last changed: the arrows waited for
+  // rows that never came while the pointer could open the rows shown (WCAG 2.1.1). Nothing is made active then either.
+  const failed = search.error !== undefined && search.error !== errorBefore;
+  const pending = open && stale && (brainItems.length > 0 || !failed);
+  const typed = search.search;
+  useEffect(() => {
+    if (!pending) return;
+    const timer = setTimeout(() => setOverdue(typed), WAIT_MS);
+    return () => clearTimeout(timer);
+  }, [pending, typed]);
+  const waiting = pending && overdue !== typed;
   const items = useMemo<ListItems>(() => {
     if (commandAt === 'first') return [shortcutsCommand, ...results];
     if (commandAt === 'last') return [...results, shortcutsCommand];
@@ -820,7 +847,7 @@ export default function AppSearchDialog({
             );
           }}
         />
-        <ActiveAfter items={items} query={query} at={commandAt} waiting={waiting} memoryRef={activeMemory} />
+        <ActiveAfter items={items} query={query} at={commandAt} stale={stale} memoryRef={activeMemory} />
         {brainNote && (
           <SearchDialogFooter>
             <p role="status" className="text-xs text-muted-foreground">

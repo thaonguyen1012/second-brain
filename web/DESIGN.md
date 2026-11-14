@@ -768,7 +768,14 @@ so the near pairs that remain are listed under the palette, not hidden.
   highlight the first row on screen, so ↓ then Enter still opened the old query's result), the first of them takes it
   as they land, and a row pointed at meanwhile keeps it; so a command arrowed to at the end of a weak query is never
   Enter's after another letter (`ActiveBefore` notes the row, `ActiveAfter` sets it; the dialog's capture handler
-  stops the arrows before Fumadocs' listener). At the end only the arrows (from the first row ArrowUp wraps to it) or
+  stops the arrows before Fumadocs' listener). The arrows wait at most 3 s of the dialog open after the last key
+  (`WAIT_MS`), and not once the query's own handbook search failed (round 3 recheck, WCAG 2.1.1: fumadocs-core keeps
+  the last results with only an `error`, shown as "Tìm kiếm lỗi, đang hiện kết quả cho …", and the second brain's
+  requests have no time limit, so the arrows waited for good while the pointer could open the rows shown; an error
+  from before the query last changed is not its own, it stays while the query is asked again). No row is made active
+  while the rows on top are not the query's own (`stale`, ActiveAfter), even once the arrows stop waiting: an arrow or
+  the pointer picks one (with the bounded wait there, a late row landing or the dialog reopened made the first row
+  active, a result of the query typed over). At the end only the arrows (from the first row ArrowUp wraps to it) or
   the pointer highlight the command. "Bộ não thứ hai", "Cài đặt" and "Đi đến" always head their groups (the
   destinations under early brain rows too); "Sổ tay" heads the handbook results whenever another group, the command
   included, shares the list. A pick flips the switch and keeps the dialog open, read out by a polite `role="status"`
