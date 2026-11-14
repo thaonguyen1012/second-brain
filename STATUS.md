@@ -11,6 +11,11 @@ in the commit that finishes the work.
 
 ## Done
 
+* Tools off the Library (14/11/2026, DECISIONS 9.10, DESIGN.md Công cụ): Thư viện lists every type but tools
+  (`/api/items?excludeType=tool`; its sidebar count, header line, "Loại" filter and "Thêm item" too), and an Item made a
+  tool leaves it with "→ Công cụ"; Cmd+K files tools under Công cụ and opens them there; an old Thư viện link of a tool,
+  a tool's Item page (its way back and sidebar row, `web/lib/nav-current.ts`), a new tool's dialog and Inbox's notice
+  all lead to Công cụ.
 * Accessibility, round 3 checks (14/11/2026, DESIGN.md §4, §6, §10): a code review, a runtime review and an app-wide
   focus sweep in normal and forced colours, then fixes, final checks and one repair. Lesson pages: the TOC is a
   navigation landmark named by its heading, code blocks are named, the contents popover and the drawer close when the
@@ -82,6 +87,10 @@ in the commit that finishes the work.
   set one absolute `THUMBS_DIR` when several checkouts share a database.
 * Light-mode error text (`--destructive-foreground`) is 3.8:1 on white, under 4.5:1. It stays: the owner's
   decision (DECISIONS 9.11).
+* Tools off the Library, left (all low): a tool's Item page marks Thư viện's sidebar row until the Item loads; the
+  "→ Công cụ" notice from a Sheet is not read out while the Sheet is open; an Item made a tool and back in the same
+  Sheet stays off the list until a reload; the new-Item dialog's title keeps the type it opened with; a Sheet's focus
+  return does not scroll the row into view.
 * Lesson code colours (Shiki's github-light #e36209 is 3.5:1, github-dark's comment grey #6a737d 3.8:1): they stay,
   the owner's decision (DECISIONS 9.11).
 * Accessibility, left after round 3: lesson task-list checkboxes have no name; lesson table wrappers are unnamed tab

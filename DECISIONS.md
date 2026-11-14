@@ -227,7 +227,7 @@ fold at 1280x720 and 390x844; no layout shift; `make check` and the JS budget ho
 ### 9.10 Tools page (13/11/2026)
 
 * A tool is an Item of type `tool` (no new model), so notes, Cmd+K, `[[ ]]` links, the logo and the status come with
-  it. The page `/phat-trien/cong-cu/` sits in the Growth group of the sidebar; the Library still lists every type.
+  it. The page `/phat-trien/cong-cu/` sits in the Growth group of the sidebar; the Library listed every type until 14/11/2026 (below).
 * Every Item gains `summary`: one line on what it is, for a tool "what it is for"; in the API, `?q=` and the export.
 * Stages are tags from one fixed list (`web/lib/tools.ts`, the same slugs in `backend/library/tools.py`), learning
   first: reading and dissecting codebases, learning by doing, then plan, code, interfaces and UI libraries, review,
@@ -261,6 +261,10 @@ fold at 1280x720 and 390x844; no layout shift; `make check` and the JS budget ho
   dead, unmaintained or CSS-replaced ones left out (Fig, Vaul, React Wrap Balancer, Tremor).
 * `manage.py seed_tools` adds 111 well-known tools (summary, official link, stages) for the owner when they choose to
   run it; it never overwrites a tool they already have, so running it again only adds the new ones.
+* Tools live only on the Tools page (14/11/2026, the owner: the Items page no longer shows tools). The Library's list
+  and board, its type filter, "Thêm item" and its sidebar count leave tools out (`GET /api/items?excludeType=tool`);
+  an Item changed into a tool leaves the Library for the Tools page. Cmd+K files tools under Tools and opens them
+  there, and a tool's Item page leads back to Tools. Notes about tools stay in Notes.
 
 ### 9.11 Accessibility (13/11/2026)
 
