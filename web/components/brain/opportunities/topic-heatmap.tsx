@@ -148,7 +148,10 @@ function Heatmap({ m }: { m: Matrix }) {
                     className={cn(
                       'h-7 scroll-m-1 rounded-sm transition-shadow',
                       n === 0 && 'bg-muted',
-                      on && 'ring-2 ring-foreground/70 ring-offset-1 ring-offset-background',
+                      // The cursor's ring; forced colours drop box-shadows, so there it is a Highlight outline (as the
+                      // week strip's today), or the arrows would move nothing in sight (WCAG 2.4.7)
+                      on &&
+                        'ring-2 ring-foreground/70 ring-offset-1 ring-offset-background forced-colors:outline-2 forced-colors:outline-offset-1 forced-colors:outline-[Highlight]',
                     )}
                     style={{ background: fill(n, m.max) }}
                   />
