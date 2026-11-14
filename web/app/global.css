@@ -543,6 +543,23 @@ div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
   outline-offset: -2px;
 }
 
+/* The lesson sidebar's list (Fumadocs' Base UI ScrollArea, in the sidebar and the 390 px drawer) is a tab stop while
+   it scrolls, like the app's scroll areas above, and its browser outline was cut the same way: by the layout's
+   overflow-x-clip and the list's own fade mask, so only a line down one side showed. Its root draws the app's ring
+   instead, inside the edge from its ::after (above the content and the fade): 3px in, since in the sidebar the list
+   reaches 1px past the layout's start edge (the sidebar's end border pushes it out). */
+:is(#nd-sidebar, #nd-sidebar-mobile) [data-id$='-viewport']:focus-visible {
+  outline: none;
+}
+:is(#nd-sidebar, #nd-sidebar-mobile) div:has(> [data-id$='-viewport']:focus-visible)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  outline: 2px solid var(--ring);
+  outline-offset: -3px;
+  pointer-events: none;
+}
+
 /* Looping animations stop under reduced motion (DESIGN.md D28): Loader2 spinners, the Space UI Spinner and
    skeleton pulses, so pages need no per-instance motion-reduce classes. */
 @media (prefers-reduced-motion: reduce) {
