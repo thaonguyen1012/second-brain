@@ -172,7 +172,10 @@ function NoteRow({
         >
           {title}
         </button>
-        <p className="truncate text-xs text-muted-foreground">
+        {/* The line truncates, so it clips: while one of its Item links has the keyboard's focus, 4px of padding inside
+            the clip, taken back by as much negative margin, hold that link's focus ring (it reaches 2px past the link,
+            which starts at the line's edge). Nothing moves; at rest and on hover the line is as before. */}
+        <p className="truncate text-xs text-muted-foreground has-focus-visible:-m-1 has-focus-visible:p-1">
           <NoteMeta note={note} itemTitle={itemTitle} group={group} />
         </p>
       </div>
@@ -231,15 +234,17 @@ function NoteGroupSection({
       <div className={cn('flex min-h-14 items-center gap-3 py-2', withPicture ? 'pe-3' : 'px-3')}>
         {withPicture && <RowPicture picture={item ? itemPicture(item) : null} />}
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 id={headingId} className="truncate text-sm font-semibold">
+          <h2 id={headingId} className={cn('text-sm font-semibold', loose && 'truncate')}>
             {loose ? (
               t('Ghi chú rời')
             ) : (
+              // The link is the box that truncates (its text in a block span, so the hover underline keeps its square
+              // ends): its focus ring goes round what shows, the ellipsis too, where an h2 that truncated cut it off
               <Link
                 href={`/thu-vien/item/?id=${group.item}`}
-                className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-block max-w-full rounded-sm align-top underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {label.title}
+                <span className="block truncate">{label.title}</span>
               </Link>
             )}
           </h2>
