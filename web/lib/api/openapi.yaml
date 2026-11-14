@@ -342,8 +342,8 @@ paths:
           - film
           - project
           - tool
-        description: 'Leave one type out: Thư viện asks for every type but tools (Công
-          cụ).'
+        description: Leave one type out (the library page asks for every type but
+          tools).
       - name: limit
         required: false
         in: query

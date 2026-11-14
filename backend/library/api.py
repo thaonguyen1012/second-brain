@@ -56,7 +56,8 @@ def _item_json(user: User, pk: int) -> Any:
                 "excludeType",
                 str,
                 enum=Item.Type.values,
-                description="Leave one type out: Thư viện asks for every type but tools (Công cụ).",
+                # English only: core/tests/test_i18n.py reads Vietnamese letters as a message for tr()
+                description="Leave one type out (the library page asks for every type but tools).",
             ),
             OpenApiParameter("status", str, enum=Item.Status.values),
             OpenApiParameter(

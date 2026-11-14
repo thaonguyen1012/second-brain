@@ -2687,7 +2687,7 @@ export interface operations {
             query?: {
                 /** @description The pagination cursor value. */
                 cursor?: string;
-                /** @description Leave one type out: Thư viện asks for every type but tools (Công cụ). */
+                /** @description Leave one type out (the library page asks for every type but tools). */
                 excludeType?: "article" | "book" | "course" | "film" | "project" | "tool";
                 /** @description Number of results to return per page. */
                 limit?: number;
