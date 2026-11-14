@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Fragment } from 'react';
+import { Fragment, type ComponentProps } from 'react';
 import type * as PageTree from 'fumadocs-core/page-tree';
 import { source } from '@/lib/source';
 import { DocsBody, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
@@ -62,6 +62,12 @@ export default async function Page(props: PageProps<'/[lang]/docs/[[...slug]]'>)
   const { body: MDX, toc, codeCss, readingMinutes } = await loadPage(data.absolutePath, t);
   const { tree, book } = getShellTree(page.url);
   const { previous, next } = getNeighbours(page.url);
+  // Below xl Fumadocs draws the table of contents as a popover inside a <header>, outside the page's main: a banner,
+  // the second one beside the 390 px top bar. Its box (Base UI's Collapsible root, which takes `render`) is drawn as
+  // the same navigation as the contents beside the lesson, a <nav> with its name (one of the two shows at a time), so
+  // the header in it is no banner. A div with role="navigation" would do for a screen reader, but axe still takes a
+  // <header> that only an ARIA role scopes for a banner, then nested in a landmark.
+  const tocPopover = { render: <nav />, 'aria-label': t('Trên trang này') } as ComponentProps<'div'>;
 
   return (
     <LazyDocsLayout tree={tree} book={book} {...baseOptions(t)}>
@@ -70,11 +76,12 @@ export default async function Page(props: PageProps<'/[lang]/docs/[[...slug]]'>)
           (#nd-page) takes the focus from the skip link (lazy-docs-layout.tsx), focusable only while it holds it
           (skip-link.tsx), without a ring: it is not a control. The table of contents beside it is the lesson's own
           navigation, named by its heading: Fumadocs draws it as a plain div, which left its links outside every
-          landmark */}
+          landmark. Below xl it is a popover under the top edge (tocPopover above) */}
       <DocsPage
         className="outline-none"
         toc={toc.map((i) => ({ ...i, title: <span lang="vi">{i.title}</span> }))}
         tableOfContent={{ container: { role: 'navigation', 'aria-labelledby': 'toc-title' } }}
+        tableOfContentPopover={{ container: tocPopover }}
         breadcrumb={{ enabled: false }}
         footer={{ items: { previous: neighbour(previous, t), next: neighbour(next, t) } }}
       >

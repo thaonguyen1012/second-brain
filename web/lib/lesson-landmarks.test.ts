@@ -20,4 +20,16 @@ describe("the lesson's table of contents as a landmark", () => {
     expect(toc()).toMatch(/jsxs\("h3", \{\s*id: "toc-title",/);
     expect(page()).toMatch(/tableOfContent=\{\{ container: \{ role: 'navigation', 'aria-labelledby': 'toc-title' \} \}\}/);
   });
+
+  it('below xl: the popover box drawn as a <nav>, so the <header> inside it is no second banner', () => {
+    // the popover is Base UI's Collapsible root (it takes `render`), with tableOfContentPopover.container spread on it,
+    // around the <header> that would otherwise be a banner
+    expect(read('node_modules/fumadocs-ui/dist/components/ui/collapsible.js')).toMatch(
+      /from "@base-ui\/react\/collapsible";[\s\S]*const Collapsible = Collapsible\$1\.Root;/,
+    );
+    expect(toc()).toMatch(/jsx\(Collapsible, \{\s*open,\s*onOpenChange: setOpen,\s*"data-toc-popover": "",\s*\.\.\.container,/);
+    expect(toc()).toMatch(/"data-toc-popover": ""[\s\S]*?jsxs\("header", \{/);
+    expect(page()).toMatch(/const tocPopover = \{ render: <nav \/>, 'aria-label': t\('Trên trang này'\) \}/);
+    expect(page()).toMatch(/tableOfContentPopover=\{\{ container: tocPopover \}\}/);
+  });
 });
