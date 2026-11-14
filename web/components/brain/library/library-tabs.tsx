@@ -12,6 +12,15 @@ const tabs = [
 ] as const;
 
 /**
+ * A segmented tab's count (these links, Inbox's status tabs): plain muted text after the label. The current tab's
+ * ground is the indicator's, which in dark (`--input` over `--muted`, #3e3e3e) is lighter than every surface, and
+ * muted-foreground there is 4.07:1 (WCAG 1.4.3): the count takes the label's white at 70% (6.2:1, the 6.3:1 it has on
+ * the other tabs' ground), still under the label (10.7:1, and larger and bolder). Light keeps muted-foreground.
+ */
+export const tabCountClass = (current: boolean) =>
+  cn('ms-1.5 text-xs font-normal text-muted-foreground tabular-nums', current && 'dark:text-foreground/70');
+
+/**
  * Switch between the two halves of Thư viện (DECISIONS 9.3: item + ghi chú): two links to two routes, so a navigation
  * with `aria-current="page"` on the half shown, not tabs (no panel of theirs is on the page; WCAG 1.3.1, 4.1.2).
  * Drawn as the segmented Tabs of Tuần and Inbox (DESIGN.md §6, D23) with TabsList's and TabsTab's own classes (copies:
@@ -41,9 +50,7 @@ export function LibraryTabs({ current }: { current: (typeof tabs)[number]['key']
           )}
         >
           {t(label)}
-          {counts && (
-            <span className="ms-1.5 text-xs font-normal text-muted-foreground tabular-nums">{counts[key]}</span>
-          )}
+          {counts && <span className={tabCountClass(current === key)}>{counts[key]}</span>}
         </Link>
       ))}
     </nav>
