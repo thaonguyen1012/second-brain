@@ -592,7 +592,12 @@ export default function AppSearchDialog({
       onOpenChange={onOpen}
     >
       <SearchDialogOverlay />
-      <SearchDialogContent>
+      {/* The dialog fits the screen at any zoom (WCAG 1.4.10): Fumadocs puts it 250px above the middle from md, so a
+          short window (a laptop at 175-200%) pushed its top off-screen, and its 460px list ran up to 170px below the
+          bottom of a 400px-high one, where the page behind cannot scroll: the last rows, the command among them, and an
+          ArrowUp to them stayed out of sight. The top keeps 1rem, and the list (below) leaves 7rem for the top, the
+          search field and a bottom margin. */}
+      <SearchDialogContent className="md:top-[max(1rem,calc(50%-250px))]">
         <SearchDialogHeader>
           <SearchDialogIcon />
           <SearchDialogInput aria-label={t('Tìm mọi thứ')} placeholder={t('Tìm sổ tay, ghi chú, inbox…')} />
@@ -615,7 +620,7 @@ export default function AppSearchDialog({
           // Matches read as emphasis, not as links (Fumadocs' default is blue and underlined). The results list is a tab
           // stop while it scrolls (a scroller with no tab stop inside): its focus is the app's 2px ring inside its edge,
           // where the dialog's clipped box cannot cut it off as it did the browser's thin outline (WCAG 2.4.7).
-          className="[&_::highlight(fd-search)]:bg-muted-foreground/15 [&_::highlight(fd-search)]:text-foreground [&_::highlight(fd-search)]:no-underline [&_#fd-search-list:focus-visible]:outline-2 [&_#fd-search-list:focus-visible]:-outline-offset-2 [&_#fd-search-list:focus-visible]:outline-ring"
+          className="[&_::highlight(fd-search)]:bg-muted-foreground/15 [&_::highlight(fd-search)]:text-foreground [&_::highlight(fd-search)]:no-underline [&_#fd-search-list:focus-visible]:outline-2 [&_#fd-search-list:focus-visible]:-outline-offset-2 [&_#fd-search-list:focus-visible]:outline-ring [&_#fd-search-list]:max-h-[min(460px,calc(100dvh-7rem))]"
           Empty={() => (
             <div role="status" className="py-12 text-center text-sm text-muted-foreground">
               {brain.loading ? t('Đang tìm…') : t('Không tìm thấy kết quả')}
