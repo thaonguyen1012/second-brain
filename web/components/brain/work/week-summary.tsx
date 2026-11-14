@@ -9,7 +9,7 @@ import { useT } from '@/lib/i18n/client';
 import type { T } from '@/lib/i18n/translate';
 import { ApiErrorState } from '../api-state';
 import { BillableBar, Swatch } from './billable-bar';
-import { addDays, formatHours, formatWeekRange } from './format';
+import { addDays, formatHours, formatWeekRange, mondayOf, todayPrague } from './format';
 
 const pct = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 100) : 0);
 /** "0 giờ" at zero (a week total, not a duration), else the exact compact hours. */
@@ -37,6 +37,9 @@ export function WeekSummary({
   const data = summary.data;
   const rows = [...(data?.projects ?? [])].sort((a, b) => b.minutesTotal - a.minutesTotal);
   const scale = rows[0]?.minutesTotal ?? 0;
+  // The week "Xem mục" filters to, for its name: the dates as the heading shows them, "tuần này" only for the current
+  // week (Europe/Prague, as the server counts it; data loads in the browser only, so this never runs at build)
+  const otherWeek = data && data.weekStart !== mondayOf(todayPrague()) ? formatWeekRange(data.weekStart, t) : null;
 
   return (
     <section aria-labelledby="week-summary-title" className="flex flex-col gap-4">
@@ -114,12 +117,17 @@ export function WeekSummary({
                       <span className="min-w-0 truncate text-sm font-medium">{p.title}</span>
                       {p.client && <span className="truncate text-xs text-muted-foreground">{p.client}</span>}
                       {onSelectProject && (
-                        // Named from its visible "Xem mục" on, then whose (WCAG 2.5.3; every project row repeats it)
+                        // Named from its visible "Xem mục" on, then whose and which week: the one on screen, which a
+                        // press filters the list to (WCAG 2.5.3, 2.4.6; every project row repeats it)
                         <Button
                           size="xs"
                           variant="ghost"
                           className="ms-auto"
-                          aria-label={t('Xem mục giờ của {title} trong tuần này', { title: p.title })}
+                          aria-label={
+                            otherWeek
+                              ? t('Xem mục giờ của {title} trong tuần {range}', { title: p.title, range: otherWeek })
+                              : t('Xem mục giờ của {title} trong tuần này', { title: p.title })
+                          }
                           onClick={() => onSelectProject(p.id, data.weekStart)}
                         >
                           <ListFilter aria-hidden />

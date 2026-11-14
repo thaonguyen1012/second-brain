@@ -37,6 +37,7 @@ export const work = {
   'Chưa có giờ nào trong tuần này.': 'No time logged in this week yet.',
   'Theo dự án': 'By project',
   'Xem mục giờ của {title} trong tuần này': 'See entries for {title} in this week',
+  'Xem mục giờ của {title} trong tuần {range}': 'See entries for {title} in the week of {range}',
   'Xem mục': 'See entries',
 
   // Project dialog (work/project-dialog.tsx)
