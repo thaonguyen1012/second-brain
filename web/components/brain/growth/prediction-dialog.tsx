@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Loader2 } from 'lucide-react';
 import { growthApi, type ApiOutcome, type ApiPrediction, type ApiPredictionWrite } from '@/lib/api/growth';
 import { toApiError } from '@/lib/api/use-api';
@@ -46,9 +46,12 @@ function errorText(err: unknown, t: T): string {
 function PredictionForm({
   prediction,
   onSaved,
+  focusRef,
 }: {
   prediction: ApiPrediction | null;
   onSaved: (p: ApiPrediction, created: boolean) => void;
+  /** The field the dialog opens on (its initialFocus). */
+  focusRef: RefObject<HTMLTextAreaElement | null>;
 }) {
   const t = useT();
   const [statement, setStatement] = useState(prediction?.statement ?? '');
@@ -123,7 +126,7 @@ function PredictionForm({
             onChange={(e) => setStatement(e.target.value)}
             rows={3}
             placeholder={t('Điều mình nghĩ sẽ xảy ra, viết sao cho 6 tháng sau chấm được đúng hay sai.')}
-            autoFocus
+            ref={focusRef}
           />
         </FormRow>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -303,9 +306,12 @@ export function PredictionDialog({
 }) {
   const t = useT();
   const scoring = mode === 'score' && prediction !== null;
+  // Focused by Base UI, not autoFocus, so closing gives the focus back to the control that opened the dialog
+  // (item-dialog.tsx); a re-score has no such field and opens on Base UI's default
+  const firstField = useRef<HTMLTextAreaElement | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} initialFocus={firstField}>
         <DialogHeader>
           <DialogTitle>{scoring ? t('Chấm lại dự đoán') : prediction ? t('Sửa dự đoán') : t('Ghi dự đoán')}</DialogTitle>
           <DialogDescription className={scoring ? 'line-clamp-3' : undefined}>
@@ -324,7 +330,12 @@ export function PredictionDialog({
           (scoring ? (
             <ScoreForm key={`score-${prediction.id}`} prediction={prediction} onSaved={(p) => onSaved(p, false)} />
           ) : (
-            <PredictionForm key={prediction?.id ?? 'new'} prediction={prediction} onSaved={onSaved} />
+            <PredictionForm
+              key={prediction?.id ?? 'new'}
+              prediction={prediction}
+              onSaved={onSaved}
+              focusRef={firstField}
+            />
           ))}
       </DialogPopup>
     </Dialog>

@@ -1,5 +1,5 @@
 'use client';
-import { useState, type ComponentProps } from 'react';
+import { useRef, useState, type ComponentProps, type RefObject } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { ApiItemStatus } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
@@ -61,10 +61,13 @@ function ProjectForm({
   project,
   initialStatus,
   onSaved,
+  focusRef,
 }: {
   project: ApiProject | null;
   initialStatus?: ApiItemStatus;
   onSaved: (p: ApiProject, created: boolean, imageError?: string) => void;
+  /** The field the dialog opens on (its initialFocus). */
+  focusRef: RefObject<HTMLInputElement | null>;
 }) {
   const t = useT();
   const [form, setForm] = useState<Form>(() => fromProject(project, initialStatus));
@@ -145,7 +148,7 @@ function ProjectForm({
             {...invalid.field('title')}
             value={form.title}
             onChange={(e) => set('title', e.target.value)}
-            autoFocus
+            ref={focusRef}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -289,9 +292,12 @@ export function ProjectDialog({
   finalFocus?: ComponentProps<typeof DialogPopup>['finalFocus'];
 }) {
   const t = useT();
+  // Focused by Base UI, not autoFocus, so closing gives the focus back to the control that opened the dialog
+  // (item-dialog.tsx)
+  const firstField = useRef<HTMLInputElement | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} finalFocus={finalFocus}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} finalFocus={finalFocus} initialFocus={firstField}>
         <DialogHeader>
           <DialogTitle>{project ? t('Sửa dự án') : t('Thêm dự án')}</DialogTitle>
           <DialogDescription>{t('Khách, cách tính tiền và giá. Không làm hóa đơn.')}</DialogDescription>
@@ -302,6 +308,7 @@ export function ProjectDialog({
             project={project}
             initialStatus={initialStatus}
             onSaved={onSaved}
+            focusRef={firstField}
           />
         )}
       </DialogPopup>

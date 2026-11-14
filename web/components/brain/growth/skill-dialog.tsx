@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { Loader2 } from 'lucide-react';
 import { growthApi, type ApiSkillDetail } from '@/lib/api/growth';
 import { toApiError } from '@/lib/api/use-api';
@@ -29,10 +29,13 @@ function SkillForm({
   skill,
   initialName,
   onSaved,
+  focusRef,
 }: {
   skill: ApiSkillDetail | null;
   initialName?: string;
   onSaved: (skill: ApiSkillDetail, created: boolean) => void;
+  /** The field the dialog opens on (its initialFocus). */
+  focusRef: RefObject<HTMLInputElement | null>;
 }) {
   const t = useT();
   const [name, setName] = useState(skill?.name ?? initialName ?? '');
@@ -78,7 +81,7 @@ function SkillForm({
             {...invalid.field('name')}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            autoFocus
+            ref={focusRef}
           />
         </FormRow>
         <FormRow
@@ -131,16 +134,27 @@ export function SkillDialog({
   onSaved: (skill: ApiSkillDetail, created: boolean) => void;
 }) {
   const t = useT();
+  // Focused by Base UI, not autoFocus, so closing gives the focus back to the control that opened the dialog
+  // (item-dialog.tsx)
+  const firstField = useRef<HTMLInputElement | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} initialFocus={firstField}>
         <DialogHeader>
           <DialogTitle>{skill ? t('Sửa kỹ năng') : t('Thêm kỹ năng')}</DialogTitle>
           <DialogDescription>
             {t('Không tự chấm điểm: kỹ năng sáng lên khi có bằng chứng mới và tự mờ sau 6 tháng không có.')}
           </DialogDescription>
         </DialogHeader>
-        {open && <SkillForm key={skill?.id ?? 'new'} skill={skill} initialName={initialName} onSaved={onSaved} />}
+        {open && (
+          <SkillForm
+            key={skill?.id ?? 'new'}
+            skill={skill}
+            initialName={initialName}
+            onSaved={onSaved}
+            focusRef={firstField}
+          />
+        )}
       </DialogPopup>
     </Dialog>
   );

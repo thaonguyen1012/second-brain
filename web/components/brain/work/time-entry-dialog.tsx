@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { ApiObjective } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
@@ -45,12 +45,15 @@ function EntryForm({
   objectives,
   defaultProject,
   onSaved,
+  focusRef,
 }: {
   entry: ApiTimeEntry | null;
   projects: ApiProject[];
   objectives: ApiObjective[];
   defaultProject: number | null;
   onSaved: (e: ApiTimeEntry, created: boolean) => void;
+  /** The field the dialog opens on (its initialFocus): the duration of a new entry, an entry's note. */
+  focusRef: RefObject<HTMLInputElement | null>;
 }) {
   const t = useT();
   const [form, setForm] = useState<Form>(() => ({
@@ -152,7 +155,7 @@ function EntryForm({
               aria-required={!running || undefined}
               {...invalid.field('minutes', 'entry-duration-hint')}
               onChange={(e) => set('duration', e.target.value)}
-              autoFocus={!entry}
+              ref={entry ? undefined : focusRef}
             />
             <p id="entry-duration-hint" className="text-xs text-muted-foreground" aria-live="polite">
               {running
@@ -171,7 +174,7 @@ function EntryForm({
             value={form.note}
             maxLength={500}
             onChange={(e) => set('note', e.target.value)}
-            autoFocus={!!entry}
+            ref={entry ? focusRef : undefined}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -229,9 +232,12 @@ export function TimeEntryDialog({
   onSaved: (e: ApiTimeEntry, created: boolean) => void;
 }) {
   const t = useT();
+  // Focused by Base UI, not autoFocus, so closing gives the focus back to the control that opened the dialog
+  // (item-dialog.tsx)
+  const firstField = useRef<HTMLInputElement | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} initialFocus={firstField}>
         <DialogHeader>
           <DialogTitle>{entry ? t('Sửa giờ') : t('Nhập giờ')}</DialogTitle>
         </DialogHeader>
@@ -250,6 +256,7 @@ export function TimeEntryDialog({
               objectives={objectives}
               defaultProject={defaultProject}
               onSaved={onSaved}
+              focusRef={firstField}
             />
           ))}
       </DialogPopup>

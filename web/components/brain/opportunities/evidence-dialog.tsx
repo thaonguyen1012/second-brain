@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { ApiStance } from '@/lib/api/client';
 import { opportunitiesApi, type ApiEvidence, type ApiEvidenceKind } from '@/lib/api/opportunities';
@@ -39,10 +39,13 @@ function EvidenceForm({
   opportunityId,
   target,
   onSaved,
+  focusRef,
 }: {
   opportunityId: number;
   target: EvidenceTarget;
   onSaved: (evidence: ApiEvidence, created: boolean) => void;
+  /** The field the dialog opens on (its initialFocus). */
+  focusRef: RefObject<HTMLInputElement | null>;
 }) {
   const t = useT();
   const ev = target.mode === 'edit' ? target.evidence : null;
@@ -146,7 +149,7 @@ function EvidenceForm({
             {...invalid.field('title')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            autoFocus
+            ref={focusRef}
           />
         </div>
         {showUrl && (
@@ -213,9 +216,12 @@ export function EvidenceDialog({
 }) {
   const t = useT();
   const ev = target?.mode === 'edit' ? target.evidence : null;
+  // Focused by Base UI, not autoFocus, so closing gives the focus back to the control that opened the dialog
+  // (item-dialog.tsx)
+  const firstField = useRef<HTMLInputElement | null>(null);
   return (
     <Dialog open={target !== null} onOpenChange={(o) => !o && onClose()}>
-      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} initialFocus={firstField}>
         <DialogHeader>
           <DialogTitle>{t(ev ? 'Sửa bằng chứng' : 'Thêm bằng chứng')}</DialogTitle>
           <DialogDescription>
@@ -232,6 +238,7 @@ export function EvidenceDialog({
             opportunityId={opportunityId}
             target={target}
             onSaved={onSaved}
+            focusRef={firstField}
           />
         )}
       </DialogPopup>

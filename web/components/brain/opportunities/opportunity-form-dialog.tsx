@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import Link from 'next/link';
 import { Check, Loader2 } from 'lucide-react';
 import { opportunitiesApi, type ApiDecision, type ApiOpportunityDetail, type ApiSkill } from '@/lib/api/opportunities';
@@ -103,9 +103,12 @@ function FitPicker({ value, onChange }: { value: number[]; onChange: (ids: numbe
 function OpportunityForm({
   opportunity,
   onSaved,
+  focusRef,
 }: {
   opportunity: ApiOpportunity | null;
   onSaved: (saved: ApiOpportunityDetail, created: boolean) => void;
+  /** The field the dialog opens on (its initialFocus). */
+  focusRef: RefObject<HTMLInputElement | null>;
 }) {
   const t = useT();
   const [form, setForm] = useState<Form>(() => fromOpportunity(opportunity));
@@ -169,7 +172,7 @@ function OpportunityForm({
             {...invalid.field('title')}
             value={form.title}
             onChange={(e) => set('title', e.target.value)}
-            autoFocus
+            ref={focusRef}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -266,16 +269,26 @@ export function OpportunityFormDialog({
   onSaved: (saved: ApiOpportunityDetail, created: boolean) => void;
 }) {
   const t = useT();
+  // Focused by Base UI, not autoFocus, so closing gives the focus back to the control that opened the dialog
+  // (item-dialog.tsx)
+  const firstField = useRef<HTMLInputElement | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} initialFocus={firstField}>
         <DialogHeader>
           <DialogTitle>{t(opportunity ? 'Sửa cơ hội' : 'Cơ hội mới')}</DialogTitle>
           <DialogDescription>
             {t('Một giả thuyết của mình, sẽ được giữ, bỏ hoặc làm khi đủ bằng chứng.')}
           </DialogDescription>
         </DialogHeader>
-        {open && <OpportunityForm key={opportunity?.id ?? 'new'} opportunity={opportunity} onSaved={onSaved} />}
+        {open && (
+          <OpportunityForm
+            key={opportunity?.id ?? 'new'}
+            opportunity={opportunity}
+            onSaved={onSaved}
+            focusRef={firstField}
+          />
+        )}
       </DialogPopup>
     </Dialog>
   );

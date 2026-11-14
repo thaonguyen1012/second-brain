@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { Loader2 } from 'lucide-react';
 import { growthApi, type ApiJobAd, type ApiJobAdPatch, type ApiJobAdWrite } from '@/lib/api/growth';
 import { toApiError } from '@/lib/api/use-api';
@@ -38,10 +38,13 @@ function JobAdForm({
   ad,
   month,
   onSaved,
+  focusRef,
 }: {
   ad: ApiJobAd | null;
   month: string;
   onSaved: (ad: ApiJobAd, created: boolean) => void;
+  /** The field the dialog opens on (its initialFocus). */
+  focusRef: RefObject<HTMLInputElement | null>;
 }) {
   const t = useT();
   const [title, setTitle] = useState(ad?.title ?? '');
@@ -125,7 +128,7 @@ function JobAdForm({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Product Engineer"
-              autoFocus
+              ref={focusRef}
             />
           </FormRow>
           <FormRow id="ad-company" label={t('Công ty')}>
@@ -226,16 +229,19 @@ export function JobAdDialog({
   onSaved: (ad: ApiJobAd, created: boolean) => void;
 }) {
   const t = useT();
+  // Focused by Base UI, not autoFocus, so closing gives the focus back to the control that opened the dialog
+  // (item-dialog.tsx)
+  const firstField = useRef<HTMLInputElement | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} className="sm:max-w-2xl">
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} className="sm:max-w-2xl" initialFocus={firstField}>
         <DialogHeader>
           <DialogTitle>{ad ? t('Sửa tin tuyển dụng') : t('Dán tin tuyển dụng')}</DialogTitle>
           <DialogDescription>
             {t('Mỗi tháng 5 đến 10 tin của vai trò nhắm tới. Kỹ năng và cấp bậc được rút ra trong nền, vài phút sau sẽ có.')}
           </DialogDescription>
         </DialogHeader>
-        {open && <JobAdForm key={ad?.id ?? 'new'} ad={ad} month={month} onSaved={onSaved} />}
+        {open && <JobAdForm key={ad?.id ?? 'new'} ad={ad} month={month} onSaved={onSaved} focusRef={firstField} />}
       </DialogPopup>
     </Dialog>
   );

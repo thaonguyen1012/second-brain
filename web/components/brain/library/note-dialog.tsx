@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState, type ComponentProps } from 'react';
+import { useRef, useState, type ComponentProps, type RefObject } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { ApiItem } from '@/lib/api/client';
 import { notesApi, type ApiNote } from '@/lib/api/library';
@@ -64,6 +64,7 @@ function NoteForm({
   itemsStatus,
   onDirty,
   onSaved,
+  focusRef,
 }: {
   note: ApiNote | null;
   draft?: NoteDraft;
@@ -72,6 +73,8 @@ function NoteForm({
   itemsStatus?: string;
   onDirty: (dirty: boolean) => void;
   onSaved: (note: ApiNote, created: boolean) => void;
+  /** The field the dialog opens on (its initialFocus): the text. */
+  focusRef: RefObject<HTMLTextAreaElement | null>;
 }) {
   const t = useT();
   const [initial] = useState<Form>(() => ({
@@ -152,7 +155,7 @@ function NoteForm({
             placeholder={t('# Ba ý chính\n\n- …')}
             style={{ minHeight: '14rem' }}
             spellCheck
-            autoFocus
+            ref={focusRef}
           />
           <p className="text-xs text-muted-foreground">
             {t('Ghi chú là riêng tư, không gửi cho AI. Viết bằng markdown: ## tiêu đề, - danh sách, - [ ] việc cần làm.')}
@@ -221,6 +224,9 @@ export function NoteDialog({
 }) {
   const t = useT();
   const dirty = useRef(false);
+  // Focused by Base UI, not autoFocus, so closing gives the focus back to the control that opened the dialog
+  // (item-dialog.tsx)
+  const firstField = useRef<HTMLTextAreaElement | null>(null);
   const [askDiscard, setAskDiscard] = useState(false);
   const change = (next: boolean) => {
     if (!next && dirty.current) {
@@ -237,7 +243,12 @@ export function NoteDialog({
   };
   return (
     <Dialog open={open} onOpenChange={change}>
-      <DialogPopup className="sm:max-w-2xl" closeProps={{ 'aria-label': t('Đóng') }} finalFocus={finalFocus}>
+      <DialogPopup
+        className="sm:max-w-2xl"
+        closeProps={{ 'aria-label': t('Đóng') }}
+        finalFocus={finalFocus}
+        initialFocus={firstField}
+      >
         <DialogHeader>
           <DialogTitle>{note ? t('Sửa ghi chú') : t('Ghi chú mới')}</DialogTitle>
           {description && <DialogDescription className="line-clamp-2">{description}</DialogDescription>}
@@ -258,6 +269,7 @@ export function NoteDialog({
               dirty.current = false;
               onSaved(saved, created);
             }}
+            focusRef={firstField}
           />
         )}
         {/* Nested in the popup, so Base UI treats it as a child dialog (focus returns to the note). */}

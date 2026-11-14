@@ -1,5 +1,5 @@
 'use client';
-import { useId, useMemo, useState, type ComponentProps } from 'react';
+import { useId, useMemo, useRef, useState, type ComponentProps, type RefObject } from 'react';
 import { Check, Loader2, Trash2 } from 'lucide-react';
 import { api, type ApiItem, type ApiItemRequest, type ApiItemStatus, type ApiItemType } from '@/lib/api/client';
 import { toApiError } from '@/lib/api/use-api';
@@ -100,6 +100,7 @@ function ItemForm({
   onDeleted,
   onWriteNote,
   focusRating = false,
+  focusRef,
 }: {
   item: ApiItem | null;
   draft?: Partial<ApiItemRequest>;
@@ -107,6 +108,8 @@ function ItemForm({
   onDeleted?: (item: ApiItem) => void;
   onWriteNote?: (item: ApiItem) => void;
   focusRating?: boolean;
+  /** The field the dialog opens on (its initialFocus): the title, or the rating with `focusRating`. */
+  focusRef: RefObject<HTMLInputElement | null>;
 }) {
   const t = useT();
   const stagesId = useId();
@@ -228,7 +231,7 @@ function ItemForm({
             aria-required
             {...invalid.field('title')}
             value={form.title} onChange={(e) => set('title', e.target.value)}
-            autoFocus={!focusRating}
+            ref={focusRating ? undefined : focusRef}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -334,7 +337,7 @@ function ItemForm({
               inputMode="numeric"
               value={form.rating}
               onChange={(e) => set('rating', e.target.value)}
-              autoFocus={focusRating}
+              ref={focusRating ? focusRef : undefined}
             />
           </div>
         </div>
@@ -420,9 +423,16 @@ export function ItemDialog({
 }) {
   const t = useT();
   const tool = (item?.type ?? draft?.type) === 'tool';
+  // The first field gets the focus from Base UI (initialFocus), never from React's autoFocus: a field focused as it
+  // mounts takes the focus before Base UI notes what held it, and closing then gave the focus back to <body>.
+  const firstField = useRef<HTMLInputElement | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} finalFocus={finalFocus}>
+      <DialogPopup
+        closeProps={{ 'aria-label': t('Đóng') }}
+        finalFocus={finalFocus}
+        initialFocus={firstField}
+      >
         <DialogHeader>
           <DialogTitle>
             {item ? (tool ? t('Sửa công cụ') : t('Sửa item')) : tool ? t('Thêm công cụ') : t('Thêm item')}
@@ -438,6 +448,7 @@ export function ItemDialog({
             onDeleted={onDeleted}
             onWriteNote={onWriteNote}
             focusRating={focusRating}
+            focusRef={firstField}
           />
         )}
       </DialogPopup>

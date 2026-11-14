@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { Loader2 } from 'lucide-react';
 import { opportunitiesApi, type ApiScoreSnapshot } from '@/lib/api/opportunities';
 import type { ApiOpportunity } from '@/lib/api/client';
@@ -34,9 +34,12 @@ const hints: Record<ScoreKey, Msg> = {
 function ScoreForm({
   opportunity,
   onSaved,
+  focusRef,
 }: {
   opportunity: ApiOpportunity;
   onSaved: (snapshot: ApiScoreSnapshot) => void;
+  /** The field the dialog opens on (its initialFocus): the first score. */
+  focusRef: RefObject<HTMLInputElement | null>;
 }) {
   const t = useT();
   const last = opportunity.scores;
@@ -95,7 +98,7 @@ function ScoreForm({
                 max={10}
                 step={1}
                 value={values[d.key]}
-                autoFocus={i === 0}
+                ref={i === 0 ? focusRef : undefined}
                 aria-required
                 {...invalid.field(d.key, `score-${d.key}-hint`)}
                 onChange={(e) => setValues((v) => ({ ...v, [d.key]: e.target.value }))}
@@ -141,14 +144,17 @@ export function ScoreDialog({
   onSaved: (snapshot: ApiScoreSnapshot) => void;
 }) {
   const t = useT();
+  // Focused by Base UI, not autoFocus, so closing gives the focus back to the control that opened the dialog
+  // (item-dialog.tsx)
+  const firstField = useRef<HTMLInputElement | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} initialFocus={firstField}>
         <DialogHeader>
           <DialogTitle>{t('Chấm điểm lại')}</DialogTitle>
           <DialogDescription>{t('Mỗi điểm từ 1 đến 10. Lần chấm cũ được giữ làm lịch sử.')}</DialogDescription>
         </DialogHeader>
-        {open && <ScoreForm opportunity={opportunity} onSaved={onSaved} />}
+        {open && <ScoreForm opportunity={opportunity} onSaved={onSaved} focusRef={firstField} />}
       </DialogPopup>
     </Dialog>
   );
