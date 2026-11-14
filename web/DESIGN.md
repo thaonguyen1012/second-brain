@@ -233,6 +233,18 @@ so the near pairs that remain are listed under the palette, not hidden.
     (Space UI's default `foreground/10` halo was 1.2:1); dark keeps Space UI's `foreground/70` border. A focused
     invalid one (§6 "Form errors") keeps Space UI's destructive border in light, with the 1px ring outside it in
     `--ring` (`app/global.css`; Space UI's destructive/20 ring there showed no focus).
+    Scroll areas (accessibility pass 13/11/2026, round 3, WCAG 2.4.7): a box that scrolls is a tab stop, Base UI's
+    `ScrollArea` viewport while it overflows (DialogPanel, SheetPanel, the sidebar) and in Chrome any scroller with no
+    control in it (Cmd+K's results, a note's wide code block or table, a lesson table); keep it, the keyboard scrolls
+    with it. Its ring is the 2px `--ring` as an outline (forced colours keep outlines, drop box-shadows): inside
+    the edge (`-outline-offset-2`) where an outside ring would be cut, for a ScrollArea from its root's `::after` in
+    `app/global.css` (square corners; from sm the popup's inner corner, `--radius-2xl` − 4px, where the panel's edge is
+    the popup's own); outside the edge where nothing cuts it and the content touches the edge (Cơ hội's "Xem dạng
+    bảng", where an inset ring covered the first letters). A tab stop inside a scroller (the topic heatmap) keeps its
+    outside ring: the scroller makes room with `-m-1 p-1`, the grid and its cells take `scroll-m-1`, and the arrows
+    scroll the cursor's cell into view. A list driven from a field through `aria-activedescendant` (the `[[` picker) is
+    never a tab stop (`tabIndex={-1}`). `components/mdx.tsx` copies Fumadocs' table wrapper to add the ring
+    (`lib/registry-copies.test.ts` keeps the copy in step).
   - Text stays AA on page, sidebar, surface and fill: `muted-foreground` is >= 5.6:1 on every one of them.
 - **Border plus fill:** a surface is border + `bg-card` (the surface rule above), plus at most `shadow-depth-1`
   (the focal block). Inside a surface, a nested element gets a fill or a divider, never another bordered box
@@ -294,13 +306,19 @@ so the near pairs that remain are listed under the palette, not hidden.
   down the list. So is every other control a list, a card or an open editor repeats (WCAG 2.4.6, 2.5.3;
   accessibility pass 13/11/2026): the name starts with all the control shows, its words and a key hint drawn in it
   (`Đọc sau, L: "{title}"`, `Bắt đầu, T: bấm giờ cho "{title}"`; axe reads the drawn letter, so `aria-hidden` on the
-  `Kbd` does not help; a real space before the `Kbd`), or for an icon-only control its tooltip's words unbroken
+  `Kbd` does not help; a real space before the `Kbd`; with single-key shortcuts off the hint and its letter go,
+  `Đọc sau "{title}"`), or for an icon-only control its tooltip's words unbroken
   (`Mở {site} (tab mới): "{title}"`), then the record (`Chấm "{title}"`, `Xong ghi chú “{title}”`, `Hữu ích:
   {title}`). Where records share a title it adds what the row shows that tells them apart: a time entry's day and
   duration (`Sửa giờ của {title} ngày {day} (45 phút)`, "(đang chạy)" for the running one), the date line of a note
   that only repeats its Item's title, a kept new note's own title, else its Item's, else "Ghi chú mới". Shared parts
   take the record as an optional `name` (`RecoveredDraft`, `SaveStatus`, `UnsavedCopyHint`, `FrameControl`); an
-  Item's step keeps it beside its label (`itemNextStep().name`).
+  Item's step keeps it beside its label (`itemNextStep().name`). Any name set over visible text holds that text in
+  reading order, the visible words first and the context after; a comma is fine, since axe and speech input drop
+  punctuation ("EN, Switch to English", "Inbox, 5 mục chưa xử lý", `Xem mục giờ của {title} trong tuần này`; round 3,
+  WCAG 2.5.3). Where two spans show separate words (a title and its count, a label and a badge or `Kbd`), the DOM
+  keeps a real space between them (`{' '}`; a flex box does not draw it): axe and speech input read "Item" + "13" as
+  "Item13", which no name holds.
 - **Notices and loading** (accessibility pass 13/11/2026, the `fixing-accessibility` skill in
   `.claude/skills/`): a page's notice line is one `<p role="status">` that stays mounted, `empty:sr-only` while it
   is empty (out of the flow, so nothing moves), so the first notice of a visit is read out too; a loading
@@ -334,6 +352,19 @@ so the near pairs that remain are listed under the palette, not hidden.
   `focusTarget(...)` from its `finalFocus`; a deleted row leaves the list at once (mutate, then reload). A page that
   places the focus itself (Tuần's objectives, the Item page's notes) is left alone; Cancel and Escape return it to
   the trigger.
+- **Focus into and out of a dialog** (accessibility pass 13/11/2026, round 3, WCAG 2.4.3): a Dialog, AlertDialog or
+  Sheet opens on its first field through Base UI's `initialFocus`, a ref the form puts on that field (the Item
+  dialog's rating with `focusRating`, a time entry's note when editing). Never React's `autoFocus` inside one: the
+  field focuses itself before Base UI notes what held the focus, and Escape, Hủy and ✕ then dropped it on `<body>`.
+  Closing gives the focus back to the opener (a `RowMenu` item stands for that menu's trigger; the Item Sheet's
+  "Sửa"); a page's `finalFocus` that names the record's row (Thư viện, Công cụ, Dự án) still wins. An inline form
+  that takes its opener's place (the skill sheet's evidence form, from "Thêm bằng chứng" or a row menu's "Sửa")
+  focuses that control again as Escape, Hủy or a save closes it, in the same commit, or the Sheet takes the focus. A
+  single key that opens a dialog first calls `focusShortcutOpener(key, scope?, fallback?)` (`lib/shortcut-opener.ts`):
+  when nothing holds the focus (a page load, J/K on a cursor list), the control showing that key (its `Kbd` or
+  `aria-keyshortcuts`; in the cursor's row, else the row's `RowMenu` trigger) takes it first, so the dialog gives it
+  back there and a delete confirmed with Del knows its row. So a shortcut that opens a dialog shows its key on its
+  control.
 - **Badges:** status via `StatusBadge` + `lib/labels.ts`; tags as `outline` badges or plain muted `#tag` text,
   one style app-wide; at most 3 badges before the title. Badges are labels, never buttons or tabs.
 - **View switches:** `Tabs` (`components/ui/tabs`, default segmented or `underline`) for in-page views, tied to the
@@ -394,7 +425,9 @@ so the near pairs that remain are listed under the palette, not hidden.
   `Sheet` for reading or editing one record beside the list (the Item page beside Thư viện, below);
   `AlertDialog` (`confirm-delete.tsx`) for every
   delete, never `window.confirm`; `Menu` for overflow; `Tooltip` for icon-only controls; a small `Dialog` for
-  the keyboard legend (add `@spaceui/popover` if a non-modal panel is needed). A tooltip drawn by hand (the week
+  the keyboard legend (add `@spaceui/popover` if a non-modal panel is needed). Their focus: "Focus into and out of a
+  dialog" above. A button whose visible text is a key is named from that key first, then what it does: Cmd+K's close
+  button shows "ESC" and is "ESC, đóng tìm kiếm" (WCAG 2.5.3). A tooltip drawn by hand (the week
   chart's day columns, `tuan/time-chart.tsx`) behaves like `Tooltip` (WCAG 1.4.13; accessibility pass 13/11/2026):
   it sits inside its trigger, above a transparent padding instead of a gap, so the pointer can move onto it and rest
   there; it stays while the pointer or the focus is on the trigger or on it (hover and focus tracked apart, the
@@ -521,8 +554,17 @@ so the near pairs that remain are listed under the palette, not hidden.
   in `aria-describedby`), on by default and remembered in this browser (localStorage
   `alex-brain:single-key-shortcuts`, '0' = off, every access in try/catch; other tabs follow). The legend opens with
   the focus on "Đóng", so Space after "?" never flips it; while it is off the legend button drops its `?` chip.
-  Known gaps: the other `Kbd` chips, `MenuShortcut`, `aria-keyshortcuts` and the key letters in names stay while it is
-  off, and the switch is only in the legends (Inbox, Ghi chú, Tuần; their button is hidden below md and on touch).
+  While it is off no single key is advertised (round 3): what a page draws asks `useSingleKeyShortcuts()` (live in
+  this tab and others, on in the server render; a list asks once and hands it to its rows) and leaves out the `Kbd`
+  chip (in a button, a tooltip, a picker's digits), the menu key (`MenuSingleKey` in `row-menu.tsx`; a focused row's
+  own keys keep `MenuShortcut`), `aria-keyshortcuts`, the key in a name (`Đọc sau "{title}"`, `Bắt đầu bấm giờ cho
+  "{title}"`) and the key sentence of a notice or error ("Nhấn A để lưu trữ mục."). A legend keeps its `'always'`
+  lines (`KeyLine`: a focused row's arrows, Enter, Alt+↑/↓, Del); with none left the switch stands alone, without the
+  hairline. Keys with ⌘, Ctrl or Alt and a dialog's ESC keep their hints. The switch is also Cmd+K's one command, so
+  every page and phones reach it: the destinations list ends with a "Cài đặt" group holding "Tắt phím tắt một phím" /
+  "Bật phím tắt một phím" (a result row: Keyboard icon, the state as meta, "Đang bật trong trình duyệt này"); a
+  query that starts its words ("phim tat", "tắt", "shortcut") puts it first; a pick flips the switch and keeps the
+  dialog open, read out by a polite `role="status"` in the dialog's header.
 - **States:** `LoadingCards`/`Skeleton` at the real row or card geometry; `ApiErrorState` (with "Thử lại") when
   nothing loaded, `ApiStaleAlert` when old rows stay; `EmptyPanel` for a list's first run (§9a), `EmptyState` for
   filtered-empty.
@@ -535,11 +577,16 @@ so the near pairs that remain are listed under the palette, not hidden.
   bottom (`mt-auto`; on a short screen it scrolls with the rest), muted until hovered or current, without a label (its
   list is named "Khác"). The header (the mark, "Ẩn menu") and every row (an icon + title in the text colour) sit in
   one `<nav aria-label="Menu">`, `aria-current` on the current row (darker grey fill, medium weight). A row may end
-  in its count (`text-xs` muted `tabular-nums`, 99+, nothing for 0; read out after the title as "Tuần, còn 2 mục
-  tiêu") from `GET /api/counts`: the number the page lists with its default filters, except Tuần (open objectives
-  of this week); refreshed on every navigation, on tab focus and after every API write. Giờ ends in the `bw-red` "now" dot while a timer runs. The top
+  in its count (`text-xs` muted `tabular-nums`, 99+, nothing for 0; the row is named "Tuần, 2 mục tiêu còn mở": the
+  title, then the count as shown, 99+ too, then what it counts, so the name holds the visible "Tuần 2", WCAG 2.5.3;
+  every count label starts with `{n}`, `lib/app-nav.test.ts`) from `GET /api/counts`: the number the page lists with
+  its default filters, except Tuần (open objectives of this week); refreshed on every navigation, on tab focus and
+  after every API write. Giờ ends in the `bw-red` "now" dot while a timer runs. The top
   bar's menu trigger shows only while the sidebar is hidden (and on phones). Inbox and search stay in the top bar
-  (DECISIONS 9.3). The top bar ends with the language switch (a ghost button: the Languages glyph and the other
+  (DECISIONS 9.3): the Inbox link is named "Inbox, 5 mục chưa xử lý" over its "Inbox 5", and the search button
+  "Tìm mọi thứ, ⌘ K" at every width (its words, then the key hint drawn in it; the hint and the name share
+  `SEARCH_KEY`), keeping the key where the hint is hidden (touch, below sm), as the Inbox verbs keep their letters.
+  The top bar ends with the language switch (a ghost button: the Languages glyph and the other
   language's code, "EN" or "VI", named and tooltipped in that language; DECISIONS 9.9) and the theme toggle.
   Below sm the search button's label is the short "Tìm…", shown whole or not at all, never cut into a stub ("Se…")
   or run past its border: the span is `flex h-6 min-w-0 flex-1 flex-wrap overflow-clip` and its empty `before:h-6`
@@ -548,9 +595,9 @@ so the near pairs that remain are listed under the palette, not hidden.
   scrolls, and find in page or a `#:~:text=` link would scroll the cut line into view). On a phone it shows from
   about 325 px (Vietnamese) and 345 px (English), beside an Inbox count from about 355 and 375 px, 360 and 380 px with
   a 3-digit count (the count arrives after load, so between those widths the label goes a moment after the page
-  shows); narrower, the button is the outlined field with the magnifier alone, still named "Tìm mọi thứ", without a
-  tooltip (one would also show from sm, beside the whole label). Check the top bar at 320 px in both languages with
-  a 3-digit count.
+  shows); narrower, the button is the outlined field with the magnifier alone, still named "Tìm mọi thứ, ⌘ K",
+  without a tooltip (one would also show from sm, beside the whole label). Check the top bar at 320 px in both
+  languages with a 3-digit count.
   English UI copy is sentence case like the Vietnamese and must fit the same boxes: check the 390 px layouts in
   both languages (English runs about 10% shorter, some labels longer).
 - **Landmarks and skip link** (accessibility pass 13/11/2026, WCAG 2.4.1; `components/app-shell.tsx`,
@@ -784,7 +831,8 @@ Components
 - **D23** View switches are `Tabs` tied to the region they switch, not filled buttons; links to two routes are a nav
   drawn like tabs (`aria-current`); filters left, primary action right in one toolbar.
 - **D24** `Kbd` hints hidden on touch / 390 px and limited to the main verbs; full legend behind one control, ending
-  with the "Phím tắt một phím" switch.
+  with the "Phím tắt một phím" switch (also a Cmd+K command); with it off no single-key chip, menu key or legend line
+  shows, only keys with ⌘, Ctrl or Alt and the focused row's own.
 - **D25** Badges: <= 3 per record, one tag style app-wide, never used as buttons or tabs.
 - **D33** A link inside or right under running text is underlined at rest; a link action standing on its own (a
   section header's `… →`, a jump alone in its bar) may underline on hover only.
@@ -792,7 +840,8 @@ Components
 Keyboard and focus (screenshots taken while using the keyboard)
 - **D34** The first Tab of a page shows "Bỏ qua tới nội dung" at the top left; after a failed save the focus is on
   the first invalid field (light: its red border kept, the blue ring outside it); after a confirmed delete it is on
-  the next row, the previous one or the list's heading, never lost.
+  the next row, the previous one or the list's heading, never lost; after Escape, Hủy or ✕ it is back on the control
+  that opened the dialog; a focused scroll area (a Sheet, Cmd+K's results, a wide table) shows the whole 2px ring.
 
 States and motion
 - **D26** First-run empty = the §9a panel (one primary, ≤ 6 quick actions or one inline form, a guide or ≤ 3 ghost
