@@ -596,8 +596,15 @@ export default function AppSearchDialog({
         <SearchDialogHeader>
           <SearchDialogIcon />
           <SearchDialogInput aria-label={t('Tìm mọi thứ')} placeholder={t('Tìm sổ tay, ghi chú, inbox…')} />
-          {/* The button shows "ESC": its name starts with it (WCAG 2.5.3), then says what it does */}
-          <SearchDialogClose aria-label={t('ESC, đóng tìm kiếm')} className="max-sm:hidden pointer-coarse:hidden" />
+          {/* The button shows "ESC": its name starts with it (WCAG 2.5.3), then says what it does. Fumadocs answers
+              Enter on the whole dialog (it picks the active row and cancels the key), so Enter on this button flipped
+              the shortcut command or opened a result instead of closing: the key stops here, before the dialog's
+              listener, and the button's own activation closes the dialog (WCAG 2.1.1, 3.2.2). */}
+          <SearchDialogClose
+            aria-label={t('ESC, đóng tìm kiếm')}
+            className="max-sm:hidden pointer-coarse:hidden"
+            onKeyDownCapture={(e) => e.key === 'Enter' && e.stopPropagation()}
+          />
           <p role="status" className="sr-only">
             {announce}
           </p>
