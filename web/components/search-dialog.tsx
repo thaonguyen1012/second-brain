@@ -349,10 +349,11 @@ interface ActiveMemory {
  * another row, or flipped the shortcut command that leads a query naming it. So:
  * - the same query: the highlighted row stays highlighted while it is still listed, whatever landed around it; once
  *   it is gone, the first row, but never the shortcut command the user had moved off;
- * - a new query text: the first row, also when its results are not back yet (Enter never picks a row arrowed to for
- *   an earlier query, like the command at the end of a weak one), and none while the destinations still stand in for
- *   its first results (`waiting`), so Enter waits for them instead of opening "Hôm nay". A query that names the
- *   command has it first, active at once.
+ * - a new query text: the first row (Enter never picks a row arrowed to for an earlier query, like the command at the
+ *   end of a weak one), and none while the query's own rows do not lead the list yet (`waiting`): the destinations
+ *   standing in for its first results, or another query's rows kept until its own land (Enter opened "Hôm nay", or a
+ *   result of the query typed over), so Enter waits for them; the first of them takes it as they land, and a row the
+ *   user moves to meanwhile stays. A query that names the command has it first, active at once.
  * ActiveBefore, rendered before the list, notes the active row in its layout effect, which runs before the list's;
  * ActiveAfter, rendered after it, sets the row. A dialog opened again starts at the top.
  */
@@ -392,6 +393,8 @@ function ActiveAfter({
     memoryRef.current = { query, id: null };
     if (query !== before) setActive(waiting ? null : (items?.[0]?.id ?? null));
     else if (id && items?.some((i) => i.id === id)) setActive(id);
+    // Still another query's rows on top (part of this one's landed): Fumadocs' reset made the first of them active
+    else if (waiting) setActive(null);
     // The row the user moved to left the list (a destination, as the results land): the first row again, as Fumadocs
     // does, but never the shortcut command they had moved off, which leads a query naming it (Enter would flip it)
     else if (id && id !== SHORTCUTS_COMMAND && items?.[0]?.id === SHORTCUTS_COMMAND)
@@ -568,8 +571,14 @@ export default function AppSearchDialog({
     rows: results.length,
     destinations: !collapsed && brainItems.length === 0,
   });
-  // A typed query whose first results are not back: the destinations stand in for them, none of them active
-  const waiting = query.trim() !== '' && !collapsed && brainItems.length === 0 && commandAt !== 'first';
+  // A typed query whose own rows do not lead the list yet, so none is active and Enter waits for them: the
+  // destinations stand in for its first results, or the rows on top are another query's until this one's land, the
+  // brain hits of a query it extends or shortens (useBrainSearch keeps them) or the handbook results of the last one
+  // (fumadocs-core's useSearch keeps them: Enter right after typing over a query opened a result of the old one)
+  const waiting =
+    query.trim() !== '' &&
+    commandAt !== 'first' &&
+    (brainItems.length > 0 ? brain.loading : search.data?.query !== search.search);
   const items = useMemo<ListItems>(() => {
     if (commandAt === 'first') return [shortcutsCommand, ...results];
     if (commandAt === 'last') return [...results, shortcutsCommand];
