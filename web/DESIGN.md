@@ -215,7 +215,15 @@ so the near pairs that remain are listed under the palette, not hidden.
     (global.css) for the rest (outline badges, ring offsets).
   - The keyboard cursor on a card list (Inbox) is a stronger border (`foreground/40` light, `foreground/50`
     dark), never a fill: the selected card keeps `bg-card` in both themes, because `Kbd` chips are `bg-accent`
-    and would vanish on an accent-filled card.
+    and would vanish on an accent-filled card. The cursor (that border, a Ghi chú row's `bg-accent`) and its
+    `aria-current="true"` show only while single-key shortcuts are on (round 3 follow-ups, WCAG 4.1.2): off, no key
+    moves it, and "current" would be announced for nothing. The page asks `useSingleKeyShortcuts()` once and hands it
+    to its rows; the cursor keeps its place meanwhile (it still scrolls its row into view and follows a click), so
+    turning the switch on, here, in another tab or from Cmd+K, shows it there again. One exception: the Inbox entry a
+    Cmd+K link opened (`?status=&id=`) keeps the mark while the switch is off (`InboxPage`'s `linkedId`), since
+    nothing else says which card the link meant; any move of the cursor (a click on a card, a tab, a capture, J/K)
+    ends it and a new link replaces it (Ghi chú's `?id=` opens the note page instead). Deletes never use the cursor:
+    the focus after one comes from the trigger (§6 "Focus after a delete").
   - Stageshow wells (guides, /gioi-thieu/ tiles) keep their `secondary` ground (`--card` in dark) and add the 1px
     `--border`; a guide in an empty panel's slot (`variant="flush"`) has neither: the slot's `bg-well` is its ground.
     Text in a guide or intro picture is text in a picture (accessibility pass 13/11/2026): 4.5:1 in every frame that
@@ -245,7 +253,58 @@ so the near pairs that remain are listed under the palette, not hidden.
     scroll the cursor's cell into view. A list driven from a field through `aria-activedescendant` (the `[[` picker) is
     never a tab stop (`tabIndex={-1}`). `components/mdx.tsx` copies Fumadocs' table wrapper to add the ring
     (`lib/registry-copies.test.ts` keeps the copy in step).
-  - Text stays AA on page, sidebar, surface and fill: `muted-foreground` is >= 5.6:1 on every one of them.
+  - Forced colours (Windows contrast themes; round 3 follow-ups, WCAG 2.4.7): Chrome drops box-shadows there, so
+    every `ring-*` goes, and keeps outlines. One `@media (forced-colors: active)` block in `app/global.css` gives an
+    element that strips its outline (`outline-none`, `outline-hidden`, `focus-visible:outline-none`, `.note-editor`) a
+    2px `Highlight` outline on `:focus-visible` at the offset it already has: outside (0, Chrome's 1px for a link, 2px
+    where `focus-visible:outline-hidden` sets it, as in Space UI's Button), inside the edge where its class holds
+    `ring-inset`, on the `::after` where it holds `after:ring` (`coverLinkFocus`, stretched card links).
+    `tabindex="-1"` targets and the ScrollArea viewport stay bare (its root's `::after` draws its ring); Tailwind's
+    `outline-hidden`, which shows there at all times (sidebar rows, group labels), is kept on the focused element only;
+    the active option of an `aria-activedescendant` list (`[role=option][aria-selected=true]` without `data-slot`:
+    Cmd+K, the `[[` and `/` menus, the Item picker) is outlined inside its edge; outlines the browser or the app draw
+    are left alone. The block knows a hand-drawn ring by its class names, so keep them: drop the outline only with
+    `outline-none`, `outline-hidden` or `focus-visible:outline-none` (never `focus:outline-none`, `outline-0` or a CSS
+    `outline: none`), draw an inside ring with `ring-inset` and a stretched link's with `after:ring-*`, or the control
+    shows no focus in a contrast theme; prefer an outline for new focus styles. Forced colours back text with a plate,
+    and a flex item or inline-block paints its outline before what follows it, so an outline reaching into the next
+    line is cut by that line's text: a control with text 2px under it keeps the outline on its edge (Ghi chú's "Theo
+    item" heading links take `forced-colors:outline-offset-0`, its row titles go without `outline-hidden`). A ring
+    that marks a position, not the focus, brings its own `forced-colors:outline-2 forced-colors:outline-offset-1
+    forced-colors:outline-[Highlight]` (the topic heatmap's cursor cell, like the week strip's today). Still shown by
+    fills alone, so gone there: the heatmap's data (its table view keeps the numbers), the segmented tabs' current
+    indicator, the J/K cursor rows. Test with Playwright's `page.emulateMedia({ forcedColors: 'active' })` (with
+    `colorScheme: 'dark'` for the black palette).
+  - Links in a truncating line (WCAG 2.4.7, 2.4.11): a box that truncates (`overflow: hidden`) clips the ring or
+    outline of a link inside it. A link that is the line's only content (Ghi chú's "Theo item" group heading) is itself
+    the box that truncates: `inline-block max-w-full align-top`, its text in a `block truncate` span (the span clips,
+    so the hover underline keeps its square ends), and its ring goes round what shows, the ellipsis too. A line where
+    links share the text (a note's meta line: Item links, commas, the date) takes `has-focus-visible:-m-1
+    has-focus-visible:p-1`, 4px of room inside its clip while a link has keyboard focus, taken back by the negative
+    margin (the heatmap scroller's `-m-1 p-1`; only while focused, so rest and hover stay as they were). A link that
+    line's ellipsis cuts still ran past the clip (Chrome keeps an inline box's full width past the ellipsis), so on
+    `:focus-visible` `fitToLine` (`library/notes-page.tsx`) measures it and, if it runs past the line's content box,
+    makes it its own truncating box while it keeps that focus (`data-fit`: `inline-block max-w-(--fit) truncate
+    align-top`, `--fit` = the room left on its line; the line gets `has-data-fit:text-clip`): its own ellipsis stands
+    where the line's was and the ring closes at the line's end. A link with under 48px left (`FIT_MIN`), or one hidden
+    after a long first link, first comes to the line's start (the line scrolls sideways). Blur removes `data-fit` and
+    `--fit` and resets the line's `scrollLeft`. Measured, not plain CSS: an inline-block at rest would move the line's
+    ellipsis, and a link's room depends on what goes before it; a resize while the link keeps the focus keeps the old
+    room until the next focus. A control that truncates itself (a row's title button) needs none of this: its own
+    overflow does not clip its own ring. Left as it was: the meta line's `hover:underline` never shows (the 16px line
+    clips it); only the colour changes.
+  - Lesson pages (Fumadocs; WCAG 2.4.7): the page-tree links of the sidebar (`#nd-sidebar`, the 390 px drawer
+    `#nd-sidebar-mobile`) and the TOC's (`#nd-toc`, its popover `[data-toc-popover]` below xl), `a[data-active]`, take
+    the 2px `--ring` outline inside their edge on `:focus-visible` (`outline-offset: -2px`), since the TOC's
+    `overflow-x-clip` scroller and a folder's collapsible cut an outside one on both sides; the popover's trigger
+    (`[data-toc-popover-trigger]`), which Fumadocs gave no focus style, takes the same. The sidebar's list, Fumadocs'
+    Base UI ScrollArea (`[data-id$='-viewport']`, a tab stop while it scrolls), is ringed like the app's: its outline
+    off, its root's `::after` draws the ring at `outline-offset: -3px` (the list hangs 1px past the layout's start
+    edge), above the content and the fade mask. The nav title link and Fumadocs' buttons keep their own focus.
+    Unfocused nothing changes, and a click or tap draws no ring.
+  - Text stays AA on page, sidebar, surface and fill: `muted-foreground` is >= 5.6:1 on every one of them but the
+    dark segmented indicator (`--input` over `--muted`, #3e3e3e, the one ground lighter than every surface), where it
+    is 4.07:1: muted text there (a tab's count) takes `foreground/70` (6.2:1; §6 "View switches").
 - **Border plus fill:** a surface is border + `bg-card` (the surface rule above), plus at most `shadow-depth-1`
   (the focal block). Inside a surface, a nested element gets a fill or a divider, never another bordered box
   (D12). `shadow-popover` only for things floating above the page (popover, menu, dialog, hovered draggable).
@@ -307,7 +366,8 @@ so the near pairs that remain are listed under the palette, not hidden.
   accessibility pass 13/11/2026): the name starts with all the control shows, its words and a key hint drawn in it
   (`Đọc sau, L: "{title}"`, `Bắt đầu, T: bấm giờ cho "{title}"`; axe reads the drawn letter, so `aria-hidden` on the
   `Kbd` does not help; a real space before the `Kbd`; with single-key shortcuts off the hint and its letter go,
-  `Đọc sau "{title}"`), or for an icon-only control its tooltip's words unbroken
+  `Đọc sau "{title}"`, in English the words, a colon and the record, `Read later: "{title}"`, `Note: "{title}"`), or
+  for an icon-only control its tooltip's words unbroken
   (`Mở {site} (tab mới): "{title}"`), then the record (`Chấm "{title}"`, `Xong ghi chú “{title}”`, `Hữu ích:
   {title}`). Where records share a title it adds what the row shows that tells them apart: a time entry's day and
   duration (`Sửa giờ của {title} ngày {day} (45 phút)`, "(đang chạy)" for the running one), the date line of a note
@@ -316,7 +376,14 @@ so the near pairs that remain are listed under the palette, not hidden.
   Item's step keeps it beside its label (`itemNextStep().name`). Any name set over visible text holds that text in
   reading order, the visible words first and the context after; a comma is fine, since axe and speech input drop
   punctuation ("EN, Switch to English", "Inbox, 5 mục chưa xử lý", `Xem mục giờ của {title} trong tuần này`; round 3,
-  WCAG 2.5.3). Where two spans show separate words (a title and its count, a label and a badge or `Kbd`), the DOM
+  WCAG 2.5.3). So does a Fumadocs control's: the lesson sidebar's language chooser shows the page's language and is
+  `Tiếng Việt, chọn ngôn ngữ` / `English, choose a language`, set in both languages by `app/[lang]/layout.tsx` as its
+  `'Choose a language(language switcher)(aria-label)'` (English pages get a Fumadocs dictionary of that key alone; the
+  popover's heading stays "Chọn ngôn ngữ"). A name or a line whose subject is a view state (the week, a filter) says
+  that state, never a fixed "this" (WCAG 2.4.6): Giờ's week summary says `tuần này` only for the current week
+  (`data.weekStart === mondayOf(todayPrague())`, Prague as the server counts it) and the heading's dates for any other,
+  in its "Xem mục" names (`Xem mục giờ của {title} trong tuần {range}`) and its empty line (`Chưa có giờ nào trong tuần
+  {range}.`). Where two spans show separate words (a title and its count, a label and a badge or `Kbd`), the DOM
   keeps a real space between them (`{' '}`; a flex box does not draw it): axe and speech input read "Item" + "13" as
   "Item13", which no name holds.
 - **Notices and loading** (accessibility pass 13/11/2026, the `fixing-accessibility` skill in
@@ -377,7 +444,11 @@ so the near pairs that remain are listed under the palette, not hidden.
   its text, and the next Tab jumps back to its top). Links to two routes are not tabs: Thư viện's Item / Ghi chú is a
   `<nav>` named "Thư viện" whose links carry `aria-current="page"` on the half shown, drawn with TabsList's and
   TabsTab's classes and the indicator's colours (`library/library-tabs.tsx`; `lib/registry-copies.test.ts` fails
-  when the registry's classes change). Never filled primary buttons as tabs. A view switch sits first in the
+  when the registry's classes change). A tab's count (those links, Inbox's "Inbox" tab) is `tabCountClass(current)`:
+  `text-xs` muted, `foreground/70` on the current tab in dark (§4), never louder than its label, at rest or hovered;
+  a tab list with a count keeps the current label in `foreground` under the pointer (`tabCurrentHoverClass`), since
+  TabsTab's `hover:text-muted-foreground` outweighs its `data-active:text-foreground` (4.08:1 in dark, under its
+  count; WCAG 1.4.3). Never filled primary buttons as tabs. A view switch sits first in the
   toolbar; the filters that belong to one view follow it only in that view. The view lives in the URL
   (`?view=board`, the default view has no parameter), the last choice in localStorage (the URL wins), switched with
   `router.replace` without scrolling. Ghi chú's switch is "Danh sách" / "Theo item" (`?view=items`, DECISIONS 9.8;
@@ -558,13 +629,31 @@ so the near pairs that remain are listed under the palette, not hidden.
   this tab and others, on in the server render; a list asks once and hands it to its rows) and leaves out the `Kbd`
   chip (in a button, a tooltip, a picker's digits), the menu key (`MenuSingleKey` in `row-menu.tsx`; a focused row's
   own keys keep `MenuShortcut`), `aria-keyshortcuts`, the key in a name (`Đọc sau "{title}"`, `Bắt đầu bấm giờ cho
-  "{title}"`) and the key sentence of a notice or error ("Nhấn A để lưu trữ mục."). A legend keeps its `'always'`
-  lines (`KeyLine`: a focused row's arrows, Enter, Alt+↑/↓, Del); with none left the switch stands alone, without the
-  hairline. Keys with ⌘, Ctrl or Alt and a dialog's ESC keep their hints. The switch is also Cmd+K's one command, so
-  every page and phones reach it: the destinations list ends with a "Cài đặt" group holding "Tắt phím tắt một phím" /
-  "Bật phím tắt một phím" (a result row: Keyboard icon, the state as meta, "Đang bật trong trình duyệt này"); a
-  query that starts its words ("phim tat", "tắt", "shortcut") puts it first; a pick flips the switch and keeps the
-  dialog open, read out by a polite `role="status"` in the dialog's header.
+  "{title}"`) and the key sentence of a notice or error ("Nhấn A để lưu trữ mục."; what is left keeps its period,
+  `Đã tạo ghi chú "{title}".`). A menu shows a key only where that key acts (round 3 follow-ups): `MenuSingleKey`
+  is for keys a page answers on any of its rows (the Inbox's O, T, N, Del); Ghi chú's E and Del act on the list
+  view's cursor, so `NoteRow` takes the switch and the view as one `keys` prop over a plain `MenuShortcut`, and
+  "Theo item", which has no cursor, shows none, on or off. A legend keeps its `'always'` lines (`KeyLine`: a focused
+  row's arrows, Enter, Alt+↑/↓, Del); with none left the switch stands alone, without the hairline. Keys with ⌘, Ctrl
+  or Alt and a dialog's ESC keep their hints. The switch is also Cmd+K's one command, so every page and phones reach
+  it: the destinations list ends with a "Cài đặt" group holding "Tắt phím tắt một phím" / "Bật phím tắt một phím" (a
+  result row: Keyboard icon, the state as meta, "Đang bật trong trình duyệt này"). A command that changes a setting
+  in place never takes the top or Enter from a search (round 3 follow-ups, WCAG 3.2, 2.4.3; `lib/search-command.ts`,
+  tested in `search-command.test.ts`). `matchCommand()` reads the query, accents (decomposed ones too), case, hyphens
+  and spaces aside: `strong` when it holds one of the command's phrases as whole words (`SHORTCUTS_PHRASES`, vi "phím
+  tắt", "một phím"; en "shortcut", "shortcuts", "single key") and its other words are the command's own, the last
+  maybe half-typed ("tắt phím tắt m"); `weak` when each word only starts one ("ta", "mo", "một", "on", "turn off");
+  else `none`. `placeCommand()` puts a strong match first, the row Enter picks, even alone; a weak one last, after
+  the results under "Cài đặt", and leaves it out while nothing else is listed (no index, nothing found, the brain hits
+  not back: alone it would be the first row, which Fumadocs makes active; the list says "Đang tìm…" or "Không tìm
+  thấy kết quả" and Enter does nothing); the destinations (nothing typed, or this query's first results still coming)
+  end with it; any other query leaves it out. The highlight starts at the top again when a query comes to name the
+  command or stops naming it (`ActiveBefore` keeps `commandFirst`); at the end only the arrows (ArrowUp wraps to it)
+  or the pointer highlight it, a choice a late brain group keeps. "Bộ não thứ hai", "Cài đặt" and "Đi đến" always
+  head their groups (the destinations under early brain rows too); "Sổ tay" heads the handbook results whenever
+  another group, the command included, shares the list. A pick flips the switch and keeps the dialog open, read out
+  by a polite `role="status"` in the dialog's header; the row cancels mousedown (`ResultRow keepFocus`), so a click
+  or tap leaves the focus in the search field.
 - **States:** `LoadingCards`/`Skeleton` at the real row or card geometry; `ApiErrorState` (with "Thử lại") when
   nothing loaded, `ApiStaleAlert` when old rows stay; `EmptyPanel` for a list's first run (§9a), `EmptyState` for
   filtered-empty.
@@ -831,8 +920,8 @@ Components
 - **D23** View switches are `Tabs` tied to the region they switch, not filled buttons; links to two routes are a nav
   drawn like tabs (`aria-current`); filters left, primary action right in one toolbar.
 - **D24** `Kbd` hints hidden on touch / 390 px and limited to the main verbs; full legend behind one control, ending
-  with the "Phím tắt một phím" switch (also a Cmd+K command); with it off no single-key chip, menu key or legend line
-  shows, only keys with ⌘, Ctrl or Alt and the focused row's own.
+  with the "Phím tắt một phím" switch (also a Cmd+K command, first only for a query that names it); with it off no
+  single-key chip, menu key, legend line or list cursor shows, only keys with ⌘, Ctrl or Alt and the focused row's own.
 - **D25** Badges: <= 3 per record, one tag style app-wide, never used as buttons or tabs.
 - **D33** A link inside or right under running text is underlined at rest; a link action standing on its own (a
   section header's `… →`, a jump alone in its bar) may underline on hover only.
@@ -841,7 +930,8 @@ Keyboard and focus (screenshots taken while using the keyboard)
 - **D34** The first Tab of a page shows "Bỏ qua tới nội dung" at the top left; after a failed save the focus is on
   the first invalid field (light: its red border kept, the blue ring outside it); after a confirmed delete it is on
   the next row, the previous one or the list's heading, never lost; after Escape, Hủy or ✕ it is back on the control
-  that opened the dialog; a focused scroll area (a Sheet, Cmd+K's results, a wide table) shows the whole 2px ring.
+  that opened the dialog; a focused scroll area (a Sheet, Cmd+K's results, a wide table) shows the whole 2px ring, and
+  so does a link in a truncated line (Ghi chú); in forced colours every focus still shows.
 
 States and motion
 - **D26** First-run empty = the §9a panel (one primary, ≤ 6 quick actions or one inline form, a guide or ≤ 3 ghost
