@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { enPage } from './i18n/en';
 import { makeT } from './i18n/translate';
-import { MIN_QUERY, fold, foldedWords, matchCommand, shortcutsCommandTerms } from './search-command';
+import { MIN_QUERY, fold, foldedWords, matchCommand, placeCommand, shortcutsCommandTerms } from './search-command';
 
 // The command's terms as the search dialog builds them, from the real dictionaries
 const vi = shortcutsCommandTerms(makeT('vi', null));
@@ -98,5 +98,44 @@ describe('the single-key shortcuts command in Cmd+K', () => {
   it('keeps each language to its own words', () => {
     expect(matchCommand('phím tắt', en)).toBe('none');
     expect(matchCommand('shortcut', vi)).toBe('none');
+  });
+});
+
+describe('where the command goes in the Cmd+K list', () => {
+  const place = (terms: typeof vi, q: string, rows: number, destinations = false) =>
+    placeCommand(matchCommand(q, terms), { rows, destinations });
+
+  it('leads the list only for a query that names it, also when it is the only row', () => {
+    for (const rows of [0, 1, 12]) {
+      expect(place(vi, 'phím tắt', rows)).toBe('first');
+      expect(place(en, 'shortcuts', rows)).toBe('first');
+      expect(place(vi, 'phim tat', rows, true)).toBe('first');
+    }
+  });
+
+  it('ends the results of a weak query, and is left out when nothing else is listed', () => {
+    // the reported queries: their results (handbook or second brain) keep the top and Enter
+    for (const q of ['ba', 'ta', 'mo', 'ph', 'một', 'bat', 'phi', 'tắt', 'bật phím']) {
+      expect(place(vi, q, 3), q).toBe('last');
+      expect(place(vi, q, 3, true), q).toBe('last');
+      // no handbook hit (no search index, or nothing found) and no second-brain hit yet: the command alone would be
+      // the active row, Enter's; the list is empty instead, and the command comes back at the end with the first hit
+      expect(place(vi, q, 0), q).toBeNull();
+    }
+    for (const q of ['on', 'of', 'ke', 'si', 'sh', 'tu', 'turn off', 'single k']) {
+      expect(place(en, q, 1), q).toBe('last');
+      expect(place(en, q, 0), q).toBeNull();
+    }
+  });
+
+  it('ends the destinations while nothing is typed or the first results are on their way, then leaves', () => {
+    expect(place(vi, '', 9, true)).toBe('last');
+    expect(place(en, '', 9, true)).toBe('last');
+    expect(place(vi, 'mon', 9, true)).toBe('last');
+    expect(place(vi, 'mon', 4)).toBeNull();
+    expect(place(en, 'postgres', 4)).toBeNull();
+    expect(place(vi, 'phím tắt vscode', 0)).toBeNull();
+    // never the only row unless named
+    expect(place(vi, '', 0, true)).toBeNull();
   });
 });

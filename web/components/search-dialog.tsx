@@ -47,7 +47,7 @@ import { formatDay, freshness, monthLabel, outcomeOf } from '@/components/brain/
 import { useLocale, useT } from '@/lib/i18n/client';
 import { contentText } from '@/lib/i18n/content-lang';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
-import { MIN_QUERY, fold, matchCommand, shortcutsCommandTerms } from '@/lib/search-command';
+import { MIN_QUERY, fold, matchCommand, placeCommand, shortcutsCommandTerms } from '@/lib/search-command';
 import { setSingleKeyShortcuts, singleKeyShortcutsOn, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 
 // Queries shorter than MIN_QUERY skip the second brain (they match too much of everything); the handbook search still
@@ -527,21 +527,25 @@ export default function AppSearchDialog({
   const handbookById = collapsed?.byId ?? NO_HANDBOOK;
 
   // Second-brain rows first: they are few (at most 5 per kind), the handbook list runs to 20 pages. The shortcut
-  // command goes before them only when the query names it (lib/search-command.ts: "phím tắt", "shortcut"), so Enter
-  // flips the switch only then. A query that merely starts its words ("ta", "on") keeps it at the end, after the
-  // results it asked for, as does nothing typed yet (or the first results still on their way): it ends the
-  // destinations list. Other queries leave it out once their results are there.
+  // command (placeCommand, lib/search-command.ts) leads only for a query that names it ("phím tắt", "shortcut"), so
+  // Enter flips the switch only then. A query that merely starts its words ("ta", "on") gets it at the end, after the
+  // results it asked for, and so do the destinations (nothing typed yet, or the first results still on their way);
+  // other queries leave it out once their results are there. Never the only row unless named: Fumadocs makes the
+  // first row the active one, so a weak command alone would be Enter's (and stay so as the brain group lands above
+  // it, ActiveAfter). At the end only the arrows or the pointer highlight it, a choice a late brain group keeps.
   const handbook: ListItems = collapsed?.list ?? defaultItems;
   const activeMemory = useRef<ActiveMemory>({ id: null, handbook: null, commandFirst: false, brainOnly: false });
-  const commandMatch = matchCommand(search.search, commandTerms);
-  const commandFirst = commandMatch === 'strong';
-  const commandLast = !commandFirst && (commandMatch === 'weak' || (!collapsed && brainItems.length === 0));
+  const results = useMemo(() => [...brainItems.map((b) => b.item), ...(handbook ?? [])], [brainItems, handbook]);
+  const commandAt = placeCommand(matchCommand(search.search, commandTerms), {
+    rows: results.length,
+    destinations: !collapsed && brainItems.length === 0,
+  });
+  const commandFirst = commandAt === 'first';
   const items = useMemo<ListItems>(() => {
-    const results = [...brainItems.map((b) => b.item), ...(handbook ?? [])];
-    if (commandFirst) return [shortcutsCommand, ...results];
-    if (commandLast) return [...results, shortcutsCommand];
+    if (commandAt === 'first') return [shortcutsCommand, ...results];
+    if (commandAt === 'last') return [...results, shortcutsCommand];
     return brainItems.length === 0 ? handbook : results;
-  }, [brainItems, handbook, commandFirst, commandLast, shortcutsCommand]);
+  }, [brainItems, handbook, results, commandAt, shortcutsCommand]);
   const firstHandbook = (brainItems.length > 0 || commandFirst) && collapsed ? handbook?.[0]?.id : undefined;
   const firstLink = !collapsed && brainItems.length === 0 ? defaultItems?.[0]?.id : undefined;
   const firstBrain = brainItems[0]?.hit.id;

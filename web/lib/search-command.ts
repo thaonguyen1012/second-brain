@@ -29,7 +29,7 @@ export const foldedWords = (text: string): string[] =>
 /**
  * How clearly a query names a command: `strong` puts its row first, where Enter picks it; `weak` keeps it at the end
  * of the list, after the results (never the row Enter picks, never moving the results); `none` leaves it out once
- * results are there.
+ * results are there. `placeCommand` turns this into the row's place.
  */
 export type CommandMatch = 'strong' | 'weak' | 'none';
 
@@ -59,6 +59,25 @@ export function matchCommand(query: string, { names, phrases }: CommandTerms): C
   const whole = typed.every((word, i) => own.has(word) || i === typed.length - 1);
   const named = runs.some((run) => typed.some((_, at) => run.every((word, k) => typed[at + k] === word)));
   return whole && named ? 'strong' : 'weak';
+}
+
+/**
+ * Where the command's row goes in the Cmd+K list, given how the query names it and the other rows: `rows` counts them
+ * (second-brain hits, then the handbook results or the destinations), `destinations` says the list still shows the
+ * destinations (nothing typed yet, or this query's first results on their way).
+ * - `first` (where Enter picks it) only for a query that names it, even alone.
+ * - `last`, after the other rows, for a query that only starts its words, and at the end of the destinations.
+ * - `null`, left out, for any other query once its results are there, and whenever the command would be the list's only
+ *   row without being named: the list's first row is the one Enter picks (Fumadocs makes it the active row), so a
+ *   weak match alone would be Enter's again. The list is then empty and says "Không tìm thấy kết quả" (or "Đang tìm…").
+ */
+export function placeCommand(
+  match: CommandMatch,
+  { rows, destinations }: { rows: number; destinations: boolean },
+): 'first' | 'last' | null {
+  if (match === 'strong') return 'first';
+  if (rows === 0) return null;
+  return match === 'weak' || destinations ? 'last' : null;
 }
 
 /**
