@@ -383,8 +383,9 @@ function showCommand() {
  * - a new query text: the first row (Enter never picks a row arrowed to for an earlier query, like the command at the
  *   end of a weak one), and none while the query's own rows do not lead the list yet (`waiting`): the destinations
  *   standing in for its first results, or another query's rows kept until its own land (Enter opened "Hôm nay", or a
- *   result of the query typed over), so Enter waits for them; the first of them takes it as they land, and a row the
- *   user moves to meanwhile stays. A query that names the command has it first, active at once.
+ *   result of the query typed over), so Enter and the arrows wait for them (AppSearchDialog's key handler); the first
+ *   of them takes it as they land, and a row the user points at meanwhile stays. A query that names the command has
+ *   it first, active at once.
  * ActiveBefore, rendered before the list, notes the active row in its layout effect, which runs before the list's;
  * ActiveAfter, rendered after it, sets the row. A dialog opened again starts at the top.
  */
@@ -672,11 +673,17 @@ export default function AppSearchDialog({
           ArrowUp to them stayed out of sight. The top keeps 1rem, and the list (below) leaves 7rem for the top, the
           search field and a bottom margin. Its keys reach this capture handler before Fumadocs' listener on the box:
           a held Enter repeats its keydown and Fumadocs picks the active row on each, so on the command, which keeps
-          the dialog open, a held key flipped the switch on and off until it was let go; only its first press picks. */}
+          the dialog open, a held key flipped the switch on and off until it was let go; only its first press picks.
+          While the query's own rows are on their way (`waiting`, no row active) the arrows wait with Enter: from no
+          active row Fumadocs' ArrowDown and ArrowUp both highlight the first row on screen, a result of the query
+          typed over or a destination, and Enter then opened it. */}
       <SearchDialogContent
         className="md:top-[max(1rem,calc(50%-250px))]"
         onKeyDownCapture={(e) => {
-          if (e.nativeEvent.isComposing || e.key !== 'Enter' || !e.repeat) return;
+          if (e.nativeEvent.isComposing) return;
+          const held = e.key === 'Enter' && e.repeat;
+          const early = waiting && (e.key === 'ArrowDown' || e.key === 'ArrowUp');
+          if (!held && !early) return;
           e.preventDefault();
           e.stopPropagation();
         }}
