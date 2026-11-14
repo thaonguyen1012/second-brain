@@ -45,12 +45,65 @@ function markTitles(nodes: PageTree.Node[], locale: Locale): PageTree.Node[] {
   );
 }
 
+/** The open table-of-contents popover below xl (Base UI's Collapsible root, `data-open` while open). */
+const openPopover = () => document.querySelector<HTMLElement>('[data-toc-popover][data-open]');
+/** The open sidebar drawer below md. */
+const openDrawer = () => document.querySelector<HTMLElement>('#nd-sidebar-mobile[data-state="open"]');
+/** The top bar's button that opened the drawer (outside it; the drawer is `aria-controls` of every such button). */
+const drawerButton = () =>
+  document.querySelector<HTMLElement>('[aria-controls="nd-sidebar-mobile"]:not(#nd-sidebar-mobile *)');
+
+/**
+ * Fumadocs' two overlays of a lesson, the table-of-contents popover (below xl) and the sidebar drawer (below md), are
+ * not modal and stayed open when the keyboard focus left them: the next stops were the links under them, hidden
+ * (WCAG 2.4.11, 2.4.3), and Escape did nothing. Each closes as the focus moves to an element outside it (the button
+ * that opens the drawer excepted), and Escape inside one closes it and gives the focus to its button. Closed through
+ * Fumadocs' own controls, so its state follows: the popover's trigger (checked open first: it toggles) and the
+ * drawer's backdrop (it only closes). lib/lesson-landmarks.test.ts follows the markup this reads.
+ */
+function useOverlaysCloseOnFocusOut() {
+  useEffect(() => {
+    const onFocusIn = (e: FocusEvent) => {
+      const to = e.target;
+      if (!(to instanceof Element)) return;
+      const popover = openPopover();
+      if (popover && !popover.contains(to)) popover.querySelector<HTMLElement>('[data-toc-popover-trigger]')?.click();
+      const drawer = openDrawer();
+      if (drawer && !drawer.contains(to) && !to.closest('[aria-controls="nd-sidebar-mobile"]'))
+        (drawer.previousElementSibling as HTMLElement | null)?.click();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      const at = document.activeElement;
+      const popover = openPopover();
+      if (popover && at && popover.contains(at)) {
+        const trigger = popover.querySelector<HTMLElement>('[data-toc-popover-trigger]');
+        trigger?.click();
+        trigger?.focus();
+        return;
+      }
+      const drawer = openDrawer();
+      if (drawer && at && drawer.contains(at)) {
+        (drawer.previousElementSibling as HTMLElement | null)?.click();
+        drawerButton()?.focus();
+      }
+    };
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
+}
+
 /**
  * DocsLayout whose sidebar starts with the server's shell tree and loads the full book tree. The skip link before it
  * jumps the lesson tree to the lesson (DocsPage's `#nd-page`, focusable while the skip link's focus is on it).
  */
 export function LazyDocsLayout({ book, tree, ...props }: Props) {
   const locale = useLocale();
+  useOverlaysCloseOnFocusOut();
   const [full, setFull] = useState<PageTree.Folder | null>(null);
   useEffect(() => {
     if (!book) return;

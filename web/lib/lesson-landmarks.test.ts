@@ -33,3 +33,26 @@ describe("the lesson's table of contents as a landmark", () => {
     expect(page()).toMatch(/tableOfContentPopover=\{\{ container: tocPopover \}\}/);
   });
 });
+
+/**
+ * components/lazy-docs-layout.tsx closes the lesson's two overlays when the focus leaves them, through Fumadocs' own
+ * controls, found by the markup below: a Fumadocs update that changes it would leave them open behind the focus again.
+ */
+describe("the lesson's overlays, closed as the focus leaves them", () => {
+  const base = () => read('node_modules/fumadocs-ui/dist/components/sidebar/base.js');
+  it('the table-of-contents popover: open while its Collapsible root has data-open, toggled by its trigger', () => {
+    expect(read('node_modules/@base-ui/react/collapsible/root/CollapsibleRootDataAttributes.d.ts')).toMatch(
+      /export declare const open = "data-open";/,
+    );
+    expect(toc()).toMatch(/jsxs\(CollapsibleTrigger, \{[\s\S]*?"data-toc-popover-trigger": "",/);
+  });
+
+  it('the sidebar drawer: data-state on it, its backdrop just before it closes it, its button controls it', () => {
+    expect(base()).toMatch(/id: "nd-sidebar-mobile",\s*"data-state": open \? "open" : "closed",/);
+    expect(base()).toMatch(/function SidebarDrawerOverlay[\s\S]*?onClick: \(\) => setOpen\(false\),/);
+    expect(read('node_modules/fumadocs-ui/dist/layouts/docs/slots/sidebar.js')).toMatch(
+      /jsx\(SidebarDrawerOverlay, \{[^}]*\}\), \/\* @__PURE__ \*\/ jsx\(SidebarDrawerContent, \{/,
+    );
+    expect(base()).toMatch(/"aria-expanded": open,\s*"aria-controls": "nd-sidebar-mobile",/);
+  });
+});
