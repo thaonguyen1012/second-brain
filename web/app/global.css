@@ -546,6 +546,19 @@ div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
   }
 }
 
+/* The highlighted row of a menu or a Select list (Base UI moves the focus to it) and the active option of a list
+   driven from a field (aria-activedescendant: Cmd+K, the note editor's [[ and / menus, the Item picker) were marked
+   by the --accent fill alone: 1.18:1 on the popover in light, 1.12:1 in dark, where a move seemed to change nothing
+   (WCAG 1.4.11 asks 3:1 of a focus indicator). They take the app's 2px ring inside their edge (3.1:1 on the fill,
+   3.6:1 on the popover in light; 7:1 or more in dark): a menu's or a Select's row while the keyboard moves it (under
+   the pointer the fill alone, as before), the active option at all times, since it is the row Enter picks. Before the
+   forced-colours block, which draws the same in Highlight. */
+:is([data-slot^='menu-'], [data-slot='select-item'])[data-highlighted]:focus-visible,
+[role='option'][aria-selected='true']:not([data-slot]) {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
 /* Forced colours (Windows contrast themes; WCAG 2.4.7). The browser drops box-shadows there, and with them every focus
    ring drawn with Tailwind's ring-* beside outline-none or focus-visible:outline-none (components/ui's, Fumadocs' and
    the app's own; the note editor's outline: none); it keeps outlines and paints a focused one in the system's
