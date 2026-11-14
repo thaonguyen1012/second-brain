@@ -354,18 +354,23 @@ export function NotesPage() {
   // The full Item list is for the pictures of "Theo item"; rows use the labels sent with the notes.
   const index = useItemIndex(view === 'items');
   const filters = { ...(q && { q }), ...(itemFilter && { item: itemFilter }) };
-  const listNotes = useApi<Page<ApiNote>>(view === 'list' ? `notes:${q}:${itemFilter ?? ''}` : null, () =>
-    notesApi.list({ limit: PAGE, ...filters }),
-  );
+  const listKey = view === 'list' ? `notes:${q}:${itemFilter ?? ''}` : null;
+  const listNotes = useApi<Page<ApiNote>>(listKey, () => notesApi.list({ limit: PAGE, ...filters }));
   // "Theo item" groups every matching note at once (all cursor pages, at most 20 of 100)
-  const allNotes = useApi<Page<ApiNote>>(view === 'items' ? `notes-all:${q}:${itemFilter ?? ''}` : null, () =>
+  const allKey = view === 'items' ? `notes-all:${q}:${itemFilter ?? ''}` : null;
+  const allNotes = useApi<Page<ApiNote>>(allKey, () =>
     loadAllPages<ApiNote>(
       () => notesApi.list({ limit: 100, ...filters }),
       (next) => api.page<ApiNote>(next),
     ),
   );
   const notes = view === 'list' ? listNotes : allNotes;
-  const shown = useMemo(() => (notes.loading ? [] : (notes.data?.results ?? [])), [notes.loading, notes.data]);
+  const notesKey = view === 'list' ? listKey : allKey;
+  // A reload of the same key (a return to the browser tab) keeps the rows on screen, and the focus in them, as Thư
+  // viện does (a skeleton would unmount every row and drop the focus to <body>, WCAG 2.4.3); another search, Item
+  // filter or view starts from the skeleton.
+  const ownRows = notes.dataKey === notesKey;
+  const shown = useMemo(() => (ownRows ? (notes.data?.results ?? []) : []), [ownRows, notes.data]);
   const selected = Math.min(cursor, Math.max(0, shown.length - 1));
   // the keyboard cursor belongs to the list (a note may show in two groups)
   const current = view === 'list' ? shown[selected] : undefined;
@@ -648,7 +653,7 @@ export function NotesPage() {
             ))}
           </ul>
         )}
-        {view === 'list' && notes.data?.next && !notes.loading && (
+        {view === 'list' && ownRows && notes.data?.next && (
           <Button variant="outline" className="self-center" onClick={() => void loadMore()} disabled={loadingMore}>
             {t('Tải thêm')}
           </Button>

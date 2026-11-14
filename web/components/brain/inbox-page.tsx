@@ -420,8 +420,12 @@ export function InboxPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const captureRef = useRef<HTMLTextAreaElement>(null);
-  const inbox = useApi<Page<ApiInboxEntry>>(`inbox:${status}`, () => api.listInbox({ status, limit: PAGE }));
-  const shown = inbox.loading ? [] : (inbox.data?.results ?? []);
+  const inboxKey = `inbox:${status}`;
+  const inbox = useApi<Page<ApiInboxEntry>>(inboxKey, () => api.listInbox({ status, limit: PAGE }));
+  // A reload of the same tab (a return to the browser tab) keeps the cards on screen, and the focus in them, as Thư
+  // viện does: a skeleton would unmount every card and drop the focus to <body> (WCAG 2.4.3). Another tab starts from
+  // the skeleton, never with this one's cards.
+  const shown = inbox.dataKey === inboxKey ? (inbox.data?.results ?? []) : [];
   const inboxCount = useInboxCount();
   // Whether the cards show their keys (and the notices name A): one subscription for the whole list
   const keys = useSingleKeyShortcuts();
@@ -456,7 +460,7 @@ export function InboxPage() {
     ['status'],
   );
   const nextUrl = inbox.data?.next ?? null;
-  const seeking = focusId !== null && !inbox.loading && inbox.dataKey === `inbox:${status}`;
+  const seeking = focusId !== null && !inbox.loading && inbox.dataKey === inboxKey;
   const focusAt = seeking ? shown.findIndex((e) => e.id === focusId) : -1;
   const pageForFocus = seeking && focusAt < 0 && !inbox.error && nextUrl !== null && focusPages < FOCUS_MAX_PAGES;
   if (seeking && !pageForFocus) {
