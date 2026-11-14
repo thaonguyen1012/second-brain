@@ -328,15 +328,21 @@ so the near pairs that remain are listed under the palette, not hidden.
     (`[class~='group/heading'] > button`), shown under the pointer only, shows while it has the keyboard focus (round
     3 checks; it was a hidden stop every second Tab; on touch it stays hidden as Fumadocs draws it, open: §6 asks
     hover-revealed actions to show on touch). Its overlays below md and xl, the TOC popover and the sidebar
-    drawer, are not modal: each closes as the focus moves to an element outside it (not to the button that opens the
+    drawer, are not modal: each closes as the focus moves on to the page behind it (not to the button that opens the
     drawer), and Escape inside one closes it and focuses its button (`useOverlaysCloseOnFocusOut`,
     `lazy-docs-layout.tsx`, through Fumadocs' own trigger and backdrop; `lib/lesson-landmarks.test.ts` follows that
-    markup); the next stops were the links they cover (WCAG 2.4.11). Below xl the TOC bar (40px) and below md the top
-    bar (56px) stay at the top: a lesson's focusable elements keep them and 0.5rem clear (`scroll-margin-top` 3rem,
-    6.5rem below md; on the elements, so a TOC link's jump to a heading lands where it did). Open (round 3 open items,
-    WCAG 2.5.3, low): Fumadocs names the TOC popover's trigger from its content, the ProgressCircle's value first, then
-    both labels (`0.235294 1.1. Week 1: … 🔑 Khái niệm cốt lõi · Key concepts` while it shows the heading). Its
-    `trigger` props are static and its slot is the whole popover, so only a fork would fix it.
+    markup); the next stops were the links they cover (WCAG 2.4.11). The page behind is Fumadocs' layout root
+    `#nd-docs-layout`, which holds the top bar, the sidebar or drawer, the popover and the lesson at every width. A
+    popup, menu or dialog in a portal outside it leaves the overlay open, and the overlay gets the focus back when it
+    closes (round 3 final checks): the drawer's language chooser and handbook switcher, Base UI popovers that take the
+    focus as they open (closing the drawer took them with it: below md, where the drawer holds the lesson's only
+    language control, no language or handbook could be picked), and Cmd+K opened inside an overlay (Escape left the
+    focus on `<body>`). Below xl the TOC bar (40px) and below md the top bar (56px) stay at the top: a lesson's
+    focusable elements keep them and 0.5rem clear (`scroll-margin-top` 3rem, 6.5rem below md; on the elements, so a TOC
+    link's jump to a heading lands where it did). Open (round 3 open items, WCAG 2.5.3, low): Fumadocs names the TOC
+    popover's trigger from its content, the ProgressCircle's value first, then both labels
+    (`0.235294 1.1. Week 1: … 🔑 Khái niệm cốt lõi · Key concepts` while it shows the heading). Its `trigger` props are
+    static and its slot is the whole popover, so only a fork would fix it.
   - Lesson pages, landmarks and names (lessons pass 14/11/2026; WCAG 1.3.1, 2.4.1, 4.1.2;
     `app/[lang]/docs/[[...slug]]/page.tsx`): a lesson has the banner only on phones (Fumadocs' top bar `#nd-subnav`,
     below md), the one main, the sidebar aside, nav "Breadcrumb" and the table of contents as a navigation named like
@@ -452,11 +458,12 @@ so the near pairs that remain are listed under the palette, not hidden.
   (`tuan/time-chart.tsx`, `start === mondayOf(todayPrague())`): `Chưa có giờ nào tuần này` / `No time logged this
   week`, else `Chưa có giờ nào trong tuần {range}` with the heading's dates in one `whitespace-nowrap` span (at 390 px
   the line broke after the en dash), and the empty objectives line, `Không có mục tiêu nào cho {week}.` with the plan
-  tab's week name, built once in `week-page.tsx` ("tuần này", "tuần tới", "tuần {range}"). The ritual's own words (the
-  six questions, "Có ghi chú mới tuần này?", "Có thêm bằng chứng tuần này") speak of the week under review and stay
-  (DECISIONS 9.2). Where two spans show separate words (a title and its count, a label and a badge or `Kbd`), the DOM
-  keeps a real space between them (`{' '}`; a flex box does not draw it): axe and speech input read "Item" + "13" as
-  "Item13", which no name holds.
+  tab's week name, built once in `week-page.tsx` ("tuần này", "tuần tới", "tuần {range}"), its dates in one
+  `whitespace-nowrap` span too (`weekNameInLine`, the name as a node for a line of text; round 3 final checks: at
+  320-360 px the line broke after the en dash). The ritual's own words (the six questions, "Có ghi chú mới tuần
+  này?", "Có thêm bằng chứng tuần này") speak of the week under review and stay (DECISIONS 9.2). Where two spans show
+  separate words (a title and its count, a label and a badge or `Kbd`), the DOM keeps a real space between them
+  (`{' '}`; a flex box does not draw it): axe and speech input read "Item" + "13" as "Item13", which no name holds.
 - **Notices and loading** (accessibility pass 13/11/2026, the `fixing-accessibility` skill in
   `.claude/skills/`): a page's notice line is one `<p role="status">` that stays mounted, `empty:sr-only` while it
   is empty (out of the flow, so nothing moves), so the first notice of a visit is read out too; a loading
@@ -724,36 +731,47 @@ so the near pairs that remain are listed under the palette, not hidden.
   it: the destinations list ends with a "Cài đặt" group holding "Tắt phím tắt một phím" / "Bật phím tắt một phím" (a
   result row: Keyboard icon, the state as meta, "Đang bật trong trình duyệt này"). A command that changes a setting
   in place never takes the top or Enter from a search (round 3 follow-ups, WCAG 3.2, 2.4.3; `lib/search-command.ts`,
-  tested in `search-command.test.ts`). `matchCommand()` reads the query, accents (decomposed ones too), case, hyphens
-  and spaces aside: `strong` when it holds one of the command's phrases as whole words (`SHORTCUTS_PHRASES`: its
-  whole object or a verb with it, vi "phím tắt một phím", "tắt phím tắt", "bật phím tắt"; en "single key
-  shortcut(s)", "turn off shortcuts", "turn on shortcuts") and its other words are the command's own, the last maybe
-  half-typed ("tắt phím tắt m"); `weak` when each word only starts or is one ("ta", "mo", "một", "on", "turn off"),
-  and so for "phím tắt", "một phím", "shortcuts", "keyboard shortcuts" and "single key", the words of the handbook
-  pages about keyboard shortcuts (89 pages say "phím tắt", 80 "keyboard shortcut"; round 3 checks); else `none`. The
-  dialog reads the query composed (`normalize('NFC')` where it enters and in each row), so the second brain's `?q=`
-  (Django's `icontains` has no NFC step), the command, the highlight and `MIN_QUERY` count the letters on screen.
-  `placeCommand()` puts a strong match first, the row Enter picks, even alone; a weak one last, after
-  the results under "Cài đặt", and leaves it out while nothing else is listed (no index, nothing found, the brain hits
-  not back: alone it would be the first row, which Fumadocs makes active; the list says "Đang tìm…" or "Không tìm
-  thấy kết quả" and Enter does nothing); the destinations (nothing typed, or this query's first results still coming)
-  end with it; any other query leaves it out. The active row is the one Enter picks (round 3 checks, WCAG 3.2.2):
-  while the query is the same it stays where it is as long as it is listed, whatever lands around it (the brain
-  group, then the handbook results; Fumadocs moved it back to the first row each time, away from a row arrowed to),
-  and when it leaves the list (a destination, as the results land) the first row takes it, never the command the
-  user had moved off; a new query text starts at the first row, with none active while the destinations still stand
-  in for its first results (Enter waits; it opened "Hôm nay"), so a command arrowed to at the end of a weak query is
-  never Enter's after another letter (`ActiveBefore` notes the row, `ActiveAfter` sets it). At the end only the
-  arrows (ArrowUp wraps to it) or the pointer highlight the command. "Bộ não thứ hai", "Cài đặt" and "Đi đến" always
-  head their groups (the destinations under early brain rows too); "Sổ tay" heads the handbook results whenever
-  another group, the command included, shares the list. A pick flips the switch and keeps the dialog open, read out
-  by a polite `role="status"` in the dialog's header; the row cancels mousedown (`ResultRow keepFocus`), so a click
-  or tap leaves the focus in the search field. The dialog fits the screen at any zoom (round 3 checks, WCAG 1.4.10):
-  from md its top keeps 1rem (`md:top-[max(1rem,calc(50%-250px))]`), and its list is at most `min(460px, 100dvh -
-  7rem)` (at 200% on a 1280x800 screen it ran 90-170px below the screen, the command and an ArrowUp to it out of
-  sight). The dialog and its list are named "Tìm mọi thứ" / "Search everything", as the top bar names the search
-  (Fumadocs' `'Search(search dialog)'`, set in `app/[lang]/layout.tsx`), and a hidden comma parts a row's title from
-  its meta in the option's name.
+  tested in `search-command.test.ts` per state and language). `matchCommand()` reads the query, accents (decomposed
+  ones too), case, hyphens and spaces aside: `strong` when it holds one of the command's phrases as whole words
+  (`SHORTCUTS_WORDS`, through `shortcutsCommandTerms(t, on)` with the switch's state now: its whole object in either
+  state, vi "phím tắt một phím", en "single key shortcut(s)", or the verb of what the row does now with it, "tắt phím
+  tắt" / "turn off shortcuts" while the shortcuts are on, "bật phím tắt" / "turn on shortcuts" while off), none of the
+  other verb's words (`against`: "bật" / "on" while on, "tắt phím tắt" / "off" while off, since "tắt" alone is also
+  in "phím tắt") and its other words are the command's own, the last maybe half-typed ("tắt phím tắt m"); `weak` when
+  each word only starts or is one ("ta", "mo", "một", "on", "turn off"), and so for "phím tắt", "một phím",
+  "shortcuts", "keyboard shortcuts" and "single key", the words of the handbook pages about keyboard shortcuts (89
+  pages say "phím tắt", 80 "keyboard shortcut"; round 3 checks), and for a query with the other verb, which asks for
+  the state the switch is already in (round 3 final checks: "tắt phím tắt" with the shortcuts off led with "Bật phím
+  tắt một phím", and Enter turned them on); else `none`. The dialog reads the query composed (`normalize('NFC')`
+  where it enters and in each row), so the second brain's `?q=` (Django's `icontains` has no NFC step), the command,
+  the highlight and `MIN_QUERY` count the letters on screen. `placeCommand()` puts a strong match first, the row Enter
+  picks, even alone; a weak one last, after the results under "Cài đặt", and leaves it out while nothing else is
+  listed (no index, nothing found, the brain hits not back: alone it would be the first row, which Fumadocs makes
+  active; the list says "Đang tìm…" or "Không tìm thấy kết quả" and Enter does nothing); the destinations (nothing
+  typed, or this query's first results still coming) end with it; any other query leaves it out. The active row is
+  the one Enter picks (round 3 checks, WCAG 3.2.2): while the query is the same it stays where it is as long as it
+  is listed, whatever lands around it (the brain group, then the handbook results; Fumadocs moved it back to the
+  first row each time, away from a row arrowed to), and when it leaves the list (a destination, as the results land)
+  the first row takes it, never the command the user had moved off; a new query text starts at the first row, with
+  none active while the query's own rows do not lead the list (`waiting`): the destinations standing in for its
+  first results, or another query's rows kept until its own land, the brain hits of a query it extends or shortens
+  and the handbook results of the last one (fumadocs-core's `useSearch` keeps them; round 3 final checks: Enter right
+  after typing over a query opened a result of the old one). Enter waits for them (it opened "Hôm nay"), the first of
+  them takes it as they land, and a row arrowed to meanwhile keeps it; so a command arrowed to at the end of a weak
+  query is never Enter's after another letter (`ActiveBefore` notes the row, `ActiveAfter` sets it). At the end only
+  the arrows (ArrowUp wraps to it) or the pointer highlight the command. "Bộ não thứ hai", "Cài đặt" and "Đi đến"
+  always head their groups (the destinations under early brain rows too); "Sổ tay" heads the handbook results
+  whenever another group, the command included, shares the list. A pick flips the switch and keeps the dialog open,
+  read out by a polite `role="status"` in the dialog's header; the row cancels mousedown (`ResultRow keepFocus`), so a
+  click or tap leaves the focus in the search field. After a pick the command's place follows the new state (a query
+  that named what the row did, "tắt phím tắt", now asks for the state the switch is in, and the command goes after
+  the results; the whole name alone keeps it first), and the highlight stays on it, scrolled into view with its new
+  action, so a second Enter does what the row now says. The dialog fits the screen at any zoom (round 3 checks,
+  WCAG 1.4.10): from md its top keeps 1rem (`md:top-[max(1rem,calc(50%-250px))]`), and its list is at most
+  `min(460px, 100dvh - 7rem)` (at 200% on a 1280x800 screen it ran 90-170px below the screen, the command and an
+  ArrowUp to it out of sight). The dialog and its list are named "Tìm mọi thứ" / "Search everything", as the top bar
+  names the search (Fumadocs' `'Search(search dialog)'`, set in `app/[lang]/layout.tsx`), and a hidden comma parts a
+  row's title from its meta in the option's name.
 - **States:** `LoadingCards`/`Skeleton` at the real row or card geometry; `ApiErrorState` (with "Thử lại") when
   nothing loaded, `ApiStaleAlert` when old rows stay; `EmptyPanel` for a list's first run (§9a), `EmptyState` for
   filtered-empty. A reload of the same list (useApi reloads on a return to the browser tab) keeps its rows on screen,
@@ -1023,10 +1041,10 @@ Components
 - **D23** View switches are `Tabs` tied to the region they switch, not filled buttons; links to two routes are a nav
   drawn like tabs (`aria-current`); filters left, primary action right in one toolbar.
 - **D24** `Kbd` hints hidden on touch / 390 px and limited to the main verbs; full legend behind one control, ending
-  with the "Phím tắt một phím" switch (also a Cmd+K command, first only for a query that names it: its whole name or a
-  verb with it, never "phím tắt" or "shortcuts" alone); with it off no single-key chip, menu key, legend line or list
-  cursor shows (the Inbox entry a Cmd+K link opened keeps its mark), only keys with ⌘, Ctrl or Alt and the focused
-  row's own.
+  with the "Phím tắt một phím" switch (also a Cmd+K command, first only for a query that names it: its whole name or
+  the verb of what its row does now, never the other verb, whose state the switch is already in, nor "phím tắt" or
+  "shortcuts" alone); with it off no single-key chip, menu key, legend line or list cursor shows (the Inbox entry a
+  Cmd+K link opened keeps its mark), only keys with ⌘, Ctrl or Alt and the focused row's own.
 - **D25** Badges: <= 3 per record, one tag style app-wide, never used as buttons or tabs.
 - **D33** A link inside or right under running text is underlined at rest; a link action standing on its own (a
   section header's `… →`, a jump alone in its bar) may underline on hover only.
