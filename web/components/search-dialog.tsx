@@ -503,8 +503,10 @@ export default function AppSearchDialog({
         <ActiveBefore items={items} handbook={handbook} memoryRef={activeMemory} />
         <SearchDialogList
           items={items}
-          // Matches read as emphasis, not as links (Fumadocs' default is blue and underlined)
-          className="[&_::highlight(fd-search)]:bg-muted-foreground/15 [&_::highlight(fd-search)]:text-foreground [&_::highlight(fd-search)]:no-underline"
+          // Matches read as emphasis, not as links (Fumadocs' default is blue and underlined). The results list is a tab
+          // stop while it scrolls (a scroller with no tab stop inside): its focus is the app's 2px ring inside its edge,
+          // where the dialog's clipped box cannot cut it off as it did the browser's thin outline (WCAG 2.4.7).
+          className="[&_::highlight(fd-search)]:bg-muted-foreground/15 [&_::highlight(fd-search)]:text-foreground [&_::highlight(fd-search)]:no-underline [&_#fd-search-list:focus-visible]:outline-2 [&_#fd-search-list:focus-visible]:-outline-offset-2 [&_#fd-search-list:focus-visible]:outline-ring"
           Empty={() => (
             <div role="status" className="py-12 text-center text-sm text-muted-foreground">
               {brain.loading ? t('Đang tìm…') : t('Không tìm thấy kết quả')}

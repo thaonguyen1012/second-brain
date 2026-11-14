@@ -33,6 +33,8 @@ const heading = 'font-heading font-semibold tracking-tight text-foreground first
 const headingLarge = cn(heading, 'mt-5 mb-2 text-[15px] leading-5');
 const headingSmall = cn(heading, 'mt-4 mb-2 text-sm');
 const headingPage = cn(heading, 'mt-5 mb-2 text-[18px] leading-7'); // a note page's first level, as its editor's
+/** The app's 2px focus ring inside the edge of a box that scrolls sideways (DESIGN.md §4 focus ring). */
+const SCROLLER_FOCUS = 'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring';
 
 /** Where the note is read: inline (the Item page) or as the note page, whose first heading level is larger (still
  *  below the page's title), as in the editor there. */
@@ -193,12 +195,20 @@ const makeComponents = (t: T, noteLook: NoteLook, images: ImageLoading): Compone
       )}
     />
   ),
+  // A code block or table wider than the column scrolls inside itself, and so is a tab stop (a scroller with no control
+  // in it): its focus ring is drawn inside its edge, where a Sheet's scroll area never cuts it off
   pre: (p: Props<'pre'>) => (
-    <pre {...rest(p)} className="my-3 overflow-x-auto rounded-lg bg-muted p-3 text-[13px] leading-relaxed first:mt-0 last:mb-0" />
+    <pre
+      {...rest(p)}
+      className={cn(
+        'my-3 overflow-x-auto rounded-lg bg-muted p-3 text-[13px] leading-relaxed first:mt-0 last:mb-0',
+        SCROLLER_FOCUS,
+      )}
+    />
   ),
   table: (p: Props<'table'>) => (
     // a wide table scrolls inside itself, never the page (no horizontal scroll at 390 px)
-    <div className="my-3 overflow-x-auto first:mt-0 last:mb-0">
+    <div className={cn('my-3 overflow-x-auto first:mt-0 last:mb-0', SCROLLER_FOCUS)}>
       <table {...rest(p)} className="w-full border-collapse text-sm" />
     </div>
   ),
