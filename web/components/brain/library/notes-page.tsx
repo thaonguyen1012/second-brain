@@ -103,6 +103,35 @@ function unfit(link: HTMLElement) {
   link.style.removeProperty('--fit');
 }
 
+/** The lines of the links that have keyboard focus, watched for a change of width. */
+const watched = new WeakMap<HTMLElement, ResizeObserver>();
+
+/**
+ * A focused link fits its line again when the line's width changes while it keeps the focus (a phone turned, a zoom,
+ * the sidebar shown or hidden): its room was measured once, and a narrower line cut the link, its ring and its
+ * ellipsis mid-glyph until the next focus.
+ */
+function focusLink(link: HTMLElement) {
+  fitToLine(link);
+  const line = link.closest('p');
+  if (!line || !link.matches(':focus-visible') || watched.has(link) || typeof ResizeObserver === 'undefined') return;
+  let width = line.clientWidth;
+  const observer = new ResizeObserver(() => {
+    if (line.clientWidth === width) return;
+    width = line.clientWidth;
+    unfit(link);
+    fitToLine(link);
+  });
+  observer.observe(line);
+  watched.set(link, observer);
+}
+
+function blurLink(link: HTMLElement) {
+  watched.get(link)?.disconnect();
+  watched.delete(link);
+  unfit(link);
+}
+
 /** A row's title: the note's own, except one that only repeats its group's Item (then its first line). */
 function rowTitle(note: ApiNote, groupTitle: string | null, t: T): string {
   if (groupTitle === null || noteHeading(note.title, groupTitle) !== null) return noteTitle(note, t);
@@ -140,8 +169,8 @@ function NoteMeta({
                 title={t('Lọc ghi chú theo item này')}
                 className="underline-offset-4 hover:text-foreground hover:underline data-fit:inline-block data-fit:max-w-(--fit) data-fit:truncate data-fit:align-top"
                 onClick={onNavigate}
-                onFocus={(e) => fitToLine(e.currentTarget)}
-                onBlur={(e) => unfit(e.currentTarget)}
+                onFocus={(e) => focusLink(e.currentTarget)}
+                onBlur={(e) => blurLink(e.currentTarget)}
               >
                 {itemTitle(itemId).title}
               </Link>
