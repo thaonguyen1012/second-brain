@@ -423,7 +423,8 @@ function ResultRow({
    */
   keepFocus?: boolean;
 }) {
-  const { query } = useSearch();
+  // composed like the text it is matched in (a query typed decomposed found nothing to highlight or clip to)
+  const query = useSearch().query.normalize('NFC');
   const highlight = useHighlightQuery(query);
   const locale = useLocale();
   const text = (s: string) => (handbook ? contentText(s, locale) : s);
@@ -459,7 +460,12 @@ export default function AppSearchDialog({
   const { locale } = useI18n();
   const router = useRouter();
   const search = useFetchSearch({ locale });
-  const brain = useBrainSearch(open ? search.search : '', t);
+  // The query as it shows: one typed or pasted decomposed (NFD: a combining-mode IME, a name copied on macOS) is read
+  // composed by the second brain's ?q= (Django's icontains has no NFC step, so accented words found nothing) and the
+  // command match, and MIN_QUERY counts the letters on screen ("ò" decomposed is two units). The handbook search
+  // normalises on the server.
+  const query = search.search.normalize('NFC');
+  const brain = useBrainSearch(open ? query : '', t);
   const { onSearchChange } = search;
   const keys = useSingleKeyShortcuts();
   // What the shortcut command just did, read out politely (the row itself shows the new state)
@@ -537,7 +543,7 @@ export default function AppSearchDialog({
   const handbook: ListItems = collapsed?.list ?? defaultItems;
   const activeMemory = useRef<ActiveMemory>({ id: null, handbook: null, commandFirst: false, brainOnly: false });
   const results = useMemo(() => [...brainItems.map((b) => b.item), ...(handbook ?? [])], [brainItems, handbook]);
-  const commandAt = placeCommand(matchCommand(search.search, commandTerms), {
+  const commandAt = placeCommand(matchCommand(query, commandTerms), {
     rows: results.length,
     destinations: !collapsed && brainItems.length === 0,
   });
