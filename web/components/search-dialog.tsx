@@ -407,6 +407,7 @@ function ResultRow({
   meta,
   excerpt,
   handbook = false,
+  keepFocus = false,
 }: {
   item: SearchItemType;
   onClick: () => void;
@@ -416,13 +417,22 @@ function ResultRow({
   excerpt?: string;
   /** Handbook text (page title, heading, excerpt): its Vietnamese parts get lang="vi" on English pages. */
   handbook?: boolean;
+  /**
+   * A pick that keeps the dialog open (the shortcut command): a press on the row leaves the focus where it is (the
+   * search field), or a click or tap would hand it to the dialog's box and the next typed keys would go nowhere.
+   */
+  keepFocus?: boolean;
 }) {
   const { query } = useSearch();
   const highlight = useHighlightQuery(query);
   const locale = useLocale();
   const text = (s: string) => (handbook ? contentText(s, locale) : s);
   return (
-    <SearchDialogListItem item={item} onClick={onClick}>
+    <SearchDialogListItem
+      item={item}
+      onClick={onClick}
+      onMouseDown={keepFocus ? (e) => e.preventDefault() : undefined}
+    >
       <div ref={highlight} className="flex items-start gap-2.5">
         <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -588,6 +598,7 @@ export default function AppSearchDialog({
                     icon={Keyboard}
                     title={keys ? t('Tắt phím tắt một phím') : t('Bật phím tắt một phím')}
                     meta={keys ? t('Đang bật trong trình duyệt này') : t('Đang tắt trong trình duyệt này')}
+                    keepFocus
                   />
                 </>
               );
