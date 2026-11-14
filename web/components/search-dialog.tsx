@@ -3,7 +3,8 @@
 // second-brain group from the `?q=` filters of the Django lists. Lazy-loaded by components/provider.tsx, so none
 // of this is in the first-load JS. The brain group only loads while the dialog is open and a query is typed;
 // without Django it stays silent and the handbook results work as before. One command sits in the list too: single-key
-// shortcuts off or on (lib/single-key-shortcuts.ts), so every page and phones reach that switch.
+// shortcuts off or on (lib/single-key-shortcuts.ts), so every page and phones reach that switch; it leads the list only
+// for a query that names it (lib/search-command.ts).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -46,10 +47,11 @@ import { formatDay, freshness, monthLabel, outcomeOf } from '@/components/brain/
 import { useLocale, useT } from '@/lib/i18n/client';
 import { contentText } from '@/lib/i18n/content-lang';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
+import { MIN_QUERY, fold, matchCommand, shortcutsCommandTerms } from '@/lib/search-command';
 import { setSingleKeyShortcuts, singleKeyShortcutsOn, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 
-/** Shorter queries match too much of everything; the handbook search still runs for them. */
-const MIN_QUERY = 2;
+// Queries shorter than MIN_QUERY skip the second brain (they match too much of everything); the handbook search still
+// runs for them.
 const DEBOUNCE_MS = 200;
 /** The backend trims longer queries to 200 characters anyway. */
 const MAX_QUERY = 200;
@@ -94,31 +96,8 @@ function excerpt(text: string, q: string): string {
   return `${start > 0 ? '…' : ''}${flat.slice(start, start + 120)}`;
 }
 
-/** Accent- and case-free form of one character, so "khach" finds "khách" (đ -> d). */
-const fold = (c: string) => c.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase().charAt(0) || c;
-
-/** The words of a text, accent- and case-free ("Phím tắt một phím" -> phim, tat, mot, phim). */
-const foldedWords = (s: string) =>
-  Array.from(s)
-    .map(fold)
-    .join('')
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(Boolean);
-
 /** Id of the list's one command: single-key shortcuts off or on. */
 const SHORTCUTS_COMMAND = 'command:single-key-shortcuts';
-
-/**
- * Whether a typed query asks for the command named by `words`: MIN_QUERY characters or more, and every typed word
- * starts one of its words, accents and case aside ("phim tat", "tắt", "shortcut"). Both of its names count, so the
- * command never leaves the list as it flips.
- */
-function commandMatches(query: string, words: string): boolean {
-  if (query.trim().length < MIN_QUERY) return false;
-  const own = foldedWords(words);
-  const typed = foldedWords(query);
-  return typed.length > 0 && typed.every((w) => own.some((o) => o.startsWith(w)));
-}
 
 /**
  * The excerpt row shows one line, and the FTS snippet starts several words before the match: at 390 px the match
@@ -360,7 +339,9 @@ interface ActiveMemory {
   id: string | null;
   /** The handbook list `items` was built from, to tell "brain group arrived" from "new query". */
   handbook: ListItems;
-  /** True when only the brain group changed since the previous `items`. */
+  /** Whether the shortcut command led the list (a query that names it). */
+  commandFirst: boolean;
+  /** True when only the brain group (or the command at the end) changed since the previous `items`. */
   brainOnly: boolean;
 }
 
@@ -369,22 +350,31 @@ interface ActiveMemory {
  * the handbook results and is put on top, so without help the highlighted row would jump to the first brain
  * row (and Enter would open something else). ActiveBefore, rendered before the list, notes the active row in
  * its layout effect, which runs before the list's; ActiveAfter, rendered after it, puts it back when only the
- * brain group changed. A new query (new handbook list) still starts at the top.
+ * brain group changed. A new query (new handbook list) still starts at the top, and so does a query that comes to
+ * name the shortcut command or stops naming it: Enter then picks the command as it takes the top, and never picks it
+ * once it went back to the end of the list.
  */
 function ActiveBefore({
   items,
   handbook,
+  commandFirst,
   memoryRef,
 }: {
   items: ListItems;
   handbook: ListItems;
+  commandFirst: boolean;
   memoryRef: RefObject<ActiveMemory>;
 }) {
   const { getActive } = useSearch();
   useLayoutEffect(() => {
     const previous = memoryRef.current;
-    memoryRef.current = { id: getActive(), handbook, brainOnly: previous.handbook === handbook };
-  }, [items, handbook, getActive, memoryRef]);
+    memoryRef.current = {
+      id: getActive(),
+      handbook,
+      commandFirst,
+      brainOnly: previous.handbook === handbook && previous.commandFirst === commandFirst,
+    };
+  }, [items, handbook, commandFirst, getActive, memoryRef]);
   return null;
 }
 
@@ -498,10 +488,7 @@ export default function AppSearchDialog({
     }),
     [t],
   );
-  const commandWords = useMemo(
-    () => [t('Tắt phím tắt một phím'), t('Bật phím tắt một phím'), t('Phím tắt')].join(' '),
-    [t],
-  );
+  const commandTerms = useMemo(() => shortcutsCommandTerms(t), [t]);
 
   const defaultItems = useMemo<SearchItemType[] | null>(
     () =>
@@ -530,12 +517,15 @@ export default function AppSearchDialog({
   const handbookById = collapsed?.byId ?? NO_HANDBOOK;
 
   // Second-brain rows first: they are few (at most 5 per kind), the handbook list runs to 20 pages. The shortcut
-  // command goes before them when the query names it, and ends the destinations list (nothing typed yet, or the
-  // first results still on their way).
+  // command goes before them only when the query names it (lib/search-command.ts: "phím tắt", "shortcut"), so Enter
+  // flips the switch only then. A query that merely starts its words ("ta", "on") keeps it at the end, after the
+  // results it asked for, as does nothing typed yet (or the first results still on their way): it ends the
+  // destinations list. Other queries leave it out once their results are there.
   const handbook: ListItems = collapsed?.list ?? defaultItems;
-  const activeMemory = useRef<ActiveMemory>({ id: null, handbook: null, brainOnly: false });
-  const commandFirst = commandMatches(search.search, commandWords);
-  const commandLast = !commandFirst && !collapsed && brainItems.length === 0;
+  const activeMemory = useRef<ActiveMemory>({ id: null, handbook: null, commandFirst: false, brainOnly: false });
+  const commandMatch = matchCommand(search.search, commandTerms);
+  const commandFirst = commandMatch === 'strong';
+  const commandLast = !commandFirst && (commandMatch === 'weak' || (!collapsed && brainItems.length === 0));
   const items = useMemo<ListItems>(() => {
     const results = [...brainItems.map((b) => b.item), ...(handbook ?? [])];
     if (commandFirst) return [shortcutsCommand, ...results];
@@ -572,7 +562,7 @@ export default function AppSearchDialog({
             {announce}
           </p>
         </SearchDialogHeader>
-        <ActiveBefore items={items} handbook={handbook} memoryRef={activeMemory} />
+        <ActiveBefore items={items} handbook={handbook} commandFirst={commandFirst} memoryRef={activeMemory} />
         <SearchDialogList
           items={items}
           // Matches read as emphasis, not as links (Fumadocs' default is blue and underlined). The results list is a tab
