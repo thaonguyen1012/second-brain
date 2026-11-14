@@ -476,7 +476,9 @@ html:not(.dark) [data-slot='select-trigger'][aria-invalid='true']:focus-visible 
    UI), so the keyboard can scroll text with no control in it. components/ui rings the viewport outside its edge, where
    the scroll fade's mask and the popup cut the ring away: the focus showed nothing (WCAG 2.4.7). The scroll area's
    root draws the app's 2px focus ring inside that edge instead, above the content and the fade, an outline so it also
-   shows in forced colours; in a dialog it takes the popup's inner corner, which a panel without a footer shares. */
+   shows in forced colours. Its corners are square, as where a dialog's panel meets the header or the footer, and
+   below sm, where the dialog is a bottom sheet with square corners; from sm a panel edge that is the popup's own edge
+   (the key legend has no footer) takes the popup's inner corner. */
 div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
   content: '';
   position: absolute;
@@ -486,8 +488,17 @@ div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
   outline-offset: -2px;
   pointer-events: none;
 }
-[data-slot='dialog-popup'] div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
-  border-radius: calc(var(--radius-2xl) - 4px);
+@media (width >= 40rem) {
+  [data-slot='dialog-popup']:not(:has([data-slot='dialog-header']))
+    div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
+    border-top-left-radius: calc(var(--radius-2xl) - 4px);
+    border-top-right-radius: calc(var(--radius-2xl) - 4px);
+  }
+  [data-slot='dialog-popup']:not(:has([data-slot='dialog-footer']))
+    div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
+    border-bottom-left-radius: calc(var(--radius-2xl) - 4px);
+    border-bottom-right-radius: calc(var(--radius-2xl) - 4px);
+  }
 }
 
 /* Looping animations stop under reduced motion (DESIGN.md D28): Loader2 spinners, the Space UI Spinner and
