@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { opportunitiesApi, type ApiTopicCounts } from '@/lib/api/opportunities';
 import { useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
@@ -64,6 +64,7 @@ function Heatmap({ m }: { m: Matrix }) {
   const t = useT();
   const [hover, setHover] = useState<{ r: number; c: number } | null>(null);
   const [cursor, setCursor] = useState<{ r: number; c: number } | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const tagLabel = (tag: string) => (tag === OTHER.msgid ? t(OTHER) : tag);
   const nCols = m.weeks.length;
   const active = hover ?? cursor;
@@ -75,11 +76,16 @@ function Heatmap({ m }: { m: Matrix }) {
 
   const move = (dr: number, dc: number) => {
     const cur = cursor ?? { r: 0, c: nCols - 1 };
-    setHover(null);
-    setCursor({
+    const next = {
       r: Math.max(0, Math.min(m.rows.length - 1, cur.r + dr)),
       c: Math.max(0, Math.min(nCols - 1, cur.c + dc)),
-    });
+    };
+    setHover(null);
+    setCursor(next);
+    // The arrows move the cursor, not the box: where the grid scrolls sideways (390 px), the box follows the cursor
+    gridRef.current
+      ?.querySelector(`[data-cell="${next.r}-${next.c}"]`)
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
 
   return (
@@ -95,12 +101,16 @@ function Heatmap({ m }: { m: Matrix }) {
             })
           : t('Rê chuột lên ô, hoặc chọn bảng rồi dùng phím mũi tên.')}
       </p>
-      <div className="overflow-x-auto">
+      {/* The grid's focus ring and the cursor's ring lie outside the grid: the box that scrolls it keeps 4px of room
+          for them (padding, with the same negative margin so nothing moves; scroll-margin, so scrolling to the grid or
+          a cell keeps the room in view), or it cuts them off (WCAG 2.4.7). An outline, so forced colours keep it. */}
+      <div className="-m-1 overflow-x-auto p-1">
         <div
+          ref={gridRef}
           tabIndex={0}
           role="group"
           aria-label={t('Bản đồ nhiệt chủ đề theo tuần. Phím mũi tên để đi qua từng ô.')}
-          className="grid min-w-max gap-0.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid min-w-max scroll-m-1 gap-0.5 rounded-lg focus-visible:outline-2 focus-visible:outline-ring"
           style={{ gridTemplateColumns: `minmax(6rem, max-content) repeat(${nCols}, minmax(1.75rem, 1fr))` }}
           onKeyDown={(e) => {
             const d = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
@@ -133,9 +143,10 @@ function Heatmap({ m }: { m: Matrix }) {
                 return (
                   <span
                     key={c}
+                    data-cell={`${r}-${c}`}
                     onPointerEnter={() => setHover({ r, c })}
                     className={cn(
-                      'h-7 rounded-sm transition-shadow',
+                      'h-7 scroll-m-1 rounded-sm transition-shadow',
                       n === 0 && 'bg-muted',
                       on && 'ring-2 ring-foreground/70 ring-offset-1 ring-offset-background',
                     )}
