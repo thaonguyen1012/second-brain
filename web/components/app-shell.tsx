@@ -57,8 +57,9 @@ interface RowEnd {
 
 /**
  * The end of a row: its count in muted digits (99+, nothing for 0) or Giờ's red "now" dot while a timer runs, and
- * how a screen reader says it. The marks are aria-hidden and the link takes the whole name as its aria-label
- * ("Tuần, còn 2 mục tiêu"), so the name does not depend on how a browser joins the spans.
+ * how a screen reader says it. The marks are aria-hidden and the link takes the whole name as its aria-label, so the
+ * name does not depend on how a browser joins the spans: the title, then the count as shown (99+ too) and what it
+ * counts, "Tuần, 2 mục tiêu còn mở", so a speech-input user can say the "Tuần 2" they see (WCAG 2.5.3).
  */
 function rowEnd(row: NavRow, counts: ApiCounts | null, t: T): RowEnd | null {
   if (!counts) return null;
@@ -77,13 +78,14 @@ function rowEnd(row: NavRow, counts: ApiCounts | null, t: T): RowEnd | null {
   }
   const n = row.count ? counts[row.count.key] : 0;
   if (!row.count || n === 0) return null;
+  const shown = n > 99 ? '99+' : n;
   return {
     mark: (
       <span aria-hidden className="ms-auto text-xs text-muted-foreground tabular-nums">
-        {n > 99 ? '99+' : n}
+        {shown}
       </span>
     ),
-    spoken: t(row.count.label, { n }),
+    spoken: t(row.count.label, { n: shown }),
   };
 }
 
@@ -110,6 +112,9 @@ function Row({ link, active, end, quiet }: { link: NavLink; active: boolean; end
       >
         <Icon aria-hidden />
         <span className="truncate">{title}</span>
+        {/* A real space: the row's text reads "Tuần 2", not "Tuần2", as axe and speech input take it (the flex row
+            does not draw it) */}
+        {end && ' '}
         {end?.mark}
       </SidebarMenuButton>
     </SidebarMenuItem>

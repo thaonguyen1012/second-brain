@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { appNav, navAreas, navMatch, navRow, navRows, otherNav } from './app-nav';
+import { enPage } from './i18n/en';
+import { dictKey } from './i18n/translate';
 
 describe('sidebar model', () => {
   it('keeps the six areas of DECISIONS 9.3, in order', () => {
@@ -12,6 +14,17 @@ describe('sidebar model', () => {
     const hrefs = [...navRows, ...otherNav.links].map((r) => r.href);
     expect(new Set(hrefs).size).toBe(hrefs.length);
     for (const href of hrefs) expect(href).toMatch(/^\/([a-z-]+\/)*$/);
+  });
+
+  it('says a count right after the title, so a row is named from its visible text', () => {
+    // "Tuần, 2 mục tiêu còn mở" over the visible "Tuần 2" (WCAG 2.5.3): what it counts comes after the number
+    const labels = navRows.flatMap((r) => (r.count ? [r.count.label] : []));
+    expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) {
+      const en = enPage[dictKey(label.msgid, label.context)];
+      const forms = typeof en === 'string' ? [en] : [en.one, en.other];
+      for (const text of [label.msgid, ...forms]) expect(text).toMatch(/^\{n\} \S/);
+    }
   });
 });
 

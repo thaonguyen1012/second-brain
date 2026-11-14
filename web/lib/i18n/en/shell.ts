@@ -6,7 +6,7 @@ export const shell = {
   // Sidebar (lib/app-nav.ts)
   'Hôm nay': 'Today',
   Tuần: 'Week',
-  'còn {n} mục tiêu': { one: '{n} objective open', other: '{n} objectives open' },
+  '{n} mục tiêu còn mở': { one: '{n} objective open', other: '{n} objectives open' },
   'Phát triển': 'Growth',
   'Sổ tay': 'Handbooks',
   'Lộ trình': 'Roadmap',

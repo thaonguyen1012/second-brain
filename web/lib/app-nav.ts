@@ -42,7 +42,11 @@ export interface NavLink {
 
 export interface NavRow extends NavLink {
   area: AreaKey;
-  /** The row's count and how a screen reader says it ("Tuần, còn 2 mục tiêu"): `label` takes the count as {n}. */
+  /**
+   * The row's count and what it counts, said after the title ("Tuần, 2 mục tiêu còn mở"): `label` takes the count
+   * as the row shows it ("2", "99+") as {n} and starts with it in both languages, so the name keeps the visible
+   * "Tuần 2" together (WCAG 2.5.3; app-nav.test.ts).
+   */
   count?: { key: CountKey; label: Msg };
   /** Giờ: the "now" dot while a timer runs. */
   timerDot?: boolean;
@@ -63,7 +67,7 @@ export const appNav = [
         href: '/tuan/',
         area: 'week',
         icon: CalendarRange,
-        count: { key: 'objectivesOpen', label: msg('còn {n} mục tiêu') },
+        count: { key: 'objectivesOpen', label: msg('{n} mục tiêu còn mở') },
       },
     ],
   },
