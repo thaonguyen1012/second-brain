@@ -42,10 +42,10 @@ export interface CommandTerms {
 
 /**
  * - `strong`: the query holds one of `phrases` as whole words in a row, and each of its other words is one of the
- *   command's words, the last one also the start of one (it may still be being typed): "phim tat", "Phím tắt ",
- *   "tắt phím tắt m", "single-key", "turn off single-key shortcuts".
+ *   command's words, the last one also the start of one (it may still be being typed): "tat phim tat", "Tắt phím
+ *   tắt ", "tắt phím tắt m", "single-key shortcuts", "turn off single-key shortcuts".
  * - `weak`: MIN_QUERY characters or more, and each typed word starts one of the command's words: "ta", "một", "bật
- *   phím", "on", "turn off", "shortcu".
+ *   phím", "phím tắt", "on", "turn off", "shortcuts", "keyboard shortcuts".
  * - `none`: anything else ("mon", "phím tắt vscode").
  * Accents, case, hyphens and spaces do not count.
  */
@@ -81,12 +81,16 @@ export function placeCommand(
 }
 
 /**
- * What names the single-key shortcuts command on its own, per UI language: its object, not its verbs ("tắt", "bật",
- * "turn", "on" start too many searches) nor a lone "phím", "key" or "single".
+ * What names the single-key shortcuts command on its own, per UI language: its whole object ("phím tắt một phím",
+ * "single-key shortcuts") or a verb with "phím tắt" / "shortcuts" ("tắt phím tắt", "turn off shortcuts"). Never a
+ * verb alone ("tắt", "bật", "turn", "on" start too many searches), a lone "phím", "key" or "single", nor "phím tắt",
+ * "một phím", "shortcuts", "keyboard shortcuts" or "single key": those are the words of the handbook pages about
+ * keyboard shortcuts (89 pages say "phím tắt", 80 "keyboard shortcut", 21 "một phím", in "một phím tắt"; 9 say
+ * "single key", of encryption), whose search keeps its results on top and Enter, the command after them.
  */
 const SHORTCUTS_PHRASES: Record<Locale, readonly string[]> = {
-  vi: ['phím tắt', 'một phím'], // i18n-ignore: words a query is matched against, never shown
-  en: ['shortcut', 'shortcuts', 'single key'],
+  vi: ['phím tắt một phím', 'tắt phím tắt', 'bật phím tắt'], // i18n-ignore: words a query is matched against
+  en: ['single key shortcut', 'single key shortcuts', 'turn off shortcuts', 'turn on shortcuts'],
 };
 
 /** The single-key shortcuts command's terms in `t`'s language: its two names, the key legends' title, its phrases. */

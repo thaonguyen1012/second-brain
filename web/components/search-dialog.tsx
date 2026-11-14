@@ -527,8 +527,9 @@ export default function AppSearchDialog({
   const handbookById = collapsed?.byId ?? NO_HANDBOOK;
 
   // Second-brain rows first: they are few (at most 5 per kind), the handbook list runs to 20 pages. The shortcut
-  // command (placeCommand, lib/search-command.ts) leads only for a query that names it ("phím tắt", "shortcut"), so
-  // Enter flips the switch only then. A query that merely starts its words ("ta", "on") gets it at the end, after the
+  // command (placeCommand, lib/search-command.ts) leads only for a query that names it ("tắt phím tắt", "single-key
+  // shortcuts"), so Enter flips the switch only then. A query that merely uses or starts its words ("ta", "on", "phím
+  // tắt", "keyboard shortcuts": the handbook pages about shortcuts are searched so) gets it at the end, after the
   // results it asked for, and so do the destinations (nothing typed yet, or the first results still on their way);
   // other queries leave it out once their results are there. Never the only row unless named: Fumadocs makes the
   // first row the active one, so a weak command alone would be Enter's (and stay so as the brain group lands above

@@ -44,24 +44,32 @@ describe('the single-key shortcuts command in Cmd+K', () => {
     }
   });
 
-  it('is named by its distinctive words in Vietnamese, in full', () => {
-    expectAll(vi, ['phím tắt', 'phim tat', 'một phím', 'mot phim', 'Phím tắt'], 'strong');
-    expectAll(vi, ['tắt phím tắt một phím', 'Bật phím tắt một phím', 'bật phím tắt', 'phím tắt một phím'], 'strong');
+  it('is named by its whole object or a verb with it in Vietnamese, in full', () => {
+    expectAll(vi, ['tắt phím tắt', 'tat phim tat', 'bật phím tắt', 'phím tắt một phím', 'phim tat mot phim'], 'strong');
+    expectAll(vi, ['tắt phím tắt một phím', 'Bật phím tắt một phím', 'Tắt phím tắt'], 'strong');
   });
 
-  it('is named by its distinctive words in English, in full', () => {
-    expectAll(en, ['shortcut', 'shortcuts', 'single-key', 'single key', 'keyboard shortcuts'], 'strong');
+  it('is named by its whole object or a verb with it in English, in full', () => {
+    expectAll(en, ['single-key shortcuts', 'single key shortcut', 'turn off shortcuts', 'turn on shortcuts'], 'strong');
     expectAll(en, ['turn off single-key shortcuts', 'Turn on single-key shortcuts', 'single-key shortcut'], 'strong');
   });
 
+  it('is never named by the words of the handbook pages about keyboard shortcuts', () => {
+    // 89 handbook pages say "phím tắt", 80 "keyboard shortcut", 21 "một phím" (in "một phím tắt"), 9 "single key":
+    // their search keeps its results on top and Enter, the command after them
+    expectAll(vi, ['phím tắt', 'phim tat', 'Phím tắt', 'một phím', 'mot phim', 'một phím tắt', 'phím tắt một'], 'weak');
+    expectAll(en, ['shortcut', 'shortcuts', 'keyboard shortcuts', 'keyboard shortcut', 'single key', 'single-key'], 'weak');
+  });
+
   it('ignores accents, case and spaces, also a trailing space', () => {
-    expectAll(vi, ['PHÍM TẮT', 'Phim Tat', '  phím   tắt  ', 'phím tắt ', 'Một Phím', 'MOT-PHIM', 'phím tắt\t'], 'strong');
+    expectAll(vi, ['TẮT PHÍM TẮT', 'Tat Phim Tat', '  tắt   phím   tắt  ', 'bật phím tắt ', 'TAT-PHIM-TAT'], 'strong');
+    expectAll(vi, ['Phím Tắt Một Phím', 'PHIM TAT MOT-PHIM', 'tắt phím tắt\t'], 'strong');
     // typed or pasted decomposed (NFD), as the composed text
     const nfd = (qs: string[]) => qs.map((q) => q.normalize('NFD'));
-    expectAll(vi, nfd(['phím tắt', 'một phím', 'Tắt phím tắt một phím', 'PHÍM TẮT ']), 'strong');
-    expectAll(vi, nfd(['một', 'tắt', 'bật phím', 'phím']), 'weak');
+    expectAll(vi, nfd(['tắt phím tắt', 'phím tắt một phím', 'Tắt phím tắt một phím', 'BẬT PHÍM TẮT ']), 'strong');
+    expectAll(vi, nfd(['một', 'tắt', 'bật phím', 'phím', 'phím tắt', 'một phím']), 'weak');
     expectAll(vi, nfd(['phím tắt vscode', 'khách', 'tất cả']), 'none');
-    expectAll(en, ['SHORTCUTS ', ' Single-Key', 'single   KEY', 'Shortcut\n'], 'strong');
+    expectAll(en, ['SINGLE-KEY SHORTCUTS ', ' Turn Off Shortcuts', 'single   KEY shortcut', 'Single-key shortcut\n'], 'strong');
     expectAll(vi, ['TA', 'Mo ', 'PHI', 'Một', 'mot', 'BAT', 'bật'], 'weak');
     expectAll(en, ['ON', 'Of ', ' Ke', 'SI', 'Sh ', 'TU'], 'weak');
   });
@@ -69,8 +77,9 @@ describe('the single-key shortcuts command in Cmd+K', () => {
   it('keeps the strong match while the rest of its name is typed, never before the phrase is whole', () => {
     for (const [terms, name, whole] of [
       [vi, 'tắt phím tắt một phím', 'tắt phím tắt'],
-      [en, 'turn off single-key shortcuts', 'turn off single-key'],
-      [en, 'shortcuts', 'shortcut'],
+      [vi, 'bật phím tắt một phím', 'bật phím tắt'],
+      [en, 'turn off single-key shortcuts', 'turn off single-key shortcut'],
+      [en, 'turn on shortcuts', 'turn on shortcuts'],
     ] as const) {
       const chars = Array.from(name);
       for (let n = MIN_QUERY; n <= chars.length; n++) {
@@ -87,7 +96,9 @@ describe('the single-key shortcuts command in Cmd+K', () => {
 
   it('only starts it from a verb, a lone word or a cut-off phrase', () => {
     expectAll(vi, ['tắt', 'bật', 'phím', 'phim', 'bật phím', 'tat phim', 'phim ta', 'mot ph', 'tắt một'], 'weak');
+    expectAll(vi, ['phím tắt', 'một phím', 'tắt phím ta', 'phím tắt một ph'], 'weak');
     expectAll(en, ['turn', 'turn off', 'single', 'single k', 'single ke', 'key', 'keyboard', 'shortcu', 'off'], 'weak');
+    expectAll(en, ['shortcuts', 'single key', 'single-key shortcu', 'turn off shortcu'], 'weak');
   });
 
   it('is left out by other searches', () => {
@@ -107,9 +118,20 @@ describe('where the command goes in the Cmd+K list', () => {
 
   it('leads the list only for a query that names it, also when it is the only row', () => {
     for (const rows of [0, 1, 12]) {
-      expect(place(vi, 'phím tắt', rows)).toBe('first');
-      expect(place(en, 'shortcuts', rows)).toBe('first');
-      expect(place(vi, 'phim tat', rows, true)).toBe('first');
+      expect(place(vi, 'tắt phím tắt', rows)).toBe('first');
+      expect(place(en, 'single-key shortcuts', rows)).toBe('first');
+      expect(place(vi, 'phim tat mot phim', rows, true)).toBe('first');
+    }
+  });
+
+  it('follows the results of a search for keyboard shortcut pages, never taking Enter from them', () => {
+    for (const q of ['phím tắt', 'phim tat', 'một phím']) {
+      expect(place(vi, q, 20), q).toBe('last');
+      expect(place(vi, q, 0), q).toBeNull();
+    }
+    for (const q of ['shortcuts', 'keyboard shortcuts', 'single key']) {
+      expect(place(en, q, 20), q).toBe('last');
+      expect(place(en, q, 0), q).toBeNull();
     }
   });
 
