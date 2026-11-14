@@ -207,7 +207,7 @@ function NoteRow({
       <div className="flex min-w-0 flex-col gap-0.5">
         <button
           type="button"
-          className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onOpen}
         >
           {title}
@@ -283,7 +283,7 @@ function NoteGroupSection({
               // ends): its focus ring goes round what shows, the ellipsis too, where an h2 that truncated cut it off
               <Link
                 href={`/thu-vien/item/?id=${group.item}`}
-                className="inline-block max-w-full rounded-sm align-top underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-block max-w-full rounded-sm align-top underline-offset-4 outline-none hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="block truncate">{label.title}</span>
               </Link>
