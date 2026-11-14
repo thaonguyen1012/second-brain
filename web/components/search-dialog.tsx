@@ -546,8 +546,12 @@ export default function AppSearchDialog({
     if (commandAt === 'last') return [...results, shortcutsCommand];
     return brainItems.length === 0 ? handbook : results;
   }, [brainItems, handbook, results, commandAt, shortcutsCommand]);
-  const firstHandbook = (brainItems.length > 0 || commandFirst) && collapsed ? handbook?.[0]?.id : undefined;
-  const firstLink = !collapsed && brainItems.length === 0 ? defaultItems?.[0]?.id : undefined;
+  // Group labels: the brain group, the command and the destinations always say what they are (the destinations
+  // under brain rows that came before this query's handbook results too); the handbook results get theirs whenever
+  // another group shares the list, the command at either end included, so no group goes unlabelled next to a
+  // labelled one.
+  const firstHandbook = collapsed && (brainItems.length > 0 || commandAt !== null) ? handbook?.[0]?.id : undefined;
+  const firstLink = !collapsed ? defaultItems?.[0]?.id : undefined;
   const firstBrain = brainItems[0]?.hit.id;
 
   // Signed out or a server error: one quiet line. Django absent (dev without the proxy, static export): nothing.
