@@ -17,6 +17,7 @@ import { destinations, formatDate, hostOf, inboxStatuses, inboxStatusOf } from '
 import { itemDraftFromEntry, noteTitle } from '@/lib/library-labels';
 import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
+import { focusShortcutOpener } from '@/lib/shortcut-opener';
 import { tabPanelProps, tabProps } from '@/lib/tab-panel';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
@@ -536,6 +537,13 @@ export function InboxPage() {
       // The key legend dialog and a row's overflow menu handle their own keys
       if (document.querySelector('[role="dialog"], [role="menu"]')) return;
       const k = e.key.toLowerCase();
+      // J/K move no focus: a key that opens a dialog for the cursor's entry while nothing holds the focus first gives
+      // it to the entry's control for that key, else to its menu, so the dialog gives it back there (WCAG 2.4.3)
+      const opening = (entry: ApiInboxEntry, open: (entry: ApiInboxEntry) => void) => () => {
+        const row = document.getElementById(`inbox-entry-${entry.id}`);
+        if (row) focusShortcutOpener(k, row, row.querySelector<HTMLElement>('[aria-haspopup="menu"]'));
+        open(entry);
+      };
       const act: Record<string, () => void> = {
         j: () => setCursor(Math.min(selected + 1, shown.length - 1)),
         arrowdown: () => setCursor(Math.min(selected + 1, shown.length - 1)),
@@ -546,13 +554,13 @@ export function InboxPage() {
           l: () => void triage(current, 'later'),
           a: () => void triage(current, 'archived'),
           u: () => void triage(current, 'inbox'),
-          o: () => setPickFor(current),
-          t: () => !current.item && setItemFor(current),
-          n: () => setNoteFor(current),
+          o: opening(current, setPickFor),
+          t: () => !current.item && opening(current, setItemFor)(),
+          n: opening(current, setNoteFor),
           i: () => current.url && window.open(current.url, '_blank', 'noopener'),
           // Del / Backspace delete, as on the week page (X there means "bỏ" an objective)
-          delete: () => setDeleteFor(current),
-          backspace: () => setDeleteFor(current),
+          delete: opening(current, setDeleteFor),
+          backspace: opening(current, setDeleteFor),
         }),
       };
       const run = act[k];

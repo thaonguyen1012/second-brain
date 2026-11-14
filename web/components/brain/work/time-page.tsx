@@ -5,6 +5,7 @@ import { Pencil, Plus, X } from 'lucide-react';
 import type { Page } from '@/lib/api/client';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { workApi, type ApiTimeEntry } from '@/lib/api/work';
+import { focusShortcutOpener } from '@/lib/shortcut-opener';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
 import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
@@ -238,6 +239,7 @@ export function TimePage() {
       if (!singleKeyShortcut(e) || e.key.toLowerCase() !== 'n') return;
       if (document.querySelector('[role="dialog"]')) return;
       e.preventDefault();
+      focusShortcutOpener('n'); // "Nhập giờ", when nothing holds the focus: the dialog gives it back there
       setEditing(null);
       setDialogOpen(true);
     };

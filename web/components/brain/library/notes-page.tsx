@@ -12,6 +12,7 @@ import { itemPicture } from '@/lib/handbook-picture';
 import { groupNotesByItem, noteDateLabel, noteHeading, type NoteGroup } from '@/lib/item-notes';
 import { itemTypeLabel } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
+import { focusShortcutOpener } from '@/lib/shortcut-opener';
 import { singleKeyShortcutsOn } from '@/lib/single-key-shortcuts';
 import { useListView } from '@/lib/use-board-view';
 import { tabPanelProps, tabProps } from '@/lib/tab-panel';
@@ -351,6 +352,13 @@ export function NotesPage() {
       if (!singleKeyShortcutsOn()) return;
       // The key legend dialog and a row's overflow menu handle their own keys
       if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return;
+      // J/K move no focus: Del with nothing focused first gives it to the cursor row's menu (its "Xóa"), so the dialog
+      // gives it back there and a confirmed delete passes it on to the next row (WCAG 2.4.3)
+      const deleteFromRow = (note: ApiNote) => () => {
+        const row = document.getElementById(`note-${note.id}`);
+        if (row) focusShortcutOpener(e.key, row, row.querySelector<HTMLElement>('[aria-haspopup="menu"]'));
+        setDeleting(note);
+      };
       const act: Record<string, () => void> = {
         ...(view === 'list' && {
           j: () => setCursor(Math.min(selected + 1, shown.length - 1)),
@@ -364,8 +372,8 @@ export function NotesPage() {
           e: () => openNote(current),
           enter: () => openNote(current),
           // Del / Backspace delete, as on the week page (X there means "bỏ" an objective)
-          delete: () => setDeleting(current),
-          backspace: () => setDeleting(current),
+          delete: deleteFromRow(current),
+          backspace: deleteFromRow(current),
         }),
       };
       const run = act[e.key.toLowerCase()];

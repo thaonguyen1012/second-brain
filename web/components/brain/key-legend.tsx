@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from '@/components/ui/dialog';
 import { Kbd } from '@/components/ui/kbd';
+import { focusShortcutOpener } from '@/lib/shortcut-opener';
 import { useT } from '@/lib/i18n/client';
 import {
   setSingleKeyShortcuts,
@@ -31,6 +32,7 @@ export function KeyLegend({ keys, title }: { keys: [string, string][]; title?: s
       if (e.key !== '?' || !singleKeyShortcut(e)) return;
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
       e.preventDefault();
+      focusShortcutOpener('?'); // "Phím tắt", when nothing holds the focus: the legend gives the focus back there
       setOpen(true);
     };
     window.addEventListener('keydown', onKey);

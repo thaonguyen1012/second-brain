@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useT } from '@/lib/i18n/client';
+import { focusShortcutOpener } from '@/lib/shortcut-opener';
 import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +17,10 @@ function isTyping(target: EventTarget | null): boolean {
   );
 }
 
-/** Single-key page shortcuts (no modifier), ignored while typing, inside a dialog or with single-key shortcuts off. */
+/**
+ * Single-key page shortcuts (no modifier), ignored while typing, inside a dialog or with single-key shortcuts off.
+ * With nothing focused, the control showing the key takes the focus first, so a dialog the key opens gives it back.
+ */
 export function useShortcuts(keys: Record<string, () => void>) {
   const ref = useRef(keys);
   useEffect(() => {
@@ -29,6 +33,7 @@ export function useShortcuts(keys: Record<string, () => void>) {
       const fn = ref.current[e.key.toLowerCase()];
       if (!fn) return;
       e.preventDefault();
+      focusShortcutOpener(e.key);
       fn();
     };
     window.addEventListener('keydown', onKey);
