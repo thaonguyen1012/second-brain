@@ -168,6 +168,7 @@ function EntryCard({
   entry,
   linkedItem,
   selected,
+  marked,
   keys,
   onSelect,
   onTriage,
@@ -179,12 +180,14 @@ function EntryCard({
   entry: ApiInboxEntry;
   /** Title and type of the linked Item, when the Item list has loaded. */
   linkedItem?: { title: string; type: string };
-  /** The keyboard cursor is on this card: it scrolls into view (a Cmd+K link to it too), and shows while `keys`. */
+  /** The keyboard cursor is on this card: it scrolls into view (a Cmd+K link to it too). */
   selected: boolean;
   /**
-   * Single-key shortcuts are on: the cursor shows (border, aria-current), since J/K move it, and the verbs show their
-   * keys (and say them in their names). Off, no key moves the cursor, so nothing marks it.
+   * The card shows the cursor's mark (border, aria-current): the cursor while single-key shortcuts are on, since J/K
+   * move it; while off, only the entry a Cmd+K link opened, until the list is used (InboxPage's `linkedId`).
    */
+  marked: boolean;
+  /** Single-key shortcuts are on: the verbs show their keys (and say them in their names). */
   keys: boolean;
   onSelect: () => void;
   onTriage: (status: ApiInboxStatus) => void;
@@ -222,7 +225,7 @@ function EntryCard({
   return (
     <BrainCard
       id={id}
-      selected={keys && selected}
+      selected={marked}
       onClick={onSelect}
       thumbnail={entry.thumbnailUrl}
       badges={
@@ -401,6 +404,14 @@ export function InboxPage() {
   const t = useT();
   const [status, setStatus] = useState<ApiInboxStatus>('inbox');
   const [cursor, setCursor] = useState(0);
+  // The entry a Cmd+K link opened (?id=): while single-key shortcuts are off the cursor shows no mark (no key moves
+  // it), so this entry keeps the mark instead, or nothing would say which card the link meant. Any move of the cursor
+  // (a click on a card, a tab, a capture, J/K) ends it.
+  const [linkedId, setLinkedId] = useState<number | null>(null);
+  const moveCursor = useCallback((i: number) => {
+    setCursor(i);
+    setLinkedId(null);
+  }, []);
   const [pickFor, setPickFor] = useState<ApiInboxEntry | null>(null);
   const [itemFor, setItemFor] = useState<ApiInboxEntry | null>(null);
   const [noteFor, setNoteFor] = useState<ApiInboxEntry | null>(null);
@@ -439,6 +450,7 @@ export function InboxPage() {
       if (tab) setStatus(tab.value);
       setFocusId(id);
       setFocusPages(0);
+      setLinkedId(null);
     },
     ['status'],
   );
@@ -448,8 +460,10 @@ export function InboxPage() {
   const pageForFocus = seeking && focusAt < 0 && !inbox.error && nextUrl !== null && focusPages < FOCUS_MAX_PAGES;
   if (seeking && !pageForFocus) {
     setFocusId(null);
-    if (focusAt >= 0) setCursor(focusAt);
-    else if (!inbox.error)
+    if (focusAt >= 0) {
+      setCursor(focusAt);
+      setLinkedId(focusId);
+    } else if (!inbox.error)
       setNotice(
         nextUrl
           ? t('Không thấy mục này trong {max} mục mới nhất của tab: bấm "Tải thêm" để xem tiếp.', {
@@ -580,10 +594,10 @@ export function InboxPage() {
         open(entry);
       };
       const act: Record<string, () => void> = {
-        j: () => setCursor(Math.min(selected + 1, shown.length - 1)),
-        arrowdown: () => setCursor(Math.min(selected + 1, shown.length - 1)),
-        k: () => setCursor(Math.max(selected - 1, 0)),
-        arrowup: () => setCursor(Math.max(selected - 1, 0)),
+        j: () => moveCursor(Math.min(selected + 1, shown.length - 1)),
+        arrowdown: () => moveCursor(Math.min(selected + 1, shown.length - 1)),
+        k: () => moveCursor(Math.max(selected - 1, 0)),
+        arrowup: () => moveCursor(Math.max(selected - 1, 0)),
         c: () => captureRef.current?.focus(),
         ...(current && {
           l: () => void triage(current, 'later'),
@@ -605,7 +619,7 @@ export function InboxPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [dialogOpen, selected, shown.length, current, triage]);
+  }, [dialogOpen, selected, shown.length, current, triage, moveCursor]);
 
   const loadMore = async () => {
     const next = inbox.data?.next;
@@ -626,7 +640,7 @@ export function InboxPage() {
         inputRef={captureRef}
         onCaptured={(e) => {
           if (status === 'inbox') inbox.mutate((d) => d && { ...d, results: [e, ...d.results] });
-          setCursor(0);
+          moveCursor(0);
           setNotice(t('Đã lưu vào inbox'));
         }}
       />
@@ -636,7 +650,7 @@ export function InboxPage() {
           value={status}
           onValueChange={(v) => {
             setStatus(v as ApiInboxStatus);
-            setCursor(0);
+            moveCursor(0);
           }}
         >
           <TabsList aria-label={t('Trạng thái')}>
@@ -701,8 +715,9 @@ export function InboxPage() {
                 key={e.id}
                 entry={e}
                 selected={i === selected}
+                marked={keys ? i === selected : e.id === linkedId}
                 keys={keys}
-                onSelect={() => setCursor(i)}
+                onSelect={() => moveCursor(i)}
                 onTriage={(next) => void triage(e, next)}
                 onOpportunity={() => setPickFor(e)}
                 linkedItem={e.item && e.itemTitle !== null ? { title: e.itemTitle, type: e.itemType ?? '' } : undefined}
