@@ -179,8 +179,12 @@ function EntryCard({
   entry: ApiInboxEntry;
   /** Title and type of the linked Item, when the Item list has loaded. */
   linkedItem?: { title: string; type: string };
+  /** The keyboard cursor is on this card: it scrolls into view (a Cmd+K link to it too), and shows while `keys`. */
   selected: boolean;
-  /** Single-key shortcuts are on: the verbs show their keys (and say them in their names). */
+  /**
+   * Single-key shortcuts are on: the cursor shows (border, aria-current), since J/K move it, and the verbs show their
+   * keys (and say them in their names). Off, no key moves the cursor, so nothing marks it.
+   */
   keys: boolean;
   onSelect: () => void;
   onTriage: (status: ApiInboxStatus) => void;
@@ -218,7 +222,7 @@ function EntryCard({
   return (
     <BrainCard
       id={id}
-      selected={selected}
+      selected={keys && selected}
       onClick={onSelect}
       thumbnail={entry.thumbnailUrl}
       badges={

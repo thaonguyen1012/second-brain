@@ -13,7 +13,7 @@ import { groupNotesByItem, noteDateLabel, noteHeading, type NoteGroup } from '@/
 import { itemTypeLabel } from '@/lib/labels';
 import { noteTitle } from '@/lib/library-labels';
 import { focusShortcutOpener } from '@/lib/shortcut-opener';
-import { singleKeyShortcutsOn } from '@/lib/single-key-shortcuts';
+import { singleKeyShortcutsOn, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { useListView } from '@/lib/use-board-view';
 import { tabPanelProps, tabProps } from '@/lib/tab-panel';
 import { cn } from '@/lib/utils';
@@ -118,6 +118,7 @@ function NoteRow({
   itemTitle,
   group,
   selected = false,
+  keys = false,
   onSelect,
   onOpen,
   onEdit,
@@ -127,8 +128,13 @@ function NoteRow({
   itemTitle: ItemTitle;
   /** The "Theo item" group the row sits in (its Item, or null for "Ghi chú rời"). */
   group?: number | null;
-  /** The keyboard cursor of the list view (the grouped view has none: a note may show in two groups). */
+  /**
+   * The keyboard cursor of the list view is on this row (the grouped view has none: a note may show in two groups): it
+   * scrolls into view, and shows while `keys`.
+   */
   selected?: boolean;
+  /** Single-key shortcuts are on: J/K move the cursor, so it shows (fill, aria-current). Off, nothing marks it. */
+  keys?: boolean;
   onSelect?: () => void;
   onOpen: () => void;
   onEdit: () => void;
@@ -140,13 +146,14 @@ function NoteRow({
   useEffect(() => {
     if (selected && id) document.getElementById(id)?.scrollIntoView({ block: 'nearest' });
   }, [selected, id]);
+  const cursor = selected && keys;
 
   return (
     // The keyboard cursor: neutral fill + aria-current (aria-selected is not allowed on a plain list item)
     <li
       id={id}
-      aria-current={selected ? 'true' : undefined}
-      data-selected={selected || undefined}
+      aria-current={cursor ? 'true' : undefined}
+      data-selected={cursor || undefined}
       className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 transition-colors hover:bg-accent has-focus-visible:bg-accent data-selected:bg-accent"
       onClick={(e) => {
         onSelect?.();
@@ -279,6 +286,8 @@ export function NotesPage() {
   const [query, setQuery] = useState('');
   const q = useDebounced(query.trim(), 250);
   const [cursor, setCursor] = useState(0);
+  // Whether J/K drive the list's cursor, so it shows: one subscription for the list (live, this tab and others)
+  const keys = useSingleKeyShortcuts();
   const [deleting, setDeleting] = useState<ApiNote | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -572,6 +581,7 @@ export function NotesPage() {
                 note={n}
                 itemTitle={itemTitle}
                 selected={i === selected}
+                keys={keys}
                 onSelect={() => setCursor(i)}
                 onOpen={() => openNote(n)}
                 onEdit={() => openNote(n)}
