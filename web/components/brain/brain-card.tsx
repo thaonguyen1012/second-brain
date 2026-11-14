@@ -19,7 +19,9 @@ function isLocal(src: string | null | undefined): src is string {
  * (DESIGN.md D12, D15), thumbnail beside badges, title and meta, then body and actions. Hierarchy comes from type
  * weight and colour, not from an inner panel. `selected` marks the keyboard cursor with a darker neutral border
  * (blue is for the primary action, DESIGN.md §4); in light the card stays a white surface (the border is
- * the cursor, D29), in dark it also takes the lighter accent step.
+ * the cursor, D29), in dark it also takes the lighter accent step. Forced colours give every border one colour, so
+ * there the marked card brings its own Highlight outline, as the topic heatmap's cursor cell does (DESIGN.md §4
+ * "Forced colours").
  */
 export function BrainCard({
   badges,
@@ -50,6 +52,7 @@ export function BrainCard({
       className={cn(
         'flex flex-col gap-3 rounded-xl border p-4 transition-colors duration-150',
         'data-selected:border-foreground/40 dark:data-selected:border-foreground/50',
+        'forced-colors:data-selected:outline-2 forced-colors:data-selected:outline-offset-1 forced-colors:data-selected:outline-[Highlight]',
         className,
       )}
     >

@@ -51,6 +51,9 @@ export function LibraryTabs({ current }: { current: (typeof tabs)[number]['key']
             segmentedControlItemSizeClassNames.default,
             current === key && 'bg-card text-foreground dark:bg-input',
             'aria-[current=page]:hover:text-foreground',
+            // forced colours drop the fill: the current half is underlined, like a current tab (app/global.css)
+            'forced-colors:aria-[current=page]:underline forced-colors:aria-[current=page]:decoration-2',
+            'forced-colors:aria-[current=page]:underline-offset-4',
           )}
         >
           {t(label)}

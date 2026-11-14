@@ -193,12 +193,14 @@ function NoteRow({
   const cursor = selected && keys;
 
   return (
-    // The keyboard cursor: neutral fill + aria-current (aria-selected is not allowed on a plain list item)
+    // The keyboard cursor: neutral fill + aria-current (aria-selected is not allowed on a plain list item). Forced
+    // colours drop the fill, so there the cursor row brings its own Highlight outline, inside its edge (the list's
+    // overflow-hidden would cut an outside one; DESIGN.md §4 "Forced colours").
     <li
       id={id}
       aria-current={cursor ? 'true' : undefined}
       data-selected={cursor || undefined}
-      className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 transition-colors hover:bg-accent has-focus-visible:bg-accent data-selected:bg-accent"
+      className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 transition-colors hover:bg-accent has-focus-visible:bg-accent data-selected:bg-accent forced-colors:data-selected:outline-2 forced-colors:data-selected:-outline-offset-2 forced-colors:data-selected:outline-[Highlight]"
       onClick={(e) => {
         onSelect?.();
         onRowClick(e, onOpen);
