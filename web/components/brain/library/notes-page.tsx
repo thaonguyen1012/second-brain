@@ -21,7 +21,7 @@ import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MenuItem, MenuSeparator } from '@/components/ui/menu';
+import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
@@ -29,7 +29,7 @@ import { ConfirmDelete } from '../confirm-delete';
 import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { KeyLegend } from '../key-legend';
 import { PAGE_WIDTH } from '../layout';
-import { MenuSingleKey, RowMenu } from '../row-menu';
+import { RowMenu } from '../row-menu';
 import { RowPicture } from './item-image';
 import { NewNoteCopyHints } from './save-status';
 import type { ItemLabel } from './item-picker';
@@ -133,7 +133,11 @@ function NoteRow({
    * scrolls into view, and shows while `keys`.
    */
   selected?: boolean;
-  /** Single-key shortcuts are on: J/K move the cursor, so it shows (fill, aria-current). Off, nothing marks it. */
+  /**
+   * Single keys act on this row: the list view while single-key shortcuts are on. J/K move the cursor, so it shows
+   * (fill, aria-current), and the menu shows E and Del, which act on the cursor's row. Off, and in "Theo item" (no
+   * cursor there, so E and Del do nothing), the row shows neither.
+   */
   keys?: boolean;
   onSelect?: () => void;
   onOpen: () => void;
@@ -176,13 +180,13 @@ function NoteRow({
         <MenuItem onClick={onEdit}>
           <Pencil aria-hidden />
           {t('Sửa')}
-          <MenuSingleKey>E</MenuSingleKey>
+          {keys && <MenuShortcut>E</MenuShortcut>}
         </MenuItem>
         <MenuSeparator />
         <MenuItem variant="destructive" onClick={onDelete}>
           <Trash2 aria-hidden />
           {t('Xóa')}
-          <MenuSingleKey>Del</MenuSingleKey>
+          {keys && <MenuShortcut>Del</MenuShortcut>}
         </MenuItem>
       </RowMenu>
     </li>

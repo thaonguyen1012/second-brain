@@ -15,9 +15,11 @@ let lastTrigger: HTMLElement | null = null;
 export const lastRowMenuTrigger = (): HTMLElement | null => lastTrigger;
 
 /**
- * A menu item's key when the page answers it on its own, without ⌘, Ctrl or Alt (the Inbox's O, Ghi chú's E, their
- * Del): shown only while single-key shortcuts are on (lib/single-key-shortcuts.ts). A focused row's own keys work
- * either way and keep a plain MenuShortcut (an objective's Enter, Alt+↑, Del).
+ * A menu item's key when the page answers it on its own, without ⌘, Ctrl or Alt (the Inbox's O, T, N and Del): shown
+ * only while single-key shortcuts are on (lib/single-key-shortcuts.ts). A focused row's own keys work either way and
+ * keep a plain MenuShortcut (an objective's Enter, Alt+↑, Del). Keys that act in one view only are shown by a row that
+ * knows its view: Ghi chú's E and Del act on the list view's cursor, so its rows take the switch and the view as one
+ * `keys` and show MenuShortcut only then, never in "Theo item".
  */
 export function MenuSingleKey({ children }: { children: string }) {
   return useSingleKeyShortcuts() ? <MenuShortcut>{children}</MenuShortcut> : null;
