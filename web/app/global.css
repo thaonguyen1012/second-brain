@@ -438,6 +438,12 @@ html > body[data-scroll-locked] {
 .embed-missing a {
   color: var(--color-fd-primary);
 }
+/* On the picture placeholder's muted fill the primary was 4.24:1 in light (WCAG 1.4.3): there the link takes the
+   primary 10% darker (--primary-hover), 5.3:1. The embed link stands on the page (5.0:1) and dark keeps the primary
+   (6.6:1 on the fill). */
+html:not(.dark) .img-missing-note a {
+  color: var(--primary-hover);
+}
 .embed-missing {
   display: block;
   margin: 1rem 0;
