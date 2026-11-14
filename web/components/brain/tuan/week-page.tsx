@@ -159,6 +159,13 @@ export function WeekPage({ books }: { books: BookIndex }) {
   const latest = addDays(current, 7); // planning reaches next week, not further
   const w = params.get('w');
   const start = isMonday(w) && w <= latest ? w : current;
+  // How the lines of both tabs name the week on screen (DESIGN.md §6): "tuần này" only for the current one
+  const weekName =
+    start === current
+      ? t('tuần này')
+      : start === latest
+        ? t('tuần tới')
+        : t('tuần {range}', { range: weekRange(start) });
   const tabArg = params.get('tab');
   const tab: Tab =
     tabArg === tabParam.review ? 'review' : tabArg === tabParam.plan ? 'plan' : defaultTab(start, current);
@@ -371,13 +378,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
               <PlanPanel
                 key={start}
                 start={start}
-                weekName={
-                  start === current
-                    ? t('tuần này')
-                    : start === latest
-                      ? t('tuần tới')
-                      : t('tuần {range}', { range: weekRange(start) })
-                }
+                weekName={weekName}
                 week={data.plan.week}
                 carryCandidates={data.plan.carryCandidates}
                 onWeek={onWeek}
@@ -390,6 +391,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
                 <ReviewPanel
                   key={start}
                   start={start}
+                  weekName={weekName}
                   week={data.plan.week}
                   review={data.review}
                   books={books}

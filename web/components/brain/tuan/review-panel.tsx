@@ -67,6 +67,7 @@ function ReviewChecklist({ checks, className }: { checks: ReviewCheck[]; classNa
  */
 export function ReviewPanel({
   start,
+  weekName,
   week,
   review,
   books,
@@ -78,6 +79,8 @@ export function ReviewPanel({
   onPlan,
 }: {
   start: string;
+  /** How a line names the week on screen: "tuần này", "tuần tới" or "tuần 2–8/11/2026" (week-page.tsx). */
+  weekName: string;
   week: ApiWeek;
   review: ApiReviewView;
   books: BookIndex;
@@ -111,7 +114,7 @@ export function ReviewPanel({
           }
         >
           {week.objectives.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('Tuần này không có mục tiêu nào.')}</p>
+            <p className="text-sm text-muted-foreground">{t('Không có mục tiêu nào cho {week}.', { week: weekName })}</p>
           ) : (
             <ObjectivesEditor
               start={start}

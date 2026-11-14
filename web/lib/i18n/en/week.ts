@@ -88,7 +88,7 @@ export const week = {
   'Trả lời 6 câu': 'Answer the 6 questions',
   'Tiến độ mục tiêu': 'Objective progress',
   'Đặt mục tiêu': 'Set objectives',
-  'Tuần này không có mục tiêu nào.': 'This week has no objectives.',
+  'Không có mục tiêu nào cho {week}.': 'No objectives for {week}.',
   'Inbox về 0 chưa?': 'Inbox down to 0?',
   'Đã về 0': 'Down to 0',
   'Còn {count}': '{count} left',
