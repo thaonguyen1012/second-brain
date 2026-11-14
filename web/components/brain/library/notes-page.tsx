@@ -65,6 +65,44 @@ function useDebounced<T>(value: T, ms: number): T {
 
 type ItemTitle = (id: number) => { title: string; type?: string };
 
+/** Pixels of a cut Item link worth keeping in place on its line; with less it comes to the line's start. */
+const FIT_MIN = 48;
+
+/**
+ * Keyboard focus on an Item link of a meta line that truncates: the line has 4px of room for the focus ring inside its
+ * clip (`has-focus-visible:-m-1 p-1`), but a link its ellipsis cuts (a long title, a phone) still runs past the clip,
+ * and so would its ring's right side. While the link has that focus it ends where the line does, as its own truncating
+ * box with its own ellipsis (`data-fit`, its room in `--fit`; the line clips the rest without an ellipsis), so the ring
+ * closes there; a link the line hides, or all but hides (after a long first one), first comes to the line's start.
+ * Measured, since a link's room depends on what goes before it on the line. Blur puts the line back as it was.
+ */
+function fitToLine(link: HTMLElement) {
+  const line = link.closest('p');
+  if (!line || !link.matches(':focus-visible')) return;
+  line.scrollLeft = 0; // measured as the line shows at rest (a scroll to a link it hides would outlast the blur)
+  const box = line.getBoundingClientRect();
+  const style = getComputedStyle(line);
+  const start = box.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+  const end = box.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight);
+  const { left, right } = link.getBoundingClientRect();
+  if (right <= end + 0.5) return; // whole: its ring fits the line's room
+  let room = end - left;
+  if (room < FIT_MIN) {
+    line.scrollLeft = left - start;
+    room = end - start;
+  }
+  link.style.setProperty('--fit', `${room}px`);
+  link.dataset.fit = '';
+}
+
+function unfit(link: HTMLElement) {
+  const line = link.closest('p');
+  if (line) line.scrollLeft = 0;
+  if (link.dataset.fit === undefined) return;
+  delete link.dataset.fit;
+  link.style.removeProperty('--fit');
+}
+
 /** A row's title: the note's own, except one that only repeats its group's Item (then its first line). */
 function rowTitle(note: ApiNote, groupTitle: string | null, t: T): string {
   if (groupTitle === null || noteHeading(note.title, groupTitle) !== null) return noteTitle(note, t);
@@ -100,8 +138,10 @@ function NoteMeta({
               <Link
                 href={`/thu-vien/ghi-chu/?item=${itemId}`}
                 title={t('Lọc ghi chú theo item này')}
-                className="underline-offset-4 hover:text-foreground hover:underline"
+                className="underline-offset-4 hover:text-foreground hover:underline data-fit:inline-block data-fit:max-w-(--fit) data-fit:truncate data-fit:align-top"
                 onClick={onNavigate}
+                onFocus={(e) => fitToLine(e.currentTarget)}
+                onBlur={(e) => unfit(e.currentTarget)}
               >
                 {itemTitle(itemId).title}
               </Link>
@@ -174,8 +214,9 @@ function NoteRow({
         </button>
         {/* The line truncates, so it clips: while one of its Item links has the keyboard's focus, 4px of padding inside
             the clip, taken back by as much negative margin, hold that link's focus ring (it reaches 2px past the link,
-            which starts at the line's edge). Nothing moves; at rest and on hover the line is as before. */}
-        <p className="truncate text-xs text-muted-foreground has-focus-visible:-m-1 has-focus-visible:p-1">
+            which starts at the line's edge). A link the ellipsis cuts ends at the line meanwhile (fitToLine). Nothing
+            moves; at rest and on hover the line is as before. */}
+        <p className="truncate text-xs text-muted-foreground has-focus-visible:-m-1 has-focus-visible:p-1 has-data-fit:text-clip">
           <NoteMeta note={note} itemTitle={itemTitle} group={group} />
         </p>
       </div>
