@@ -35,7 +35,7 @@ import { refreshInboxCount, useInboxCount } from './inbox-count';
 import { useInvalidFields } from './invalid-fields';
 import { ItemDialog } from './item-dialog';
 import { KeyLegend } from './key-legend';
-import { tabCountClass, tabCurrentHoverClass } from './library/library-tabs';
+import { tabCountClass } from './library/library-tabs';
 import { NoteDialog, type NoteDraft } from './library/note-dialog';
 import { useItemIndex } from './library/use-item-index';
 import { OpportunityDialog } from './opportunity-dialog';
@@ -656,12 +656,7 @@ export function InboxPage() {
         >
           <TabsList aria-label={t('Trạng thái')}>
             {inboxStatuses.map((s) => (
-              <TabsTab
-                key={s.value}
-                value={s.value}
-                className={tabCurrentHoverClass}
-                {...tabProps(STATUS_PANEL, s.value)}
-              >
+              <TabsTab key={s.value} value={s.value} {...tabProps(STATUS_PANEL, s.value)}>
                 {t(s.label)}
                 {/* The backlog as plain muted text, like the Thư viện tabs (the top bar's badge says the same) */}
                 {s.value === 'inbox' && inboxCount !== null && (

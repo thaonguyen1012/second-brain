@@ -16,27 +16,21 @@ const tabs = [
  * ground is the indicator's, which in dark (`--input` over `--muted`, #3e3e3e) is lighter than every surface, and
  * muted-foreground there is 4.07:1 (WCAG 1.4.3): the count takes the label's white at 70% (6.2:1, the 6.3:1 it has on
  * the other tabs' ground), still under the label (10.7:1, and larger and bolder). Light keeps muted-foreground.
- * TabsTab mutes the current tab's label under the pointer (4.08:1 there, under this count): a tab list with counts
- * keeps it with `tabCurrentHoverClass`.
+ * Under the pointer the current label stays in foreground (app/global.css for every tab, the links below on their own),
+ * so the count never reads louder than its label.
  */
 export const tabCountClass = (current: boolean) =>
   cn('ms-1.5 text-xs font-normal text-muted-foreground tabular-nums', current && 'dark:text-foreground/70');
-
-/**
- * The current tab keeps its label colour under the pointer, so its count never reads louder than the label (TabsTab's
- * `hover:text-muted-foreground` beats its `data-active:text-foreground`). These links mark the current half with
- * aria-current, Base UI's tabs with aria-selected; the attribute makes it outweigh the hover class.
- */
-export const tabCurrentHoverClass = 'aria-[current=page]:hover:text-foreground aria-selected:hover:text-foreground';
 
 /**
  * Switch between the two halves of Thư viện (DECISIONS 9.3: item + ghi chú): two links to two routes, so a navigation
  * with `aria-current="page"` on the half shown, not tabs (no panel of theirs is on the page; WCAG 1.3.1, 4.1.2).
  * Drawn as the segmented Tabs of Tuần and Inbox (DESIGN.md §6, D23) with TabsList's and TabsTab's own classes (copies:
  * lib/registry-copies.test.ts fails when the registry's change), the current half in the indicator's colours (plain
- * classes, as weak as `data-active:`), kept under the pointer like Inbox's current tab (`tabCurrentHoverClass`);
- * each ends in its count as plain muted text (GET /api/counts, the sidebar's numbers; 0 included, nothing while
- * unknown).
+ * classes, as weak as `data-active:`), kept under the pointer like a current tab in app/global.css (the copied
+ * `hover:text-muted-foreground` outweighs the plain text-foreground, 4.08:1 on the dark indicator; the current link's
+ * `aria-[current=page]:hover:text-foreground` outweighs that); each ends in its count as plain muted text (GET
+ * /api/counts, the sidebar's numbers; 0 included, nothing while unknown).
  */
 export function LibraryTabs({ current }: { current: (typeof tabs)[number]['key'] }) {
   const t = useT();
@@ -56,7 +50,7 @@ export function LibraryTabs({ current }: { current: (typeof tabs)[number]['key']
             segmentedControlItemLayoutClassName,
             segmentedControlItemSizeClassNames.default,
             current === key && 'bg-card text-foreground dark:bg-input',
-            tabCurrentHoverClass,
+            'aria-[current=page]:hover:text-foreground',
           )}
         >
           {t(label)}

@@ -472,6 +472,14 @@ html:not(.dark) [data-slot='select-trigger'][aria-invalid='true']:focus-visible 
   --tw-ring-color: var(--ring);
 }
 
+/* The current tab keeps its label colour under the pointer, in every tab list (WCAG 1.4.3; DESIGN.md §6 "View
+   switches"). components/ui's TabsTab dims any tab it hovers to muted-foreground, and its hover:text-muted-foreground
+   outweighs its data-active:text-foreground: on the dark indicator (#3e3e3e) the current label fell to 4.08:1. Other
+   tabs keep their hover. Unlayered, so it outweighs the utilities. */
+[data-slot='tabs-tab'][data-active]:hover {
+  color: var(--foreground);
+}
+
 /* A scroll area of components/ui (DialogPanel, SheetPanel, the sidebar's list) is a tab stop while it scrolls (Base
    UI), so the keyboard can scroll text with no control in it. components/ui rings the viewport outside its edge, where
    the scroll fade's mask and the popup cut the ring away: the focus showed nothing (WCAG 2.4.7). The scroll area's
