@@ -356,6 +356,22 @@ interface ActiveMemory {
   held: boolean;
 }
 
+/**
+ * The element a pick leads to when it stays on the page shown and only changes its #hash (a heading of the lesson
+ * shown), else null. Next scrolls it into view; nothing else changes on the page.
+ */
+function samePageTarget(url: string): HTMLElement | null {
+  try {
+    const to = new URL(url, window.location.href);
+    const path = (p: string) => p.replace(/\/+$/, '');
+    if (!to.hash || to.origin !== window.location.origin || path(to.pathname) !== path(window.location.pathname))
+      return null;
+    return document.getElementById(decodeURIComponent(to.hash.slice(1)));
+  } catch {
+    return null; // not a URL, or a malformed escape in the hash
+  }
+}
+
 /** Scrolls the results list (not the page) so the command's row at its end shows, with its group label. */
 function showCommand() {
   const row = document.getElementById(`fd-search-option-${SHORTCUTS_COMMAND}`);
@@ -547,6 +563,28 @@ export default function AppSearchDialog({
     setPicked(false);
     onSearchChange(value);
   };
+  // Where the focus goes as the dialog closes after a pick on the page shown (a heading of the lesson shown, only the
+  // hash changes): to that heading, not back where it was, which may be a lesson's table-of-contents popover or drawer
+  // the dialog was opened from (lazy-docs-layout.tsx keeps them open under a portal): they stayed open over the heading
+  // and kept the focus. The focus reaching the page behind them closes them. Any other pick changes the page, and the
+  // dialog then has no finalFocus: given at all, Base UI moves the focus on closing even when it has moved on (the
+  // Item Sheet a Thư viện result opens took it, and lost it to the top bar's search button). The pick's close uses it
+  // once: ⌘K opens the dialog without onOpen, and a later Escape sent the focus back to that old heading.
+  const [returnTo, setReturnTo] = useState<HTMLElement | null>(null);
+  const onPick = (item: SearchItemType) =>
+    setReturnTo(item.type === 'action' || item.external ? null : samePageTarget(item.url));
+  const finalFocus = returnTo
+    ? () => {
+        setReturnTo(null);
+        if (!returnTo.isConnected) return true;
+        // Base UI focuses its first tabbable part (a heading's own link) without scrolling, after Next scrolled the
+        // heading to its margin: below md the sticky bars then covered the top of the focused link. It keeps them
+        // clear by the margin of a lesson's focusable elements (app/global.css).
+        const clear = (e: FocusEvent) => (e.target as HTMLElement).scrollIntoView({ block: 'nearest' });
+        returnTo.addEventListener('focusin', clear, { once: true });
+        return returnTo;
+      }
+    : undefined;
   // Every opening starts empty (the destinations list), never with the results of the last query.
   const onOpen = (next: boolean) => {
     if (!next && stayOpen.current) {
@@ -661,6 +699,7 @@ export default function AppSearchDialog({
     <SearchDialog
       {...search}
       onSearchChange={onQueryChange}
+      onSelect={onPick}
       isLoading={search.isLoading || brain.loading}
       {...props}
       open={open}
@@ -679,6 +718,7 @@ export default function AppSearchDialog({
           typed over or a destination, and Enter then opened it. */}
       <SearchDialogContent
         className="md:top-[max(1rem,calc(50%-250px))]"
+        finalFocus={finalFocus}
         onKeyDownCapture={(e) => {
           if (e.nativeEvent.isComposing) return;
           const held = e.key === 'Enter' && e.repeat;

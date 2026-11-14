@@ -74,4 +74,25 @@ describe("the lesson's overlays, closed as the focus leaves them", () => {
     expect(read('node_modules/fumadocs-ui/dist/components/dialog/search.js')).toMatch(/jsx\(Dialog\.Portal, \{/);
     expect(read('components/lazy-docs-layout.tsx')).toMatch(/!to\.closest\('#nd-docs-layout'\)\) return;/);
   });
+
+  it('a Cmd+K pick of a heading of the lesson shown hands it the focus, which closes them', () => {
+    // Fumadocs reports the row picked as it closes the dialog, and hands its popup's props to Base UI, whose
+    // finalFocus is where the focus goes on closing: the element's first tabbable part, a heading's own link
+    const dialog = read('node_modules/fumadocs-ui/dist/components/dialog/search.js');
+    expect(dialog).toMatch(/onOpenChange\(false\);\s*onSelectProp\?\.\(item\);/);
+    expect(dialog).toMatch(/jsxs\(Dialog\.Popup, \{\s*id: "fd-search-dialog-content",[\s\S]*?\.\.\.props,\s*children:/);
+    expect(read('node_modules/@base-ui/react/dialog/popup/DialogPopup.mjs')).toMatch(/returnFocus: finalFocus,/);
+    const manager = read('node_modules/@base-ui/react/floating-ui-react/components/FloatingFocusManager.mjs');
+    expect(manager).toMatch(/const tabbableReturnElement = getFirstTabbableElement\(returnElement\);/);
+    // a finalFocus given at all is explicit: Base UI then moves the focus on closing even when it has moved on (an Item
+    // Sheet a result opened), so the dialog gives one only for a pick on the page shown
+    expect(manager).toMatch(/explicitReturnFocusRef\.current \?\? typeof returnFocusValueOrFn !== 'boolean';/);
+    expect(read('node_modules/fumadocs-ui/dist/components/heading.js')).toMatch(
+      /jsx\("a", \{\s*"data-card": "",\s*href: `#\$\{props\.id\}`,/,
+    );
+    const search = read('components/search-dialog.tsx');
+    expect(search).toMatch(/onSelect=\{onPick\}/);
+    expect(search).toMatch(/const finalFocus = returnTo\s*\?/);
+    expect(search).toMatch(/finalFocus=\{finalFocus\}/);
+  });
 });

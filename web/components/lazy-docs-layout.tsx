@@ -63,7 +63,11 @@ const drawerButton = () =>
  * sidebar or drawer, the popover and the lesson at every width. A popup, menu or dialog in a portal outside it, opened
  * from an overlay (the drawer's language chooser and handbook switcher, Base UI popovers that take the focus) or over
  * it (Cmd+K), leaves the overlay open, and the overlay gets the focus back when the popup closes (closing the drawer
- * took its popup with it and dropped the focus to <body>). lib/lesson-landmarks.test.ts follows the markup this reads.
+ * took its popup with it and dropped the focus to <body>). A Cmd+K pick of a heading of the lesson shown is the one
+ * exception: only the hash changes, so Fumadocs keeps the drawer open and the page stays, and the dialog hands the
+ * focus to that heading instead (components/search-dialog.tsx), which closes the overlay as it arrives. A pick of
+ * another page changes the pathname, which closes the drawer. lib/lesson-landmarks.test.ts follows the markup this
+ * reads.
  */
 function useOverlaysCloseOnFocusOut() {
   useEffect(() => {
