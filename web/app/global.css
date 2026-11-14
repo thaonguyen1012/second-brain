@@ -501,6 +501,38 @@ div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
   }
 }
 
+/* Forced colours (Windows contrast themes; WCAG 2.4.7). The browser drops box-shadows there, and with them every focus
+   ring drawn with Tailwind's ring-* beside outline-none or focus-visible:outline-none (components/ui's, Fumadocs' and
+   the app's own; the note editor's outline: none); it keeps outlines and paints a focused one in the system's
+   Highlight. So there such a control gets the 2px outline its ring stood for, at the offset it already has: outside the
+   edge, where the ring had its room; inside it for a ring drawn inside (ring-inset: rows in a list that clips); on the
+   ::after that drew the ring (a cover link, a card's stretched link). Outlines the browser or the app draw are left as
+   they are (links, lesson pages, scroll areas, the heatmap). What holds the focus only to pass it on (tabindex="-1":
+   the skip link's target, a heading after a delete, a dialog's own box) stays bare, as in normal colours. Tailwind's
+   outline-hidden (the sidebar's rows and labels) shows its outline at all times here, so a focused row only changed
+   its colour: only the focused one keeps it. The active option of a list driven from a field (aria-activedescendant:
+   Cmd+K, the note editor's [[ and / menus, the Item picker) is marked by its fill alone, which goes too: it takes the
+   outline inside its edge. Normal colours are untouched. */
+@media (forced-colors: active) {
+  :is(.outline-none, .outline-hidden, [class*='focus-visible:outline-none'], .note-editor):focus-visible:not(
+      [tabindex='-1'],
+      [data-slot='scroll-area-viewport'],
+      [class*='after:ring']
+    ),
+  [class*='after:ring']:focus-visible::after,
+  [role='option'][aria-selected='true']:not([data-slot]) {
+    outline: 2px solid Highlight;
+  }
+  [class*='ring-inset']:focus-visible,
+  [class*='after:ring']:focus-visible::after,
+  [role='option'][aria-selected='true']:not([data-slot]) {
+    outline-offset: -2px;
+  }
+  .outline-hidden:not(:focus-visible) {
+    outline-style: none;
+  }
+}
+
 /* Looping animations stop under reduced motion (DESIGN.md D28): Loader2 spinners, the Space UI Spinner and
    skeleton pulses, so pages need no per-instance motion-reduce classes. */
 @media (prefers-reduced-motion: reduce) {
