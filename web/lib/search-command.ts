@@ -14,12 +14,15 @@ export const fold = (c: string) =>
 
 /**
  * The words of a text, accents and case aside; any other character parts them ("Phím tắt một-phím" -> phim, tat, mot,
- * phim).
+ * phim). Decomposed text too (NFD: a combining-mode IME, a name pasted from macOS): `fold` keeps a lone accent as it is,
+ * one character in and one out for the search excerpt's index mapping, so the accents left are dropped here before
+ * they could part a word ("phi" + U+0301 + "m" is "phim").
  */
 export const foldedWords = (text: string): string[] =>
   Array.from(text)
     .map(fold)
     .join('')
+    .replace(/\p{M}/gu, '')
     .split(/[^\p{L}\p{N}]+/u)
     .filter(Boolean);
 

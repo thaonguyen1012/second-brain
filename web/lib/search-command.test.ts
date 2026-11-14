@@ -20,6 +20,16 @@ describe('foldedWords', () => {
     expect(fold('Ắ')).toBe('a');
     expect(fold('đ')).toBe('d');
   });
+
+  it('reads decomposed text (NFD) as the composed text, a lone accent never parting a word', () => {
+    expect('phím tắt'.normalize('NFD')).not.toBe('phím tắt');
+    expect(foldedWords('Phím tắt một-phím'.normalize('NFD'))).toEqual(['phim', 'tat', 'mot', 'phim']);
+    expect(foldedWords('ĐẾN'.normalize('NFD'))).toEqual(['den']);
+    // a lone combining mark, as an IME may send it before its letter
+    expect(foldedWords('́phim')).toEqual(['phim']);
+    // fold stays one character in, one out (the search excerpt maps indexes through it)
+    for (const c of Array.from('phím tắt'.normalize('NFD'))) expect(Array.from(fold(c))).toHaveLength(1);
+  });
 });
 
 describe('the single-key shortcuts command in Cmd+K', () => {
@@ -46,6 +56,11 @@ describe('the single-key shortcuts command in Cmd+K', () => {
 
   it('ignores accents, case and spaces, also a trailing space', () => {
     expectAll(vi, ['PHÍM TẮT', 'Phim Tat', '  phím   tắt  ', 'phím tắt ', 'Một Phím', 'MOT-PHIM', 'phím tắt\t'], 'strong');
+    // typed or pasted decomposed (NFD), as the composed text
+    const nfd = (qs: string[]) => qs.map((q) => q.normalize('NFD'));
+    expectAll(vi, nfd(['phím tắt', 'một phím', 'Tắt phím tắt một phím', 'PHÍM TẮT ']), 'strong');
+    expectAll(vi, nfd(['một', 'tắt', 'bật phím', 'phím']), 'weak');
+    expectAll(vi, nfd(['phím tắt vscode', 'khách', 'tất cả']), 'none');
     expectAll(en, ['SHORTCUTS ', ' Single-Key', 'single   KEY', 'Shortcut\n'], 'strong');
     expectAll(vi, ['TA', 'Mo ', 'PHI', 'Một', 'mot', 'BAT', 'bật'], 'weak');
     expectAll(en, ['ON', 'Of ', ' Ke', 'SI', 'Sh ', 'TU'], 'weak');
