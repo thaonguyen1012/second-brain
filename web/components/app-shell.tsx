@@ -255,9 +255,13 @@ function MenuTrigger() {
   );
 }
 
+/** The search key hint, drawn in the button and said in its name. */
+const SEARCH_KEY = '⌘ K';
+
 /**
  * Opens the search dialog (components/search-dialog.tsx): handbooks and the second brain. The accessible name stays
- * "Tìm mọi thứ" at every width. Below sm the visible label shortens to "Tìm…" and shows whole or not at all: the
+ * "Tìm mọi thứ, ⌘ K" at every width: the label's words, then the key hint drawn after them (WCAG 2.5.3; like the
+ * Inbox page's "Đọc sau, L: …"). Below sm the visible label shortens to "Tìm…" and shows whole or not at all: the
  * span is one line tall (h-6, the 24 px line of text-base; not h-lh, Firefox before 120 has no lh) and its empty
  * ::before holds that line, so a label that does not fit beside the Inbox button (its count arrives after hydration)
  * and the EN/VI switch wraps to the clipped second line (overflow-clip: not a scroll container, so find in page cannot
@@ -269,14 +273,14 @@ function SearchButton() {
   return (
     <Button
       variant="outline"
-      aria-label={t('Tìm mọi thứ')}
+      aria-label={t('Tìm mọi thứ, {key}', { key: SEARCH_KEY })}
       onClick={() => setOpenSearch(true)}
       className="w-full min-w-0 max-w-[280px] shrink justify-start font-normal text-muted-foreground"
     >
       <Search aria-hidden />
       <span className="flex h-6 min-w-0 flex-1 flex-wrap overflow-clip before:h-6 sm:hidden">{t('Tìm…')}</span>
       <span className="max-sm:hidden">{t('Tìm mọi thứ...')}</span>
-      <Kbd className="ms-auto max-sm:hidden pointer-coarse:hidden">⌘ K</Kbd>
+      <Kbd className="ms-auto max-sm:hidden pointer-coarse:hidden">{SEARCH_KEY}</Kbd>
     </Button>
   );
 }

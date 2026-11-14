@@ -61,7 +61,8 @@ export function useInboxCount(): string | null {
 
 /**
  * Top bar button: Inbox with its count (DECISIONS 9.3). Icon-only below sm, so it carries a tooltip (loaded
- * lazily: the shell is on the home page, see components/lazy-tooltip.tsx).
+ * lazily: the shell is on the home page, see components/lazy-tooltip.tsx). Named "Inbox, 5 mục chưa xử lý": the
+ * visible "Inbox 5", then what the number counts (WCAG 2.5.3).
  */
 export function InboxButton() {
   const t = useT();
@@ -74,10 +75,14 @@ export function InboxButton() {
       >
         <Inbox aria-hidden />
         <span className="hidden sm:inline">Inbox</span>
+        {/* A real space before the count: the text reads "Inbox 5", not "Inbox5" (the flex button does not draw it) */}
         {n && n !== '0' && (
-          <Badge variant="warning" size="sm">
-            {n}
-          </Badge>
+          <>
+            {' '}
+            <Badge variant="warning" size="sm">
+              {n}
+            </Badge>
+          </>
         )}
       </Button>
     </LazyTooltip>
