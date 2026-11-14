@@ -68,3 +68,20 @@ describe('registry classes copied by the app', () => {
     expect(new Set(tokens(current))).toEqual(new Set([...colours, ...active]));
   });
 });
+
+/**
+ * components/mdx.tsx copies Fumadocs' table (fumadocs-ui/mdx: the wrapper that scrolls a wide table and is its tab
+ * stop) to add the app's focus ring. A Fumadocs update changes the original only: this fails until the copy follows.
+ */
+describe('Fumadocs markup copied by the app', () => {
+  it("mdx.tsx draws Fumadocs' table wrapper with its classes and tab stop, plus the focus ring", () => {
+    const fumadocsFile = 'node_modules/fumadocs-ui/dist/mdx.js';
+    const original = find(fumadocsFile, /function Table\(props\) \{[\s\S]*?className: "([^"]*)"/, "Fumadocs' Table");
+    expect(read(fumadocsFile)).toMatch(/function Table\(props\) \{[\s\S]*?tabIndex: 0,[\s\S]*?jsx\("table"/);
+    const copy = find('components/mdx.tsx', /function Table\([\s\S]*?className="([^"]*)"/, 'the table wrapper');
+    expect(tokens(copy).filter((c) => !c.startsWith('focus-visible:'))).toEqual(tokens(original));
+    expect(read('components/mdx.tsx')).toMatch(
+      /function Table\([\s\S]*?tabIndex=\{0\}[\s\S]*?<table \{\.\.\.props\} \/>/,
+    );
+  });
+});
