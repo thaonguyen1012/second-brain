@@ -533,6 +533,16 @@ div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
   }
 }
 
+/* Lesson pages (Fumadocs; WCAG 2.4.7): the links of the table of contents (beside the lesson, and in its popover below
+   xl) and of the sidebar sit in boxes that clip sideways (the TOC's overflow-x-clip scroller, a folder's collapsible),
+   which cut the browser's focus outline off both sides; the TOC popover's trigger draws none. Their focus is the app's
+   2px ring inside the edge, in their padding; nothing changes while they are not focused. */
+:is(#nd-sidebar, #nd-sidebar-mobile, #nd-toc, [data-toc-popover]) a[data-active]:focus-visible,
+[data-toc-popover-trigger]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
 /* Looping animations stop under reduced motion (DESIGN.md D28): Loader2 spinners, the Space UI Spinner and
    skeleton pulses, so pages need no per-instance motion-reduce classes. */
 @media (prefers-reduced-motion: reduce) {
