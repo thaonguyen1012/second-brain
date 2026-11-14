@@ -690,7 +690,14 @@ export default function AppSearchDialog({
       >
         <SearchDialogHeader>
           <SearchDialogIcon />
-          <SearchDialogInput aria-label={t('Tìm mọi thứ')} placeholder={t('Tìm sổ tay, ghi chú, inbox…')} />
+          {/* Expanded whenever its list shows rows (WCAG 4.1.2): Fumadocs reads "a row is active", so with none (a
+              query's own rows on their way, the command just picked) the field said collapsed over a listbox of rows.
+              The rows are the command and the results or destinations (`items`, read through its parts). */}
+          <SearchDialogInput
+            aria-label={t('Tìm mọi thứ')}
+            aria-expanded={commandAt !== null || results.length > 0}
+            placeholder={t('Tìm sổ tay, ghi chú, inbox…')}
+          />
           {/* The button shows "ESC": its name starts with it (WCAG 2.5.3), then says what it does. Fumadocs answers
               Enter on the whole dialog (it picks the active row and cancels the key), so Enter on this button flipped
               the shortcut command or opened a result instead of closing: the key stops here, before the dialog's
