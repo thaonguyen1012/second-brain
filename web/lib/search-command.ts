@@ -72,6 +72,9 @@ export function matchCommand(query: string, { names, phrases, against = [] }: Co
   return whole && named ? 'strong' : 'weak';
 }
 
+/** Where the command's row is in the Cmd+K list: first, last, or left out. */
+export type CommandPlace = 'first' | 'last' | null;
+
 /**
  * Where the command's row goes in the Cmd+K list, given how the query names it and the other rows: `rows` counts them
  * (second-brain hits, then the handbook results or the destinations), `destinations` says the list still shows the
@@ -85,7 +88,7 @@ export function matchCommand(query: string, { names, phrases, against = [] }: Co
 export function placeCommand(
   match: CommandMatch,
   { rows, destinations }: { rows: number; destinations: boolean },
-): 'first' | 'last' | null {
+): CommandPlace {
   if (match === 'strong') return 'first';
   if (rows === 0) return null;
   return match === 'weak' || destinations ? 'last' : null;
@@ -103,11 +106,13 @@ interface ShortcutsVerb {
  * phím tắt", "turn off shortcuts" while they are on; "bật phím tắt", "turn on shortcuts" while off). The other verb
  * asks for the state the switch is already in, so a query holding it (`asks`: "bật" or "on" while they are on, "tắt
  * phím tắt" or "off" while off; "tắt" alone is also the second word of "phím tắt") keeps the command after the
- * results: Enter never does the opposite of the words typed. Never a verb alone ("tắt", "bật", "turn", "on" start too
- * many searches), a lone "phím", "key" or "single", nor "phím tắt", "một phím", "shortcuts", "keyboard shortcuts" or
- * "single key": those are the words of the handbook pages about keyboard shortcuts (89 pages say "phím tắt", 80
- * "keyboard shortcut", 21 "một phím", in "một phím tắt"; 9 say "single key", of encryption), whose search keeps its
- * results on top and Enter, the command after them.
+ * results: Enter never does the opposite of the words typed (nor after a pick made under the verb of what the row
+ * did: the dialog stays open on the new state with no row highlighted, and a held Enter picks once;
+ * components/search-dialog.tsx). Never a verb alone ("tắt", "bật", "turn", "on" start too many searches), a lone
+ * "phím", "key" or "single", nor "phím tắt", "một phím", "shortcuts", "keyboard shortcuts" or "single key": those are
+ * the words of the handbook pages about keyboard shortcuts (89 pages say "phím tắt", 80 "keyboard shortcut", 21 "một
+ * phím", in "một phím tắt"; 9 say "single key", of encryption), whose search keeps its results on top and Enter, the
+ * command after them.
  */
 const SHORTCUTS_WORDS: Record<Locale, { object: readonly string[]; off: ShortcutsVerb; on: ShortcutsVerb }> = {
   vi: {

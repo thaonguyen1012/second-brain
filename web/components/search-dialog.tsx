@@ -47,7 +47,14 @@ import { formatDay, freshness, monthLabel, outcomeOf } from '@/components/brain/
 import { useLocale, useT } from '@/lib/i18n/client';
 import { contentText } from '@/lib/i18n/content-lang';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
-import { MIN_QUERY, fold, matchCommand, placeCommand, shortcutsCommandTerms } from '@/lib/search-command';
+import {
+  type CommandPlace,
+  MIN_QUERY,
+  fold,
+  matchCommand,
+  placeCommand,
+  shortcutsCommandTerms,
+} from '@/lib/search-command';
 import { setSingleKeyShortcuts, singleKeyShortcutsOn, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 
 // Queries shorter than MIN_QUERY skip the second brain (they match too much of everything); the handbook search still
@@ -339,6 +346,26 @@ interface ActiveMemory {
   query: string;
   /** Active row just before `items` or the query changed (before Fumadocs' reset). */
   id: string | null;
+  /** Where the command was in the list then. */
+  at: CommandPlace;
+  /**
+   * The switch flipped under the highlighted command of a query naming what it did, and this query has had no row
+   * highlighted since: the rows landing later stay unhighlighted too, as long as the command stays off the top (a
+   * pick that turns it back, a tap with no pointer move among them, makes the query name it again: first, highlighted).
+   */
+  held: boolean;
+}
+
+/** Scrolls the results list (not the page) so the command's row at its end shows, with its group label. */
+function showCommand() {
+  const row = document.getElementById(`fd-search-option-${SHORTCUTS_COMMAND}`);
+  const list = row?.closest<HTMLElement>('#fd-search-list');
+  if (!row || !list) return;
+  const box = list.getBoundingClientRect();
+  const top = (row.previousElementSibling ?? row).getBoundingClientRect().top - box.top;
+  const bottom = row.getBoundingClientRect().bottom - box.top;
+  if (bottom > list.clientHeight) list.scrollTop += bottom - list.clientHeight;
+  else if (top < 0) list.scrollTop += top;
 }
 
 /**
@@ -348,7 +375,11 @@ interface ActiveMemory {
  * put the highlight back on the first row, also away from a row the user had just arrowed to: Enter then opened
  * another row, or flipped the shortcut command that leads a query naming it. So:
  * - the same query: the highlighted row stays highlighted while it is still listed, whatever landed around it; once
- *   it is gone, the first row, but never the shortcut command the user had moved off;
+ *   it is gone, the first row, but never the shortcut command the user had moved off. The one exception is the
+ *   command after the switch flipped under it (a pick, or another tab) while a query named what it did ("tắt phím
+ *   tắt" with the shortcuts on): that query now asks for the state the switch is in, the command goes after the
+ *   results, and no row is highlighted until the user moves (an arrow, the pointer) or types, the command kept in
+ *   view, so Enter pressed again, like the rows landing later, never does the opposite of the words typed;
  * - a new query text: the first row (Enter never picks a row arrowed to for an earlier query, like the command at the
  *   end of a weak one), and none while the query's own rows do not lead the list yet (`waiting`): the destinations
  *   standing in for its first results, or another query's rows kept until its own land (Enter opened "Hôm nay", or a
@@ -379,27 +410,40 @@ function ActiveBefore({
 function ActiveAfter({
   items,
   query,
+  at,
   waiting,
   memoryRef,
 }: {
   items: ListItems;
   query: string;
+  /** Where the command is now (placeCommand). */
+  at: CommandPlace;
   waiting: boolean;
   memoryRef: RefObject<ActiveMemory>;
 }) {
   const { setActive } = useSearch();
   useLayoutEffect(() => {
-    const { id, query: before } = memoryRef.current;
-    memoryRef.current = { query, id: null };
+    const { id, query: before, at: was, held: wasHeld } = memoryRef.current;
+    const held = query === before && wasHeld && at !== 'first';
+    const memory: ActiveMemory = { query, id: null, at, held };
     if (query !== before) setActive(waiting ? null : (items?.[0]?.id ?? null));
-    else if (id && items?.some((i) => i.id === id)) setActive(id);
-    // Still another query's rows on top (part of this one's landed): Fumadocs' reset made the first of them active
-    else if (waiting) setActive(null);
+    // The switch flipped under the highlighted command of a query naming what it did: the query now asks for the
+    // state it is in, so the command went after the results; it loses the highlight (Enter again turned the switch
+    // back against the words typed) and stays in view with its new action, the rows landing later unhighlighted too
+    else if (id === SHORTCUTS_COMMAND && was === 'first' && at !== 'first') {
+      setActive(null);
+      memory.held = true;
+      showCommand();
+    } else if (id && items?.some((i) => i.id === id)) setActive(id);
+    // Still another query's rows on top (part of this one's landed), or rows landing under a command that lost the
+    // highlight as above: Fumadocs' reset made the first of them active
+    else if (waiting || (held && !id)) setActive(null);
     // The row the user moved to left the list (a destination, as the results land): the first row again, as Fumadocs
     // does, but never the shortcut command they had moved off, which leads a query naming it (Enter would flip it)
     else if (id && id !== SHORTCUTS_COMMAND && items?.[0]?.id === SHORTCUTS_COMMAND)
       setActive(items.find((i) => i.id !== SHORTCUTS_COMMAND)?.id ?? null);
-  }, [items, query, waiting, setActive, memoryRef]);
+    memoryRef.current = memory;
+  }, [items, query, at, waiting, setActive, memoryRef]);
   return null;
 }
 
@@ -528,8 +572,9 @@ export default function AppSearchDialog({
     [t],
   );
   // What names the command follows what its row does now: "tắt phím tắt" while the shortcuts are on; while they are off
-  // it asks for what is already so, and the command goes after the results (lib/search-command.ts). After a pick the
-  // row moves with the new state and stays highlighted (ActiveAfter), its new action in view.
+  // it asks for what is already so, and the command goes after the results (lib/search-command.ts). After a pick under
+  // such a verb the row moves with the new state, in view, and no row is highlighted until the user moves or types
+  // (ActiveAfter): a second Enter does nothing.
   const commandTerms = useMemo(() => shortcutsCommandTerms(t, keys), [t, keys]);
 
   const defaultItems = useMemo<SearchItemType[] | null>(
@@ -569,7 +614,7 @@ export default function AppSearchDialog({
   // it, ActiveAfter). At the end only the arrows or the pointer highlight it, a choice the query's late results keep
   // and its next letter ends.
   const handbook: ListItems = collapsed?.list ?? defaultItems;
-  const activeMemory = useRef<ActiveMemory>({ query: '', id: null });
+  const activeMemory = useRef<ActiveMemory>({ query: '', id: null, at: null, held: false });
   const results = useMemo(() => [...brainItems.map((b) => b.item), ...(handbook ?? [])], [brainItems, handbook]);
   const commandAt = placeCommand(matchCommand(query, commandTerms), {
     rows: results.length,
@@ -616,8 +661,17 @@ export default function AppSearchDialog({
           short window (a laptop at 175-200%) pushed its top off-screen, and its 460px list ran up to 170px below the
           bottom of a 400px-high one, where the page behind cannot scroll: the last rows, the command among them, and an
           ArrowUp to them stayed out of sight. The top keeps 1rem, and the list (below) leaves 7rem for the top, the
-          search field and a bottom margin. */}
-      <SearchDialogContent className="md:top-[max(1rem,calc(50%-250px))]">
+          search field and a bottom margin. Its keys reach this capture handler before Fumadocs' listener on the box:
+          a held Enter repeats its keydown and Fumadocs picks the active row on each, so on the command, which keeps
+          the dialog open, a held key flipped the switch on and off until it was let go; only its first press picks. */}
+      <SearchDialogContent
+        className="md:top-[max(1rem,calc(50%-250px))]"
+        onKeyDownCapture={(e) => {
+          if (e.nativeEvent.isComposing || e.key !== 'Enter' || !e.repeat) return;
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <SearchDialogHeader>
           <SearchDialogIcon />
           <SearchDialogInput aria-label={t('Tìm mọi thứ')} placeholder={t('Tìm sổ tay, ghi chú, inbox…')} />
@@ -703,7 +757,7 @@ export default function AppSearchDialog({
             );
           }}
         />
-        <ActiveAfter items={items} query={query} waiting={waiting} memoryRef={activeMemory} />
+        <ActiveAfter items={items} query={query} at={commandAt} waiting={waiting} memoryRef={activeMemory} />
         {brainNote && (
           <SearchDialogFooter>
             <p role="status" className="text-xs text-muted-foreground">
