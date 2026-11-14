@@ -357,6 +357,21 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* A control the keyboard focus scrolls into view stops clear of the edge it comes in at (WCAG 2.4.7, 2.4.11): Chrome
+   scrolled it flush with the bottom of the page or of a scroll area, where the bottom of its 2px ring fell off the
+   edge or into the scroll fade. The page keeps 0.5rem below it; a scroll area of components/ui (DialogPanel,
+   SheetPanel, the sidebar's list) 1.5rem at both ends, its scroll fade; the lesson sidebar's list 1rem, past its 12px
+   fade. */
+html {
+  scroll-padding-bottom: 0.5rem;
+}
+[data-slot='scroll-area-viewport'] {
+  scroll-padding-block: 1.5rem;
+}
+:is(#nd-sidebar, #nd-sidebar-mobile) [data-id$='-viewport'] {
+  scroll-padding-block: 1rem;
+}
+
 /* The app shell's sticky top bar (h-16, app-shell.tsx): keyboard focus and hash jumps stop below it, never under it
    (WCAG 2.4.11), so app pages need no scroll-mt of their own. Sổ tay stacks its sticky group row under the bar
    (`data-sticky-groups`). Lesson pages (Fumadocs, no app shell) keep their own heading margins. */
