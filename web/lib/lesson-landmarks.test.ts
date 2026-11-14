@@ -55,4 +55,23 @@ describe("the lesson's overlays, closed as the focus leaves them", () => {
     );
     expect(base()).toMatch(/"aria-expanded": open,\s*"aria-controls": "nd-sidebar-mobile",/);
   });
+
+  it('only the page behind them closes them: the layout root, never a popup portalled outside it', () => {
+    // the layout root holds the top bar, the sidebar (the drawer below md) and the page with its popover
+    expect(read('node_modules/fumadocs-ui/dist/layouts/docs/slots/container.js')).toMatch(/id: "nd-docs-layout",/);
+    const body = read('node_modules/fumadocs-ui/dist/layouts/docs/client.js');
+    expect(body).toMatch(/jsxs\(slots\.container, \{[\s\S]*?jsx\(slots\.header, \{\}\),[\s\S]*?children,/);
+    expect(body).toMatch(/jsxs\(slots\.container, \{[\s\S]*?jsx\(slots\.sidebar\.root, \{[\s\S]*?children,/);
+    // the drawer's language chooser and handbook switcher open Fumadocs' PopoverContent, a Base UI portal on <body>;
+    // Cmd+K is a portalled dialog too
+    expect(read('node_modules/fumadocs-ui/dist/components/ui/popover.js')).toMatch(/jsx\(Popover\$1\.Portal, \{/);
+    const popover = /import \{[^}]*PopoverContent[^}]*\} from "[./]+(components\/)?ui\/popover\.js";/;
+    for (const file of ['layouts/shared/slots/language-select.js', 'components/sidebar/tabs/dropdown.js'])
+      expect(read(`node_modules/fumadocs-ui/dist/${file}`)).toMatch(popover);
+    expect(read('node_modules/@base-ui/react/floating-ui-react/components/FloatingPortal.mjs')).toMatch(
+      /\?\? parentPortalNode \?\? document\.body;/,
+    );
+    expect(read('node_modules/fumadocs-ui/dist/components/dialog/search.js')).toMatch(/jsx\(Dialog\.Portal, \{/);
+    expect(read('components/lazy-docs-layout.tsx')).toMatch(/!to\.closest\('#nd-docs-layout'\)\) return;/);
+  });
 });

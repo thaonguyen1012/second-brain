@@ -56,16 +56,20 @@ const drawerButton = () =>
 /**
  * Fumadocs' two overlays of a lesson, the table-of-contents popover (below xl) and the sidebar drawer (below md), are
  * not modal and stayed open when the keyboard focus left them: the next stops were the links under them, hidden
- * (WCAG 2.4.11, 2.4.3), and Escape did nothing. Each closes as the focus moves to an element outside it (the button
+ * (WCAG 2.4.11, 2.4.3), and Escape did nothing. Each closes as the focus moves on to the page behind it (the button
  * that opens the drawer excepted), and Escape inside one closes it and gives the focus to its button. Closed through
  * Fumadocs' own controls, so its state follows: the popover's trigger (checked open first: it toggles) and the
- * drawer's backdrop (it only closes). lib/lesson-landmarks.test.ts follows the markup this reads.
+ * drawer's backdrop (it only closes). The page behind is Fumadocs' layout root, `#nd-docs-layout`: the top bar, the
+ * sidebar or drawer, the popover and the lesson at every width. A popup, menu or dialog in a portal outside it, opened
+ * from an overlay (the drawer's language chooser and handbook switcher, Base UI popovers that take the focus) or over
+ * it (Cmd+K), leaves the overlay open, and the overlay gets the focus back when the popup closes (closing the drawer
+ * took its popup with it and dropped the focus to <body>). lib/lesson-landmarks.test.ts follows the markup this reads.
  */
 function useOverlaysCloseOnFocusOut() {
   useEffect(() => {
     const onFocusIn = (e: FocusEvent) => {
       const to = e.target;
-      if (!(to instanceof Element)) return;
+      if (!(to instanceof Element) || !to.closest('#nd-docs-layout')) return;
       const popover = openPopover();
       if (popover && !popover.contains(to)) popover.querySelector<HTMLElement>('[data-toc-popover-trigger]')?.click();
       const drawer = openDrawer();
