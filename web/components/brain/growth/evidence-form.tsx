@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import {
@@ -179,6 +179,16 @@ export function EvidenceForm({
   const prefix = evidence ? `ev-${evidence.id}` : 'ev-new';
   // the library row a new item or note evidence links (its API field)
   const refKey = kind === 'item' ? 'item' : 'libraryNote';
+  const formRef = useRef<HTMLFormElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  // Opened from a row menu's "Sửa", the form replaces the row and the menu's trigger with it: the closing menu then
+  // sends the focus to what held it before the sheet opened, behind the sheet, after the title took it. Take it back.
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      if (!formRef.current?.contains(document.activeElement)) titleRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const submit = async () => {
     if (kind === 'link' && (!title.trim() || !url.trim())) {
@@ -223,6 +233,7 @@ export function EvidenceForm({
 
   return (
     <form
+      ref={formRef}
       className={cn('flex flex-col gap-3', className ?? 'rounded-xl border p-3')}
       aria-label={evidence ? t('Sửa bằng chứng') : t('Thêm bằng chứng')}
       onSubmit={(e) => {
@@ -271,6 +282,7 @@ export function EvidenceForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           autoFocus
+          ref={titleRef}
         />
       </FormRow>
       {kind === 'link' && (

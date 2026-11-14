@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
 import { growthApi, type ApiSkillDetail, type ApiSkillEvidence } from '@/lib/api/growth';
 import { useApi } from '@/lib/api/use-api';
@@ -36,17 +36,30 @@ function EvidenceRow({
   const t = useT();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Escape, Hủy or a save ends the edit: the focus goes back to the row's menu, where the edit came from (or the
+  // removed form would leave it to the sheet). The same <li> holds the form and the row.
+  const row = useRef<HTMLLIElement>(null);
+  const refocus = useRef(false);
+  const endEdit = () => {
+    refocus.current = true;
+    setEditing(false);
+  };
+  useLayoutEffect(() => {
+    if (editing || !refocus.current) return;
+    refocus.current = false;
+    row.current?.querySelector<HTMLElement>('[aria-haspopup="menu"]')?.focus();
+  }, [editing]);
 
   if (editing)
     return (
-      <li>
+      <li ref={row}>
         <EvidenceForm
           className="p-3"
           skillId={skillId}
           evidence={evidence}
-          onCancel={() => setEditing(false)}
+          onCancel={endEdit}
           onSaved={() => {
-            setEditing(false);
+            endEdit();
             onChanged();
           }}
         />
@@ -55,7 +68,7 @@ function EvidenceRow({
 
   const isLink = evidence.kind === 'link' && /^https?:\/\//.test(evidence.url);
   return (
-    <li className="flex items-start gap-2 px-3 py-2">
+    <li ref={row} className="flex items-start gap-2 px-3 py-2">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="text-sm font-medium break-words">
           {isLink ? (
@@ -121,6 +134,19 @@ function SkillBody({
   const detail = useApi(`skill:${id}:${version}`, () => growthApi.getSkill(id));
   const [adding, setAdding] = useState(false);
   const skill = detail.data;
+  // Escape, Hủy or a save ends the new evidence form: the focus goes back to "Thêm bằng chứng", which comes back with
+  // it (or the removed form would leave it to the sheet)
+  const addButton = useRef<HTMLButtonElement>(null);
+  const refocusAdd = useRef(false);
+  const endAdd = () => {
+    refocusAdd.current = true;
+    setAdding(false);
+  };
+  useLayoutEffect(() => {
+    if (adding || !refocusAdd.current) return;
+    refocusAdd.current = false;
+    addButton.current?.focus();
+  }, [adding]);
 
   const changed = () => {
     detail.reload();
@@ -181,7 +207,7 @@ function SkillBody({
             {t('Sửa tên, tên khác, ghi chú')}
           </Button>
           {!adding && (
-            <Button size="sm" onClick={() => setAdding(true)}>
+            <Button ref={addButton} size="sm" onClick={() => setAdding(true)}>
               <Plus aria-hidden />
               {t('Thêm bằng chứng')}
             </Button>
@@ -191,9 +217,9 @@ function SkillBody({
           <EvidenceForm
             skillId={skill.id}
             evidence={null}
-            onCancel={() => setAdding(false)}
+            onCancel={endAdd}
             onSaved={() => {
-              setAdding(false);
+              endAdd();
               changed();
             }}
           />
