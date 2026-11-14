@@ -20,6 +20,9 @@ export function Mermaid({ chart }: { chart: string }) {
           startOnLoad: false,
           securityLevel: 'strict',
           theme: resolvedTheme === 'dark' ? 'dark' : 'default',
+          // mermaid's dark theme lays the edge labels ("yes", "no") in #ccc on #585858, 4.43:1 (WCAG 1.4.3): a step
+          // darker, #4b4b4b, is 5.4:1. A themeVariable outlasts the theme's own calculation; light needs none
+          ...(resolvedTheme === 'dark' && { themeVariables: { edgeLabelBackground: '#4b4b4b' } }),
           fontFamily: 'inherit',
         });
         const { svg } = await mermaid.render(`mermaid-${id}`, chart);
