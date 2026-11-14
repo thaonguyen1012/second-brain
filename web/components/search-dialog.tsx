@@ -540,6 +540,12 @@ export default function AppSearchDialog({
   // Fumadocs closes the dialog after every pick (onOpenChange(false) right after the item's onSelect): the shortcut
   // command changes a setting in place, so the dialog stays open on its new state.
   const stayOpen = useRef(false);
+  // The command was picked since the query last changed: it stays listed, even alone (placeCommand's `picked`)
+  const [picked, setPicked] = useState(false);
+  const onQueryChange = (value: string) => {
+    setPicked(false);
+    onSearchChange(value);
+  };
   // Every opening starts empty (the destinations list), never with the results of the last query.
   const onOpen = (next: boolean) => {
     if (!next && stayOpen.current) {
@@ -547,7 +553,7 @@ export default function AppSearchDialog({
       return;
     }
     if (!next) {
-      onSearchChange('');
+      onQueryChange('');
       setAnnounce('');
     }
     onOpenChange(next);
@@ -567,6 +573,7 @@ export default function AppSearchDialog({
         const on = !singleKeyShortcutsOn();
         setSingleKeyShortcuts(on);
         setAnnounce(on ? t('Đã bật phím tắt một phím') : t('Đã tắt phím tắt một phím'));
+        setPicked(true);
       },
     }),
     [t],
@@ -609,16 +616,17 @@ export default function AppSearchDialog({
   // uses or starts its words ("ta", "on", "phím tắt", "keyboard shortcuts": the handbook pages about shortcuts are
   // searched so) or asks for the state the switch is already in ("bật phím tắt" while on) gets it at the end, after the
   // results it asked for, and so do the destinations (nothing typed yet, or the first results still on their way);
-  // other queries leave it out once their results are there. Never the only row unless named: Fumadocs makes the
-  // first row the active one, so a weak command alone would be Enter's (and stay so as the brain group lands above
-  // it, ActiveAfter). At the end only the arrows or the pointer highlight it, a choice the query's late results keep
-  // and its next letter ends.
+  // other queries leave it out once their results are there. Never the only row unless named (or just picked, until
+  // the query changes, with no row highlighted): Fumadocs makes the first row the active one, so a weak command alone
+  // would be Enter's (and stay so as the brain group lands above it, ActiveAfter). At the end only the arrows or the
+  // pointer highlight it, a choice the query's late results keep and its next letter ends.
   const handbook: ListItems = collapsed?.list ?? defaultItems;
   const activeMemory = useRef<ActiveMemory>({ query: '', id: null, at: null, held: false });
   const results = useMemo(() => [...brainItems.map((b) => b.item), ...(handbook ?? [])], [brainItems, handbook]);
   const commandAt = placeCommand(matchCommand(query, commandTerms), {
     rows: results.length,
     destinations: !collapsed && brainItems.length === 0,
+    picked,
   });
   // A typed query whose own rows do not lead the list yet, so none is active and Enter waits for them: the
   // destinations stand in for its first results, or the rows on top are another query's until this one's land, the
@@ -651,6 +659,7 @@ export default function AppSearchDialog({
   return (
     <SearchDialog
       {...search}
+      onSearchChange={onQueryChange}
       isLoading={search.isLoading || brain.loading}
       {...props}
       open={open}

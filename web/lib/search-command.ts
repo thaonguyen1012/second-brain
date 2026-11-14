@@ -78,18 +78,23 @@ export type CommandPlace = 'first' | 'last' | null;
 /**
  * Where the command's row goes in the Cmd+K list, given how the query names it and the other rows: `rows` counts them
  * (second-brain hits, then the handbook results or the destinations), `destinations` says the list still shows the
- * destinations (nothing typed yet, or this query's first results on their way).
+ * destinations (nothing typed yet, or this query's first results on their way), `picked` that the command was picked
+ * since the query last changed (the dialog stays open on its new state).
  * - `first` (where Enter picks it) only for a query that names it, even alone.
- * - `last`, after the other rows, for a query that only starts its words, and at the end of the destinations.
+ * - `last`, after the other rows, for a query that only starts its words, at the end of the destinations, and after a
+ *   pick until the query changes, even alone: a query that named what the row did ("tắt phím tắt") asks for the state
+ *   the switch is now in, and the row just used stays in view with its new action (it vanished when nothing else was
+ *   listed, "Không tìm thấy kết quả" under "Đã tắt phím tắt một phím"); the dialog highlights no row then.
  * - `null`, left out, for any other query once its results are there, and whenever the command would be the list's only
  *   row without being named: the list's first row is the one Enter picks (Fumadocs makes it the active row), so a
  *   weak match alone would be Enter's again. The list is then empty and says "Không tìm thấy kết quả" (or "Đang tìm…").
  */
 export function placeCommand(
   match: CommandMatch,
-  { rows, destinations }: { rows: number; destinations: boolean },
+  { rows, destinations, picked = false }: { rows: number; destinations: boolean; picked?: boolean },
 ): CommandPlace {
   if (match === 'strong') return 'first';
+  if (picked) return 'last';
   if (rows === 0) return null;
   return match === 'weak' || destinations ? 'last' : null;
 }

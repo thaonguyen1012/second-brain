@@ -200,6 +200,30 @@ describe('where the command goes in the Cmd+K list', () => {
     }
   });
 
+  it('stays listed after a pick until the query changes, last once the query no longer names it, even alone', () => {
+    const picked = (terms: CommandTerms, q: string, rows: number) =>
+      placeCommand(matchCommand(q, terms), { rows, destinations: false, picked: true });
+    // "tắt phím tắt" turned them off: it now asks for the state they are in; the row just used stays, after the
+    // results or alone (the dialog highlights no row), instead of "Không tìm thấy kết quả" under its own status
+    for (const [terms, q] of [
+      [viOff, 'tắt phím tắt'],
+      [viOn, 'bật phím tắt'],
+      [enOff, 'turn off shortcuts'],
+      [enOn, 'turn on single-key shortcuts'],
+      [viOn, 'phím tắt'],
+      [enOff, 'shortcuts'],
+    ] as const)
+      for (const rows of [0, 1, 20]) expect(picked(terms, q, rows), `${q} ${rows}`).toBe('last');
+    // a query naming what the row does now keeps it first (the whole name, or the verb after a pick back)
+    for (const rows of [0, 20]) {
+      expect(picked(viOff, 'phím tắt một phím', rows)).toBe('first');
+      expect(picked(viOff, 'bật phím tắt', rows)).toBe('first');
+      expect(picked(enOn, 'single-key shortcuts', rows)).toBe('first');
+    }
+    // without a pick a weak match alone is still left out
+    expect(place(viOff, 'tắt phím tắt', 0)).toBeNull();
+  });
+
   it('follows the results of a search for keyboard shortcut pages, never taking Enter from them', () => {
     for (const q of ['phím tắt', 'phim tat', 'một phím'])
       for (const terms of vi) {
