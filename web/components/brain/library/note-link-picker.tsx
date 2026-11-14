@@ -386,8 +386,10 @@ export function LinkPickerList({ picker, selfNoteId }: { picker: LinkPicker; sel
   const waiting = !found || found.query !== query || found.state === 'loading';
   const failed = found?.query === query && found.state === 'error';
   return createPortal(
-    // the caret stays in the editor: a press on the list must not move the focus
-    <div className="note-popover-list" onMouseDown={(event) => event.preventDefault()}>
+    // the caret stays in the editor: a press on the list must not move the focus. Never a tab stop either (tabIndex):
+    // a long list would be one, as a scroller with no control in it, and Tab from the editor would aim at it, close the
+    // picker by leaving the editor and so drop the focus on <body>; the arrows already scroll it to the option
+    <div className="note-popover-list" tabIndex={-1} onMouseDown={(event) => event.preventDefault()}>
       {ordered.length === 0 ? (
         // no option yet: a status, read out, not an empty listbox
         <div className="note-popover-empty" role="status" aria-live="polite">
