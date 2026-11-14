@@ -129,6 +129,7 @@ export const week = {
   'Cho mục tiêu: {time}': 'For objectives: {time}',
   'Khác: {time}': 'Other: {time}',
   'Chưa có giờ nào tuần này': 'No time logged this week',
+  'Chưa có giờ nào trong tuần {range}': 'No time logged in the week of {range}',
   'chart::Bấm giờ': 'Start a timer',
   'Giờ cho mục tiêu và giờ khác theo ngày': 'Time for objectives and other time by day',
   'Cho mục tiêu': 'For objectives',

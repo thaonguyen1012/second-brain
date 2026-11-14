@@ -122,7 +122,7 @@ export function ReviewPanel({
             />
           )}
         </WeekSection>
-        <TimeChart days={review.days} time={review.time} />
+        <TimeChart start={start} days={review.days} time={review.time} />
         <BodyOfWork days={review.days} books={books} />
         {(withEvidence.length > 0 || stale.length > 0) && (
           <ReviewOpportunities opportunities={review.opportunities} onDecided={onOpportunity} />

@@ -6,7 +6,16 @@ import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { WeekSection } from './week-section';
-import { dayLabel, minutesLong, minutesShort, shortDate, weekdayShort } from './week-utils';
+import {
+  dayLabel,
+  minutesLong,
+  minutesShort,
+  mondayOf,
+  shortDate,
+  todayPrague,
+  weekdayShort,
+  weekRange,
+} from './week-utils';
 
 // Emphasis form (dataviz skill): the objective hours are the point (the data blue), the rest is context (gray).
 // Colours are the --chart-objective / --chart-other tokens in app/global.css (light and dark).
@@ -208,9 +217,12 @@ function DayColumns({ days }: { days: ApiDayWork[] }) {
 
 /**
  * The chart at zero hours: the real frame (the 1h line, the baseline, the T2...CN axis of DayColumns, shorter) with
- * no bars, and the message and the way to log time over it, so the section keeps its shape before any data.
+ * no bars, and the message and the way to log time over it, so the section keeps its shape before any data. The
+ * message names the week on screen (DESIGN.md §6, as Giờ's week summary): "tuần này" only for the current week
+ * (Europe/Prague; data loads in the browser only, so this never runs at build), else its dates as the heading shows
+ * them.
  */
-function EmptyFrame({ days }: { days: ApiDayWork[] }) {
+function EmptyFrame({ start, days }: { start: string; days: ApiDayWork[] }) {
   const t = useT();
   return (
     <div className="flex gap-2">
@@ -223,7 +235,14 @@ function EmptyFrame({ days }: { days: ApiDayWork[] }) {
           <div className="absolute inset-x-0 top-0 border-t border-border" aria-hidden />
           <div className="absolute inset-x-0 bottom-0 border-t border-border" aria-hidden />
           <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-2">
-            <p className="text-sm text-muted-foreground">{t('Chưa có giờ nào tuần này')}</p>
+            <p className="text-sm text-muted-foreground">
+              {start === mondayOf(todayPrague())
+                ? t('Chưa có giờ nào tuần này')
+                : t.rich('Chưa có giờ nào trong tuần {range}', {
+                    // The dates stay on one line: at 390 px the line broke after the range's en dash
+                    range: <span className="whitespace-nowrap">{weekRange(start)}</span>,
+                  })}
+            </p>
             <Button size="xs" variant="outline" render={<Link href="/cong-viec/gio/" />}>
               {t('Bấm giờ', null, 'chart')}
             </Button>
@@ -318,8 +337,11 @@ function ByObjective({ time }: { time: ApiWeekTime }) {
   );
 }
 
-/** "Giờ cho mục tiêu vs giờ khác" (DECISIONS 9.2), from GET /review: `time` and the per-day minutes. */
-export function TimeChart({ days, time }: { days: ApiDayWork[]; time: ApiWeekTime }) {
+/**
+ * "Giờ cho mục tiêu vs giờ khác" (DECISIONS 9.2), from GET /review: `time` and the per-day minutes of the week that
+ * starts on `start` (its Monday).
+ */
+export function TimeChart({ start, days, time }: { start: string; days: ApiDayWork[]; time: ApiWeekTime }) {
   const t = useT();
   const [table, setTable] = useState(false);
   const total = time.minutesForObjectives + time.minutesOther;
@@ -336,7 +358,7 @@ export function TimeChart({ days, time }: { days: ApiDayWork[]; time: ApiWeekTim
       }
     >
       {total === 0 ? (
-        <EmptyFrame days={days} />
+        <EmptyFrame start={start} days={days} />
       ) : (
         <>
           <WeekSplit time={time} />
