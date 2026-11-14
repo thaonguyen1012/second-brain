@@ -527,7 +527,10 @@ export default function AppSearchDialog({
     }),
     [t],
   );
-  const commandTerms = useMemo(() => shortcutsCommandTerms(t), [t]);
+  // What names the command follows what its row does now: "tắt phím tắt" while the shortcuts are on; while they are off
+  // it asks for what is already so, and the command goes after the results (lib/search-command.ts). After a pick the
+  // row moves with the new state and stays highlighted (ActiveAfter), its new action in view.
+  const commandTerms = useMemo(() => shortcutsCommandTerms(t, keys), [t, keys]);
 
   const defaultItems = useMemo<SearchItemType[] | null>(
     () =>
@@ -556,9 +559,10 @@ export default function AppSearchDialog({
   const handbookById = collapsed?.byId ?? NO_HANDBOOK;
 
   // Second-brain rows first: they are few (at most 5 per kind), the handbook list runs to 20 pages. The shortcut
-  // command (placeCommand, lib/search-command.ts) leads only for a query that names it ("tắt phím tắt", "single-key
-  // shortcuts"), so Enter flips the switch only then. A query that merely uses or starts its words ("ta", "on", "phím
-  // tắt", "keyboard shortcuts": the handbook pages about shortcuts are searched so) gets it at the end, after the
+  // command (placeCommand, lib/search-command.ts) leads only for a query that names what its row does now ("tắt phím
+  // tắt" while the shortcuts are on, "single-key shortcuts"), so Enter flips the switch only then. A query that merely
+  // uses or starts its words ("ta", "on", "phím tắt", "keyboard shortcuts": the handbook pages about shortcuts are
+  // searched so) or asks for the state the switch is already in ("bật phím tắt" while on) gets it at the end, after the
   // results it asked for, and so do the destinations (nothing typed yet, or the first results still on their way);
   // other queries leave it out once their results are there. Never the only row unless named: Fumadocs makes the
   // first row the active one, so a weak command alone would be Enter's (and stay so as the brain group lands above

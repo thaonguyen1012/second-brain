@@ -36,20 +36,29 @@ export type CommandMatch = 'strong' | 'weak' | 'none';
 export interface CommandTerms {
   /** Everything the command's row can say, in the UI language (both of its states): the words a query may use. */
   names: readonly string[];
-  /** Runs of whole words that name the command on their own, in the UI language ("phím tắt", "shortcut"). */
+  /**
+   * Runs of whole words that name the command on their own, in the UI language, for what its row does now ("phím tắt
+   * một phím", "tắt phím tắt" while the row turns the shortcuts off).
+   */
   phrases: readonly string[];
+  /**
+   * Runs of whole words that ask for what the row does not do now, the state the setting is already in ("bật" while
+   * the row turns the shortcuts off): a query holding one never names the command.
+   */
+  against?: readonly string[];
 }
 
 /**
- * - `strong`: the query holds one of `phrases` as whole words in a row, and each of its other words is one of the
- *   command's words, the last one also the start of one (it may still be being typed): "tat phim tat", "Tắt phím
- *   tắt ", "tắt phím tắt m", "single-key shortcuts", "turn off single-key shortcuts".
+ * - `strong`: the query holds one of `phrases` as whole words in a row, none of `against`, and each of its other words
+ *   is one of the command's words, the last one also the start of one (it may still be being typed): "tat phim tat",
+ *   "Tắt phím tắt ", "tắt phím tắt m", "single-key shortcuts", "turn off single-key shortcuts".
  * - `weak`: MIN_QUERY characters or more, and each typed word starts one of the command's words: "ta", "một", "bật
- *   phím", "phím tắt", "on", "turn off", "shortcuts", "keyboard shortcuts".
+ *   phím", "phím tắt", "on", "turn off", "shortcuts", "keyboard shortcuts", and a phrase with a run of `against`
+ *   ("bật phím tắt" while the row turns the shortcuts off).
  * - `none`: anything else ("mon", "phím tắt vscode").
  * Accents, case, hyphens and spaces do not count.
  */
-export function matchCommand(query: string, { names, phrases }: CommandTerms): CommandMatch {
+export function matchCommand(query: string, { names, phrases, against = [] }: CommandTerms): CommandMatch {
   if (query.trim().length < MIN_QUERY) return 'none';
   const typed = foldedWords(query);
   const runs = phrases.map(foldedWords).filter((run) => run.length > 0);
@@ -57,7 +66,9 @@ export function matchCommand(query: string, { names, phrases }: CommandTerms): C
   const starts = (word: string) => [...own].some((o) => o.startsWith(word));
   if (typed.length === 0 || !typed.every(starts)) return 'none';
   const whole = typed.every((word, i) => own.has(word) || i === typed.length - 1);
-  const named = runs.some((run) => typed.some((_, at) => run.every((word, k) => typed[at + k] === word)));
+  const holds = (run: string[]) =>
+    run.length > 0 && typed.some((_, at) => run.every((word, k) => typed[at + k] === word));
+  const named = runs.some(holds) && !against.map(foldedWords).some(holds);
   return whole && named ? 'strong' : 'weak';
 }
 
@@ -80,23 +91,47 @@ export function placeCommand(
   return match === 'weak' || destinations ? 'last' : null;
 }
 
+/** The words of one action of the command: its verb with "phím tắt" / "shortcuts", and what asks for that action. */
+interface ShortcutsVerb {
+  phrase: string;
+  asks: string;
+}
+
 /**
  * What names the single-key shortcuts command on its own, per UI language: its whole object ("phím tắt một phím",
- * "single-key shortcuts") or a verb with "phím tắt" / "shortcuts" ("tắt phím tắt", "turn off shortcuts"). Never a
- * verb alone ("tắt", "bật", "turn", "on" start too many searches), a lone "phím", "key" or "single", nor "phím tắt",
- * "một phím", "shortcuts", "keyboard shortcuts" or "single key": those are the words of the handbook pages about
- * keyboard shortcuts (89 pages say "phím tắt", 80 "keyboard shortcut", 21 "một phím", in "một phím tắt"; 9 say
- * "single key", of encryption), whose search keeps its results on top and Enter, the command after them.
+ * "single-key shortcuts"), in either state, or the verb of what its row does now with "phím tắt" / "shortcuts" ("tắt
+ * phím tắt", "turn off shortcuts" while they are on; "bật phím tắt", "turn on shortcuts" while off). The other verb
+ * asks for the state the switch is already in, so a query holding it (`asks`: "bật" or "on" while they are on, "tắt
+ * phím tắt" or "off" while off; "tắt" alone is also the second word of "phím tắt") keeps the command after the
+ * results: Enter never does the opposite of the words typed. Never a verb alone ("tắt", "bật", "turn", "on" start too
+ * many searches), a lone "phím", "key" or "single", nor "phím tắt", "một phím", "shortcuts", "keyboard shortcuts" or
+ * "single key": those are the words of the handbook pages about keyboard shortcuts (89 pages say "phím tắt", 80
+ * "keyboard shortcut", 21 "một phím", in "một phím tắt"; 9 say "single key", of encryption), whose search keeps its
+ * results on top and Enter, the command after them.
  */
-const SHORTCUTS_PHRASES: Record<Locale, readonly string[]> = {
-  vi: ['phím tắt một phím', 'tắt phím tắt', 'bật phím tắt'], // i18n-ignore: words a query is matched against
-  en: ['single key shortcut', 'single key shortcuts', 'turn off shortcuts', 'turn on shortcuts'],
+const SHORTCUTS_WORDS: Record<Locale, { object: readonly string[]; off: ShortcutsVerb; on: ShortcutsVerb }> = {
+  vi: {
+    object: ['phím tắt một phím'], // i18n-ignore: words a query is matched against
+    off: { phrase: 'tắt phím tắt', asks: 'tắt phím tắt' }, // i18n-ignore: words a query is matched against
+    on: { phrase: 'bật phím tắt', asks: 'bật' }, // i18n-ignore: words a query is matched against
+  },
+  en: {
+    object: ['single key shortcut', 'single key shortcuts'],
+    off: { phrase: 'turn off shortcuts', asks: 'off' },
+    on: { phrase: 'turn on shortcuts', asks: 'on' },
+  },
 };
 
-/** The single-key shortcuts command's terms in `t`'s language: its two names, the key legends' title, its phrases. */
-export function shortcutsCommandTerms(t: T): CommandTerms {
+/**
+ * The single-key shortcuts command's terms in `t`'s language while the shortcuts are `on` (its row turns them off) or
+ * off (it turns them on): its two names, the key legends' title, its phrases for that state and the other verb.
+ */
+export function shortcutsCommandTerms(t: T, on: boolean): CommandTerms {
+  const words = SHORTCUTS_WORDS[t.locale];
+  const [does, other] = on ? [words.off, words.on] : [words.on, words.off];
   return {
     names: [t('Tắt phím tắt một phím'), t('Bật phím tắt một phím'), t('Phím tắt')],
-    phrases: SHORTCUTS_PHRASES[t.locale],
+    phrases: [...words.object, does.phrase],
+    against: [other.asks],
   };
 }
