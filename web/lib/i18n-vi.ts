@@ -1,6 +1,7 @@
 // Fumadocs' own UI strings in Vietnamese (its default is English). The root layout passes them on Vietnamese pages
 // only (app/[lang]/layout.tsx); the app's own strings go through lib/i18n/ (README.md there). The language chooser's
-// name ('Choose a language(language switcher)(aria-label)') is set there in both languages, from the language it shows.
+// name ('Choose a language(language switcher)(aria-label)') is set there in both languages, from the language it shows,
+// and so is the search dialog's name ('Search(search dialog)': "Tìm mọi thứ", the app's name for its search).
 // i18n-ignore-file: this file is a translation itself
 export const viTranslations: Record<string, string> = {
   'Back to Home(404 not found page)': 'Về trang chủ',
@@ -36,7 +37,6 @@ export const viTranslations: Record<string, string> = {
   'Search failed(search dialog)': 'Tìm kiếm lỗi',
   'Search failed, showing results for {query}(search dialog)':
     'Tìm kiếm lỗi, đang hiện kết quả cho {query}',
-  'Search(search dialog)': 'Tìm trong các sổ tay',
   'Search(search trigger)': 'Tìm kiếm',
   'Show Sidebar(sidebar)': 'Hiện thanh bên',
   'System(theme switcher)(aria-label)': 'Theo hệ thống',

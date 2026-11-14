@@ -451,7 +451,14 @@ function ResultRow({
         <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="truncate text-sm font-medium">{text(title)}</div>
-          {meta && <div className="truncate text-xs text-muted-foreground">{text(meta)}</div>}
+          {/* The option's name runs title and meta together: a comma parts them for a screen reader ("Tắt phím tắt
+              một phím, Đang bật trong trình duyệt này") */}
+          {meta && (
+            <div className="truncate text-xs text-muted-foreground">
+              <span className="sr-only">, </span>
+              {text(meta)}
+            </div>
+          )}
           {excerpt && (
             <div className="line-clamp-1 text-[13px] text-muted-foreground">{text(clipToMatch(excerpt, query))}</div>
           )}

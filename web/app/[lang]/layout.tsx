@@ -60,6 +60,9 @@ export default async function Layout({ children, params }: LayoutProps<'/[lang]'
             'Choose a language(language switcher)(aria-label)': t('{language}, chọn ngôn ngữ', {
               language: localeNames[locale],
             }),
+            // Cmd+K's dialog and its list are named as the app names the search (the top bar's "Tìm mọi thứ"): they
+            // hold the destinations, the second brain and a setting, not only the handbooks
+            'Search(search dialog)': t('Tìm mọi thứ'),
           }}
         >
           {children}
