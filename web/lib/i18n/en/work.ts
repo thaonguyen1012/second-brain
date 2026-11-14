@@ -35,6 +35,7 @@ export const work = {
   'Đang tải tổng kết tuần': 'Loading the week summary',
   'tổng trong tuần': 'in total for the week',
   'Chưa có giờ nào trong tuần này.': 'No time logged in this week yet.',
+  'Chưa có giờ nào trong tuần {range}.': 'No time logged in the week of {range}.',
   'Theo dự án': 'By project',
   'Xem mục giờ của {title} trong tuần này': 'See entries for {title} in this week',
   'Xem mục giờ của {title} trong tuần {range}': 'See entries for {title} in the week of {range}',

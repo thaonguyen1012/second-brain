@@ -37,8 +37,9 @@ export function WeekSummary({
   const data = summary.data;
   const rows = [...(data?.projects ?? [])].sort((a, b) => b.minutesTotal - a.minutesTotal);
   const scale = rows[0]?.minutesTotal ?? 0;
-  // The week "Xem mục" filters to, for its name: the dates as the heading shows them, "tuần này" only for the current
-  // week (Europe/Prague, as the server counts it; data loads in the browser only, so this never runs at build)
+  // The week on screen, as the empty line and the "Xem mục" names say it: the dates as the heading shows them, "tuần
+  // này" only for the current week (Europe/Prague, as the server counts it; data loads in the browser only, so this
+  // never runs at build)
   const otherWeek = data && data.weekStart !== mondayOf(todayPrague()) ? formatWeekRange(data.weekStart, t) : null;
 
   return (
@@ -99,7 +100,9 @@ export function WeekSummary({
           {data.minutesTotal === 0 ? (
             <div className="flex flex-col gap-1.5">
               <p className="flex min-h-7 items-center text-sm text-muted-foreground">
-                {t('Chưa có giờ nào trong tuần này.')}
+                {otherWeek
+                  ? t('Chưa có giờ nào trong tuần {range}.', { range: otherWeek })
+                  : t('Chưa có giờ nào trong tuần này.')}
               </p>
               <div className="flex items-center gap-2" aria-hidden>
                 <span className="h-3.5 min-w-0 flex-1 rounded-sm bg-muted" />
