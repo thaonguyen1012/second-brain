@@ -1,5 +1,6 @@
 'use client';
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import Link from 'next/link';
 import { ExternalLink, Inbox, Lightbulb, Loader2, NotebookPen, Plus, Trash2 } from 'lucide-react';
 import {
@@ -29,7 +30,7 @@ import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiErrorState, ApiStaleAlert, LoadingCards, describeApiError } from './api-state';
 import { BrainCard } from './brain-card';
-import { ConfirmDelete } from './confirm-delete';
+import { ConfirmDelete, focusCandidates, focusTarget } from './confirm-delete';
 import { EmptyPanel } from './empty-panel';
 import { refreshInboxCount, useInboxCount } from './inbox-count';
 import { useInvalidFields } from './invalid-fields';
@@ -39,7 +40,7 @@ import { tabCountClass } from './library/library-tabs';
 import { NoteDialog, type NoteDraft } from './library/note-dialog';
 import { useItemIndex } from './library/use-item-index';
 import { OpportunityDialog } from './opportunity-dialog';
-import { MenuSingleKey, RowMenu } from './row-menu';
+import { MenuSingleKey, RowMenu, lastRowMenuTrigger } from './row-menu';
 import { SaveKeys } from './save-keys';
 
 const PAGE = 100;
@@ -414,6 +415,37 @@ export function InboxPage() {
     setLinkedId(null);
   }, []);
   const [pickFor, setPickFor] = useState<ApiInboxEntry | null>(null);
+  // The opportunity picker archives the entry it was opened for: what held the focus as it opened (a row menu's item:
+  // that menu's trigger), and, after a pick, the card's neighbours (attach), for the focus once it has closed
+  const pickOrigin = useRef<HTMLElement | null>(null);
+  const afterPick = useRef<HTMLElement[] | null>(null);
+  useLayoutEffect(() => {
+    if (pickFor === null) return;
+    const active = document.activeElement;
+    pickOrigin.current =
+      !(active instanceof HTMLElement) || active === document.body
+        ? null
+        : active.closest('[role="menu"]')
+          ? lastRowMenuTrigger()
+          : active;
+  }, [pickFor]);
+  // Base UI gives the focus back to what opened the picker; when a pick took that away with its card, the card's
+  // neighbour takes it (after React's commit), as after a delete
+  const pickFinalFocus = () => {
+    const near = afterPick.current;
+    afterPick.current = null;
+    if (!near || pickOrigin.current?.isConnected) return true;
+    queueMicrotask(() => {
+      const active = document.activeElement;
+      const placed =
+        active instanceof HTMLElement &&
+        active !== document.body &&
+        active.isConnected &&
+        !active.closest('[role="dialog"]');
+      if (!placed) focusTarget(near)?.focus();
+    });
+    return false;
+  };
   const [itemFor, setItemFor] = useState<ApiInboxEntry | null>(null);
   const [noteFor, setNoteFor] = useState<ApiInboxEntry | null>(null);
   const [deleteFor, setDeleteFor] = useState<ApiInboxEntry | null>(null);
@@ -542,8 +574,20 @@ export function InboxPage() {
     [putItem, replace, reload, t, keys],
   );
 
+  /**
+   * Takes an entry's card out of the list. A focus inside it (its own "Đọc sau", "Lưu trữ" or "Về inbox", a key
+   * pressed on one of its controls) goes to the next card's first control, else the previous one's, else the page's
+   * heading, never to <body> (WCAG 2.4.3; DESIGN.md §6 "Focus after a delete", the same neighbours).
+   */
   const remove = useCallback(
-    (id: number) => mutate((d) => d && { ...d, results: d.results.filter((e) => e.id !== id) }),
+    (id: number) => {
+      const card = document.getElementById(`inbox-entry-${id}`);
+      const near = card?.contains(document.activeElement) ? focusCandidates(card) : null;
+      const drop = () => mutate((d) => d && { ...d, results: d.results.filter((e) => e.id !== id) });
+      if (!near) return drop();
+      flushSync(drop);
+      focusTarget(near)?.focus();
+    },
     [mutate],
   );
 
@@ -566,6 +610,9 @@ export function InboxPage() {
 
   const attach = useCallback(
     async (entry: ApiInboxEntry, opp: ApiOpportunity, stance: ApiStance) => {
+      // The card leaves as the picker closes, and the control that opened the picker may go with it: its neighbours,
+      // read while it is still there, for the picker's finalFocus
+      afterPick.current = focusCandidates(document.getElementById(`inbox-entry-${entry.id}`));
       setPickFor(null);
       remove(entry.id);
       setHandled(true);
@@ -764,6 +811,7 @@ export function InboxPage() {
 
       <OpportunityDialog
         open={pickFor !== null}
+        finalFocus={pickFinalFocus}
         onOpenChange={(o) => !o && setPickFor(null)}
         entryTitle={pickFor ? titleOf(pickFor, t) : ''}
         onPick={(opp, stance) => pickFor && void attach(pickFor, opp, stance)}

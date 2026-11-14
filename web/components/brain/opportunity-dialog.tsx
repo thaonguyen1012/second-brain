@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, type ComponentProps } from 'react';
 import Link from 'next/link';
 import type { ApiOpportunity, ApiStance } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
@@ -30,11 +30,14 @@ export function OpportunityDialog({
   onOpenChange,
   entryTitle,
   onPick,
+  finalFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   entryTitle: string;
   onPick: (opportunity: ApiOpportunity, stance: ApiStance) => void;
+  /** Where the focus goes as it closes (Base UI's default: what opened it), for a pick that takes the opener away. */
+  finalFocus?: ComponentProps<typeof DialogPopup>['finalFocus'];
 }) {
   const t = useT();
   const keys = useSingleKeyShortcuts();
@@ -57,7 +60,7 @@ export function OpportunityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }}>
+      <DialogPopup closeProps={{ 'aria-label': t('Đóng') }} finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle className="pe-6">{t('Bằng chứng cho cơ hội nào?')}</DialogTitle>
           <DialogDescription className="line-clamp-2">{entryTitle}</DialogDescription>
