@@ -2,13 +2,15 @@
 // Cmd+K "find everything" (DECISIONS 4.4). Fumadocs' default dialog (handbooks, /api/search, SQLite FTS) plus a
 // second-brain group from the `?q=` filters of the Django lists. Lazy-loaded by components/provider.tsx, so none
 // of this is in the first-load JS. The brain group only loads while the dialog is open and a query is typed;
-// without Django it stays silent and the handbook results work as before.
+// without Django it stays silent and the handbook results work as before. One command sits in the list too: single-key
+// shortcuts off or on (lib/single-key-shortcuts.ts), so every page and phones reach that switch.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BookOpen,
   BriefcaseBusiness,
   Inbox,
+  Keyboard,
   Lightbulb,
   Library,
   Newspaper,
@@ -44,6 +46,7 @@ import { formatDay, freshness, monthLabel, outcomeOf } from '@/components/brain/
 import { useLocale, useT } from '@/lib/i18n/client';
 import { contentText } from '@/lib/i18n/content-lang';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
+import { setSingleKeyShortcuts, singleKeyShortcutsOn, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 
 /** Shorter queries match too much of everything; the handbook search still runs for them. */
 const MIN_QUERY = 2;
@@ -93,6 +96,29 @@ function excerpt(text: string, q: string): string {
 
 /** Accent- and case-free form of one character, so "khach" finds "khách" (đ -> d). */
 const fold = (c: string) => c.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase().charAt(0) || c;
+
+/** The words of a text, accent- and case-free ("Phím tắt một phím" -> phim, tat, mot, phim). */
+const foldedWords = (s: string) =>
+  Array.from(s)
+    .map(fold)
+    .join('')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+
+/** Id of the list's one command: single-key shortcuts off or on. */
+const SHORTCUTS_COMMAND = 'command:single-key-shortcuts';
+
+/**
+ * Whether a typed query asks for the command named by `words`: MIN_QUERY characters or more, and every typed word
+ * starts one of its words, accents and case aside ("phim tat", "tắt", "shortcut"). Both of its names count, so the
+ * command never leaves the list as it flips.
+ */
+function commandMatches(query: string, words: string): boolean {
+  if (query.trim().length < MIN_QUERY) return false;
+  const own = foldedWords(words);
+  const typed = foldedWords(query);
+  return typed.length > 0 && typed.every((w) => own.some((o) => o.startsWith(w)));
+}
 
 /**
  * The excerpt row shows one line, and the FTS snippet starts several words before the match: at 390 px the match
@@ -435,11 +461,47 @@ export default function AppSearchDialog({
   const search = useFetchSearch({ locale });
   const brain = useBrainSearch(open ? search.search : '', t);
   const { onSearchChange } = search;
+  const keys = useSingleKeyShortcuts();
+  // What the shortcut command just did, read out politely (the row itself shows the new state)
+  const [announce, setAnnounce] = useState('');
+  // Fumadocs closes the dialog after every pick (onOpenChange(false) right after the item's onSelect): the shortcut
+  // command changes a setting in place, so the dialog stays open on its new state.
+  const stayOpen = useRef(false);
   // Every opening starts empty (the destinations list), never with the results of the last query.
   const onOpen = (next: boolean) => {
-    if (!next) onSearchChange('');
+    if (!next && stayOpen.current) {
+      stayOpen.current = false;
+      return;
+    }
+    if (!next) {
+      onSearchChange('');
+      setAnnounce('');
+    }
     onOpenChange(next);
   };
+
+  // The command keeps one item, so the list does not jump back to its first row when the command flips.
+  const shortcutsCommand = useMemo<SearchItemType>(
+    () => ({
+      id: SHORTCUTS_COMMAND,
+      type: 'action',
+      node: null,
+      onSelect: () => {
+        stayOpen.current = true;
+        queueMicrotask(() => {
+          stayOpen.current = false;
+        });
+        const on = !singleKeyShortcutsOn();
+        setSingleKeyShortcuts(on);
+        setAnnounce(on ? t('Đã bật phím tắt một phím') : t('Đã tắt phím tắt một phím'));
+      },
+    }),
+    [t],
+  );
+  const commandWords = useMemo(
+    () => [t('Tắt phím tắt một phím'), t('Bật phím tắt một phím'), t('Phím tắt')].join(' '),
+    [t],
+  );
 
   const defaultItems = useMemo<SearchItemType[] | null>(
     () =>
@@ -467,14 +529,20 @@ export default function AppSearchDialog({
   const collapsed = useMemo(() => (search.data ? collapseHandbook(search.data.items, t) : null), [search.data, t]);
   const handbookById = collapsed?.byId ?? NO_HANDBOOK;
 
-  // Second-brain rows first: they are few (at most 5 per kind), the handbook list runs to 20 pages.
+  // Second-brain rows first: they are few (at most 5 per kind), the handbook list runs to 20 pages. The shortcut
+  // command goes before them when the query names it, and ends the destinations list (nothing typed yet, or the
+  // first results still on their way).
   const handbook: ListItems = collapsed?.list ?? defaultItems;
   const activeMemory = useRef<ActiveMemory>({ id: null, handbook: null, brainOnly: false });
-  const items = useMemo<ListItems>(
-    () => (brainItems.length === 0 ? handbook : [...brainItems.map((b) => b.item), ...(handbook ?? [])]),
-    [brainItems, handbook],
-  );
-  const firstHandbook = brainItems.length > 0 && collapsed ? handbook?.[0]?.id : undefined;
+  const commandFirst = commandMatches(search.search, commandWords);
+  const commandLast = !commandFirst && !collapsed && brainItems.length === 0;
+  const items = useMemo<ListItems>(() => {
+    const results = [...brainItems.map((b) => b.item), ...(handbook ?? [])];
+    if (commandFirst) return [shortcutsCommand, ...results];
+    if (commandLast) return [...results, shortcutsCommand];
+    return brainItems.length === 0 ? handbook : results;
+  }, [brainItems, handbook, commandFirst, commandLast, shortcutsCommand]);
+  const firstHandbook = (brainItems.length > 0 || commandFirst) && collapsed ? handbook?.[0]?.id : undefined;
   const firstLink = !collapsed && brainItems.length === 0 ? defaultItems?.[0]?.id : undefined;
   const firstBrain = brainItems[0]?.hit.id;
 
@@ -500,6 +568,9 @@ export default function AppSearchDialog({
           <SearchDialogInput aria-label={t('Tìm mọi thứ')} placeholder={t('Tìm sổ tay, ghi chú, inbox…')} />
           {/* The button shows "ESC": its name starts with it (WCAG 2.5.3), then says what it does */}
           <SearchDialogClose aria-label={t('ESC, đóng tìm kiếm')} className="max-sm:hidden pointer-coarse:hidden" />
+          <p role="status" className="sr-only">
+            {announce}
+          </p>
         </SearchDialogHeader>
         <ActiveBefore items={items} handbook={handbook} memoryRef={activeMemory} />
         <SearchDialogList
@@ -514,6 +585,22 @@ export default function AppSearchDialog({
             </div>
           )}
           Item={({ item, table, onClick }) => {
+            // The shortcut command: what a pick does, and the state it is in now (a new key when it flips, so the
+            // query's highlight is drawn again on the new words)
+            if (!table && item.id === SHORTCUTS_COMMAND)
+              return (
+                <>
+                  <GroupLabel>{t('Cài đặt')}</GroupLabel>
+                  <ResultRow
+                    key={keys ? 'on' : 'off'}
+                    item={item}
+                    onClick={onClick}
+                    icon={Keyboard}
+                    title={keys ? t('Tắt phím tắt một phím') : t('Bật phím tắt một phím')}
+                    meta={keys ? t('Đang bật trong trình duyệt này') : t('Đang tắt trong trình duyệt này')}
+                  />
+                </>
+              );
             // Rows of a table and anything unknown go through Fumadocs' own renderer
             const hit = table ? undefined : byId.get(item.id);
             const page = table || hit ? undefined : handbookById.get(item.id);

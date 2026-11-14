@@ -116,6 +116,14 @@ export const shell = {
   'Đi đến': 'Go to',
   // the close button shows "ESC": its name starts with it
   'ESC, đóng tìm kiếm': 'ESC, close search',
+  // the dialog's command for the single-key shortcut switch (lib/single-key-shortcuts.ts)
+  'Cài đặt': 'Settings',
+  'Tắt phím tắt một phím': 'Turn off single-key shortcuts',
+  'Bật phím tắt một phím': 'Turn on single-key shortcuts',
+  'Đang bật trong trình duyệt này': 'On in this browser',
+  'Đang tắt trong trình duyệt này': 'Off in this browser',
+  'Đã bật phím tắt một phím': 'Single-key shortcuts turned on',
+  'Đã tắt phím tắt một phím': 'Single-key shortcuts turned off',
 
   // Guide frames (components/stageshow/lazy.tsx, guides/guide-frame.tsx): in the page bundle, not the guides chunk
   'thu thập và xử lý bằng phím': 'capture and triage by keyboard',
