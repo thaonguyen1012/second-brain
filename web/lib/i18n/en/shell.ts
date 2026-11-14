@@ -114,6 +114,8 @@ export const shell = {
   'Không tìm thấy kết quả': 'No results',
   'Bộ não thứ hai': 'Second brain',
   'Đi đến': 'Go to',
+  // the close button shows "ESC": its name starts with it
+  'ESC, đóng tìm kiếm': 'ESC, close search',
 
   // Guide frames (components/stageshow/lazy.tsx, guides/guide-frame.tsx): in the page bundle, not the guides chunk
   'thu thập và xử lý bằng phím': 'capture and triage by keyboard',

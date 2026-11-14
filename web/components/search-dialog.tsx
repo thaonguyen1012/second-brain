@@ -498,7 +498,8 @@ export default function AppSearchDialog({
         <SearchDialogHeader>
           <SearchDialogIcon />
           <SearchDialogInput aria-label={t('Tìm mọi thứ')} placeholder={t('Tìm sổ tay, ghi chú, inbox…')} />
-          <SearchDialogClose className="max-sm:hidden pointer-coarse:hidden" />
+          {/* The button shows "ESC": its name starts with it (WCAG 2.5.3), then says what it does */}
+          <SearchDialogClose aria-label={t('ESC, đóng tìm kiếm')} className="max-sm:hidden pointer-coarse:hidden" />
         </SearchDialogHeader>
         <ActiveBefore items={items} handbook={handbook} memoryRef={activeMemory} />
         <SearchDialogList
