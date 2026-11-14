@@ -335,55 +335,68 @@ function collapseHandbook(items: SearchResultItem[], t: T): { list: ListItems; b
 }
 
 interface ActiveMemory {
-  /** Active row just before `items` changed. */
+  /** The query the list was last set for. */
+  query: string;
+  /** Active row just before `items` or the query changed (before Fumadocs' reset). */
   id: string | null;
-  /** The handbook list `items` was built from, to tell "brain group arrived" from "new query". */
-  handbook: ListItems;
-  /** Whether the shortcut command led the list (a query that names it). */
-  commandFirst: boolean;
-  /** True when only the brain group (or the command at the end) changed since the previous `items`. */
-  brainOnly: boolean;
 }
 
 /**
- * Fumadocs' SearchDialogList makes the first row active whenever `items` changes. The brain group lands after
- * the handbook results and is put on top, so without help the highlighted row would jump to the first brain
- * row (and Enter would open something else). ActiveBefore, rendered before the list, notes the active row in
- * its layout effect, which runs before the list's; ActiveAfter, rendered after it, puts it back when only the
- * brain group changed. A new query (new handbook list) still starts at the top, and so does a query that comes to
- * name the shortcut command or stops naming it: Enter then picks the command as it takes the top, and never picks it
- * once it went back to the end of the list.
+ * Which row is active, the one Enter picks (WCAG 3.2.2, 2.4.3). Fumadocs' SearchDialogList makes the first row active
+ * whenever `items` changes, and leaves it alone while only the query changes. For one query the list changes several
+ * times, a few hundred ms apart (the second-brain group lands on top, then the handbook results), and each change
+ * put the highlight back on the first row, also away from a row the user had just arrowed to: Enter then opened
+ * another row, or flipped the shortcut command that leads a query naming it. So:
+ * - the same query: the highlighted row stays highlighted while it is still listed, whatever landed around it; once
+ *   it is gone, the first row, but never the shortcut command the user had moved off;
+ * - a new query text: the first row, also when its results are not back yet (Enter never picks a row arrowed to for
+ *   an earlier query, like the command at the end of a weak one), and none while the destinations still stand in for
+ *   its first results (`waiting`), so Enter waits for them instead of opening "Hôm nay". A query that names the
+ *   command has it first, active at once.
+ * ActiveBefore, rendered before the list, notes the active row in its layout effect, which runs before the list's;
+ * ActiveAfter, rendered after it, sets the row. A dialog opened again starts at the top.
  */
 function ActiveBefore({
   items,
-  handbook,
-  commandFirst,
+  query,
   memoryRef,
 }: {
   items: ListItems;
-  handbook: ListItems;
-  commandFirst: boolean;
+  query: string;
   memoryRef: RefObject<ActiveMemory>;
 }) {
   const { getActive } = useSearch();
+  const mounted = useRef(false);
   useLayoutEffect(() => {
-    const previous = memoryRef.current;
-    memoryRef.current = {
-      id: getActive(),
-      handbook,
-      commandFirst,
-      brainOnly: previous.handbook === handbook && previous.commandFirst === commandFirst,
-    };
-  }, [items, handbook, commandFirst, getActive, memoryRef]);
+    // on mount the store still holds the active row of the last time the dialog was open
+    memoryRef.current.id = mounted.current ? getActive() : null;
+    mounted.current = true;
+  }, [items, query, getActive, memoryRef]);
   return null;
 }
 
-function ActiveAfter({ items, memoryRef }: { items: ListItems; memoryRef: RefObject<ActiveMemory> }) {
+function ActiveAfter({
+  items,
+  query,
+  waiting,
+  memoryRef,
+}: {
+  items: ListItems;
+  query: string;
+  waiting: boolean;
+  memoryRef: RefObject<ActiveMemory>;
+}) {
   const { setActive } = useSearch();
   useLayoutEffect(() => {
-    const { id, brainOnly } = memoryRef.current;
-    if (brainOnly && id && items?.some((i) => i.id === id)) setActive(id);
-  }, [items, setActive, memoryRef]);
+    const { id, query: before } = memoryRef.current;
+    memoryRef.current = { query, id: null };
+    if (query !== before) setActive(waiting ? null : (items?.[0]?.id ?? null));
+    else if (id && items?.some((i) => i.id === id)) setActive(id);
+    // The row the user moved to left the list (a destination, as the results land): the first row again, as Fumadocs
+    // does, but never the shortcut command they had moved off, which leads a query naming it (Enter would flip it)
+    else if (id && id !== SHORTCUTS_COMMAND && items?.[0]?.id === SHORTCUTS_COMMAND)
+      setActive(items.find((i) => i.id !== SHORTCUTS_COMMAND)?.id ?? null);
+  }, [items, query, waiting, setActive, memoryRef]);
   return null;
 }
 
@@ -539,15 +552,17 @@ export default function AppSearchDialog({
   // results it asked for, and so do the destinations (nothing typed yet, or the first results still on their way);
   // other queries leave it out once their results are there. Never the only row unless named: Fumadocs makes the
   // first row the active one, so a weak command alone would be Enter's (and stay so as the brain group lands above
-  // it, ActiveAfter). At the end only the arrows or the pointer highlight it, a choice a late brain group keeps.
+  // it, ActiveAfter). At the end only the arrows or the pointer highlight it, a choice the query's late results keep
+  // and its next letter ends.
   const handbook: ListItems = collapsed?.list ?? defaultItems;
-  const activeMemory = useRef<ActiveMemory>({ id: null, handbook: null, commandFirst: false, brainOnly: false });
+  const activeMemory = useRef<ActiveMemory>({ query: '', id: null });
   const results = useMemo(() => [...brainItems.map((b) => b.item), ...(handbook ?? [])], [brainItems, handbook]);
   const commandAt = placeCommand(matchCommand(query, commandTerms), {
     rows: results.length,
     destinations: !collapsed && brainItems.length === 0,
   });
-  const commandFirst = commandAt === 'first';
+  // A typed query whose first results are not back: the destinations stand in for them, none of them active
+  const waiting = query.trim() !== '' && !collapsed && brainItems.length === 0 && commandAt !== 'first';
   const items = useMemo<ListItems>(() => {
     if (commandAt === 'first') return [shortcutsCommand, ...results];
     if (commandAt === 'last') return [...results, shortcutsCommand];
@@ -587,7 +602,7 @@ export default function AppSearchDialog({
             {announce}
           </p>
         </SearchDialogHeader>
-        <ActiveBefore items={items} handbook={handbook} commandFirst={commandFirst} memoryRef={activeMemory} />
+        <ActiveBefore items={items} query={query} memoryRef={activeMemory} />
         <SearchDialogList
           items={items}
           // Matches read as emphasis, not as links (Fumadocs' default is blue and underlined). The results list is a tab
@@ -656,7 +671,7 @@ export default function AppSearchDialog({
             );
           }}
         />
-        <ActiveAfter items={items} memoryRef={activeMemory} />
+        <ActiveAfter items={items} query={query} waiting={waiting} memoryRef={activeMemory} />
         {brainNote && (
           <SearchDialogFooter>
             <p role="status" className="text-xs text-muted-foreground">
