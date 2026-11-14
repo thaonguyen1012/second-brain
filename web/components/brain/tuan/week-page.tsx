@@ -363,7 +363,11 @@ export function WeekPage({ books }: { books: BookIndex }) {
           </EmptyState>
         ) : (
           <>
-            <TabsPanel value="plan" keepMounted>
+            {/* No tab stop on a panel (DESIGN.md §6 "View switches"): Base UI gives the open one tabindex="0", a stop
+                without a ring, and any tabindex (-1 too) makes Chrome focus the panel on a click in its text, so the
+                next Tab goes back to its top. Base UI lays our props over its own as Object.assign does, so an
+                undefined tabIndex leaves no tabindex at all. */}
+            <TabsPanel value="plan" keepMounted tabIndex={undefined}>
               <PlanPanel
                 key={start}
                 start={start}
@@ -381,7 +385,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
                 onCarried={onCarried}
               />
             </TabsPanel>
-            <TabsPanel value="review" keepMounted>
+            <TabsPanel value="review" keepMounted tabIndex={undefined}>
               {data.review && checks ? (
                 <ReviewPanel
                   key={start}
