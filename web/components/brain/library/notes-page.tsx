@@ -21,7 +21,7 @@ import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
+import { MenuItem, MenuSeparator } from '@/components/ui/menu';
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
@@ -29,7 +29,7 @@ import { ConfirmDelete } from '../confirm-delete';
 import { EmptyPanel, useToolbarState } from '../empty-panel';
 import { KeyLegend } from '../key-legend';
 import { PAGE_WIDTH } from '../layout';
-import { RowMenu } from '../row-menu';
+import { MenuSingleKey, RowMenu } from '../row-menu';
 import { RowPicture } from './item-image';
 import { NewNoteCopyHints } from './save-status';
 import type { ItemLabel } from './item-picker';
@@ -169,13 +169,13 @@ function NoteRow({
         <MenuItem onClick={onEdit}>
           <Pencil aria-hidden />
           {t('Sửa')}
-          <MenuShortcut>E</MenuShortcut>
+          <MenuSingleKey>E</MenuSingleKey>
         </MenuItem>
         <MenuSeparator />
         <MenuItem variant="destructive" onClick={onDelete}>
           <Trash2 aria-hidden />
           {t('Xóa')}
-          <MenuShortcut>Del</MenuShortcut>
+          <MenuSingleKey>Del</MenuSingleKey>
         </MenuItem>
       </RowMenu>
     </li>

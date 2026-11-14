@@ -31,6 +31,12 @@ export const inbox = {
   'Về inbox, {key}: "{title}"': 'Back to inbox, {key}: "{title}"',
   'Mở, {key}: "{title}"': 'Open, {key}: "{title}"',
   'Ghi chú, {key}: "{title}"': 'Note, {key}: "{title}"',
+  // the same while single-key shortcuts are off: the button shows no key, so its name says none
+  'Đọc sau "{title}"': 'Read later: "{title}"',
+  'Lưu trữ "{title}"': 'Archive "{title}"',
+  'Về inbox "{title}"': 'Back to inbox: "{title}"',
+  'Mở "{title}"': 'Open "{title}"',
+  'Ghi chú về "{title}"': 'Note on "{title}"',
 
   // Keyboard legend (components/brain/inbox-page.tsx)
   'Phím tắt của Inbox': 'Inbox keyboard shortcuts',
@@ -51,6 +57,9 @@ export const inbox = {
   'Chưa lưu được ảnh: {error}.': 'The image was not saved: {error}.',
   'Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture} Nhấn A để lưu trữ mục.':
     'Added "{title}" to the library and linked the inbox entry.{picture} Press A to archive the entry.',
+  // the same with single-key shortcuts off: A does nothing then (the note's notice is library's 'Đã tạo ghi chú …')
+  'Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture}':
+    'Added "{title}" to the library and linked the inbox entry.{picture}',
   'Đã thêm "{title}" nhưng chưa liên kết được: {reason}.{picture}':
     'Added "{title}" but could not link it: {reason}.{picture}',
   'Đã thêm làm bằng chứng cho "{title}", mục đã lưu trữ': 'Added as evidence for "{title}"; entry archived',

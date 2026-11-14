@@ -20,7 +20,7 @@ import { Radio, RadioGroup } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
-import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
+import { singleKeyShortcut, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { describeApiError } from '../api-state';
 import { useInvalidFields } from '../invalid-fields';
 import { fieldErrors, formatDay, outcomeOf, today } from './labels';
@@ -183,11 +183,13 @@ const keyed: [string, ApiOutcome][] = [
 ];
 
 /**
- * Re-score: one key per outcome (1 đúng, 2 một phần, 3 sai, 0 chưa chấm), plus a note on what happened.
+ * Re-score: one key per outcome (1 đúng, 2 một phần, 3 sai, 0 chưa chấm; shown and answered only while single-key
+ * shortcuts are on), plus a note on what happened.
  * An open prediction starts with nothing chosen, so saving never records "Đúng" by default (DECISIONS 4.8).
  */
 function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved: (p: ApiPrediction) => void }) {
   const t = useT();
+  const keys = useSingleKeyShortcuts();
   const [outcome, setOutcome] = useState<ApiOutcome | null>(prediction.outcome === 'open' ? null : prediction.outcome);
   const [note, setNote] = useState(prediction.note);
   const [busy, setBusy] = useState(false);
@@ -210,7 +212,9 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
   const submit = async () => {
     if (inFlight.current) return;
     if (outcome === null) {
-      setError(invalid.mark(t('Chọn kết quả trước: 1 đúng, 2 một phần, 3 sai.'), 'outcome'));
+      setError(
+        invalid.mark(keys ? t('Chọn kết quả trước: 1 đúng, 2 một phần, 3 sai.') : t('Chọn kết quả trước.'), 'outcome'),
+      );
       return;
     }
     inFlight.current = true;
@@ -262,7 +266,7 @@ function ScoreForm({ prediction, onSaved }: { prediction: ApiPrediction; onSaved
                 {/* The focus lands on a radio, and only the group may carry aria-invalid: each reads the error too */}
                 <Radio value={value} aria-describedby={outcomeField['aria-describedby']} />
                 {t(outcomeOf(value).label)}
-                <Kbd className="max-sm:hidden pointer-coarse:hidden">{key}</Kbd>
+                {keys && <Kbd className="max-sm:hidden pointer-coarse:hidden">{key}</Kbd>}
               </label>
             ))}
           </RadioGroup>

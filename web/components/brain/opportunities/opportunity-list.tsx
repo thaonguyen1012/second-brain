@@ -8,6 +8,7 @@ import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { opportunityHref } from '@/lib/labels';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
+import { useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
@@ -102,6 +103,7 @@ function OpportunityRow({ o, onEdit, onDrop }: { o: ApiOpportunity; onEdit: () =
 /** Cơ hội: list with decision and stale filters, create and edit; the week rule drops stale ones (9.2). */
 export function OpportunityList() {
   const t = useT();
+  const keys = useSingleKeyShortcuts();
   const [decision, setDecision] = useState<DecisionFilter>('all');
   const [stale, setStale] = useState<StaleFilter>('all');
   const [editing, setEditing] = useState<ApiOpportunity | null>(null);
@@ -175,10 +177,12 @@ export function OpportunityList() {
     count: 'opportunities',
   });
   const newButton = (className?: string) => (
-    <Button className={className} onClick={openNew} aria-keyshortcuts="n">
+    <Button className={className} onClick={openNew} aria-keyshortcuts={keys ? 'n' : undefined}>
       <Plus aria-hidden />
       {t('Cơ hội mới')}
-      <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
+      {keys && (
+        <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
+      )}
     </Button>
   );
 

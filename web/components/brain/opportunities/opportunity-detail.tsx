@@ -12,6 +12,7 @@ import { toApiError, useApi } from '@/lib/api/use-api';
 import { formatDate } from '@/lib/labels';
 import { tabPanelProps, tabProps } from '@/lib/tab-panel';
 import { useT } from '@/lib/i18n/client';
+import { useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -211,6 +212,7 @@ function DecisionSelect({ value, onChange }: { value: ApiDecision; onChange: (va
 /** One opportunity: hypothesis, decision, score history, fit skills and the evidence list. */
 export function OpportunityDetail({ id }: { id: number }) {
   const t = useT();
+  const keys = useSingleKeyShortcuts();
   const opp = useApi<ApiOpportunityDetail>(`opportunity:${id}`, () => opportunitiesApi.get(id));
   const [editOpen, setEditOpen] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(false);
@@ -312,13 +314,14 @@ export function OpportunityDetail({ id }: { id: number }) {
           )}
           <Tip
             trigger={
-              <Button variant="outline" onClick={() => setEditOpen(true)} aria-keyshortcuts="e">
+              <Button variant="outline" onClick={() => setEditOpen(true)} aria-keyshortcuts={keys ? 'e' : undefined}>
                 <Pencil aria-hidden />
                 {t('Sửa')}
               </Button>
             }
           >
-            {t('Sửa cơ hội')} <Kbd>E</Kbd>
+            {t('Sửa cơ hội')}
+            {keys && <> <Kbd>E</Kbd></>}
           </Tip>
         </div>
         <p className="text-sm text-muted-foreground empty:sr-only" role="status">
@@ -362,12 +365,14 @@ export function OpportunityDetail({ id }: { id: number }) {
           id="opp-scores"
           title={t('Điểm tự chấm')}
           action={
-            <Button size="sm" onClick={() => setScoreOpen(true)} aria-keyshortcuts="s">
+            <Button size="sm" onClick={() => setScoreOpen(true)} aria-keyshortcuts={keys ? 's' : undefined}>
               <Gauge aria-hidden />
               {t('Chấm điểm')}
-              <Kbd className="bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">
-                S
-              </Kbd>
+              {keys && (
+                <Kbd className="bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">
+                  S
+                </Kbd>
+              )}
             </Button>
           }
         >
@@ -384,11 +389,11 @@ export function OpportunityDetail({ id }: { id: number }) {
               size="sm"
               variant="outline"
               onClick={() => setEvidence({ mode: 'add', kind: 'conversation' })}
-              aria-keyshortcuts="c"
+              aria-keyshortcuts={keys ? 'c' : undefined}
             >
               <MessagesSquare aria-hidden />
               {t('Cuộc nói chuyện')}
-              <Kbd className="pointer-coarse:hidden max-sm:hidden">C</Kbd>
+              {keys && <Kbd className="pointer-coarse:hidden max-sm:hidden">C</Kbd>}
             </Button>
             <Tip
               trigger={
@@ -396,14 +401,15 @@ export function OpportunityDetail({ id }: { id: number }) {
                   size="sm"
                   variant="outline"
                   onClick={() => setEvidence({ mode: 'add', kind: 'link' })}
-                  aria-keyshortcuts="l"
+                  aria-keyshortcuts={keys ? 'l' : undefined}
                 >
                   <Link2 aria-hidden />
                   {t('Link')}
                 </Button>
               }
             >
-              {t('Thêm link')} <Kbd>L</Kbd>
+              {t('Thêm link')}
+              {keys && <> <Kbd>L</Kbd></>}
             </Tip>
           </>
         }

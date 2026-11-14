@@ -8,6 +8,7 @@ import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { hostOf } from '@/lib/labels';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
+import { useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -296,6 +297,7 @@ function Report({ report, onAddSkill }: { report: ApiMarketReport; onAddSkill: (
 /** Thị trường: paste job ads, see what the market asks for vs the skills matrix (DECISIONS 9.2 Market). */
 export function MarketPage() {
   const t = useT();
+  const keys = useSingleKeyShortcuts();
   const [month, setMonth] = useState(thisMonth);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ApiJobAd | null>(null);
@@ -384,7 +386,7 @@ export function MarketPage() {
             {/* While the month is empty the EmptyState button is the one primary (DESIGN.md D2) */}
             <Button variant={empty ? 'outline' : 'default'} onClick={paste}>
               <ClipboardPaste aria-hidden />
-              {t('Dán tin tuyển dụng')} <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
+              {t('Dán tin tuyển dụng')} {keys && <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>}
             </Button>
           </div>
         </div>
@@ -405,10 +407,12 @@ export function MarketPage() {
           title={t('Chưa có tin tuyển dụng nào')}
           text={t('Dán 5 đến 10 tin của vai trò nhắm tới; kỹ năng được rút ra trong nền rồi so với ma trận.')}
           action={
-            <Button onClick={paste} aria-keyshortcuts="n">
+            <Button onClick={paste} aria-keyshortcuts={keys ? 'n' : undefined}>
               <ClipboardPaste aria-hidden />
               {t('Dán tin đầu tiên')}
-              <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
+              {keys && (
+                <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
+              )}
             </Button>
           }
           ghost={<GhostRows variant="chart" caption={t('Biểu đồ tần suất hiện khi có tin tuyển dụng đầu tiên.')} />}

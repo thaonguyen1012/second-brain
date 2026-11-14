@@ -2,9 +2,10 @@
 import { useRef, type ReactNode } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Menu, MenuPopup, MenuTrigger } from '@/components/ui/menu';
+import { Menu, MenuPopup, MenuShortcut, MenuTrigger } from '@/components/ui/menu';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { useT } from '@/lib/i18n/client';
+import { useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 
 /**
  * The trigger of the row menu opened last. Its items live in a portal outside the row, so a delete confirmed from one
@@ -14,8 +15,18 @@ let lastTrigger: HTMLElement | null = null;
 export const lastRowMenuTrigger = (): HTMLElement | null => lastTrigger;
 
 /**
+ * A menu item's key when the page answers it on its own, without ⌘, Ctrl or Alt (the Inbox's O, Ghi chú's E, their
+ * Del): shown only while single-key shortcuts are on (lib/single-key-shortcuts.ts). A focused row's own keys work
+ * either way and keep a plain MenuShortcut (an objective's Enter, Alt+↑, Del).
+ */
+export function MenuSingleKey({ children }: { children: string }) {
+  return useSingleKeyShortcuts() ? <MenuShortcut>{children}</MenuShortcut> : null;
+}
+
+/**
  * Overflow actions of one record (DESIGN.md §6 "Row actions"): a ghost icon button with a tooltip that opens a
- * Menu. Children are MenuItem / MenuLinkItem / MenuSeparator, with MenuShortcut for their keys.
+ * Menu. Children are MenuItem / MenuLinkItem / MenuSeparator, with MenuShortcut (MenuSingleKey for a single key the
+ * page listens for) for their keys.
  */
 export function RowMenu({ label: given, children }: { label?: string; children: ReactNode }) {
   const t = useT();

@@ -6,6 +6,7 @@ import { growthApi, type ApiAchievement, type ApiOutcome, type ApiPrediction } f
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
+import { useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { cn } from '@/lib/utils';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -100,6 +101,7 @@ const scopeChoices: { value: Scope; label: Msg }[] = [
 
 function BragSection() {
   const t = useT();
+  const keys = useSingleKeyShortcuts();
   const thisWeek = mondayOf(today());
   const [week, setWeek] = useState(thisWeek);
   const [scope, setScope] = useState<Scope>('week');
@@ -197,7 +199,7 @@ function BragSection() {
           {/* While the list is empty the EmptyState button is the one primary (DESIGN.md D2) */}
           <Button className="ms-auto" variant={empty ? 'outline' : 'default'} onClick={create}>
             <Plus aria-hidden />
-            {t('Ghi thành tựu')} <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
+            {t('Ghi thành tựu')} {keys && <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>}
           </Button>
         </div>
       )}
@@ -215,10 +217,12 @@ function BragSection() {
           title={t('Chưa có thành tựu nào')}
           text={t('Mỗi tuần ghi việc đã làm được, kèm kết quả bằng số: nguyên liệu cho CV và case study.')}
           action={
-            <Button onClick={create} aria-keyshortcuts="n">
+            <Button onClick={create} aria-keyshortcuts={keys ? 'n' : undefined}>
               <Plus aria-hidden />
               {t('Ghi thành tựu')}
-              <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
+              {keys && (
+                <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
+              )}
             </Button>
           }
           quick={
@@ -390,6 +394,7 @@ function PredictionRow({
 
 function PredictionsSection() {
   const t = useT();
+  const keys = useSingleKeyShortcuts();
   const [filter, setFilter] = useState<PredFilter>('all');
   const [target, setTarget] = useState<ApiPrediction | null>(null);
   const [mode, setMode] = useState<PredictionMode>('edit');
@@ -443,7 +448,7 @@ function PredictionsSection() {
   const addButton = (
     <Button className="shrink-0" variant="outline" onClick={() => show(null, 'edit')}>
       <Plus aria-hidden />
-      {t('Ghi dự đoán')} <Kbd className="max-sm:hidden pointer-coarse:hidden">P</Kbd>
+      {t('Ghi dự đoán')} {keys && <Kbd className="max-sm:hidden pointer-coarse:hidden">P</Kbd>}
     </Button>
   );
 

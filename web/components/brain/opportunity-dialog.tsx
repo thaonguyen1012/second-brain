@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { ApiOpportunity, ApiStance } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
-import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
+import { singleKeyShortcut, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,7 +22,8 @@ import { loadOpenOpportunities } from './open-opportunities';
 const NONE: ApiOpportunity[] = [];
 
 /**
- * Picks an open opportunity for an inbox entry. Keys: 1–9 = ủng hộ, Shift+1–9 = phản bác, Esc = close.
+ * Picks an open opportunity for an inbox entry. Keys: 1–9 = ủng hộ, Shift+1–9 = phản bác (single keys: shown and
+ * answered only while single-key shortcuts are on), Esc = close.
  */
 export function OpportunityDialog({
   open,
@@ -36,6 +37,7 @@ export function OpportunityDialog({
   onPick: (opportunity: ApiOpportunity, stance: ApiStance) => void;
 }) {
   const t = useT();
+  const keys = useSingleKeyShortcuts();
   const opps = useApi(open ? 'open-opportunities' : null, loadOpenOpportunities);
   const list = opps.data ?? NONE;
 
@@ -79,7 +81,7 @@ export function OpportunityDialog({
             <ol className="flex flex-col gap-1.5">
               {list.map((o, i) => (
                 <li key={o.id} className="flex items-center gap-2 rounded-xl border px-3 py-2">
-                  {i < 9 && <Kbd>{i + 1}</Kbd>}
+                  {keys && i < 9 && <Kbd>{i + 1}</Kbd>}
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{o.title}</span>
                   {/* every row shows both verbs: each name says which opportunity (the visible word first) */}
                   <Button
@@ -104,9 +106,11 @@ export function OpportunityDialog({
         </DialogPanel>
         <DialogFooter className="text-xs text-muted-foreground sm:justify-start">
           <span>
-            {t.rich('<k>1</k>–<k>9</k> ủng hộ · <k>Shift</k>+số phản bác · mục inbox được lưu trữ sau khi gắn', {
-              k: (chunks) => <Kbd>{chunks}</Kbd>,
-            })}
+            {keys
+              ? t.rich('<k>1</k>–<k>9</k> ủng hộ · <k>Shift</k>+số phản bác · mục inbox được lưu trữ sau khi gắn', {
+                  k: (chunks) => <Kbd>{chunks}</Kbd>,
+                })
+              : t('Mục inbox được lưu trữ sau khi gắn')}
           </span>
         </DialogFooter>
       </DialogPopup>

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -7,24 +7,26 @@ import { Dialog, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from '@/c
 import { Kbd } from '@/components/ui/kbd';
 import { focusShortcutOpener } from '@/lib/shortcut-opener';
 import { useT } from '@/lib/i18n/client';
-import {
-  setSingleKeyShortcuts,
-  singleKeyShortcut,
-  singleKeyShortcutsOn,
-  subscribeSingleKeyShortcuts,
-} from '@/lib/single-key-shortcuts';
+import { setSingleKeyShortcuts, singleKeyShortcut, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
+import { cn } from '@/lib/utils';
 
-const onAtFirst = () => true;
+/**
+ * One line of a legend: the key as drawn, what it does, and 'always' for a key that works with single-key shortcuts
+ * off too (a focused row's own arrows, Enter and Del; a key with ⌘, Ctrl or Alt). The other lines are single keys the
+ * switch turns off, and the legend leaves them out while it is off.
+ */
+export type KeyLine = readonly [key: string, label: string, always?: 'always'];
 
 /**
  * The full keyboard legend of a keyboard-driven page behind one "Phím tắt" control (DESIGN.md §6, D24): a small
  * dialog, also opened with "?". Hidden on touch screens and below md, where the keys do not apply. It ends with the
  * switch for every single-key shortcut of the app (WCAG 2.1.4), remembered in this browser.
  */
-export function KeyLegend({ keys, title }: { keys: [string, string][]; title?: string }) {
+export function KeyLegend({ keys, title }: { keys: KeyLine[]; title?: string }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const on = useSyncExternalStore(subscribeSingleKeyShortcuts, singleKeyShortcutsOn, onAtFirst);
+  const on = useSingleKeyShortcuts();
+  const lines = on ? keys : keys.filter((line) => line[2] === 'always');
   const hintId = useId();
   const closeRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
@@ -61,17 +63,20 @@ export function KeyLegend({ keys, title }: { keys: [string, string][]; title?: s
             <DialogTitle>{title ?? t('Phím tắt')}</DialogTitle>
           </DialogHeader>
           <DialogPanel>
-            <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
-              {keys.map(([k, label]) => (
-                <div key={k} className="contents">
-                  <dt className="flex justify-end">
-                    <Kbd>{k}</Kbd>
-                  </dt>
-                  <dd className="text-muted-foreground">{label}</dd>
-                </div>
-              ))}
-            </dl>
-            <div className="mt-4 flex flex-col gap-1 border-t pt-4">
+            {/* With the switch off only the keys that still work are listed; with none, the switch stands alone */}
+            {lines.length > 0 && (
+              <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
+                {lines.map(([k, label]) => (
+                  <div key={k} className="contents">
+                    <dt className="flex justify-end">
+                      <Kbd>{k}</Kbd>
+                    </dt>
+                    <dd className="text-muted-foreground">{label}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            <div className={cn('flex flex-col gap-1', lines.length > 0 && 'mt-4 border-t pt-4')}>
               <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                 <Checkbox checked={on} onCheckedChange={setSingleKeyShortcuts} aria-describedby={hintId} />
                 {t('Phím tắt một phím')}

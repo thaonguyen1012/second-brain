@@ -152,6 +152,8 @@ export const opportunities = {
     'No open opportunities. <link>Create one on the Opportunities page</link>.',
   '<k>1</k>–<k>9</k> ủng hộ · <k>Shift</k>+số phản bác · mục inbox được lưu trữ sau khi gắn':
     '<k>1</k>–<k>9</k> for · <k>Shift</k>+number against · the Inbox entry is archived once attached',
+  // the same footer with single-key shortcuts off: the number keys do nothing then
+  'Mục inbox được lưu trữ sau khi gắn': 'The Inbox entry is archived once attached',
   'Đã thêm vào "{title}"': 'Added to "{title}"',
   'Đã có trong "{title}"': 'Already in "{title}"',
   'Thêm làm bằng chứng cho cơ hội: {title}': 'Add as evidence for an opportunity: {title}',

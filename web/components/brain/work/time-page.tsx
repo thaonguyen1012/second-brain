@@ -8,7 +8,7 @@ import { workApi, type ApiTimeEntry } from '@/lib/api/work';
 import { focusShortcutOpener } from '@/lib/shortcut-opener';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
-import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
+import { singleKeyShortcut, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
@@ -140,6 +140,7 @@ function EntryRow({
 /** Giờ: the timer, the week summary and the time entries with project and date-range filters. */
 export function TimePage() {
   const t = useT();
+  const keys = useSingleKeyShortcuts();
   const params = useSearchParams();
   const [project, setProject] = useState(() => {
     const p = params.get('project');
@@ -288,17 +289,19 @@ export function TimePage() {
     </p>
   );
   const nhapGio = (variant: 'default' | 'outline', className?: string) => (
-    <Button variant={variant} className={className} onClick={openNew} aria-keyshortcuts="n">
+    <Button variant={variant} className={className} onClick={openNew} aria-keyshortcuts={keys ? 'n' : undefined}>
       <Plus aria-hidden />
       {t('Nhập giờ')}
-      <Kbd
-        className={cn(
-          'pointer-coarse:hidden max-sm:hidden',
-          variant === 'default' && 'bg-primary-foreground/20 text-primary-foreground',
-        )}
-      >
-        N
-      </Kbd>
+      {keys && (
+        <Kbd
+          className={cn(
+            'pointer-coarse:hidden max-sm:hidden',
+            variant === 'default' && 'bg-primary-foreground/20 text-primary-foreground',
+          )}
+        >
+          N
+        </Kbd>
+      )}
     </Button>
   );
 

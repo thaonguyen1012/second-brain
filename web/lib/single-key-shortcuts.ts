@@ -4,7 +4,9 @@
 // asks singleKeyShortcut(e) first, or singleKeyShortcutsOn() after its own modifier and typing checks (Ghi chú, the
 // timer); a focused objective row asks singleKeyShortcutsOn() for its letters only (its arrows, Enter and Del act on
 // the row in place, like any focused control). Shortcuts with ⌘, Ctrl or Alt (⌘K, Ctrl+Enter, Alt+↑) never go through
-// it, so they keep working.
+// it, so they keep working. What a page shows of these keys (a Kbd chip, a MenuShortcut, aria-keyshortcuts, the key
+// letter in a name, a legend line) follows useSingleKeyShortcuts().
+import { useSyncExternalStore } from 'react';
 
 /** localStorage key: '0' when the owner turned single-key shortcuts off, '1' (or nothing) when they are on. */
 export const SINGLE_KEY_SHORTCUTS_KEY = 'alex-brain:single-key-shortcuts';
@@ -45,6 +47,19 @@ export function subscribeSingleKeyShortcuts(onChange: () => void): () => void {
     listeners.delete(onChange);
     window.removeEventListener('storage', onStorage);
   };
+}
+
+const onByDefault = () => true;
+
+/**
+ * Whether single-key shortcuts are on, for what a component shows: a single-key hint (Kbd chip, MenuShortcut,
+ * aria-keyshortcuts, the key letter in a name, a legend line) is drawn only while this is true; hints of keys with ⌘,
+ * Ctrl or Alt, and a focused row's own arrows, Enter and Del, stay. Follows the switch live, in this tab and in
+ * others. On in the server render and through hydration (the default), then this browser's choice. A list calls it
+ * once and hands the value to its rows.
+ */
+export function useSingleKeyShortcuts(): boolean {
+  return useSyncExternalStore(subscribeSingleKeyShortcuts, singleKeyShortcutsOn, onByDefault);
 }
 
 /** The focus is in a field (input, textarea, select, editable text): a key there is typing, never a shortcut. */

@@ -15,7 +15,7 @@ import { linkInboxItem } from '@/lib/api/library';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
 import { destinations, formatDate, hostOf, inboxStatuses, inboxStatusOf } from '@/lib/labels';
 import { itemDraftFromEntry, noteTitle } from '@/lib/library-labels';
-import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
+import { singleKeyShortcut, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { focusShortcutOpener } from '@/lib/shortcut-opener';
 import { tabPanelProps, tabProps } from '@/lib/tab-panel';
@@ -24,7 +24,7 @@ import { msg, type Msg, type T } from '@/lib/i18n/translate';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
-import { MenuItem, MenuSeparator, MenuShortcut } from '@/components/ui/menu';
+import { MenuItem, MenuSeparator } from '@/components/ui/menu';
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiErrorState, ApiStaleAlert, LoadingCards, describeApiError } from './api-state';
@@ -38,7 +38,7 @@ import { KeyLegend } from './key-legend';
 import { NoteDialog, type NoteDraft } from './library/note-dialog';
 import { useItemIndex } from './library/use-item-index';
 import { OpportunityDialog } from './opportunity-dialog';
-import { RowMenu } from './row-menu';
+import { MenuSingleKey, RowMenu } from './row-menu';
 import { SaveKeys } from './save-keys';
 
 const PAGE = 100;
@@ -67,7 +67,10 @@ function noteDraftOf(e: ApiInboxEntry, t: T): NoteDraft {
   };
 }
 
-/** Key hint on a row's visible verbs: hidden on touch screens and at phone width (DESIGN.md D24). */
+/**
+ * Key hint on a row's visible verbs: hidden on touch screens and at phone width (DESIGN.md D24), and drawn only while
+ * single-key shortcuts are on (the card's `keys`).
+ */
 function RowKey({ children }: { children: string }) {
   return <Kbd className="max-sm:hidden pointer-coarse:hidden">{children}</Kbd>;
 }
@@ -165,6 +168,7 @@ function EntryCard({
   entry,
   linkedItem,
   selected,
+  keys,
   onSelect,
   onTriage,
   onOpportunity,
@@ -176,6 +180,8 @@ function EntryCard({
   /** Title and type of the linked Item, when the Item list has loaded. */
   linkedItem?: { title: string; type: string };
   selected: boolean;
+  /** Single-key shortcuts are on: the verbs show their keys (and say them in their names). */
+  keys: boolean;
   onSelect: () => void;
   onTriage: (status: ApiInboxStatus) => void;
   onOpportunity: () => void;
@@ -245,58 +251,79 @@ function EntryCard({
         ))
       }
       actions={
-        // Every card shows these verbs: each name says whose. It starts with all the button shows, its words and
-        // its key hint (WCAG 2.5.3: the visible label stays in the name), then names the entry.
+        // Every card shows these verbs: each name says whose. It starts with all the button shows, its words and,
+        // while single-key shortcuts are on, its key hint (WCAG 2.5.3: the visible label stays in the name), then
+        // names the entry.
         <>
           {entry.status === 'inbox' && (
             <Button
               size="xs"
               variant="outline"
-              aria-label={t('Đọc sau, {key}: "{title}"', { key: 'L', title: titleOf(entry, t) })}
+              aria-label={
+                keys
+                  ? t('Đọc sau, {key}: "{title}"', { key: 'L', title: titleOf(entry, t) })
+                  : t('Đọc sau "{title}"', { title: titleOf(entry, t) })
+              }
               onClick={() => onTriage('later')}
             >
-              {t('Đọc sau')} <RowKey>L</RowKey>
+              {t('Đọc sau')} {keys && <RowKey>L</RowKey>}
             </Button>
           )}
           {entry.status !== 'archived' && (
             <Button
               size="xs"
               variant="outline"
-              aria-label={t('Lưu trữ, {key}: "{title}"', { key: 'A', title: titleOf(entry, t) })}
+              aria-label={
+                keys
+                  ? t('Lưu trữ, {key}: "{title}"', { key: 'A', title: titleOf(entry, t) })
+                  : t('Lưu trữ "{title}"', { title: titleOf(entry, t) })
+              }
               onClick={() => onTriage('archived')}
             >
-              {t('Lưu trữ', null, 'verb')} <RowKey>A</RowKey>
+              {t('Lưu trữ', null, 'verb')} {keys && <RowKey>A</RowKey>}
             </Button>
           )}
           {entry.status !== 'inbox' && (
             <Button
               size="xs"
               variant="outline"
-              aria-label={t('Về inbox, {key}: "{title}"', { key: 'U', title: titleOf(entry, t) })}
+              aria-label={
+                keys
+                  ? t('Về inbox, {key}: "{title}"', { key: 'U', title: titleOf(entry, t) })
+                  : t('Về inbox "{title}"', { title: titleOf(entry, t) })
+              }
               onClick={() => onTriage('inbox')}
             >
-              {t('Về inbox')} <RowKey>U</RowKey>
+              {t('Về inbox')} {keys && <RowKey>U</RowKey>}
             </Button>
           )}
           {entry.url ? (
             <Button
               size="xs"
               variant="ghost"
-              aria-label={t('Mở, {key}: "{title}"', { key: 'I', title: titleOf(entry, t) })}
+              aria-label={
+                keys
+                  ? t('Mở, {key}: "{title}"', { key: 'I', title: titleOf(entry, t) })
+                  : t('Mở "{title}"', { title: titleOf(entry, t) })
+              }
               render={<a href={entry.url} target="_blank" rel="noreferrer" />}
             >
               <ExternalLink aria-hidden />
-              {t('Mở')} <RowKey>I</RowKey>
+              {t('Mở')} {keys && <RowKey>I</RowKey>}
             </Button>
           ) : (
             <Button
               size="xs"
               variant="ghost"
-              aria-label={t('Ghi chú, {key}: "{title}"', { key: 'N', title: titleOf(entry, t) })}
+              aria-label={
+                keys
+                  ? t('Ghi chú, {key}: "{title}"', { key: 'N', title: titleOf(entry, t) })
+                  : t('Ghi chú về "{title}"', { title: titleOf(entry, t) })
+              }
               onClick={onNote}
             >
               <NotebookPen aria-hidden />
-              {t('Ghi chú')} <RowKey>N</RowKey>
+              {t('Ghi chú')} {keys && <RowKey>N</RowKey>}
             </Button>
           )}
           <span className="ms-auto">
@@ -304,27 +331,27 @@ function EntryCard({
               <MenuItem onClick={onOpportunity}>
                 <Lightbulb aria-hidden />
                 {t('Bằng chứng cho cơ hội')}
-                <MenuShortcut>O</MenuShortcut>
+                <MenuSingleKey>O</MenuSingleKey>
               </MenuItem>
               {!entry.item && (
                 <MenuItem onClick={onItem}>
                   <Plus aria-hidden />
                   {t('Thành item')}
-                  <MenuShortcut>T</MenuShortcut>
+                  <MenuSingleKey>T</MenuSingleKey>
                 </MenuItem>
               )}
               {entry.url && (
                 <MenuItem onClick={onNote}>
                   <NotebookPen aria-hidden />
                   {t('Ghi chú')}
-                  <MenuShortcut>N</MenuShortcut>
+                  <MenuSingleKey>N</MenuSingleKey>
                 </MenuItem>
               )}
               <MenuSeparator />
               <MenuItem variant="destructive" onClick={onDelete}>
                 <Trash2 aria-hidden />
                 {t('Xóa')}
-                <MenuShortcut>Del</MenuShortcut>
+                <MenuSingleKey>Del</MenuSingleKey>
               </MenuItem>
             </RowMenu>
           </span>
@@ -380,6 +407,8 @@ export function InboxPage() {
   const inbox = useApi<Page<ApiInboxEntry>>(`inbox:${status}`, () => api.listInbox({ status, limit: PAGE }));
   const shown = inbox.loading ? [] : (inbox.data?.results ?? []);
   const inboxCount = useInboxCount();
+  // Whether the cards show their keys (and the notices name A): one subscription for the whole list
+  const keys = useSingleKeyShortcuts();
 
   // An empty Inbox tab is either the first run (nothing ever captured: the empty panel) or cleared (one line,
   // DESIGN.md §9a). Two COUNTs tell them apart, asked only while the tab is empty; an entry handled on this visit
@@ -469,10 +498,12 @@ export function InboxPage() {
       try {
         replace(await linkInboxItem(entry.id, item.id));
         setNotice(
-          t('Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture} Nhấn A để lưu trữ mục.', {
-            title: item.title,
-            picture,
-          }),
+          keys
+            ? t('Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture} Nhấn A để lưu trữ mục.', {
+                title: item.title,
+                picture,
+              })
+            : t('Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture}', { title: item.title, picture }),
         );
       } catch (err) {
         setNotice(
@@ -485,7 +516,7 @@ export function InboxPage() {
         reload();
       }
     },
-    [putItem, replace, reload, t],
+    [putItem, replace, reload, t, keys],
   );
 
   const remove = useCallback(
@@ -666,6 +697,7 @@ export function InboxPage() {
                 key={e.id}
                 entry={e}
                 selected={i === selected}
+                keys={keys}
                 onSelect={() => setCursor(i)}
                 onTriage={(next) => void triage(e, next)}
                 onOpportunity={() => setPickFor(e)}
@@ -732,7 +764,11 @@ export function InboxPage() {
         onOpenChange={(o) => !o && setNoteFor(null)}
         onSaved={(note) => {
           setNoteFor(null);
-          setNotice(t('Đã tạo ghi chú "{title}". Nhấn A để lưu trữ mục inbox.', { title: noteTitle(note, t) }));
+          setNotice(
+            keys
+              ? t('Đã tạo ghi chú "{title}". Nhấn A để lưu trữ mục inbox.', { title: noteTitle(note, t) })
+              : t('Đã tạo ghi chú "{title}"', { title: noteTitle(note, t) }),
+          );
         }}
       />
     </div>

@@ -11,7 +11,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
-import { singleKeyShortcutsOn } from '@/lib/single-key-shortcuts';
+import { singleKeyShortcutsOn, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { ApiErrorState, describeApiError } from '../api-state';
 import { useInvalidFields } from '../invalid-fields';
 import { ChoiceSelect } from '../choice-select';
@@ -62,7 +62,10 @@ function LiveDot() {
   );
 }
 
-/** Shortcut hint inside a filled button: hidden on touch and at 390 px (DESIGN.md D24). */
+/**
+ * Shortcut hint inside a filled button: hidden on touch and at 390 px (DESIGN.md D24); drawn only while single-key
+ * shortcuts are on.
+ */
 function KeyHint({ k }: { k: string }) {
   return (
     <Kbd className="bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">{k}</Kbd>
@@ -100,6 +103,7 @@ export function TimerPanel({
   noProjectLabel?: string;
 }) {
   const t = useT();
+  const keys = useSingleKeyShortcuts();
   const [picked, setPicked] = useState<number | null>(null);
   const [note, setNote] = useState('');
   const [billable, setBillable] = useState(true);
@@ -196,10 +200,10 @@ export function TimerPanel({
     </p>
   );
   const stopButton = (size: 'default' | 'sm') => (
-    <Button onClick={() => void stop()} disabled={busy} size={size} aria-keyshortcuts="t">
+    <Button onClick={() => void stop()} disabled={busy} size={size} aria-keyshortcuts={keys ? 't' : undefined}>
       {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Square aria-hidden />}
       {t('Dừng')}
-      <KeyHint k="T" />
+      {keys && <KeyHint k="T" />}
     </Button>
   );
   const startedLabel =
@@ -339,21 +343,27 @@ export function TimerPanel({
                 ref={startButton}
                 type="submit"
                 disabled={busy || projectId === null}
-                aria-keyshortcuts="t"
-                // says what it starts: all it shows (the word and its key hint, WCAG 2.5.3), then the project
-                // picked beside it
+                aria-keyshortcuts={keys ? 't' : undefined}
+                // says what it starts: all it shows (the word and, while single-key shortcuts are on, its key hint;
+                // WCAG 2.5.3), then the project picked beside it
                 aria-label={
                   projectId === null
                     ? undefined
-                    : t('Bắt đầu, {key}: bấm giờ cho "{title}"', {
-                        key: 'T',
-                        title: projects.find((p) => p.id === projectId)?.title ?? '',
-                      })
+                    : keys
+                      ? t('Bắt đầu, {key}: bấm giờ cho "{title}"', {
+                          key: 'T',
+                          title: projects.find((p) => p.id === projectId)?.title ?? '',
+                        })
+                      : t(
+                          'Bắt đầu bấm giờ cho "{title}"',
+                          { title: projects.find((p) => p.id === projectId)?.title ?? '' },
+                          'button',
+                        )
                 }
               >
                 {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
                 {/* a space before the key: the shown text reads "Bắt đầu T", as the name starts (the gap draws it) */}
-                {t('Bắt đầu')} <KeyHint k="T" />
+                {t('Bắt đầu')} {keys && <KeyHint k="T" />}
               </Button>
             </div>
           </div>

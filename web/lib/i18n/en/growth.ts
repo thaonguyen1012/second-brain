@@ -255,6 +255,8 @@ export const growth = {
   'Để trống: sau 6 tháng.': 'Leave empty for 6 months later.',
   'Độ tự tin 1–10': 'Confidence 1–10',
   'Chọn kết quả trước: 1 đúng, 2 một phần, 3 sai.': 'Choose a result first: 1 right, 2 partly, 3 wrong.',
+  // the same with single-key shortcuts off: the number keys do nothing then
+  'Chọn kết quả trước.': 'Choose a result first.',
   'Chuyện gì đã xảy ra, mình học được gì': 'What happened, what I learned',
   'Lưu kết quả': 'Save result',
   'Chấm lại dự đoán': 'Score prediction',

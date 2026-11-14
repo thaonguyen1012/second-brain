@@ -20,11 +20,11 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyStateGuide } from '@/components/stageshow/lazy';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg, type T } from '@/lib/i18n/translate';
-import { singleKeyShortcut } from '@/lib/single-key-shortcuts';
+import { singleKeyShortcut, useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { cn } from '@/lib/utils';
 import { ApiErrorState, ApiStaleAlert, EmptyState, LoadingCards } from '../api-state';
 import { useInboxCount } from '../inbox-count';
-import { KeyLegend } from '../key-legend';
+import { KeyLegend, type KeyLine } from '../key-legend';
 import { PAGE_WIDTH } from '../layout';
 import type { BookIndex } from './body-of-work';
 import type { ObjectivesUpdate } from './objectives-editor';
@@ -35,33 +35,41 @@ import { addDays, isMonday, isoWeek, mondayOf, todayPrague, weekdayIndex, weekRa
 
 type Tab = 'plan' | 'review';
 
-/** Every key of the page in one legend behind "Phím tắt" (DESIGN.md §6, D24): week keys and objective row keys. */
-const keyHelp: [string, Msg][] = [
+/**
+ * Every key of the page in one legend behind "Phím tắt" (DESIGN.md §6, D24): week keys and objective row keys. The
+ * focused row's arrows, Enter, Alt+arrows and Del are 'always': they stay with single-key shortcuts off.
+ */
+const keyHelp: [string, Msg, 'always'?][] = [
   ['[', msg('tuần trước')],
   [']', msg('tuần sau')],
   ['T', msg('về tuần này')],
   ['P', msg('kế hoạch')],
   ['R', msg('nhìn lại')],
-  ['↑ / ↓', msg('chọn mục tiêu')],
+  ['↑ / ↓', msg('chọn mục tiêu'), 'always'],
   ['D', msg('mục tiêu xong')],
   ['X', msg('bỏ mục tiêu')],
   ['O', msg('mở lại mục tiêu')],
-  ['Enter', msg('sửa tên mục tiêu')],
-  ['Alt+↑ / ↓', msg('đổi thứ tự mục tiêu')],
-  ['Del', msg('xóa mục tiêu')],
+  ['Enter', msg('sửa tên mục tiêu'), 'always'],
+  ['Alt+↑ / ↓', msg('đổi thứ tự mục tiêu'), 'always'],
+  ['Del', msg('xóa mục tiêu'), 'always'],
   ['?', msg('bảng phím tắt này')],
 ];
 
-/** Icon-only week arrow with its tooltip; the key shows only there (DESIGN.md D21, D24). */
+/**
+ * Icon-only week arrow with its tooltip; the key shows only there (DESIGN.md D21, D24), while single-key shortcuts
+ * are on (`keys`).
+ */
 function WeekArrow({
   label,
   shortcut,
+  keys,
   disabled,
   onClick,
   children,
 }: {
   label: string;
   shortcut: string;
+  keys: boolean;
   disabled?: boolean;
   onClick: () => void;
   children: ReactNode;
@@ -74,7 +82,8 @@ function WeekArrow({
         {children}
       </TooltipTrigger>
       <TooltipPopup>
-        {label} <Kbd>{shortcut}</Kbd>
+        {label}
+        {keys && <> <Kbd>{shortcut}</Kbd></>}
       </TooltipPopup>
     </Tooltip>
   );
@@ -155,6 +164,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
     tabArg === tabParam.review ? 'review' : tabArg === tabParam.plan ? 'plan' : defaultTab(start, current);
 
   const [opened, setOpened] = useState<string | null>(null);
+  const keys = useSingleKeyShortcuts();
   const create = start >= current || opened === start;
   const week = useApi(`week:${start}:${create ? 'open' : 'read'}`, () => loadWeek(start, create));
   const data = week.data?.start === start ? week.data : undefined;
@@ -284,12 +294,13 @@ export function WeekPage({ books }: { books: BookIndex }) {
             min-h-9 keeps its height while the tabs wait for data */}
         <div className="flex min-h-9 flex-wrap items-center gap-x-4 gap-y-3">
           <nav aria-label={t('Chọn tuần')} className="flex min-w-0 flex-1 basis-72 items-center gap-2">
-            <WeekArrow label={t('Tuần trước')} shortcut="[" onClick={() => go(addDays(start, -7))}>
+            <WeekArrow label={t('Tuần trước')} shortcut="[" keys={keys} onClick={() => go(addDays(start, -7))}>
               <ChevronLeft aria-hidden />
             </WeekArrow>
             <WeekArrow
               label={t('Tuần sau')}
               shortcut="]"
+              keys={keys}
               disabled={start >= latest}
               onClick={() => go(addDays(start, 7))}
             >
@@ -329,7 +340,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
               </TabsList>
             )}
             <KeyLegend
-              keys={keyHelp.map(([k, label]): [string, string] => [k, t(label)])}
+              keys={keyHelp.map(([k, label, always]): KeyLine => [k, t(label), always])}
               title={t('Phím tắt của Tuần')}
             />
           </div>

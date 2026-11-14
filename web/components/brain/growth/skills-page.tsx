@@ -9,6 +9,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useT } from '@/lib/i18n/client';
 import { msg, type Msg } from '@/lib/i18n/translate';
+import { useSingleKeyShortcuts } from '@/lib/single-key-shortcuts';
 import { cn } from '@/lib/utils';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
 import { ApiErrorState, ApiStaleAlert, describeApiError } from '../api-state';
@@ -76,6 +77,7 @@ function SkillTile({ skill, onOpen }: { skill: ApiSkill; onOpen: () => void }) {
 /** Kỹ năng: the portable skills matrix (DECISIONS 6.5, 9.2). */
 export function SkillsPage() {
   const t = useT();
+  const keys = useSingleKeyShortcuts();
   const skills = useApi('skills:all', loadSkills);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
@@ -181,7 +183,7 @@ export function SkillsPage() {
           </div>
           <Button className="ms-auto" onClick={create}>
             <Plus aria-hidden />
-            {t('Thêm kỹ năng')} <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>
+            {t('Thêm kỹ năng')} {keys && <Kbd className="max-sm:hidden pointer-coarse:hidden">N</Kbd>}
           </Button>
         </div>
       )}
@@ -207,10 +209,12 @@ export function SkillsPage() {
           title={t('Chưa có kỹ năng nào')}
           text={t('Thêm kỹ năng nền và kỹ năng của vai trò nhắm tới, rồi gắn bằng chứng: thứ đã ship, case study, bài viết.')}
           action={
-            <Button onClick={create} aria-keyshortcuts="n">
+            <Button onClick={create} aria-keyshortcuts={keys ? 'n' : undefined}>
               <Plus aria-hidden />
               {t('Thêm kỹ năng đầu tiên')}
-              <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
+              {keys && (
+                <Kbd className="ms-1 bg-primary-foreground/20 text-primary-foreground pointer-coarse:hidden max-sm:hidden">N</Kbd>
+              )}
             </Button>
           }
           quick={

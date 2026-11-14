@@ -123,6 +123,8 @@ export const work = {
   'Bắt đầu bấm giờ cho "{title}"': 'Started timing "{title}"',
   // the start button's name: what it shows (the word, its key), then the picked project
   'Bắt đầu, {key}: bấm giờ cho "{title}"': 'Start, {key}: the timer for "{title}"',
+  // the same with single-key shortcuts off (no key shown); the Vietnamese is also the notice above
+  'button::Bắt đầu bấm giờ cho "{title}"': 'Start the timer for "{title}"',
   'Đã dừng: {time} cho "{title}"': 'Stopped: {time} for "{title}"',
   'Bộ bấm giờ đã dừng từ trước.': 'The timer had already stopped.',
   Dừng: 'Stop',
