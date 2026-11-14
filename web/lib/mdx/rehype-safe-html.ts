@@ -75,24 +75,25 @@ function imagePlaceholder(node: Element, file: VFile, t: T): Element {
         rel: ['noreferrer'],
       }),
     );
-  return el(
-    'span',
-    'img-missing',
-    [
-      el('span', 'img-missing-icon', [text('🖼')], { ariaHidden: 'true' }),
-      el(
-        'span',
-        'img-missing-text',
-        [
-          el('span', 'img-missing-alt', [text(alt ? t('Hình minh họa: {alt}', { alt }) : t('Hình minh họa'))]),
-          el('span', 'img-missing-note', note),
-        ],
-        { lang: t.locale },
-      ),
-    ],
-    // the lesson around it is lang="vi" (its own alt too); the placeholder's words are in the page's language
-    { role: 'img', ariaLabel: alt || t('Hình minh họa không có bản offline'), lang: alt ? 'vi' : t.locale },
-  );
+  return el('span', 'img-missing', [
+    el('span', 'img-missing-icon', [text('🖼')], { ariaHidden: 'true' }),
+    el(
+      'span',
+      'img-missing-text',
+      [
+        // the image's stand-in, named by its alt; the note with its link stays outside it, since what is inside an
+        // img is not read and a link there could not be reached by a screen reader (axe nested-interactive). The
+        // lesson around it is lang="vi" (its own alt too); the placeholder's words are in the page's language
+        el('span', 'img-missing-alt', [text(alt ? t('Hình minh họa: {alt}', { alt }) : t('Hình minh họa'))], {
+          role: 'img',
+          ariaLabel: alt || t('Hình minh họa'),
+          lang: alt ? 'vi' : t.locale,
+        }),
+        el('span', 'img-missing-note', note),
+      ],
+      { lang: t.locale },
+    ),
+  ]);
 }
 
 function embedPlaceholder(node: Element, t: T): Element {

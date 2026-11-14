@@ -99,9 +99,22 @@ describe('images', () => {
   it('turns an external image into a placeholder with its alt text and no <img>', () => {
     const tree = run([h('img', { src: 'https://evil.example/pixel.gif', alt: 'Biểu đồ doanh thu' })]);
     const [box] = tree.children as Element[];
-    expect(box).toMatchObject({ tagName: 'span', properties: { role: 'img', ariaLabel: 'Biểu đồ doanh thu' } });
+    expect(box.tagName).toBe('span');
+    const stand = elements(tree).find((e) => e.properties.role === 'img');
+    expect(stand?.properties).toMatchObject({ ariaLabel: 'Biểu đồ doanh thu', lang: 'vi' });
     expect(elements(tree).some((e) => e.tagName === 'img' || e.properties.href)).toBe(false);
     expect(textOf(tree)).toContain('Hình minh họa: Biểu đồ doanh thu');
+  });
+
+  it('keeps the link to Coursera outside the role="img" stand-in, named "Hình minh họa" without an alt', () => {
+    const book = books.find((b) => b.courseraUrls.some((c) => c.url))!;
+    const tree = run([h('img', { src: 'https://d3c33hcgiwev3.cloudfront.net/x.png' })], {
+      path: `${CONTENT_DIR}/${book.track}/${book.slug}/m1.md`,
+    });
+    const stand = elements(tree).find((e) => e.properties.role === 'img')!;
+    expect(stand.properties).toMatchObject({ ariaLabel: 'Hình minh họa', lang: 'vi' });
+    expect(elements(stand).some((e) => e.tagName === 'a')).toBe(false);
+    expect(elements(tree).some((e) => e.tagName === 'a')).toBe(true);
   });
 
   it('treats a protocol-relative or /imgx/ path as external', () => {
