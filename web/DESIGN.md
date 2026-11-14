@@ -381,8 +381,8 @@ so the near pairs that remain are listed under the palette, not hidden.
     diagrams in dark set `themeVariables.edgeLabelBackground` `#4b4b4b` (edge labels `#ccc` 5.4:1; mermaid's `#585858`
     was 4.43). Code colours are Shiki's github-light / github-dark (Fumadocs' default): light `#e36209` (variables,
     keyword arguments; 3.49:1, 1.5% of code characters) and dark `#6a737d` (comments; 3.83:1, 11.6%) miss 4.5:1 on the
-    code block's card; open, the owner chooses (replace those two colours with Shiki `colorReplacements` `#bc4c00` /
-    `#8b949e`, GitHub's `-default` themes, or the `-high-contrast` ones).
+    code block's card; they stay, the owner's choice (14/11/2026, DECISIONS 9.11) over replacing those two colours with
+    Shiki `colorReplacements` `#bc4c00` / `#8b949e`, GitHub's `-default` themes or the `-high-contrast` ones.
 - **Border plus fill:** a surface is border + `bg-card` (the surface rule above), plus at most `shadow-depth-1`
   (the focal block). Inside a surface, a nested element gets a fill or a divider, never another bordered box
   (D12). `shadow-popover` only for things floating above the page (popover, menu, dialog, hovered draggable).

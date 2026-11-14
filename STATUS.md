@@ -82,12 +82,12 @@ in the commit that finishes the work.
   set one absolute `THUMBS_DIR` when several checkouts share a database.
 * Light-mode error text (`--destructive-foreground`) is 3.8:1 on white, under 4.5:1. It stays: the owner's
   decision (DECISIONS 9.11).
-* Accessibility, left after round 3: lesson code colours (Shiki's github-light #e36209 is 3.5:1, github-dark's
-  comment grey #6a737d 3.8:1) wait for a choice: swap those two colours (`colorReplacements` in
-  `web/lib/content/mdx-options.ts`), GitHub's -default themes or its -high-contrast themes. Also open: lesson
-  task-list checkboxes have no name; lesson table wrappers are unnamed tab stops; code block names stay Vietnamese on
-  English pages; the TOC popover trigger's name carries Fumadocs' progress value; a heading's copy-link stays hidden
-  on touch; in forced colours a few outlines are partly covered; the open row menu sits outside a landmark (axe).
+* Lesson code colours (Shiki's github-light #e36209 is 3.5:1, github-dark's comment grey #6a737d 3.8:1): they stay,
+  the owner's decision (DECISIONS 9.11).
+* Accessibility, left after round 3: lesson task-list checkboxes have no name; lesson table wrappers are unnamed tab
+  stops; code block names stay Vietnamese on English pages; the TOC popover trigger's name carries Fumadocs' progress
+  value; a heading's copy-link stays hidden on touch; in forced colours a few outlines are partly covered; the open row
+  menu sits outside a landmark (axe).
 * Dev Postgres can reach `max_connections` with many `runserver` threads (`CONN_MAX_AGE=60`): restart Django.
 * Deploy: config exists in `deploy/` (Docker and systemd variants), neither has been run end to end. Encrypted dumps
   on object storage are not done (DECISIONS 10.1).

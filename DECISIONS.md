@@ -278,6 +278,10 @@ fold at 1280x720 and 390x844; no layout shift; `make check` and the JS budget ho
 * The destructive red #fb2c36 (error text, the filled "Xóa") stays at 3.8:1 on white, under WCAG's 4.5:1: the
   owner's decision (13/11/2026); its 4 axe nodes are accepted and the token is unchanged. Help content that teaches
   single keys (the guides, /huong-dan/, /gioi-thieu/) keeps showing them while the switch is off, on purpose.
+* The lesson code colours stay as they are (Shiki's github-light / github-dark, Fumadocs' default), although two miss
+  4.5:1: the orange #e36209 in light (3.49:1) and the comment grey #6a737d in dark (3.83:1). The owner chose this
+  after comparing three options (replace those two colours, GitHub's -default themes, its -high-contrast themes) on
+  14/11/2026; their axe nodes on lesson pages are accepted and the themes are unchanged.
 * Colour tokens and the registry components are not changed by these passes.
 
 ## 10. Engineering standards for phase 2 (01/11/2026)
