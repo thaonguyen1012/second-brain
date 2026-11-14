@@ -11,6 +11,7 @@ import { hostOf, itemStatusOf, itemStatusesFor } from '@/lib/labels';
 import { toolStageIcons } from '@/lib/tool-icons';
 import {
   TOOL_STAGES,
+  firstToolStage,
   groupTools,
   toolGroupLabel,
   type ToolGroupKey,
@@ -328,10 +329,11 @@ export function ToolsPage() {
     setDialogOpen(true);
   };
 
-  // ?item=N (Cmd+K, a link): that tool's page in the Sheet
+  // ?item=N (Cmd+K, a link, an old Thư viện link): that tool's page in the Sheet, which gives the focus back to the
+  // tool's row (its first stage's, else any of its rows) when it closes, as a Sheet opened from the row does
   useOpenFromUrl('item', (id) => {
     api.getItem(id).then(
-      (item) => openSheet(item, null),
+      (item) => openSheet(item, firstToolStage(item.tags) ?? 'other'),
       (err: unknown) => setNotice(openError(err, t('Không tìm thấy item #{id}, có thể đã bị xóa.', { id }), t)),
     );
   });

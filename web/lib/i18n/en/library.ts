@@ -3,7 +3,8 @@ import type { Dictionary } from '../translate';
 
 export const library = {
   // Pages (app/[lang]/(home)/thu-vien/)
-  'Sách, phim, khóa học, bài viết, dự án và công cụ.': 'Books, films, courses, articles, projects and tools.',
+  // tools live on Công cụ, not here (owner 14/11/2026)
+  'Sách, phim, khóa học, bài viết và dự án.': 'Books, films, courses, articles and projects.',
   'Ghi chú markdown; item xong cần có ghi chú.': 'Markdown notes; a done item needs a note.',
 
   // Items page (components/brain/library-page.tsx)

@@ -21,6 +21,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { appNav, navMatch, navRows, otherNav, type NavLink, type NavRow } from '@/lib/app-nav';
+import { useNavCurrent } from '@/lib/nav-current';
 import type { ApiCounts } from '@/lib/api/client';
 import { InboxButton } from '@/components/brain/inbox-count';
 import { refreshNavCounts, useNavCounts } from '@/components/brain/nav-counts';
@@ -146,7 +147,9 @@ function AppSidebar({ roadmap }: { roadmap: boolean }) {
       .querySelector('[data-slot=sidebar-container] [aria-current=page]')
       ?.scrollIntoView({ block: 'nearest' });
   }, [pathname, setOpenMobile]);
-  const current = navMatch([...navRows, ...otherNav.links], pathname)?.href;
+  // a page filed under another row than its path (a tool's Item page: Công cụ, lib/nav-current.ts), else the path's
+  const named = useNavCurrent();
+  const current = named ?? navMatch([...navRows, ...otherNav.links], pathname)?.href;
   const hide = () => {
     toggleSidebar();
     // Desktop: this button slides away with the sidebar; the top bar's trigger shows in its place

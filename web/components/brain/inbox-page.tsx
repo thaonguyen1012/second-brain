@@ -552,13 +552,16 @@ export function InboxPage() {
       const picture = imageError ? ` ${t('Chưa lưu được ảnh: {error}.', { error: imageError })}` : '';
       try {
         replace(await linkInboxItem(entry.id, item.id));
+        const vars = { title: item.title, picture };
+        // a tool goes to Công cụ, never to Thư viện (owner 14/11/2026)
         setNotice(
-          keys
-            ? t('Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture} Nhấn A để lưu trữ mục.', {
-                title: item.title,
-                picture,
-              })
-            : t('Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture}', { title: item.title, picture }),
+          item.type === 'tool'
+            ? keys
+              ? t('Đã thêm "{title}" vào Công cụ và liên kết mục inbox.{picture} Nhấn A để lưu trữ mục.', vars)
+              : t('Đã thêm "{title}" vào Công cụ và liên kết mục inbox.{picture}', vars)
+            : keys
+              ? t('Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture} Nhấn A để lưu trữ mục.', vars)
+              : t('Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture}', vars),
         );
       } catch (err) {
         setNotice(

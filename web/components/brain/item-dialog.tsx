@@ -394,7 +394,8 @@ function ItemForm({
         <DialogClose render={<Button variant="ghost" type="button" />}>{t('Hủy')}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Loader2 className="animate-spin" aria-hidden />}
-          {item ? t('Lưu') : t('Thêm vào thư viện')}
+          {/* a new tool goes to Công cụ, never to Thư viện (owner 14/11/2026): the label follows "Loại" */}
+          {item ? t('Lưu') : form.type === 'tool' ? t('Thêm công cụ') : t('Thêm vào thư viện')}
         </Button>
       </DialogFooter>
     </form>

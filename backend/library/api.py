@@ -90,7 +90,7 @@ class ItemListView(generics.ListCreateAPIView[Item]):
 class ItemView(APIView):
     @extend_schema(responses=ItemSerializer, operation_id="getItem")
     def get(self, request: Request, pk: int) -> Response:
-        """One Item with its noteCount (Cmd+K deep link /thu-vien/?item=N)."""
+        """One Item with its noteCount (Cmd+K: /thu-vien/?item=N, a tool's /phat-trien/cong-cu/?item=N)."""
         return Response(ItemSerializer(get_object_or_404(services.items(request_user(request)), pk=pk)).data)
 
     @extend_schema(request=ItemSerializer, responses=ItemSerializer, operation_id="updateItem")

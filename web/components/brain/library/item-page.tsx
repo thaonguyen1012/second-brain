@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, SearchX } from 'lucide-react';
@@ -6,6 +7,7 @@ import { api, type ApiItem } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
 import { TOOLS_LABEL, TOOLS_PATH } from '@/lib/labels';
+import { setNavCurrent } from '@/lib/nav-current';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiErrorState, EmptyState } from '../api-state';
 import { ItemDetail } from './item-detail';
@@ -63,6 +65,13 @@ function ItemSkeleton() {
 function ItemPageBody({ id }: { id: number }) {
   const router = useRouter();
   const res = useApi<ApiItem>(`item:${id}`, () => api.getItem(id));
+  // A tool belongs to Công cụ: its sidebar row is the current one while its page shows (not Thư viện's, as the path)
+  const tool = res.data?.type === 'tool';
+  useEffect(() => {
+    if (!tool) return;
+    setNavCurrent(TOOLS_PATH);
+    return () => setNavCurrent(null);
+  }, [tool]);
   if (res.error && !res.data)
     return (
       <>
@@ -83,7 +92,6 @@ function ItemPageBody({ id }: { id: number }) {
         <ItemSkeleton />
       </>
     );
-  const tool = res.data.type === 'tool';
   return (
     <>
       <Back tool={tool} />

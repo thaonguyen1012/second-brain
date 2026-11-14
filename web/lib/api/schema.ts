@@ -185,7 +185,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description One Item with its noteCount (Cmd+K deep link /thu-vien/?item=N). */
+        /** @description One Item with its noteCount (Cmd+K: /thu-vien/?item=N, a tool's /phat-trien/cong-cu/?item=N). */
         get: operations["getItem"];
         put?: never;
         post?: never;

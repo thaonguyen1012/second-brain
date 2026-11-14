@@ -409,7 +409,8 @@ paths:
   /api/items/{id}:
     get:
       operationId: getItem
-      description: One Item with its noteCount (Cmd+K deep link /thu-vien/?item=N).
+      description: 'One Item with its noteCount (Cmd+K: /thu-vien/?item=N, a tool''s
+        /phat-trien/cong-cu/?item=N).'
       parameters:
       - in: path
         name: id

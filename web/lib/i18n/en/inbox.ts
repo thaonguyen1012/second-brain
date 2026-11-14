@@ -61,6 +61,11 @@ export const inbox = {
   // the same with single-key shortcuts off: A does nothing then
   'Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture}':
     'Added "{title}" to the library and linked the inbox entry.{picture}',
+  // a tool goes to Công cụ, not to the library (owner 14/11/2026)
+  'Đã thêm "{title}" vào Công cụ và liên kết mục inbox.{picture} Nhấn A để lưu trữ mục.':
+    'Added "{title}" to Tools and linked the inbox entry.{picture} Press A to archive the entry.',
+  'Đã thêm "{title}" vào Công cụ và liên kết mục inbox.{picture}':
+    'Added "{title}" to Tools and linked the inbox entry.{picture}',
   'Đã thêm "{title}" nhưng chưa liên kết được: {reason}.{picture}':
     'Added "{title}" but could not link it: {reason}.{picture}',
   'Đã thêm làm bằng chứng cho "{title}", mục đã lưu trữ': 'Added as evidence for "{title}"; entry archived',

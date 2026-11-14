@@ -110,8 +110,9 @@ The numbers next to the app sidebar's rows. Each one is the row count of the lis
 that page's default filters, so a click shows exactly that many rows: `objectivesOpen` = the open objectives of
 this week, `jobAds` = the job ads of this month (`GET /api/market/job-ads?month=`), `achievements` = the
 achievements of this week (`GET /api/achievements?week=`), `tools` = the Items of type tool (`GET
-/api/items?type=tool`, the Công cụ page); `skills`, `items`, `notes`, `opportunities` and `projects` = their whole
-unfiltered lists. `timerRunning` is `true` while a timer runs. This week and this month
+/api/items?type=tool`, the Công cụ page), `items` = every Item but tools (`GET /api/items?excludeType=tool`, Thư
+viện: tools live only on Công cụ); `skills`, `notes`, `opportunities` and `projects` = their whole unfiltered
+lists. `timerRunning` is `true` while a timer runs. This week and this month
 are Europe/Prague. Read-only: unlike `GET /api/weeks/current` it never creates a Week row (a week nobody opened
 yet has `objectivesOpen: 0`). One COUNT or EXISTS query per number. `401` when not logged in.
 
@@ -130,7 +131,9 @@ the LLM cache. `401` when not logged in.
 ## Items (`/api/items`)
 
 `GET /api/items?type=book&status=active&q=deep` lists items (all filters optional; `q` matches title, summary or
-source, or is exactly one of the tags). `GET /api/items/{id}` reads one (with `noteCount`). `POST /api/items` creates one, `PATCH /api/items/{id}` changes any writable field.
+source, or is exactly one of the tags; `excludeType=tool` leaves one type out, as Thư viện asks). `GET
+/api/items/{id}` reads one (with `noteCount`). `POST /api/items` creates one, `PATCH /api/items/{id}` changes any
+writable field.
 `DELETE /api/items/{id}` (`204`) unlinks notes, inbox entries, evidence and achievements and removes the project's
 details and the Item's image; a project with time entries answers `409` `{ "detail": "..." }` (delete its time
 entries first).

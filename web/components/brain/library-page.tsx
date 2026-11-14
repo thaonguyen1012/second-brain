@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookPlus, Loader2, Plus } from 'lucide-react';
 import {
@@ -19,9 +19,11 @@ import { ITEM_BOARD, laneOf } from '@/lib/status-board';
 import { useBoardView } from '@/lib/use-board-view';
 import { useRememberedFlag } from '@/lib/use-remembered-flag';
 import { useOpenFromUrl } from '@/lib/use-open-from-url';
+import { useRoutePathname } from '@/lib/use-app-pathname';
 import { tabPanelProps } from '@/lib/tab-panel';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client';
+import { stripLocale } from '@/lib/i18n/config';
 import { msg } from '@/lib/i18n/translate';
 import { Button } from '@/components/ui/button';
 import { ApiErrorState, ApiStaleAlert, describeApiError, openError } from './api-state';
@@ -140,10 +142,23 @@ export function LibraryPage() {
   };
 
   // ?item=N (Cmd+K result): open that Item's page in the Sheet (one GET /api/items/{id}, not the whole library). A tool
-  // opens on Công cụ, where it lives (a link from before 14/11/2026, when Thư viện still listed tools).
+  // opens on Công cụ, where it lives (a link from before 14/11/2026, when Thư viện still listed tools): in the language
+  // path the page was opened by (/en/thu-vien/ stays English), and only while this page is still shown.
+  const routePath = useRoutePathname();
+  const onPage = useRef(true);
+  useEffect(() => {
+    onPage.current = true;
+    return () => {
+      onPage.current = false;
+    };
+  }, []);
   useOpenFromUrl('item', (id) => {
+    const lang = routePath.slice(0, routePath.length - stripLocale(routePath).length);
     api.getItem(id).then(
-      (item) => (item.type === 'tool' ? router.replace(`${TOOLS_PATH}?item=${item.id}`) : openSheet(item)),
+      (item) => {
+        if (item.type !== 'tool') openSheet(item);
+        else if (onPage.current) router.replace(`${lang}${TOOLS_PATH}?item=${item.id}`);
+      },
       (err: unknown) =>
         setNotice(openError(err, t('Không tìm thấy item #{id}, có thể đã bị xóa.', { id }), t)),
     );
@@ -169,9 +184,17 @@ export function LibraryPage() {
   const removeItem = (id: number) =>
     items.mutate((d) => d && { ...d, results: d.results.filter((i) => i.id !== id) });
 
-  /** A change made in the Sheet (status, properties, a note written or deleted): the list and the board follow. */
+  /**
+   * A change made in the Sheet (status, properties, a note written or deleted): the list and the board follow. An Item
+   * edited out of the list there (made a tool: it moves to Công cụ) leaves its row while the Sheet stays: the focus
+   * goes to the neighbour when the Sheet closes, and the notice says where it went.
+   */
   const sheetChanged = (saved: ApiItem) => {
     if (sheet && sheet.item.status !== saved.status) moves.bump(saved.id);
+    if (!ofType(saved) && all.some((i) => i.id === saved.id)) {
+      leaving(saved.id);
+      if (saved.type === 'tool') setNotice(`"${saved.title}" → ${t(TOOLS_LABEL)}`);
+    }
     setSheet((s) => s && { ...s, item: saved });
     upsert(saved, false);
   };
