@@ -152,6 +152,8 @@ export const shell = {
   'Hình minh họa không có bản offline': 'Illustration with no offline copy',
   'Nội dung nhúng từ {host} (mở ở trang gốc)': 'Embedded content from {host} (open it on the original page)',
   'Nội dung nhúng (mở ở trang gốc)': 'Embedded content (open it on the original page)',
+  // The name of a lesson's code block, its scrolling viewport, numbered in reading order (lib/mdx/rehype-code-labels.ts)
+  'Khối mã {n}': 'Code block {n}',
 
   // Home page server data (app/[lang]/(home)/page.tsx)
   'Tuần, inbox và sổ tay': 'Week, inbox and handbooks',

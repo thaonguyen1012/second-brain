@@ -71,7 +71,8 @@ describe('registry classes copied by the app', () => {
 
 /**
  * components/mdx.tsx copies Fumadocs' table (fumadocs-ui/mdx: the wrapper that scrolls a wide table and is its tab
- * stop) to add the app's focus ring. A Fumadocs update changes the original only: this fails until the copy follows.
+ * stop) to add the app's focus ring, and its pre (the code block) to name the code's scrolling viewport. A Fumadocs
+ * update changes the original only: this fails until the copy follows.
  */
 describe('Fumadocs markup copied by the app', () => {
   it("mdx.tsx draws Fumadocs' table wrapper with its classes and tab stop, plus the focus ring", () => {
@@ -82,6 +83,20 @@ describe('Fumadocs markup copied by the app', () => {
     expect(tokens(copy).filter((c) => !c.startsWith('focus-visible:'))).toEqual(tokens(original));
     expect(read('components/mdx.tsx')).toMatch(
       /function Table\([\s\S]*?tabIndex=\{0\}[\s\S]*?<table \{\.\.\.props\} \/>/,
+    );
+  });
+
+  it("mdx.tsx draws Fumadocs' code block as its pre does, and names the viewport through viewportProps", () => {
+    // fumadocs-ui/mdx's pre: CodeBlock around Pre, with the same props
+    expect(read('node_modules/fumadocs-ui/dist/mdx.js')).toMatch(
+      /pre: \(props\) => \/\* @__PURE__ \*\/ jsx\(CodeBlock, \{\s*\.\.\.props,\s*children: \/\* @__PURE__ \*\/ jsx\(Pre, \{ children: props\.children \}\)\s*\}\)/,
+    );
+    // the viewport takes viewportProps (the name) and is the role="region" tab stop
+    expect(read('node_modules/fumadocs-ui/dist/components/codeblock.js')).toMatch(
+      /\.\.\.viewportProps,\s*role: "region",\s*tabIndex: 0,/,
+    );
+    expect(read('components/mdx.tsx')).toMatch(
+      /function CodeBlockPre\([\s\S]*?<CodeBlock \{\.\.\.props\} viewportProps=[\s\S]*?<Pre>\{props\.children\}<\/Pre>/,
     );
   });
 });

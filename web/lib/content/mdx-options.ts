@@ -5,9 +5,10 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { rehypeSafeHtml } from '../mdx/rehype-safe-html';
 import { rehypeCodeClasses } from '../mdx/rehype-code-classes';
+import { rehypeCodeLabels } from '../mdx/rehype-code-labels';
 import type { T } from '../i18n/translate';
 
-/** The compile options for one UI language: only the image and embed placeholders' words depend on it. */
+/** The compile options for one UI language: only the placeholders' words and the code blocks' names depend on it. */
 export const mdxOptionsFor = (t: T): CompilerOptions => ({
   format: 'md',
   // images are replaced by placeholders, never measured or fetched
@@ -32,5 +33,6 @@ export const mdxOptionsFor = (t: T): CompilerOptions => ({
     rehypeKatex,
     ...v,
     rehypeCodeClasses,
+    [rehypeCodeLabels, { t }],
   ],
 });

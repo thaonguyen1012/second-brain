@@ -1,3 +1,4 @@
+import { CodeBlock, Pre } from 'fumadocs-ui/components/codeblock';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import type { MDXComponents } from 'mdx/types';
 import type { ComponentProps } from 'react';
@@ -19,9 +20,24 @@ function Table(props: ComponentProps<'table'>) {
   );
 }
 
+/**
+ * Fumadocs' code block (fumadocs-ui/mdx's `pre`) with its scrolling viewport named. That viewport is a tab stop with
+ * role="region"; unnamed, the regions of a lesson with several blocks could not be told apart in a landmark list (axe
+ * landmark-unique). lib/mdx/rehype-code-labels.ts numbers the page's blocks in its `data-code-label` ("Khối mã 3"); a
+ * <pre> without one keeps Fumadocs' unnamed viewport.
+ */
+function CodeBlockPre({ 'data-code-label': label, ...props }: ComponentProps<'pre'> & { 'data-code-label'?: string }) {
+  return (
+    <CodeBlock {...props} viewportProps={label ? { 'aria-label': label } : undefined}>
+      <Pre>{props.children}</Pre>
+    </CodeBlock>
+  );
+}
+
 export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
+    pre: CodeBlockPre,
     table: Table,
     Mermaid,
     ...components,
