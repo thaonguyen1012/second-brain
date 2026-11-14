@@ -37,10 +37,11 @@ web/
   app/[lang]/                    every page, prerendered per UI language (vi, en): next.config.mjs rewrites /x/ to
                                  /vi/x/ or, with the cookie lang=en, /en/x/ (lib/i18n/README.md); root layout here
   app/[lang]/(home)/page.tsx     "Hôm nay" (continue learning, week objectives, inbox count, today's brief)
-  app/[lang]/(home)/<route>/     app pages in the shell: inbox/, thu-vien/ (Items; ?item=N opens the Item page in a
-                                 Sheet) + thu-vien/item/ (?id=N, the full Item page) + thu-vien/ghi-chu/ (notes,
+  app/[lang]/(home)/<route>/     app pages in the shell: inbox/, thu-vien/ (Items but tools; ?item=N opens the Item page
+                                 in a Sheet) + thu-vien/item/ (?id=N, the full Item page) + thu-vien/ghi-chu/ (notes,
                                  ?view=items "Theo item"; ?id=N one note as its page, ?id=new&item=&template= a new one),
-                                 phat-trien/ (handbook grid) + {ky-nang,thi-truong,thanh-tuu}/, tuan/ (?w=&tab=),
+                                 phat-trien/ (handbook grid) + {ky-nang,thi-truong,thanh-tuu}/ + cong-cu/ (tools: the
+                                 only page that lists them, DECISIONS 9.10; ?item=N, ?view=grid), tuan/ (?w=&tab=),
                                  co-hoi/ (?id= detail), cong-viec/ (projects) + cong-viec/gio/ (time); static shells;
                                  inbox/them/ (?url=&title=&text= capture: bookmarklet + PWA share target);
                                  gioi-thieu/ (intro, feature bento, printable case study; linked from the sidebar's Khác group);

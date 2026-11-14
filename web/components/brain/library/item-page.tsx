@@ -5,6 +5,7 @@ import { ArrowLeft, SearchX } from 'lucide-react';
 import { api, type ApiItem } from '@/lib/api/client';
 import { useApi } from '@/lib/api/use-api';
 import { useT } from '@/lib/i18n/client';
+import { TOOLS_LABEL, TOOLS_PATH } from '@/lib/labels';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiErrorState, EmptyState } from '../api-state';
 import { ItemDetail } from './item-detail';
@@ -12,15 +13,16 @@ import { ItemDetail } from './item-detail';
 // /thu-vien/item/?id=N: the Item page in full (DECISIONS 9.8 point 1). A query parameter instead of a dynamic segment
 // keeps the route a static shell (like /co-hoi/?id=N); the Item and its notes load in the browser.
 
-function Back() {
+/** Back to the list the Item lives in: Thư viện, or Công cụ for a tool (Thư viện does not list tools). */
+function Back({ tool = false }: { tool?: boolean }) {
   const t = useT();
   return (
     <Link
-      href="/thu-vien/"
+      href={tool ? TOOLS_PATH : '/thu-vien/'}
       className="inline-flex items-center gap-1 self-start text-sm text-muted-foreground hover:text-foreground"
     >
       <ArrowLeft className="size-4" aria-hidden />
-      {t('Thư viện')}
+      {tool ? t(TOOLS_LABEL) : t('Thư viện')}
     </Link>
   );
 }
@@ -62,19 +64,36 @@ function ItemPageBody({ id }: { id: number }) {
   const router = useRouter();
   const res = useApi<ApiItem>(`item:${id}`, () => api.getItem(id));
   if (res.error && !res.data)
-    return res.error.status === 404 && res.error.reachable ? (
-      <NotFound />
-    ) : (
-      <ApiErrorState error={res.error} onRetry={res.reload} />
+    return (
+      <>
+        <Back />
+        {res.error.status === 404 && res.error.reachable ? (
+          <NotFound />
+        ) : (
+          <ApiErrorState error={res.error} onRetry={res.reload} />
+        )}
+      </>
     );
-  if (!res.data) return <ItemSkeleton />;
+  // The way back names the Item's list, known once it loads: a line of its size meanwhile (D27; ItemSkeleton says
+  // "Đang tải")
+  if (!res.data)
+    return (
+      <>
+        <Skeleton className="h-5 w-20 self-start" aria-hidden />
+        <ItemSkeleton />
+      </>
+    );
+  const tool = res.data.type === 'tool';
   return (
-    <ItemDetail
-      item={res.data}
-      variant="page"
-      onItemChange={(item) => res.mutate(() => item)}
-      onDeleted={() => router.push('/thu-vien/')}
-    />
+    <>
+      <Back tool={tool} />
+      <ItemDetail
+        item={res.data}
+        variant="page"
+        onItemChange={(item) => res.mutate(() => item)}
+        onDeleted={() => router.push(tool ? TOOLS_PATH : '/thu-vien/')}
+      />
+    </>
   );
 }
 
@@ -86,8 +105,14 @@ export function ItemPageView() {
     // (DESIGN.md §3: notes get air)
     <div className="flex w-full flex-col px-4 pt-10 pb-12 sm:px-8 md:pt-12">
       <div className="flex w-full max-w-3xl flex-col gap-4">
-        <Back />
-        {id === null ? <NotFound /> : <ItemPageBody key={id} id={id} />}
+        {id === null ? (
+          <>
+            <Back />
+            <NotFound />
+          </>
+        ) : (
+          <ItemPageBody key={id} id={id} />
+        )}
       </div>
     </div>
   );

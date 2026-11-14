@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BookPlus, Loader2, Plus } from 'lucide-react';
 import {
   api,
@@ -11,7 +12,7 @@ import {
 } from '@/lib/api/client';
 import { loadAllPages } from '@/lib/api/pages';
 import { appendNextPage, toApiError, useApi } from '@/lib/api/use-api';
-import { itemStatusOf, itemStatuses, itemTypes } from '@/lib/labels';
+import { TOOLS_LABEL, TOOLS_PATH, itemStatusOf, itemStatuses, libraryItemTypes } from '@/lib/labels';
 import { itemPicture } from '@/lib/handbook-picture';
 import { useProgress } from '@/lib/progress';
 import { ITEM_BOARD, laneOf } from '@/lib/status-board';
@@ -40,28 +41,31 @@ import { ViewSwitch } from './view-switch';
 type TypeFilter = ApiItemType | 'all';
 type StatusFilter = ApiItemStatus | 'all';
 
-const typeChoices = [{ value: 'all' as const, label: msg('Mọi loại') }, ...itemTypes];
+const typeChoices = [{ value: 'all' as const, label: msg('Mọi loại') }, ...libraryItemTypes];
 const statusChoices = [{ value: 'all' as const, label: msg('Mọi trạng thái') }, ...itemStatuses];
+/** The types "Thêm item" offers here: a tool is added on Công cụ. Editing keeps every type (a tool moves there). */
+const newItemTypes = libraryItemTypes.map((x) => x.value);
 
 /** The region the view switch changes (lib/tab-panel.ts). */
 const VIEW_PANEL = 'items-view';
 
-/** Every Item of one type (all cursor pages, at most 20 of 100), newest first: one list for both views. */
+/** Every Item of one type, or of every type but tools (all cursor pages, at most 20 of 100), newest first: one list. */
 const loadItems = (type: TypeFilter) => () =>
   loadAllPages<ApiItem>(
-    () => api.listItems({ limit: 100, ...(type !== 'all' && { type }) }),
+    () => api.listItems({ limit: 100, ...(type === 'all' ? { excludeType: 'tool' as const } : { type }) }),
     (next) => api.page<ApiItem>(next),
   );
 
 /**
  * Thư viện: Items in two views like Dự án: Danh sách (rows, filterable by type and status) and Bảng (one lane per
  * status; dragging a card or its menu changes the status). Both views show one list of every Item of the chosen type,
- * so a change in one is in the other without a reload. A row or a card's title opens the Item page in a Sheet beside
- * the list (DECISIONS 9.8: properties, every note written and edited in place); create, and edit from the menu,
- * through ItemDialog (POST/PATCH /api/items).
+ * so a change in one is in the other without a reload. Tools are not here: they live on Công cụ (owner 14/11/2026,
+ * DECISIONS 9.10). A row or a card's title opens the Item page in a Sheet beside the list (DECISIONS 9.8: properties,
+ * every note written and edited in place); create, and edit from the menu, through ItemDialog (POST/PATCH /api/items).
  */
 export function LibraryPage() {
   const t = useT();
+  const router = useRouter();
   // Before useOpenFromUrl: a remembered board waits until ?item= is gone, so the two URL updates never collide.
   const [view, setView] = useBoardView(ITEM_BOARD.viewKey, 'item');
   const [type, setType] = useState<TypeFilter>('all');
@@ -135,17 +139,21 @@ export function LibraryPage() {
     setDialogOpen(true);
   };
 
-  // ?item=N (Cmd+K result): open that Item's page in the Sheet (one GET /api/items/{id}, not the whole library).
+  // ?item=N (Cmd+K result): open that Item's page in the Sheet (one GET /api/items/{id}, not the whole library). A tool
+  // opens on Công cụ, where it lives (a link from before 14/11/2026, when Thư viện still listed tools).
   useOpenFromUrl('item', (id) => {
     api.getItem(id).then(
-      (item) => openSheet(item),
+      (item) => (item.type === 'tool' ? router.replace(`${TOOLS_PATH}?item=${item.id}`) : openSheet(item)),
       (err: unknown) =>
         setNotice(openError(err, t('Không tìm thấy item #{id}, có thể đã bị xóa.', { id }), t)),
     );
   });
 
-  /** The shared list holds one type (or all); the status filter of the List view applies when it renders. */
-  const ofType = (i: ApiItem) => type === 'all' || i.type === type;
+  /**
+   * The shared list holds one type (or every type but tools); the status filter of the List view applies when it
+   * renders. An Item that stops matching (a type changed in the dialog or the Sheet) leaves the list.
+   */
+  const ofType = (i: ApiItem) => i.type !== 'tool' && (type === 'all' || i.type === type);
 
   const upsert = (saved: ApiItem, created: boolean) =>
     items.mutate((d) => {
@@ -385,13 +393,16 @@ export function LibraryPage() {
         open={dialogOpen}
         item={editing}
         draft={draft}
+        types={editing ? undefined : newItemTypes}
         focusRating={focusRating}
         onOpenChange={(o) => {
           setDialogOpen(o);
           if (!o) setFocusRating(false);
         }}
         onSaved={(saved, created, imageError) => {
-          returnTo.current = saved.id;
+          // An Item edited out of the list (its type changed): the focus goes to its neighbour, as after a delete
+          if (ofType(saved)) returnTo.current = saved.id;
+          else leaving(saved.id);
           upsert(saved, created);
           // a new Item, or one whose status changed, lands on top of its lane like a moved card
           if (created || editing?.status !== saved.status) moves.bump(saved.id);
@@ -404,7 +415,10 @@ export function LibraryPage() {
                 : t('Đã lưu "{title}", nhưng chưa lưu được ảnh: {error}.', vars)
               : created
                 ? t('Đã thêm "{title}"', vars)
-                : t('Đã lưu "{title}"', vars),
+                : // a tool lives on Công cụ: say where it went, as a moved card says its new lane
+                  saved.type === 'tool' && editing?.type !== 'tool'
+                  ? `"${saved.title}" → ${t(TOOLS_LABEL)}`
+                  : t('Đã lưu "{title}"', vars),
           );
         }}
         onDeleted={(deleted) => {

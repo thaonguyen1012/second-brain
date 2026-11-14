@@ -3,8 +3,8 @@
 Each number is the row count of the list that the sidebar row opens, with that page's default filters, so a
 click shows exactly that many rows. The counts reuse the list endpoints' own querysets (the services behind
 them): this week's open objectives (Tuần), all skills (Kỹ năng), all tools (Công cụ), this month's job
-ads (Thị trường), this week's achievements (Thành tựu), all Items, notes, opportunities and projects, and
-whether a timer runs.
+ads (Thị trường), this week's achievements (Thành tựu), every Item but tools (Thư viện: tools live only on
+Công cụ), notes, opportunities and projects, and whether a timer runs.
 "This week" and "this month" are Europe/Prague, as in GET /api/weeks/current and the web's lib/dates.ts.
 
 One COUNT or EXISTS query per number. Read-only: unlike GET /api/weeks/current, no Week row is created
@@ -45,7 +45,7 @@ def snapshot(user: User, today: dt.date | None = None) -> dict[str, Any]:
         "tools": rows(library.items(user).filter(type=Item.Type.TOOL)),
         "jobAds": rows(growth.job_ads(user, growth.month_start(day))),
         "achievements": rows(growth.achievements(user, week)),
-        "items": rows(library.items(user)),
+        "items": rows(library.items(user).exclude(type=Item.Type.TOOL)),
         "notes": rows(library.notes(user)),
         "opportunities": rows(opportunities.opportunities(user)),
         "projects": rows(work.projects(user)),

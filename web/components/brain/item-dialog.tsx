@@ -96,6 +96,7 @@ function withType(form: Form, type: ApiItemType): Form {
 function ItemForm({
   item,
   draft,
+  types,
   onSaved,
   onDeleted,
   onWriteNote,
@@ -104,6 +105,7 @@ function ItemForm({
 }: {
   item: ApiItem | null;
   draft?: Partial<ApiItemRequest>;
+  types?: readonly ApiItemType[];
   onSaved: (item: ApiItem, created: boolean, imageError?: string) => void;
   onDeleted?: (item: ApiItem) => void;
   onWriteNote?: (item: ApiItem) => void;
@@ -114,7 +116,15 @@ function ItemForm({
   const t = useT();
   const stagesId = useId();
   const [form, setForm] = useState<Form>(() => fromItem(item, draft));
-  const typeOptions = useMemo(() => itemTypes.map((c) => ({ value: c.value, label: t(c.label) })), [t]);
+  // the edited Item's own type always stays a choice
+  const own = item?.type;
+  const typeOptions = useMemo(
+    () =>
+      itemTypes
+        .filter((c) => !types || types.includes(c.value) || c.value === own)
+        .map((c) => ({ value: c.value, label: t(c.label) })),
+    [t, types, own],
+  );
   // a tool's statuses read as its use (Muốn thử, Đang dùng, Đã thành thạo, Bỏ)
   const statusOptions = useMemo(
     () => itemStatusesFor(form.type).map((c) => ({ value: c.value, label: t(c.label) })),
@@ -396,6 +406,7 @@ export function ItemDialog({
   open,
   item,
   draft,
+  types,
   onOpenChange,
   onSaved,
   onDeleted,
@@ -406,6 +417,8 @@ export function ItemDialog({
   open: boolean;
   item: ApiItem | null;
   draft?: Partial<ApiItemRequest>;
+  /** The types "Loại" offers (default: all); the edited Item's own type is always one (Thư viện: no tools). */
+  types?: readonly ApiItemType[];
   onOpenChange: (open: boolean) => void;
   /** After a save; `imageError` says why the picture change failed when the record itself was saved. */
   onSaved: (item: ApiItem, created: boolean, imageError?: string) => void;
@@ -444,6 +457,7 @@ export function ItemDialog({
             key={item?.id ?? 'new'}
             item={item}
             draft={draft}
+            types={types}
             onSaved={onSaved}
             onDeleted={onDeleted}
             onWriteNote={onWriteNote}

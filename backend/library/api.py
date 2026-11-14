@@ -52,6 +52,12 @@ def _item_json(user: User, pk: int) -> Any:
         operation_id="listItems",
         parameters=[
             OpenApiParameter("type", str, enum=Item.Type.values),
+            OpenApiParameter(
+                "excludeType",
+                str,
+                enum=Item.Type.values,
+                description="Leave one type out: Thư viện asks for every type but tools (Công cụ).",
+            ),
             OpenApiParameter("status", str, enum=Item.Status.values),
             OpenApiParameter(
                 "q", str, description="Case-insensitive match in title, summary or source, or one exact tag."
@@ -69,6 +75,8 @@ class ItemListView(generics.ListCreateAPIView[Item]):
         for field in ("type", "status"):
             if value := self.request.query_params.get(field):
                 items = items.filter(**{field: value})
+        if value := self.request.query_params.get("excludeType"):
+            items = items.exclude(type=value)
         return items
 
     def perform_create(self, serializer: BaseSerializer[Item]) -> None:

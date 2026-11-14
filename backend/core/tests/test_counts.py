@@ -110,7 +110,7 @@ def test_counts_only_the_owners_rows(client: Client) -> None:
         "tools": 1,
         "jobAds": 1,
         "achievements": 1,
-        "items": 3,  # the book, the tool and the project
+        "items": 2,  # the book and the project: Thư viện leaves the tool to Công cụ
         "notes": 1,
         "opportunities": 1,
         "projects": 1,
@@ -209,7 +209,7 @@ def test_each_count_equals_its_list(client: Client) -> None:
     assert data["tools"] == rows("/api/items?type=tool&limit=200")
     assert data["jobAds"] == rows(f"/api/market/job-ads?month={this_month():%Y-%m}&limit=200")
     assert data["achievements"] == rows(f"/api/achievements?week={this_week()}&limit=200")
-    assert data["items"] == rows("/api/items?limit=200")
+    assert data["items"] == rows("/api/items?excludeType=tool&limit=200")
     assert data["notes"] == rows("/api/notes?limit=200")
     assert data["opportunities"] == rows("/api/opportunities?limit=200")
     assert data["projects"] == rows("/api/projects?limit=200")
@@ -217,7 +217,7 @@ def test_each_count_equals_its_list(client: Client) -> None:
     assert data["timerRunning"] is True
     skills = client.get("/api/skills?limit=200").json()["results"]
     assert {s["name"]: s["freshness"] for s in skills}["jQuery"] == "faded"
-    assert (data["skills"], data["tools"], data["items"]) == (2, 2, 7)
+    assert (data["skills"], data["tools"], data["items"]) == (2, 2, 5)
     assert (data["opportunities"], data["projects"]) == (3, 3)
 
 

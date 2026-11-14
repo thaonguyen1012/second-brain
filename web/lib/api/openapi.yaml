@@ -331,6 +331,19 @@ paths:
         description: The pagination cursor value.
         schema:
           type: string
+      - in: query
+        name: excludeType
+        schema:
+          type: string
+          enum:
+          - article
+          - book
+          - course
+          - film
+          - project
+          - tool
+        description: 'Leave one type out: Thư viện asks for every type but tools (Công
+          cụ).'
       - name: limit
         required: false
         in: query

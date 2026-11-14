@@ -15,6 +15,14 @@ export const itemTypes: { value: ApiItemType; label: Msg }[] = [
   { value: 'tool', label: msg('Công cụ') },
 ];
 
+/**
+ * Tools live only on their own page, never on Thư viện (owner 14/11/2026, DECISIONS 9.10): Cmd+K, an old Thư viện link
+ * and a tool's Item page lead there. Thư viện lists, filters and creates every other type (`libraryItemTypes`).
+ */
+export const TOOLS_PATH = '/phat-trien/cong-cu/';
+export const TOOLS_LABEL = msg('Công cụ', 'nav');
+export const libraryItemTypes = itemTypes.filter((x) => x.value !== 'tool');
+
 export const itemStatuses: { value: ApiItemStatus; label: Msg; tone: Tone }[] = [
   { value: 'planned', label: msg('Dự định'), tone: 'secondary' },
   { value: 'active', label: msg('Đang làm'), tone: 'info' },

@@ -708,7 +708,11 @@ so the near pairs that remain are listed under the palette, not hidden.
   those words, then the tool, "Mở <host> (tab mới): "<tool>"", since many tools share github.com)
   and the `RowMenu` (the Item entries, then "Chuyển sang ..." for each other status). A row or its title opens the
   Item page in the Sheet (`?item=N` too), as on Thư viện. Groups sort by title. First run: the §9a panel
-  (`ToolCase` glyph, the `manage.py seed_tools` hint, ghost rows); filtered empty: "Xóa bộ lọc".
+  (`ToolCase` glyph, the `manage.py seed_tools` hint, ghost rows); filtered empty: "Xóa bộ lọc". Tools live only here
+  (owner 14/11/2026, DECISIONS 9.10): Thư viện lists every other type (`/api/items?excludeType=tool`, its sidebar
+  count too), its "Loại" filter and "Thêm item" offer no Công cụ, and an Item edited into a tool leaves its list with
+  `"<title>" → Công cụ`; Cmd+K files tools under Công cụ (`Wrench`) with this page's `?item=N`, an old Thư viện
+  `?item=N` of a tool opens here, and a tool's Item page leads back to Công cụ (`TOOLS_PATH` in `lib/labels.ts`).
 - **Tables** for numeric or time data (Giờ, thị trường): header `text-xs font-medium text-muted-foreground`,
   rows `h-10` with `divide-y`, no vertical cell borders, numbers right-aligned `tabular-nums`. Add the Space UI
   table component from the registry when first needed rather than styling `<table>` by hand.

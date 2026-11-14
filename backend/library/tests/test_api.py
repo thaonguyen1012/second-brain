@@ -47,6 +47,27 @@ def test_list_items_filters_and_paginates(client: Client) -> None:
     assert [i["title"] for i in client.get("/api/items?type=film&status=done").json()["results"]] == ["f"]
 
 
+def test_list_items_leaves_a_type_out(client: Client) -> None:
+    """Thư viện asks for every type but tools (they live on Công cụ); the other filters still apply."""
+    client.get("/api/me")
+    owner = User.objects.get(username="dev@localhost")
+    Item.objects.bulk_create(
+        [
+            Item(user=owner, type="book", title="Atomic Habits"),
+            Item(user=owner, type="tool", title="ripgrep", status="active"),
+            Item(user=owner, type="project", title="Shop", status="active"),
+        ]
+    )
+
+    def titles(url: str) -> list[str]:
+        return [i["title"] for i in client.get(url).json()["results"]]
+
+    assert titles("/api/items?excludeType=tool") == ["Shop", "Atomic Habits"]
+    assert titles("/api/items?excludeType=tool&status=active") == ["Shop"]
+    assert titles("/api/items?type=tool") == ["ripgrep"]
+    assert titles("/api/items") == ["Shop", "ripgrep", "Atomic Habits"]
+
+
 def test_update_item(client: Client) -> None:
     headers = csrf(client)
     item_id = send(client, "post", "/api/items", {"type": "film", "title": "Dune"}, headers).json()["id"]

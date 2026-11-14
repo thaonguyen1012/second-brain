@@ -2687,6 +2687,8 @@ export interface operations {
             query?: {
                 /** @description The pagination cursor value. */
                 cursor?: string;
+                /** @description Leave one type out: Thư viện asks for every type but tools (Công cụ). */
+                excludeType?: "article" | "book" | "course" | "film" | "project" | "tool";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description Case-insensitive match in title, summary or source, or one exact tag. */

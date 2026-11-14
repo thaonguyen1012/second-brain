@@ -19,6 +19,7 @@ import {
   Scale,
   Sprout,
   Trophy,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { useFetchSearch, useHighlightQuery, type SearchResultItem } from 'fumadocs-core/search/client';
@@ -42,7 +43,16 @@ import { getBook } from '@/lib/books';
 import { ApiError, isAbort } from '@/lib/api/client';
 import { searchBrain, type BrainSearchResults } from '@/lib/api/search';
 import { toApiError } from '@/lib/api/use-api';
-import { decisionOf, hostOf, inboxStatusOf, itemStatusOf, itemTypeLabel, opportunityHref } from '@/lib/labels';
+import {
+  TOOLS_LABEL,
+  TOOLS_PATH,
+  decisionOf,
+  hostOf,
+  inboxStatusOf,
+  itemStatusOf,
+  itemTypeLabel,
+  opportunityHref,
+} from '@/lib/labels';
 import { formatDay, freshness, monthLabel, outcomeOf } from '@/components/brain/growth/labels';
 import { useLocale, useT } from '@/lib/i18n/client';
 import { contentText } from '@/lib/i18n/content-lang';
@@ -71,10 +81,22 @@ let offlineUntil = 0;
  */
 const WAIT_MS = 3000;
 
-type Kind = 'item' | 'note' | 'inbox' | 'opportunity' | 'skill' | 'achievement' | 'prediction' | 'jobAd' | 'news';
+type Kind =
+  | 'item'
+  | 'tool'
+  | 'note'
+  | 'inbox'
+  | 'opportunity'
+  | 'skill'
+  | 'achievement'
+  | 'prediction'
+  | 'jobAd'
+  | 'news';
 
 const kinds: Record<Kind, { label: Msg; icon: LucideIcon }> = {
   item: { label: msg('Thư viện'), icon: Library },
+  // tools live on Công cụ, not Thư viện (owner 14/11/2026): their own label and page, the sidebar row's icon
+  tool: { label: TOOLS_LABEL, icon: Wrench },
   note: { label: msg('Ghi chú'), icon: NotebookPen },
   inbox: { label: msg('Inbox'), icon: Inbox },
   opportunity: { label: msg('Cơ hội'), icon: Lightbulb },
@@ -138,14 +160,22 @@ function clipToMatch(text: string, query: string, lead = 24): string {
 
 function toHits(r: BrainSearchResults, q: string, t: T): BrainHit[] {
   return [
-    ...r.items.map((it) => ({
-      id: `brain-item-${it.id}`,
-      kind: 'item' as const,
-      title: it.title,
-      // a summary says more than a link (a tool's "dùng để làm gì"), and the search matches it too
-      detail: join(t(itemTypeLabel(it.type)), t(itemStatusOf(it.status, it.type).label), it.summary || it.source),
-      href: `/thu-vien/?item=${it.id}`,
-    })),
+    ...r.items.map((it) => {
+      const tool = it.type === 'tool';
+      return {
+        id: `brain-item-${it.id}`,
+        kind: tool ? ('tool' as const) : ('item' as const),
+        title: it.title,
+        // a summary says more than a link (a tool's "dùng để làm gì"), and the search matches it too; a tool's kind
+        // already says what it is
+        detail: join(
+          tool ? null : t(itemTypeLabel(it.type)),
+          t(itemStatusOf(it.status, it.type).label),
+          it.summary || it.source,
+        ),
+        href: tool ? `${TOOLS_PATH}?item=${it.id}` : `/thu-vien/?item=${it.id}`,
+      };
+    }),
     ...r.notes.map((n) => ({
       // the server sends title (or first line) and an excerpt around the match, never the body
       id: `brain-note-${n.id}`,
