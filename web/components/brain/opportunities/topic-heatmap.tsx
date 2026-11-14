@@ -89,7 +89,11 @@ function Heatmap({ m }: { m: Matrix }) {
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    // Forced colours (Windows contrast themes) would paint every cell and swatch in the system's ground and the data
+    // would vanish: the cells and swatches with data keep their fills (forced-color-adjust-none), mixed with that
+    // ground (Canvas) instead of the card's, so fewer stays fainter on a light or a dark theme; empty cells take the
+    // ground (blank), the labels and the cursor's outline keep the system colours
+    <div className="flex flex-col gap-3 forced-colors:[--background:Canvas]">
       <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
         {cell
           ? t.rich('<b>{n} tin</b> · {tag} · tuần {week} (từ {date})', {
@@ -147,11 +151,12 @@ function Heatmap({ m }: { m: Matrix }) {
                     onPointerEnter={() => setHover({ r, c })}
                     className={cn(
                       'h-7 scroll-m-1 rounded-sm transition-shadow',
-                      n === 0 && 'bg-muted',
-                      // The cursor's ring; forced colours drop box-shadows, so there it is a Highlight outline (as the
-                      // week strip's today), or the arrows would move nothing in sight (WCAG 2.4.7)
+                      n === 0 ? 'bg-muted' : 'forced-color-adjust-none',
+                      // The cursor's ring. Forced colours drop box-shadows (a cell with data keeps its own colours,
+                      // so ring-0 there), so there the cursor is a Highlight outline (as the week strip's today), or
+                      // the arrows would move nothing in sight (WCAG 2.4.7)
                       on &&
-                        'ring-2 ring-foreground/70 ring-offset-1 ring-offset-background forced-colors:outline-2 forced-colors:outline-offset-1 forced-colors:outline-[Highlight]',
+                        'ring-2 ring-foreground/70 ring-offset-1 ring-offset-background forced-colors:ring-0 forced-colors:outline-2 forced-colors:outline-offset-1 forced-colors:outline-[Highlight]',
                     )}
                     style={{ background: fill(n, m.max) }}
                   />
@@ -172,7 +177,11 @@ function Heatmap({ m }: { m: Matrix }) {
       <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-hidden>
         <span>{t('ít')}</span>
         {[0.15, 0.35, 0.55, 0.78, 1].map((f) => (
-          <span key={f} className="h-3 w-5 rounded-sm" style={{ background: fill(f * m.max, m.max) }} />
+          <span
+            key={f}
+            className="h-3 w-5 rounded-sm forced-color-adjust-none"
+            style={{ background: fill(f * m.max, m.max) }}
+          />
         ))}
         <span>{t('nhiều (tối đa {n} tin một tuần)', { n: m.max })}</span>
         <span className="ms-2 inline-block h-3 w-5 rounded-sm bg-muted" />
