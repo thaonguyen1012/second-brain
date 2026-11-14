@@ -177,7 +177,10 @@ function Heatmap({ m }: { m: Matrix }) {
       </div>
       <details className="text-sm">
         <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{t('Xem dạng bảng')}</summary>
-        <div className="mt-2 overflow-x-auto">
+        {/* Wider than the card at 390 px, the table scrolls inside this box, which is then a tab stop (a scroller with
+            nothing focusable in it): its focus is the app's 2px ring outside the box, in the card's padding (inside the
+            edge it would cover the first letters of the topics) */}
+        <div className="mt-2 overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring">
           <table className="text-left tabular-nums">
             <thead className="text-xs text-muted-foreground">
               <tr>

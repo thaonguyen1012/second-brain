@@ -192,7 +192,9 @@ export function ScoreHistoryChart({ history }: { history: ApiScoreSnapshot[] }) 
       </div>
       <details className="text-sm">
         <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{t('Xem dạng bảng')}</summary>
-        <div className="mt-2 overflow-x-auto">
+        {/* Wider than the column at 320 px, the table scrolls inside this box, which is then a tab stop: its focus is
+            the app's 2px ring outside the box (inside the edge it would cover the dates' first digits) */}
+        <div className="mt-2 overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring">
           <table className="w-full text-left tabular-nums">
             <thead className="text-xs text-muted-foreground">
               <tr>
