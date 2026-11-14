@@ -114,11 +114,12 @@ export function WeekSummary({
                       <span className="min-w-0 truncate text-sm font-medium">{p.title}</span>
                       {p.client && <span className="truncate text-xs text-muted-foreground">{p.client}</span>}
                       {onSelectProject && (
+                        // Named from its visible "Xem mục" on, then whose (WCAG 2.5.3; every project row repeats it)
                         <Button
                           size="xs"
                           variant="ghost"
                           className="ms-auto"
-                          aria-label={t('Xem các mục giờ của {title} trong tuần này', { title: p.title })}
+                          aria-label={t('Xem mục giờ của {title} trong tuần này', { title: p.title })}
                           onClick={() => onSelectProject(p.id, data.weekStart)}
                         >
                           <ListFilter aria-hidden />
