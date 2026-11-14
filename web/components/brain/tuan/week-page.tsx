@@ -166,6 +166,12 @@ export function WeekPage({ books }: { books: BookIndex }) {
       : start === latest
         ? t('tuần tới')
         : t('tuần {range}', { range: weekRange(start) });
+  // The same name inside a line of text (the review's empty objectives line): its dates in one nowrap span, as the time
+  // chart's empty line has them (at 320-360 px the line broke after the range's en dash)
+  const weekNameInLine =
+    start === current || start === latest
+      ? weekName
+      : t.rich('tuần {range}', { range: <span className="whitespace-nowrap">{weekRange(start)}</span> });
   const tabArg = params.get('tab');
   const tab: Tab =
     tabArg === tabParam.review ? 'review' : tabArg === tabParam.plan ? 'plan' : defaultTab(start, current);
@@ -391,7 +397,7 @@ export function WeekPage({ books }: { books: BookIndex }) {
                 <ReviewPanel
                   key={start}
                   start={start}
-                  weekName={weekName}
+                  weekName={weekNameInLine}
                   week={data.plan.week}
                   review={data.review}
                   books={books}
