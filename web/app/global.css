@@ -553,6 +553,11 @@ div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
     text-decoration: underline 2px;
     text-underline-offset: 4px;
   }
+  /* A Textarea whose control scrolls (the job ad's text, max-h-[45vh] overflow-y-auto on its wrapper) clipped the 2px
+     outline drawn outside the field on all four sides: it goes inside the field's edge there. */
+  [data-slot='textarea-control'][class*='overflow'] > textarea:focus-visible {
+    outline-offset: -2px;
+  }
 }
 
 /* Lesson pages (Fumadocs; WCAG 2.4.7): the links of the table of contents (beside the lesson, and in its popover below
