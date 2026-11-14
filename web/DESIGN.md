@@ -337,12 +337,19 @@ so the near pairs that remain are listed under the palette, not hidden.
     closes (round 3 final checks): the drawer's language chooser and handbook switcher, Base UI popovers that take the
     focus as they open (closing the drawer took them with it: below md, where the drawer holds the lesson's only
     language control, no language or handbook could be picked), and Cmd+K opened inside an overlay (Escape left the
-    focus on `<body>`). Below xl the TOC bar (40px) and below md the top bar (56px) stay at the top: a lesson's
-    focusable elements keep them and 0.5rem clear (`scroll-margin-top` 3rem, 6.5rem below md; on the elements, so a TOC
-    link's jump to a heading lands where it did). Open (round 3 open items, WCAG 2.5.3, low): Fumadocs names the TOC
-    popover's trigger from its content, the ProgressCircle's value first, then both labels
-    (`0.235294 1.1. Week 1: … 🔑 Khái niệm cốt lõi · Key concepts` while it shows the heading). Its `trigger` props are
-    static and its slot is the whole popover, so only a fork would fix it.
+    focus on `<body>`). A Cmd+K pick of a heading of the lesson shown (only the hash changes: Fumadocs closes the
+    drawer on a new path only, and the page stays) hands the focus to that heading's link instead (Base UI's
+    `finalFocus`, `search-dialog.tsx`; round 3 repair: the overlay stayed open over the heading just jumped to and
+    got the focus back), clear of the sticky bars by its scroll margin, and the overlay closes as the focus reaches
+    the page; a pick of another page closes the drawer with the path, and the dialog gives no `finalFocus` then (given
+    at all, Base UI moves the focus on closing even after it moved on: out of the Item Sheet a result opened). A pick
+    of the lesson's own row, the URL unchanged, changes nothing and gives the focus back where it was. Below xl the
+    TOC bar (40px) and below md the top bar (56px) stay at the top: a lesson's focusable elements keep them and 0.5rem
+    clear (`scroll-margin-top` 3rem, 6.5rem below md; on the elements, so a TOC link's jump to a heading lands where it
+    did). Open (round 3 open items, WCAG 2.5.3, low): Fumadocs names the TOC popover's trigger from its content, the
+    ProgressCircle's value first, then both labels (`0.235294 1.1. Week 1: … 🔑 Khái niệm cốt lõi · Key concepts`
+    while it shows the heading). Its `trigger` props are static and its slot is the whole popover, so only a fork
+    would fix it.
   - Lesson pages, landmarks and names (lessons pass 14/11/2026; WCAG 1.3.1, 2.4.1, 4.1.2;
     `app/[lang]/docs/[[...slug]]/page.tsx`): a lesson has the banner only on phones (Fumadocs' top bar `#nd-subnav`,
     below md), the one main, the sidebar aside, nav "Breadcrumb" and the table of contents as a navigation named like
@@ -747,26 +754,38 @@ so the near pairs that remain are listed under the palette, not hidden.
   the highlight and `MIN_QUERY` count the letters on screen. `placeCommand()` puts a strong match first, the row Enter
   picks, even alone; a weak one last, after the results under "Cài đặt", and leaves it out while nothing else is
   listed (no index, nothing found, the brain hits not back: alone it would be the first row, which Fumadocs makes
-  active; the list says "Đang tìm…" or "Không tìm thấy kết quả" and Enter does nothing); the destinations (nothing
-  typed, or this query's first results still coming) end with it; any other query leaves it out. The active row is
-  the one Enter picks (round 3 checks, WCAG 3.2.2): while the query is the same it stays where it is as long as it
-  is listed, whatever lands around it (the brain group, then the handbook results; Fumadocs moved it back to the
-  first row each time, away from a row arrowed to), and when it leaves the list (a destination, as the results land)
-  the first row takes it, never the command the user had moved off; a new query text starts at the first row, with
-  none active while the query's own rows do not lead the list (`waiting`): the destinations standing in for its
-  first results, or another query's rows kept until its own land, the brain hits of a query it extends or shortens
-  and the handbook results of the last one (fumadocs-core's `useSearch` keeps them; round 3 final checks: Enter right
-  after typing over a query opened a result of the old one). Enter waits for them (it opened "Hôm nay"), the first of
-  them takes it as they land, and a row arrowed to meanwhile keeps it; so a command arrowed to at the end of a weak
-  query is never Enter's after another letter (`ActiveBefore` notes the row, `ActiveAfter` sets it). At the end only
-  the arrows (ArrowUp wraps to it) or the pointer highlight the command. "Bộ não thứ hai", "Cài đặt" and "Đi đến"
-  always head their groups (the destinations under early brain rows too); "Sổ tay" heads the handbook results
-  whenever another group, the command included, shares the list. A pick flips the switch and keeps the dialog open,
-  read out by a polite `role="status"` in the dialog's header; the row cancels mousedown (`ResultRow keepFocus`), so a
-  click or tap leaves the focus in the search field. After a pick the command's place follows the new state (a query
-  that named what the row did, "tắt phím tắt", now asks for the state the switch is in, and the command goes after
-  the results; the whole name alone keeps it first), and the highlight stays on it, scrolled into view with its new
-  action, so a second Enter does what the row now says. The dialog fits the screen at any zoom (round 3 checks,
+  active; the list says "Đang tìm…" or "Không tìm thấy kết quả" and Enter does nothing), unless it was just picked
+  (below); the destinations (nothing typed, or this query's first results still coming) end with it; any other query
+  leaves it out. The active row is the one Enter picks (round 3 checks, WCAG 3.2.2): while the query is the same it
+  stays where it is as long as it is listed, whatever lands around it (the brain group, then the handbook results;
+  Fumadocs moved it back to the first row each time, away from a row arrowed to), and when it leaves the list (a
+  destination, as the results land) the first row takes it, never the command the user had moved off; a new query
+  text starts at the first row, with none active while the query's own rows do not lead the list (`waiting`): the
+  destinations standing in for its first results, or another query's rows kept until its own land, the brain hits of
+  a query it extends or shortens and the handbook results of the last one (fumadocs-core's `useSearch` keeps them;
+  round 3 final checks: Enter right after typing over a query opened a result of the old one). Enter and the arrows
+  wait for them (it opened "Hôm nay"; round 3 repair: from no active row Fumadocs' ArrowDown and ArrowUp both
+  highlight the first row on screen, so ↓ then Enter still opened the old query's result), the first of them takes it
+  as they land, and a row pointed at meanwhile keeps it; so a command arrowed to at the end of a weak query is never
+  Enter's after another letter (`ActiveBefore` notes the row, `ActiveAfter` sets it; the dialog's capture handler
+  stops the arrows before Fumadocs' listener). At the end only the arrows (from the first row ArrowUp wraps to it) or
+  the pointer highlight the command. "Bộ não thứ hai", "Cài đặt" and "Đi đến" always head their groups (the
+  destinations under early brain rows too); "Sổ tay" heads the handbook results whenever another group, the command
+  included, shares the list. A pick flips the switch and keeps the dialog open, read out by a polite `role="status"`
+  in the dialog's header; the row cancels mousedown (`ResultRow keepFocus`), so a click or tap leaves the focus in the
+  search field. After a pick the command's place follows the new state: the whole name alone keeps it first and
+  highlighted (a toggle: Enter again turns it back, no verb was typed), and a query that named what the row did,
+  "tắt phím tắt", now asks for the state the switch is in, so the command goes after the results, scrolled into view
+  with its "Cài đặt" label and new action, and no row is highlighted until an arrow, the pointer or the next letter,
+  also as later results land (round 3 repair: the highlight stayed on it, and a second Enter turned the switch back
+  against the words typed); a pick that turns it back makes the query name it again: first and highlighted. It stays
+  listed until the query changes (Escape clears it), even alone (`placeCommand`'s `picked`: it vanished under "Không
+  tìm thấy kết quả", read out after "Đã tắt phím tắt một phím").
+  Another tab flipping the switch under such a query takes the highlight off it too. A held Enter picks once: its
+  repeats stop in the dialog's capture handler (Fumadocs picked the active row on each, flipping the switch until the
+  key was let go). The field is a combobox expanded whenever the list shows rows, the command, the results or the
+  destinations (`aria-expanded` from the rows: Fumadocs reads "a row is active", so while waiting and after a pick it
+  said collapsed over a listbox of rows; WCAG 4.1.2). The dialog fits the screen at any zoom (round 3 checks,
   WCAG 1.4.10): from md its top keeps 1rem (`md:top-[max(1rem,calc(50%-250px))]`), and its list is at most
   `min(460px, 100dvh - 7rem)` (at 200% on a 1280x800 screen it ran 90-170px below the screen, the command and an
   ArrowUp to it out of sight). The dialog and its list are named "Tìm mọi thứ" / "Search everything", as the top bar
@@ -1043,8 +1062,9 @@ Components
 - **D24** `Kbd` hints hidden on touch / 390 px and limited to the main verbs; full legend behind one control, ending
   with the "Phím tắt một phím" switch (also a Cmd+K command, first only for a query that names it: its whole name or
   the verb of what its row does now, never the other verb, whose state the switch is already in, nor "phím tắt" or
-  "shortcuts" alone); with it off no single-key chip, menu key, legend line or list cursor shows (the Inbox entry a
-  Cmd+K link opened keeps its mark), only keys with ⌘, Ctrl or Alt and the focused row's own.
+  "shortcuts" alone; after a pick under its verb it goes last, still listed and unhighlighted, so a second or held
+  Enter never turns it back); with it off no single-key chip, menu key, legend line or list cursor shows (the Inbox
+  entry a Cmd+K link opened keeps its mark), only keys with ⌘, Ctrl or Alt and the focused row's own.
 - **D25** Badges: <= 3 per record, one tag style app-wide, never used as buttons or tabs.
 - **D33** A link inside or right under running text is underlined at rest; a link action standing on its own (a
   section header's `… →`, a jump alone in its bar) may underline on hover only.
@@ -1053,7 +1073,8 @@ Keyboard and focus (screenshots taken while using the keyboard)
 - **D34** The first Tab of a page shows "Bỏ qua tới nội dung" at the top left; after a failed save the focus is on
   the first invalid field (light: its red border kept, the blue ring outside it); after a confirmed delete it is on
   the next row, the previous one or the list's heading, never lost; after Escape, Hủy or ✕ it is back on the control
-  that opened the dialog; a focused scroll area (a Sheet, Cmd+K's results, a wide table) shows the whole 2px ring, and
+  that opened the dialog; after a Cmd+K pick of a heading of the lesson shown it is on that heading, the lesson's
+  popover or drawer closed; a focused scroll area (a Sheet, Cmd+K's results, a wide table) shows the whole 2px ring, and
   so does a link in a truncated line (Ghi chú) and the highlighted row of a menu, a Select or Cmd+K; a focused control
   is never under a sticky bar, flush with the bottom edge or behind a lesson's open popover or drawer; after a triage
   button takes its card away the focus is on the next card; in forced colours every focus, the J/K cursor and the
