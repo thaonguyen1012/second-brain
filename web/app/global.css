@@ -367,6 +367,22 @@ html:has([data-sticky-groups]) {
   scroll-padding-top: 7.5rem;
 }
 
+/* Lesson pages below xl: Fumadocs' sticky bars cover the top of the page (the 40px table-of-contents bar, and below md
+   the 56px top bar above it), and Shift+Tab scrolled a link, a code block's copy button or a summary row of the lesson
+   under them, hidden (WCAG 2.4.11). A focusable element of the lesson keeps them and 0.5rem clear above it when the
+   focus scrolls it into view. A margin on the element, not a padding on the page: that would also move every heading
+   a TOC link jumps to, which keeps its own margin. */
+@media (width < 80rem) {
+  #nd-page :is(a[href], button, summary, input, select, textarea, [tabindex]:not([tabindex='-1'])) {
+    scroll-margin-top: 3rem;
+  }
+}
+@media (width < 48rem) {
+  #nd-page :is(a[href], button, summary, input, select, textarea, [tabindex]:not([tabindex='-1'])) {
+    scroll-margin-top: 6.5rem;
+  }
+}
+
 html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;
