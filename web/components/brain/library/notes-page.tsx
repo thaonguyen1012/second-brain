@@ -205,9 +205,12 @@ function NoteRow({
       }}
     >
       <div className="flex min-w-0 flex-col gap-0.5">
+        {/* Forced colours drop the ring: app/global.css draws an outline there, on the button's edge (its own offset,
+            0). Further out (outline-hidden puts it 2px out) its lower side ran under the meta line's text, which
+            forced colours paint afterwards on a backplate. */}
         <button
           type="button"
-          className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          className="max-w-full truncate rounded-sm text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onOpen}
         >
           {title}
@@ -280,10 +283,13 @@ function NoteGroupSection({
               t('Ghi chú rời')
             ) : (
               // The link is the box that truncates (its text in a block span, so the hover underline keeps its square
-              // ends): its focus ring goes round what shows, the ellipsis too, where an h2 that truncated cut it off
+              // ends): its focus ring goes round what shows, the ellipsis too, where an h2 that truncated cut it off.
+              // Forced colours drop the ring and draw app/global.css's outline, here on the link's edge
+              // (outline-offset-0, not a link's 1px): the meta line's text, painted afterwards on a backplate, covers
+              // what reaches past the 2px gap below
               <Link
                 href={`/thu-vien/item/?id=${group.item}`}
-                className="inline-block max-w-full rounded-sm align-top underline-offset-4 outline-none hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-block max-w-full rounded-sm align-top underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring forced-colors:outline-offset-0"
               >
                 <span className="block truncate">{label.title}</span>
               </Link>
