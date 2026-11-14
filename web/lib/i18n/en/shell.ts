@@ -50,6 +50,8 @@ export const shell = {
   // Lesson pages (app/[lang]/docs/)
   'Trang chủ': 'Home',
   '≈ {n} phút đọc': '≈ {n} min read',
+  // Fumadocs' language chooser in the lesson sidebar (app/[lang]/layout.tsx): the language it shows, then what it does
+  '{language}, chọn ngôn ngữ': '{language}, choose a language',
 
   // Handbook cards, shelf and progress (components/book-card.tsx, book-actions.tsx, progress.tsx)
   '{provider} · {n} khóa': { one: '{provider} · {n} course', other: '{provider} · {n} courses' },

@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { Provider } from '@/components/provider';
 import { appName } from '@/lib/shared';
 import { notFound } from 'next/navigation';
-import { isLocale, locales } from '@/lib/i18n/config';
-import { getLocale, pageDictionary } from '@/lib/i18n/server';
+import { isLocale, localeNames, locales } from '@/lib/i18n/config';
+import { getLocale, getT, pageDictionary } from '@/lib/i18n/server';
 import { viTranslations } from '@/lib/i18n-vi';
 import '../global.css';
 
@@ -41,6 +41,7 @@ export function generateStaticParams() {
 export default async function Layout({ children, params }: LayoutProps<'/[lang]'>) {
   if (!isLocale((await params).lang)) notFound();
   const locale = await getLocale();
+  const t = await getT();
   return (
     <html
       lang={locale}
@@ -49,11 +50,17 @@ export default async function Layout({ children, params }: LayoutProps<'/[lang]'
     >
       <body className="flex flex-col min-h-screen">
         {/* The English dictionary travels in this page's RSC payload, never in a JS bundle; Fumadocs is English by
-            default and gets its Vietnamese strings the same way */}
+            default and gets its Vietnamese strings the same way. Its language chooser (the lesson sidebar) shows the
+            page's language, "Tiếng Việt" or "English": its name starts with those words in both (WCAG 2.5.3) */}
         <Provider
           locale={locale}
           dict={pageDictionary(locale)}
-          fumadocs={locale === 'vi' ? viTranslations : undefined}
+          fumadocs={{
+            ...(locale === 'vi' ? viTranslations : null),
+            'Choose a language(language switcher)(aria-label)': t('{language}, chọn ngôn ngữ', {
+              language: localeNames[locale],
+            }),
+          }}
         >
           {children}
         </Provider>

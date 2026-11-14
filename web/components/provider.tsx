@@ -81,7 +81,10 @@ export function Provider({
 }: {
   locale: Locale;
   dict: Dictionary | null;
-  /** Fumadocs' own strings (lib/i18n-vi.ts) in Vietnamese; English is its default. */
+  /**
+   * Fumadocs' own strings: lib/i18n-vi.ts on Vietnamese pages (English is its default), and in both languages the
+   * language chooser's name (app/[lang]/layout.tsx).
+   */
   fumadocs?: Dictionary;
   children: ReactNode;
 }) {
