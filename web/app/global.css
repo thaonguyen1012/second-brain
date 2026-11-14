@@ -551,6 +551,13 @@ div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
   outline-offset: -2px;
 }
 
+/* The lesson sidebar's current page (in the sidebar and the 390 px drawer): Fumadocs draws it in the primary on a 10%
+   primary tint, 4.36:1 in light (WCAG 1.4.3). In light it takes the primary 10% darker (--primary-hover, the filled
+   button's hover step): 5.5:1 on the same tint, the same blue. Dark keeps the primary (6.4:1 on its tint). */
+html:not(.dark) :is(#nd-sidebar, #nd-sidebar-mobile) a[data-active='true'] {
+  color: var(--primary-hover);
+}
+
 /* The lesson sidebar's list (Fumadocs' Base UI ScrollArea, in the sidebar and the 390 px drawer) is a tab stop while
    it scrolls, like the app's scroll areas above, and its browser outline was cut the same way: by the layout's
    overflow-x-clip and the list's own fade mask, so only a line down one side showed. Its root draws the app's ring
