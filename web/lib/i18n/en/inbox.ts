@@ -31,12 +31,13 @@ export const inbox = {
   'Về inbox, {key}: "{title}"': 'Back to inbox, {key}: "{title}"',
   'Mở, {key}: "{title}"': 'Open, {key}: "{title}"',
   'Ghi chú, {key}: "{title}"': 'Note, {key}: "{title}"',
-  // the same while single-key shortcuts are off: the button shows no key, so its name says none
+  // the same while single-key shortcuts are off: the button shows no key, so its name says none (the button's words,
+  // a colon, the entry: the English of each name above without its ", {key}")
   'Đọc sau "{title}"': 'Read later: "{title}"',
-  'Lưu trữ "{title}"': 'Archive "{title}"',
+  'Lưu trữ "{title}"': 'Archive: "{title}"',
   'Về inbox "{title}"': 'Back to inbox: "{title}"',
-  'Mở "{title}"': 'Open "{title}"',
-  'Ghi chú về "{title}"': 'Note on "{title}"',
+  'Mở "{title}"': 'Open: "{title}"',
+  'Ghi chú về "{title}"': 'Note: "{title}"',
 
   // Keyboard legend (components/brain/inbox-page.tsx)
   'Phím tắt của Inbox': 'Inbox keyboard shortcuts',
@@ -57,7 +58,7 @@ export const inbox = {
   'Chưa lưu được ảnh: {error}.': 'The image was not saved: {error}.',
   'Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture} Nhấn A để lưu trữ mục.':
     'Added "{title}" to the library and linked the inbox entry.{picture} Press A to archive the entry.',
-  // the same with single-key shortcuts off: A does nothing then (the note's notice is library's 'Đã tạo ghi chú …')
+  // the same with single-key shortcuts off: A does nothing then
   'Đã thêm "{title}" vào thư viện và liên kết mục inbox.{picture}':
     'Added "{title}" to the library and linked the inbox entry.{picture}',
   'Đã thêm "{title}" nhưng chưa liên kết được: {reason}.{picture}':
@@ -75,6 +76,8 @@ export const inbox = {
     '"{title}" is deleted for good, thumbnail included. Items and notes made from this entry stay as they are. This cannot be undone.',
   'Từ inbox: {title}': 'From the inbox: {title}',
   'Đã tạo ghi chú "{title}". Nhấn A để lưu trữ mục inbox.': 'Created the note "{title}". Press A to archive the inbox entry.',
+  // the same with single-key shortcuts off, a sentence like the others
+  'Đã tạo ghi chú "{title}".': 'Created the note "{title}".',
 
   // Capture page form (components/capture/capture-form.tsx)
   'Chỉ nhận link http hoặc https.': 'Only http or https links are accepted.',

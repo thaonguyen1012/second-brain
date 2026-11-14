@@ -771,7 +771,7 @@ export function InboxPage() {
           setNotice(
             keys
               ? t('Đã tạo ghi chú "{title}". Nhấn A để lưu trữ mục inbox.', { title: noteTitle(note, t) })
-              : t('Đã tạo ghi chú "{title}"', { title: noteTitle(note, t) }),
+              : t('Đã tạo ghi chú "{title}".', { title: noteTitle(note, t) }),
           );
         }}
       />
