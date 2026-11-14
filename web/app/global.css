@@ -565,6 +565,13 @@ div:has(> [data-slot='scroll-area-viewport']:focus-visible)::after {
   outline-offset: -2px;
 }
 
+/* Fumadocs' copy-link button after each lesson heading with an id (also on /tu-vi/) shows only while the pointer is on
+   the heading (opacity-0, group-hover/heading), yet it is a tab stop: every second Tab through a lesson landed on an
+   invisible control, its ring drawn on a transparent box (WCAG 2.4.7). It shows while it has the keyboard focus. */
+[class~='group/heading'] > button:focus-visible {
+  opacity: 1;
+}
+
 /* The lesson sidebar's current page (in the sidebar and the 390 px drawer): Fumadocs draws it in the primary on a 10%
    primary tint, 4.36:1 in light (WCAG 1.4.3). In light it takes the primary 10% darker (--primary-hover, the filled
    button's hover step): 5.5:1 on the same tint, the same blue. Dark keeps the primary (6.4:1 on its tint). */
