@@ -271,8 +271,14 @@ fold at 1280x720 and 390x844; no layout shift; `make check` and the JS budget ho
   their fields, a skip link with one `<main>`, a banner and a whole nav, view switches tied to their tabpanel, a
   switch that turns single-key shortcuts off (WCAG 2.1.4), a hoverable and dismissible chart tooltip, links in text
   underlined, text in the guide pictures at 4.5:1, and the focus kept on a row after a delete.
-* Colour tokens and the registry components are not changed by these passes; their own findings (the destructive
-  red at 3.8:1 on white) wait for a design decision.
+* The third pass (13-14/11/2026): accessible names start with their visible text (WCAG 2.5.3), Escape from an add
+  dialog gives the focus back to its opener, focusable scroll areas and links in truncated lines show their whole
+  ring, the focus shows in forced colours (Windows contrast themes), and while single-key shortcuts are off the key
+  hints and the list cursor are hidden; the switch is also a Cmd+K command, first only when the query names it.
+* The destructive red #fb2c36 (error text, the filled "Xóa") stays at 3.8:1 on white, under WCAG's 4.5:1: the
+  owner's decision (13/11/2026); its 4 axe nodes are accepted and the token is unchanged. Help content that teaches
+  single keys (the guides, /huong-dan/, /gioi-thieu/) keeps showing them while the switch is off, on purpose.
+* Colour tokens and the registry components are not changed by these passes.
 
 ## 10. Engineering standards for phase 2 (01/11/2026)
 

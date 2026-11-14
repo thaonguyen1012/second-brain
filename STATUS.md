@@ -11,6 +11,13 @@ in the commit that finishes the work.
 
 ## Done
 
+* Accessibility, third pass (13-14/11/2026, DECISIONS 9.11, DESIGN.md §4, §6, §10): accessible names start with
+  their visible text (sidebar count rows, the Inbox link, the search button, the Cmd+K close, Giờ's "Xem mục", the
+  lesson language chooser); Escape from the add dialogs gives the focus back (`web/lib/shortcut-opener.ts`); scroll
+  areas, lesson links and links in truncated lines show their whole ring, and the focus shows in forced colours;
+  while single-key shortcuts are off the key hints and the list cursor are hidden, and the switch is also a Cmd+K
+  command (`web/lib/search-command.ts`). axe over 63 page states: 336 → 5 nodes (left: the destructive red, kept by
+  the owner, and the open row menu's region).
 * Tool logos (13/11/2026, DECISIONS 9.10, DESIGN.md §9a): the `item_image` job takes a tool's logo from its official
   site's icon (`backend/core/services/site_icon.py`), GitHub links through the repository's homepage or the avatar of
   an organisation that is the tool (`backend/library/logos.py`); at GitHub's hourly limit only those jobs wait.
@@ -63,7 +70,8 @@ in the commit that finishes the work.
 * Opportunity and skill pages do not list the notes that link them yet (NoteLink has them).
 * Item images: no prune command for files orphaned by deletes outside the services (admin, `queryset.delete()`);
   set one absolute `THUMBS_DIR` when several checkouts share a database.
-* Light-mode error text (`--destructive-foreground`) is 3.8:1 on white, under 4.5:1.
+* Light-mode error text (`--destructive-foreground`) is 3.8:1 on white, under 4.5:1. It stays: the owner's
+  decision (DECISIONS 9.11).
 * Dev Postgres can reach `max_connections` with many `runserver` threads (`CONN_MAX_AGE=60`): restart Django.
 * Deploy: config exists in `deploy/` (Docker and systemd variants), neither has been run end to end. Encrypted dumps
   on object storage are not done (DECISIONS 10.1).
