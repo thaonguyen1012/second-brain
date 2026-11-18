@@ -224,6 +224,10 @@ def test_list_job_ads_without_n_plus_one(client: Client) -> None:
     assert [r["title"] for r in response.json()["results"]] == [f"Ad {i}" for i in range(4, -1, -1)]
     assert len(client.get("/api/market/job-ads").json()["results"]) == 6
     assert client.get("/api/market/job-ads?month=11-2026").status_code == 400
+    # Every bad month gets the app's own message, never Python's (year 0000 would fail in dt.date).
+    for bad in ("11-2026", "2026-13", "0000-01"):
+        response = client.get(f"/api/market/job-ads?month={bad}")
+        assert (response.status_code, response.json()) == (400, {"month": "Tháng có dạng YYYY-MM."})
 
 
 def test_update_job_ad(client: Client) -> None:

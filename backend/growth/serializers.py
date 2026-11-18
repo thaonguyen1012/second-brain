@@ -12,7 +12,7 @@ from growth.models import Achievement, Freshness, JobAd, Prediction, Skill, Skil
 from library.models import Item, Note
 
 LINKS = {SkillEvidence.Kind.ITEM: "item", SkillEvidence.Kind.NOTE: "library_note"}
-MONTH = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
+MONTH = re.compile(r"^([1-9]\d{3})-(0[1-9]|1[0-2])$")  # a year dt.date accepts: no Python message leaks
 
 
 def _url(**kwargs: Any) -> serializers.CharField:
