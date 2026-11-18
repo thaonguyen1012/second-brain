@@ -84,6 +84,8 @@ cd backend && uv run python manage.py brief_sources seed     # the feeds DECISIO
   morning brief and the jobs waiting or failed.
 * `manage.py export --out <dir>` writes the notes as markdown and everything else as JSON (DECISIONS 4.7);
   `manage.py export_brief_feedback` adds the rated news items to the `eval brief` golden set.
+* `manage.py import_notes` creates or updates the owner's notes from `backend/seed/notes/*.md` (one file a note,
+  matched by its first line; other notes are left alone), so notes can travel with the code: run it after a release.
 
 ### Background jobs on the laptop (launchd)
 

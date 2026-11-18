@@ -194,7 +194,10 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  ends the Item's waiting or running fetch, so it never undoes it); /api/items/{id}/image
                                  GET|POST multipart|DELETE, /image/fetch (202) and the automatic fetch (create or new
                                  http(s) source, not projects) queue the `item_image` job (jobs.py, one key per Item,
-                                 re-armed); linking an inbox entry copies its thumbnail
+                                 re-armed); linking an inbox entry copies its thumbnail;
+                                 `manage.py import_notes [dir]` = the owner's notes from backend/seed/notes/*.md (one
+                                 file a note, matched by its first line, updated to the file; the notes that travel
+                                 with the code to levigo, run after a release)
   inbox/                         InboxEntry (url|text, triage status + archived_at set/cleared by triage_entry, OG
                                  unfurl fields, LLM suggestions); /api/inbox (?q= og title/text/url; DELETE also drops
                                  a thumbnail no entry or Item uses)
