@@ -11,6 +11,9 @@ in the commit that finishes the work.
 
 ## Done
 
+* Notes that travel with the code (18/11/2026): `manage.py import_notes` creates or updates the owner's notes from
+  `backend/seed/notes/*.md`, one file a note matched by its first line, other notes untouched; run after a release
+  (deploy/README.md). The seed holds one sample note. Next.js 16.4.6 (security release).
 * Tools off the Library (14/11/2026, DECISIONS 9.10, DESIGN.md Công cụ): Thư viện lists every type but tools
   (`/api/items?excludeType=tool`; its sidebar count, header line, "Loại" filter and "Thêm item" too), and an Item made a
   tool leaves it with "→ Công cụ"; Cmd+K files tools under Công cụ and opens them there; an old Thư viện link of a tool,
