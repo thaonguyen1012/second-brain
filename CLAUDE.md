@@ -197,7 +197,7 @@ backend/                         Django 5.2 + DRF + Postgres, managed with uv (p
                                  re-armed); linking an inbox entry copies its thumbnail;
                                  `manage.py import_notes [dir]` = the owner's notes from backend/seed/notes/*.md (one
                                  file a note, matched by its first line, updated to the file; the notes that travel
-                                 with the code to levigo, run after a release)
+                                 with the code to the server, run after a release)
   inbox/                         InboxEntry (url|text, triage status + archived_at set/cleared by triage_entry, OG
                                  unfurl fields, LLM suggestions); /api/inbox (?q= og title/text/url; DELETE also drops
                                  a thumbnail no entry or Item uses)

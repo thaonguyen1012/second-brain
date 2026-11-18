@@ -68,8 +68,12 @@ def test_no_files_is_an_error(tmp_path: Path) -> None:
 
 
 def test_seed_directory_is_the_default() -> None:
+    """Without a directory the command reads backend/seed/notes: one note a file, named by its first line."""
+    seed = Path(__file__).parents[2] / "seed" / "notes"
+    files = sorted(seed.glob("*.md"))
+    assert files
     out = StringIO()
     call_command("import_notes", owner=OWNER, stdout=out)
-    assert Note.objects.count() >= 2
-    labels = {note_label(n) for n in Note.objects.all()}
-    assert any("CV" in label for label in labels)
+    assert f"{len(files)} created, 0 updated, 0 unchanged" in out.getvalue()
+    expected = {note_label(Note(title="", markdown=f.read_text(encoding="utf-8"))) for f in files}
+    assert {note_label(n) for n in Note.objects.all()} == expected
